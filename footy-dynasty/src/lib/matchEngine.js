@@ -42,6 +42,33 @@ export function simMatch(home, away, isPlayerHome, playerStrength) {
   };
 }
 
+function splitAcrossQuarters(total, n) {
+  const parts = [];
+  let rem = total;
+  for (let i = 0; i < n - 1; i++) {
+    const q = rem > 0 ? Math.floor(Math.random() * Math.ceil(rem * 0.6 + 1)) : 0;
+    parts.push(q);
+    rem -= q;
+  }
+  parts.push(Math.max(0, rem));
+  return parts;
+}
+
+export function simMatchWithQuarters(home, away, isPlayerHome, playerStrength) {
+  const result = simMatch(home, away, isPlayerHome, playerStrength);
+  const hGQ = splitAcrossQuarters(result.homeGoals, 4);
+  const hBQ = splitAcrossQuarters(result.homeBehinds, 4);
+  const aGQ = splitAcrossQuarters(result.awayGoals, 4);
+  const aBQ = splitAcrossQuarters(result.awayBehinds, 4);
+  const quarters = [0, 1, 2, 3].map(i => ({
+    homeGoals: hGQ[i],   homeBehinds: hBQ[i],
+    homeTotal: hGQ[i] * 6 + hBQ[i],
+    awayGoals: aGQ[i],   awayBehinds: aBQ[i],
+    awayTotal: aGQ[i] * 6 + aBQ[i],
+  }));
+  return { ...result, quarters };
+}
+
 export function aiClubRating(clubId, tier) {
   const c = findClub(clubId);
   if (!c) return 60;
