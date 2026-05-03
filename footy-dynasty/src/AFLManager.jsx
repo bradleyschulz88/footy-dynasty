@@ -105,9 +105,39 @@ const Jersey = ({ kit, size = 64 }) => {
 };
 
 // ============================================================================
+// ERROR BOUNDARY
+// ============================================================================
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-8">
+          <div className="max-w-lg w-full rounded-2xl p-6" style={{background:'#1E293B', border:'1px solid #E84A6F44'}}>
+            <div className="text-3xl mb-3">💥</div>
+            <div className="font-['Bebas_Neue'] text-2xl text-[#E84A6F] mb-2">Something went wrong</div>
+            <pre className="text-xs text-[#94A3B8] bg-[#0F172A] rounded-lg p-3 overflow-auto max-h-48 mb-4">{this.state.error?.message}{'\n'}{this.state.error?.stack}</pre>
+            <button onClick={() => { this.setState({ error: null }); window.location.reload(); }}
+              className="px-4 py-2 rounded-lg text-sm font-bold bg-[#E84A6F] text-white hover:bg-[#F06070]">
+              Reload game
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ============================================================================
 // MAIN APP
 // ============================================================================
 export default function AFLManager() {
+  return <ErrorBoundary><AFLManagerInner /></ErrorBoundary>;
+}
+
+function AFLManagerInner() {
   const [career, setCareer] = useState(null); // null = no career
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
@@ -617,14 +647,19 @@ function CareerSetup({ onStart }) {
   const [leagueKey, setLeagueKey] = useState(null);
   const [clubId, setClubId] = useState(null);
   const [managerName, setManagerName] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const availableLeagues = state ? LEAGUES_BY_STATE(state).filter(l => tier ? l.tier === tier : true) : [];
   const availableClubs = leagueKey ? PYRAMID[leagueKey].clubs : [];
 
   function start() {
-    if (!clubId) return;
+    if (!clubId || !leagueKey || loading) return;
+    setLoading(true);
+    try {
     const club = findClub(clubId);
     const league = PYRAMID[leagueKey];
+    if (!club) throw new Error(`Club not found: ${clubId}`);
+    if (!league) throw new Error(`League not found: ${leagueKey}`);
     const SEASON = 2026;
     seedRng(clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7) + 1);
     const squad = generateSquad(clubId, league.tier);
@@ -666,6 +701,11 @@ function CareerSetup({ onStart }) {
       tacticChoice: "balanced",
       seasonHistory: [],
     });
+    } catch (err) {
+      setLoading(false);
+      alert(`Failed to start career: ${err.message}\n\nCheck browser console for details.`);
+      console.error('[start] career init error:', err);
+    }
   }
 
   return (
@@ -726,21 +766,21 @@ function CareerSetup({ onStart }) {
             <h2 className={`${css.h1} text-4xl mb-4`}>CHOOSE YOUR DIFFICULTY</h2>
             <p className="text-[#64748B] mb-8">Start at the top, the middle, or the bottom of the pyramid.</p>
             <div className="grid md:grid-cols-3 gap-4">
-              <button onClick={()=>{setTier(3); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+              <button onClick={()=>{setTier(3); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
                 <Pill color="#4ADBE8">Underdog</Pill>
                 <div className={`${css.h1} text-4xl mt-3`}>TIER 3</div>
                 <div className="text-sm text-[#0F172A] font-semibold mt-1">Community / Local</div>
                 <div className="text-[12px] text-[#64748B] mt-3">Suburban grounds. Tiny budgets. Long road. Most rewarding climb.</div>
                 <div className="text-[#4ADBE8] text-xs mt-4 font-bold uppercase tracking-widest">3 Promotions to AFL</div>
               </button>
-              <button onClick={()=>{setTier(2); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+              <button onClick={()=>{setTier(2); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
                 <Pill color="#E89A4A">Established</Pill>
                 <div className={`${css.h1} text-4xl mt-3`}>TIER 2</div>
                 <div className="text-sm text-[#0F172A] font-semibold mt-1">State League</div>
                 <div className="text-[12px] text-[#64748B] mt-3">VFL, SANFL, WAFL etc. Real budgets. One step from the big show.</div>
                 <div className="text-[#E89A4A] text-xs mt-4 font-bold uppercase tracking-widest">1 Promotion to AFL</div>
               </button>
-              <button onClick={()=>{setTier(1); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+              <button onClick={()=>{setTier(1); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
                 <Pill color="#E84A6F">Big Time</Pill>
                 <div className={`${css.h1} text-4xl mt-3`}>TIER 1</div>
                 <div className="text-sm text-[#0F172A] font-semibold mt-1">AFL</div>
@@ -761,7 +801,7 @@ function CareerSetup({ onStart }) {
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {availableLeagues.map(l => (
-                  <button key={l.key} onClick={()=>{setLeagueKey(l.key); setStep(3);}} className={`${css.panelHover} p-5 text-left flex items-center justify-between`}>
+                  <button key={l.key} onClick={()=>{setLeagueKey(l.key); setClubId(null); setStep(3);}} className={`${css.panelHover} p-5 text-left flex items-center justify-between`}>
                     <div>
                       <div className="text-xs text-[#64748B] uppercase tracking-widest">Tier {l.tier}</div>
                       <div className={`${css.h1} text-2xl mt-1`}>{l.short}</div>
@@ -797,23 +837,27 @@ function CareerSetup({ onStart }) {
           </div>
         )}
 
-        {step === 4 && (
+        {step === 4 && clubId && leagueKey && findClub(clubId) && (
           <div className="fade-up max-w-xl">
-            <button onClick={()=>setStep(3)} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
+            <button onClick={()=>{ setClubId(null); setStep(3); }} disabled={loading} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>YOUR DETAILS</h2>
             <div className={`${css.panel} p-6 mb-4`}>
+              {(() => { const c = findClub(clubId); return (
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-xl flex items-center justify-center font-['Bebas_Neue'] text-2xl" style={{ background: `linear-gradient(135deg, ${findClub(clubId).colors[0]}, ${findClub(clubId).colors[1]})`, color: findClub(clubId).colors[2] }}>{findClub(clubId).short}</div>
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center font-['Bebas_Neue'] text-2xl" style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})`, color: c.colors[2] }}>{c.short}</div>
                 <div>
                   <div className="text-[10px] uppercase tracking-widest text-[#64748B]">Appointed at</div>
-                  <div className="font-bold text-xl">{findClub(clubId).name}</div>
+                  <div className="font-bold text-xl">{c.name}</div>
                   <div className="text-[12px] text-[#64748B]">{PYRAMID[leagueKey].name}</div>
                 </div>
               </div>
+              ); })()}
               <label className={css.label}>Manager Name</label>
-              <input value={managerName} onChange={(e)=>setManagerName(e.target.value)} placeholder="Bluey McGee" className="w-full mt-2 bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#E89A4A] outline-none rounded-lg px-4 py-3 text-[#0F172A]" />
+              <input value={managerName} onChange={(e)=>setManagerName(e.target.value)} placeholder="Bluey McGee" className="w-full mt-2 bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#E89A4A] outline-none rounded-lg px-4 py-3 text-[#0F172A]" disabled={loading} />
             </div>
-            <button onClick={start} className={`${css.btnPrimary} w-full text-lg py-4 glow`}>START CAREER →</button>
+            <button onClick={start} disabled={loading} className={`${css.btnPrimary} w-full text-lg py-4 ${loading ? 'opacity-70' : 'glow'}`}>
+              {loading ? '⏳ Starting career…' : 'START CAREER →'}
+            </button>
           </div>
         )}
       </div>
