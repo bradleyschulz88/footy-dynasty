@@ -8,475 +8,15 @@ import {
   Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
   Map, Award, AlertCircle, ChevronsUp, FileText
 } from "lucide-react";
+import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
+import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub } from './data/pyramid.js';
+import { POSITIONS, POSITION_NAMES, generatePlayer, generateSquad } from './lib/playerGen.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating } from './lib/matchEngine.js';
+import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague } from './lib/leagueEngine.js';
+import { defaultFinance, DEFAULT_FACILITIES, DEFAULT_TRAINING, generateSponsors, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
+import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
+import { generateSeasonCalendar, applyTraining, TRAINING_INFO, formatDate, formatDateLong, formatMonth, addDays, daysInMonth, startOfMonth, getDayOfWeek, isSameMonth, prevMonth, nextMonth } from './lib/calendar.js';
 
-// ============================================================================
-// DATA: Australian Football pyramid (game-fictional promotion/relegation)
-// ============================================================================
-const STATES = ["VIC", "SA", "WA", "TAS", "NT", "QLD", "NSW"];
-
-const PYRAMID = {
-  // TIER 1 — National (AFL)
-  AFL: {
-    tier: 1, name: "Australian Football League", short: "AFL", state: "NAT",
-    clubs: [
-      { id: "ade", name: "Adelaide Crows", short: "ADE", state: "SA", colors: ["#002B5C", "#E21937", "#FFD200"] },
-      { id: "bri", name: "Brisbane Lions", short: "BRI", state: "QLD", colors: ["#7A0019", "#003E80", "#FDB930"] },
-      { id: "car", name: "Carlton Blues", short: "CAR", state: "VIC", colors: ["#0E1A40", "#FFFFFF", "#0E1A40"] },
-      { id: "col", name: "Collingwood Magpies", short: "COL", state: "VIC", colors: ["#000000", "#FFFFFF", "#000000"] },
-      { id: "ess", name: "Essendon Bombers", short: "ESS", state: "VIC", colors: ["#CC2031", "#000000", "#CC2031"] },
-      { id: "fre", name: "Fremantle Dockers", short: "FRE", state: "WA", colors: ["#2A0D54", "#FFFFFF", "#2A0D54"] },
-      { id: "gee", name: "Geelong Cats", short: "GEE", state: "VIC", colors: ["#002F6C", "#FFFFFF", "#002F6C"] },
-      { id: "gcs", name: "Gold Coast Suns", short: "GCS", state: "QLD", colors: ["#D71920", "#FDB813", "#231F20"] },
-      { id: "gws", name: "GWS Giants", short: "GWS", state: "NSW", colors: ["#F47920", "#231F20", "#FFFFFF"] },
-      { id: "haw", name: "Hawthorn Hawks", short: "HAW", state: "VIC", colors: ["#4D2004", "#FBBF15", "#4D2004"] },
-      { id: "mel", name: "Melbourne Demons", short: "MEL", state: "VIC", colors: ["#0F1131", "#CC2031", "#0F1131"] },
-      { id: "nor", name: "North Melbourne", short: "NOR", state: "VIC", colors: ["#003F87", "#FFFFFF", "#003F87"] },
-      { id: "pad", name: "Port Adelaide", short: "PAD", state: "SA", colors: ["#008AAB", "#000000", "#FFFFFF"] },
-      { id: "ric", name: "Richmond Tigers", short: "RIC", state: "VIC", colors: ["#FFD200", "#000000", "#FFD200"] },
-      { id: "stk", name: "St Kilda Saints", short: "STK", state: "VIC", colors: ["#ED1B2F", "#000000", "#FFFFFF"] },
-      { id: "syd", name: "Sydney Swans", short: "SYD", state: "NSW", colors: ["#ED1B2F", "#FFFFFF", "#ED1B2F"] },
-      { id: "wce", name: "West Coast Eagles", short: "WCE", state: "WA", colors: ["#003087", "#F2A900", "#003087"] },
-      { id: "wbd", name: "Western Bulldogs", short: "WBD", state: "VIC", colors: ["#0039A6", "#E21937", "#FFFFFF"] },
-    ],
-  },
-  // TIER 2 — State Leagues
-  VFL: { tier: 2, name: "Victorian Football League", short: "VFL", state: "VIC",
-    clubs: [
-      { id: "boxhill", name: "Box Hill Hawks", short: "BHH", state: "VIC", colors: ["#4D2004", "#FBBF15", "#4D2004"] },
-      { id: "casey", name: "Casey Demons", short: "CSY", state: "VIC", colors: ["#0F1131", "#CC2031", "#0F1131"] },
-      { id: "coburg", name: "Coburg Lions", short: "COB", state: "VIC", colors: ["#FFD200", "#000080", "#FFD200"] },
-      { id: "frankston", name: "Frankston Dolphins", short: "FRK", state: "VIC", colors: ["#003366", "#FFFFFF", "#0099CC"] },
-      { id: "north_bull", name: "Northern Bullants", short: "NBT", state: "VIC", colors: ["#002A6C", "#FFFFFF", "#002A6C"] },
-      { id: "port_melb", name: "Port Melbourne Borough", short: "PMB", state: "VIC", colors: ["#CC0000", "#0000CC", "#CC0000"] },
-      { id: "sand", name: "Sandringham Zebras", short: "SAN", state: "VIC", colors: ["#FFFFFF", "#CC0000", "#000000"] },
-      { id: "werribee", name: "Werribee FC", short: "WER", state: "VIC", colors: ["#CC0000", "#000000", "#FFD200"] },
-      { id: "willy", name: "Williamstown Seagulls", short: "WIL", state: "VIC", colors: ["#003F87", "#FFD200", "#003F87"] },
-    ],
-  },
-  SANFL: { tier: 2, name: "South Australian National FL", short: "SANFL", state: "SA",
-    clubs: [
-      { id: "central", name: "Central District Bulldogs", short: "CDB", state: "SA", colors: ["#002F6C", "#CC0000", "#FFFFFF"] },
-      { id: "glenelg", name: "Glenelg Tigers", short: "GLG", state: "SA", colors: ["#000000", "#FFD200", "#000000"] },
-      { id: "north_adel", name: "North Adelaide Roosters", short: "NAR", state: "SA", colors: ["#CC0000", "#FFFFFF", "#003F87"] },
-      { id: "norwood", name: "Norwood Redlegs", short: "NWD", state: "SA", colors: ["#CC0000", "#000080", "#CC0000"] },
-      { id: "port_mag", name: "Port Adelaide Magpies", short: "PAM", state: "SA", colors: ["#000000", "#FFFFFF", "#000000"] },
-      { id: "south_adel", name: "South Adelaide Panthers", short: "SAP", state: "SA", colors: ["#000080", "#FFFFFF", "#000080"] },
-      { id: "sturt", name: "Sturt Double Blues", short: "STU", state: "SA", colors: ["#002F6C", "#0099CC", "#002F6C"] },
-      { id: "west_adel", name: "West Adelaide Bloods", short: "WAB", state: "SA", colors: ["#000000", "#CC0000", "#000000"] },
-      { id: "wwt", name: "Woodville-West Torrens Eagles", short: "WWT", state: "SA", colors: ["#FFD200", "#000080", "#FFD200"] },
-    ],
-  },
-  WAFL: { tier: 2, name: "West Australian Football League", short: "WAFL", state: "WA",
-    clubs: [
-      { id: "claremont", name: "Claremont Tigers", short: "CLA", state: "WA", colors: ["#FFD200", "#000000", "#FFD200"] },
-      { id: "east_frem", name: "East Fremantle Sharks", short: "EFS", state: "WA", colors: ["#0033A0", "#FFFFFF", "#0033A0"] },
-      { id: "east_perth", name: "East Perth Royals", short: "EPR", state: "WA", colors: ["#000080", "#CC0000", "#FFFFFF"] },
-      { id: "peel", name: "Peel Thunder", short: "PEL", state: "WA", colors: ["#003366", "#FFD200", "#003366"] },
-      { id: "perth_dem", name: "Perth Demons", short: "PRD", state: "WA", colors: ["#CC0000", "#000080", "#CC0000"] },
-      { id: "sth_frem", name: "South Fremantle Bulldogs", short: "SFB", state: "WA", colors: ["#CC0000", "#FFFFFF", "#CC0000"] },
-      { id: "subiaco", name: "Subiaco Lions", short: "SUB", state: "WA", colors: ["#800020", "#FFD200", "#800020"] },
-      { id: "swan_dist", name: "Swan Districts Swans", short: "SWD", state: "WA", colors: ["#000000", "#FFFFFF", "#CC0000"] },
-      { id: "west_perth", name: "West Perth Falcons", short: "WPF", state: "WA", colors: ["#CC0000", "#000080", "#CC0000"] },
-    ],
-  },
-  TSL: { tier: 2, name: "Tasmanian State League", short: "TSL", state: "TAS",
-    clubs: [
-      { id: "clarence", name: "Clarence Roos", short: "CLR", state: "TAS", colors: ["#003366", "#FFFFFF", "#003366"] },
-      { id: "glenorchy", name: "Glenorchy Magpies", short: "GMP", state: "TAS", colors: ["#000000", "#FFFFFF", "#000000"] },
-      { id: "lauder", name: "Lauderdale Bombers", short: "LDB", state: "TAS", colors: ["#CC0000", "#000000", "#CC0000"] },
-      { id: "launc", name: "Launceston Blues", short: "LCB", state: "TAS", colors: ["#003366", "#FFD200", "#003366"] },
-      { id: "north_hob", name: "North Hobart Demons", short: "NHD", state: "TAS", colors: ["#CC0000", "#000080", "#CC0000"] },
-      { id: "north_lau", name: "North Launceston Bombers", short: "NLB", state: "TAS", colors: ["#CC0000", "#000000", "#CC0000"] },
-      { id: "tigers", name: "Kingborough Tigers", short: "KGT", state: "TAS", colors: ["#FFD200", "#000000", "#FFD200"] },
-    ],
-  },
-  NTFL: { tier: 2, name: "Northern Territory FL", short: "NTFL", state: "NT",
-    clubs: [
-      { id: "darwin", name: "Darwin Buffaloes", short: "DWB", state: "NT", colors: ["#003366", "#FFFFFF", "#003366"] },
-      { id: "nightcliff", name: "Nightcliff Tigers", short: "NCT", state: "NT", colors: ["#FFD200", "#000000", "#FFD200"] },
-      { id: "palm_mag", name: "Palmerston Magpies", short: "PMG", state: "NT", colors: ["#000000", "#FFFFFF", "#000000"] },
-      { id: "sth_dist", name: "Southern Districts Crocs", short: "SDC", state: "NT", colors: ["#006633", "#FFFFFF", "#006633"] },
-      { id: "stmary", name: "St Mary's Saints", short: "SMS", state: "NT", colors: ["#CC0000", "#FFFFFF", "#000080"] },
-      { id: "tiwi", name: "Tiwi Bombers", short: "TWB", state: "NT", colors: ["#CC0000", "#000000", "#CC0000"] },
-      { id: "wand", name: "Wanderers Eagles", short: "WND", state: "NT", colors: ["#000080", "#FFD200", "#000080"] },
-      { id: "wara", name: "Waratah Warriors", short: "WAR", state: "NT", colors: ["#CC0000", "#FFFFFF", "#CC0000"] },
-    ],
-  },
-  QAFL: { tier: 2, name: "Queensland Australian FL", short: "QAFL", state: "QLD",
-    clubs: [
-      { id: "aspley", name: "Aspley Hornets", short: "ASP", state: "QLD", colors: ["#FFD200", "#000000", "#CC0000"] },
-      { id: "broadbeach", name: "Broadbeach Cats", short: "BBC", state: "QLD", colors: ["#000080", "#FFFFFF", "#000080"] },
-      { id: "labrador", name: "Labrador Tigers", short: "LBT", state: "QLD", colors: ["#FFD200", "#000000", "#FFD200"] },
-      { id: "mt_grav", name: "Mt Gravatt Vultures", short: "MGV", state: "QLD", colors: ["#660066", "#FFD200", "#660066"] },
-      { id: "palm_qld", name: "Palm Beach Currumbin", short: "PBC", state: "QLD", colors: ["#003366", "#FFD200", "#003366"] },
-      { id: "redland", name: "Redland Bombers", short: "RDB", state: "QLD", colors: ["#CC0000", "#000000", "#CC0000"] },
-      { id: "southport", name: "Southport Sharks", short: "SPS", state: "QLD", colors: ["#003366", "#FFFFFF", "#003366"] },
-      { id: "surf_para", name: "Surfers Paradise Demons", short: "SPD", state: "QLD", colors: ["#CC0000", "#000080", "#CC0000"] },
-    ],
-  },
-  AFLSyd: { tier: 2, name: "AFL Sydney Premier", short: "AFLS", state: "NSW",
-    clubs: [
-      { id: "balmain", name: "Balmain Tigers", short: "BLT", state: "NSW", colors: ["#FFD200", "#000000", "#FFD200"] },
-      { id: "east_swans", name: "East Coast Eagles", short: "ECE", state: "NSW", colors: ["#003366", "#FFD200", "#003366"] },
-      { id: "north_shore", name: "North Shore Bombers", short: "NSB", state: "NSW", colors: ["#CC0000", "#000000", "#CC0000"] },
-      { id: "pennant_h", name: "Pennant Hills Demons", short: "PHD", state: "NSW", colors: ["#CC0000", "#000080", "#CC0000"] },
-      { id: "st_george", name: "St George Dragons", short: "SGD", state: "NSW", colors: ["#CC0000", "#FFFFFF", "#CC0000"] },
-      { id: "sydney_uni", name: "Sydney Uni Lions", short: "SUL", state: "NSW", colors: ["#003366", "#FFD200", "#003366"] },
-      { id: "uni_nsw", name: "UNSW-ES Bulldogs", short: "UNB", state: "NSW", colors: ["#003366", "#CC0000", "#003366"] },
-      { id: "western_mag", name: "Western Magic", short: "WMG", state: "NSW", colors: ["#660066", "#FFFFFF", "#660066"] },
-    ],
-  },
-  // TIER 3 — Community Leagues (subset; user starts here for the underdog story)
-  EFL: { tier: 3, name: "Eastern Football League", short: "EFL", state: "VIC",
-    clubs: [
-      { id: "balwyn", name: "Balwyn FC", short: "BAL", state: "VIC", colors: ["#003366", "#FFD200", "#003366"] },
-      { id: "bayswater", name: "Bayswater FC", short: "BAY", state: "VIC", colors: ["#CC0000", "#FFFFFF", "#000000"] },
-      { id: "blackburn", name: "Blackburn FC", short: "BLK", state: "VIC", colors: ["#FFD200", "#000000", "#FFD200"] },
-      { id: "boronia", name: "Boronia FC", short: "BOR", state: "VIC", colors: ["#000080", "#FFFFFF", "#000080"] },
-      { id: "doncaster", name: "Doncaster FC", short: "DON", state: "VIC", colors: ["#CC0000", "#FFD200", "#CC0000"] },
-      { id: "knox", name: "Knox FC", short: "KNX", state: "VIC", colors: ["#000080", "#FFFFFF", "#000080"] },
-      { id: "noble_park", name: "Noble Park FC", short: "NBP", state: "VIC", colors: ["#CC0000", "#000000", "#CC0000"] },
-      { id: "rowville", name: "Rowville FC", short: "ROW", state: "VIC", colors: ["#660066", "#FFD200", "#660066"] },
-      { id: "vermont", name: "Vermont FC", short: "VRM", state: "VIC", colors: ["#000000", "#CC0000", "#000000"] },
-    ],
-  },
-  EDFL: { tier: 3, name: "Essendon District FL", short: "EDFL", state: "VIC",
-    clubs: [
-      { id: "aberfeldie", name: "Aberfeldie FC", short: "ABF", state: "VIC", colors: ["#000080", "#CC0000", "#FFFFFF"] },
-      { id: "airport_w", name: "Airport West FC", short: "AWE", state: "VIC", colors: ["#FFD200", "#000080", "#FFD200"] },
-      { id: "greenvale", name: "Greenvale FC", short: "GRV", state: "VIC", colors: ["#006633", "#FFD200", "#006633"] },
-      { id: "keilor", name: "Keilor FC", short: "KEI", state: "VIC", colors: ["#000080", "#FFD200", "#000080"] },
-      { id: "pascoe_v", name: "Pascoe Vale FC", short: "PCV", state: "VIC", colors: ["#660066", "#FFFFFF", "#660066"] },
-      { id: "strathmore", name: "Strathmore FC", short: "STR", state: "VIC", colors: ["#CC0000", "#000080", "#CC0000"] },
-      { id: "tullamar", name: "Tullamarine FC", short: "TUL", state: "VIC", colors: ["#003366", "#FFD200", "#003366"] },
-      { id: "westmead", name: "Westmeadows FC", short: "WMD", state: "VIC", colors: ["#000080", "#FFFFFF", "#CC0000"] },
-    ],
-  },
-  NFL: { tier: 3, name: "Northern Football League", short: "NFL", state: "VIC",
-    clubs: [
-      { id: "banyule", name: "Banyule FC", short: "BNY", state: "VIC", colors: ["#003366", "#FFFFFF", "#003366"] },
-      { id: "bundoora", name: "Bundoora FC", short: "BND", state: "VIC", colors: ["#003366", "#FFD200", "#003366"] },
-      { id: "diamond_c", name: "Diamond Creek FC", short: "DCK", state: "VIC", colors: ["#FFD200", "#000000", "#FFD200"] },
-      { id: "eltham", name: "Eltham FC", short: "ELT", state: "VIC", colors: ["#006633", "#FFFFFF", "#006633"] },
-      { id: "greensb", name: "Greensborough FC", short: "GRB", state: "VIC", colors: ["#000080", "#FFFFFF", "#000080"] },
-      { id: "heid", name: "Heidelberg FC", short: "HEI", state: "VIC", colors: ["#000000", "#FFFFFF", "#CC0000"] },
-      { id: "macleod", name: "Macleod FC", short: "MAC", state: "VIC", colors: ["#660066", "#FFD200", "#660066"] },
-      { id: "watsonia", name: "Watsonia FC", short: "WAT", state: "VIC", colors: ["#003366", "#FFD200", "#003366"] },
-    ],
-  },
-  SFL: { tier: 3, name: "Southern Football League", short: "SFL", state: "VIC",
-    clubs: [
-      { id: "bentleigh", name: "Bentleigh FC", short: "BEN", state: "VIC", colors: ["#000080", "#FFD200", "#000080"] },
-      { id: "cheltenham", name: "Cheltenham FC", short: "CHE", state: "VIC", colors: ["#006633", "#FFFFFF", "#006633"] },
-      { id: "dingley", name: "Dingley FC", short: "DGL", state: "VIC", colors: ["#000000", "#FFD200", "#000000"] },
-      { id: "frank_dol", name: "Frankston Dolphins (Sthn)", short: "FRD", state: "VIC", colors: ["#0099CC", "#FFFFFF", "#0099CC"] },
-      { id: "highett", name: "Highett FC", short: "HGT", state: "VIC", colors: ["#CC0000", "#000000", "#CC0000"] },
-      { id: "mordi", name: "Mordialloc FC", short: "MDL", state: "VIC", colors: ["#FFD200", "#000080", "#FFD200"] },
-      { id: "skye", name: "Skye FC", short: "SKY", state: "VIC", colors: ["#0099CC", "#000000", "#0099CC"] },
-      { id: "stkc", name: "St Kilda City FC", short: "SKC", state: "VIC", colors: ["#CC0000", "#FFFFFF", "#000000"] },
-    ],
-  },
-  VAFA: { tier: 3, name: "Victorian Amateur FA", short: "VAFA", state: "VIC",
-    clubs: [
-      { id: "ajax", name: "AJAX FC", short: "AJX", state: "VIC", colors: ["#003366", "#FFFFFF", "#003366"] },
-      { id: "beaumaris", name: "Beaumaris FC", short: "BEA", state: "VIC", colors: ["#FFD200", "#000080", "#FFD200"] },
-      { id: "collegians", name: "Collegians FC", short: "COL2", state: "VIC", colors: ["#000080", "#FFD200", "#000080"] },
-      { id: "fitzroy", name: "Fitzroy FC", short: "FTZ", state: "VIC", colors: ["#660066", "#FFD200", "#660066"] },
-      { id: "old_brigh", name: "Old Brighton Grammarians", short: "OBG", state: "VIC", colors: ["#003366", "#FFD200", "#003366"] },
-      { id: "old_mel", name: "Old Melburnians", short: "OLM", state: "VIC", colors: ["#000000", "#0099CC", "#000000"] },
-      { id: "old_scotch", name: "Old Scotch", short: "OSC", state: "VIC", colors: ["#FFD200", "#000080", "#FFD200"] },
-      { id: "uni_blacks", name: "University Blacks", short: "UBK", state: "VIC", colors: ["#000000", "#FFFFFF", "#000000"] },
-    ],
-  },
-};
-
-const LEAGUES_BY_TIER = (tier) => Object.entries(PYRAMID).filter(([_, l]) => l.tier === tier).map(([k, v]) => ({ key: k, ...v }));
-const LEAGUES_BY_STATE = (state) => Object.entries(PYRAMID).filter(([_, l]) => l.state === state || l.state === "NAT").map(([k, v]) => ({ key: k, ...v }));
-const ALL_CLUBS = Object.entries(PYRAMID).flatMap(([lkey, league]) =>
-  league.clubs.map(c => ({ ...c, league: lkey, leagueName: league.name, tier: league.tier }))
-);
-const findClub = (id) => ALL_CLUBS.find(c => c.id === id);
-const findLeagueOf = (clubId) => {
-  const c = findClub(clubId);
-  return c ? PYRAMID[c.league] : null;
-};
-
-// ============================================================================
-// PROCEDURAL DATA — players, names, generators
-// ============================================================================
-const FIRST_NAMES = ["Jack","Tom","Sam","Charlie","Will","Patrick","Marcus","Luke","Dylan","Lachie","Bailey","Riley","Mitch","Harry","Noah","Hudson","Archie","Cooper","Levi","Oscar","Ollie","Tyler","Jed","Nick","Jordan","Bradley","Connor","Caleb","Kai","Toby","Zac","Beau","Ben","Christian","Adam","Steele","Hayden","Hugh","Liam","Reuben","Eli","Finn","Max","George","Joel","Daniel","Joe","Fletcher","Brodie","Touk","Isaac","Jye"];
-const LAST_NAMES = ["Walsh","Petracca","Bontempelli","Daicos","Cripps","Heeney","Neale","Oliver","Steele","Macrae","Whitfield","Mitchell","Marshall","Sheezel","Sicily","Fyfe","Rowell","Anderson","Witts","Ginnivan","Stengle","Coleman","Ratugolea","Houston","Jones","Mills","McCartin","Roberton","English","Naughton","Treloar","Bruhn","Reid","Harrison","Madgen","Lloyd","Smith","Riewoldt","Brown","Kelly","Clark","Black","Watson","Lee","King","Chol","Gunston","Fletcher","Pickett","Maynard","Sidebottom","Pendlebury","Long","Phillips","Stewart","Tuohy","Henry","Holmes","Ah Chee","Worrell"];
-const POSITIONS = ["KF","HF","C","HB","KB","R","RU","WG","UT"]; // Key Fwd, Half Fwd, Centre, Half Back, Key Back, Rover, Ruck, Wing, Utility
-const POSITION_NAMES = { KF: "Key Forward", HF: "Half Forward", C: "Centre Mid", HB: "Half Back", KB: "Key Back", R: "Rover/Mid", RU: "Ruck", WG: "Wing", UT: "Utility" };
-
-let SEED = 42;
-const rng = () => { SEED = (SEED * 9301 + 49297) % 233280; return SEED / 233280; };
-const seedRng = (s) => { SEED = s; };
-const rand = (a, b) => Math.floor(rng() * (b - a + 1)) + a;
-const pick = (arr) => arr[Math.floor(rng() * arr.length)];
-const randNorm = (mean, sd) => { const u = rng(), v = rng(); return mean + sd * Math.sqrt(-2 * Math.log(Math.max(u, 0.001))) * Math.cos(2 * Math.PI * v); };
-
-// Tier-relative rating system:
-// All players display on the same 40-99 scale within their own tier.
-// trueRating = overall x TIER_SCALE — used only by the match engine.
-// On promotion/relegation the display overall recalibrates so the bar always
-// reflects genuine standing in the new competition.
-const TIER_SCALE = { 1: 1.00, 2: 0.80, 3: 0.64 };
-
-function generatePlayer(clubTier, idx) {
-  const tier = Math.max(1, Math.min(3, clubTier));
-  // Uniform distribution across all tiers: every league has stars, depth, and scrubs.
-  const baseSkill = Math.max(42, Math.min(99, Math.round(randNorm(68, 11))));
-  const positions = ["KF","HF","C","HB","KB","R","RU","WG","UT"];
-  const wKF=2,wHF=3,wC=4,wHB=3,wKB=2,wR=3,wRU=1,wWG=2,wUT=2;
-  const weights = [wKF,wHF,wC,wHB,wKB,wR,wRU,wWG,wUT];
-  const total = weights.reduce((a,b)=>a+b,0);
-  let r = rng() * total, position = "C";
-  for (let i=0;i<positions.length;i++){ r -= weights[i]; if (r<=0){ position = positions[i]; break; }}
-  const age = Math.max(17, Math.min(36, Math.round(randNorm(24, 4))));
-  const attrs = {
-    kicking: Math.max(30, Math.min(99, Math.round(randNorm(baseSkill, 6)))),
-    marking: Math.max(30, Math.min(99, Math.round(randNorm(baseSkill, 6)))),
-    handball: Math.max(30, Math.min(99, Math.round(randNorm(baseSkill, 5)))),
-    tackling: Math.max(30, Math.min(99, Math.round(randNorm(baseSkill, 7)))),
-    speed: Math.max(30, Math.min(99, Math.round(randNorm(baseSkill, 7)))),
-    endurance: Math.max(30, Math.min(99, Math.round(randNorm(baseSkill, 6)))),
-    strength: Math.max(30, Math.min(99, Math.round(randNorm(baseSkill, 7)))),
-    decision: Math.max(30, Math.min(99, Math.round(randNorm(baseSkill, 6)))),
-  };
-  if (position === "RU") { attrs.strength += 8; attrs.marking += 5; attrs.speed -= 6; }
-  if (position === "WG" || position === "R") { attrs.speed += 6; attrs.endurance += 5; }
-  if (position === "KF" || position === "KB") { attrs.marking += 6; attrs.strength += 4; }
-  Object.keys(attrs).forEach(k => attrs[k] = Math.max(30, Math.min(99, attrs[k])));
-  const overall = Math.round(Object.values(attrs).reduce((a,b)=>a+b,0) / 8);
-  // trueRating: absolute ability used by the match engine only (hidden from player-facing UI)
-  const trueRating = Math.round(overall * (TIER_SCALE[tier] || 1.0));
-  const potential = Math.min(99, overall + (age <= 21 ? rand(5, 18) : age <= 25 ? rand(0, 8) : rand(-2, 3)));
-  // potentialTrue mirrors trueRating ceiling
-  const potentialTrue = Math.round(potential * (TIER_SCALE[tier] || 1.0));
-  const fname = pick(FIRST_NAMES);
-  const lname = pick(LAST_NAMES);
-  return {
-    id: `p_${tier}_${idx}_${SEED}`,
-    name: `${fname} ${lname}`,
-    firstName: fname, lastName: lname,
-    age, position, attrs, overall, trueRating, potential, potentialTrue, tier,
-    fitness: rand(85, 100),
-    morale: rand(60, 90),
-    form: rand(50, 85),
-    contract: rand(1, 4),
-    wage: Math.round(overall * (tier === 1 ? 5800 : tier === 2 ? 1200 : 250) * (0.9 + rng() * 0.4)),
-    value: Math.round(overall * overall * (tier === 1 ? 280 : tier === 2 ? 70 : 12) * (0.7 + rng() * 0.7)),
-    goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0,
-    injured: 0, rookie: age <= 19,
-  };
-}
-
-function generateSquad(clubId, tier, size = 32) {
-  seedRng(clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7));
-  return Array.from({ length: size }, (_, i) => generatePlayer(tier, i));
-}
-
-// ============================================================================
-// FINANCE / FACILITIES / SPONSORS / STAFF defaults
-// ============================================================================
-function defaultFinance(tier) {
-  const cashByTier = { 1: 8000000, 2: 800000, 3: 90000 };
-  const incomeByTier = { 1: 95000000, 2: 4500000, 3: 320000 };
-  return {
-    cash: cashByTier[tier] || 50000,
-    annualIncome: incomeByTier[tier] || 200000,
-    transferBudget: tier === 1 ? 1500000 : tier === 2 ? 200000 : 25000,
-    wageBudget: tier === 1 ? 14000000 : tier === 2 ? 1200000 : 80000,
-    boardConfidence: 65,
-    fanHappiness: 60,
-  };
-}
-
-const DEFAULT_FACILITIES = () => ({
-  trainingGround: { level: 1, cost: 80000, max: 5 },
-  gym: { level: 1, cost: 60000, max: 5 },
-  medical: { level: 1, cost: 50000, max: 5 },
-  academy: { level: 1, cost: 120000, max: 5 },
-  stadium: { level: 1, cost: 350000, max: 5 },
-  recovery: { level: 1, cost: 40000, max: 5 },
-});
-
-const DEFAULT_TRAINING = () => ({
-  intensity: 60,
-  focus: { skills: 30, fitness: 25, tactics: 25, recovery: 20 },
-});
-
-function generateSponsors(tier) {
-  const tiers = { 1: [3, 8], 2: [2, 5], 3: [1, 3] };
-  const [min, max] = tiers[tier] || [1, 3];
-  const pool = [
-    { name: "Toyota", category: "Auto", baseValue: 1800000 },
-    { name: "Coopers Brewery", category: "Beverage", baseValue: 900000 },
-    { name: "Bunnings", category: "Retail", baseValue: 1500000 },
-    { name: "ANZ Bank", category: "Finance", baseValue: 2500000 },
-    { name: "Rip Curl", category: "Apparel", baseValue: 700000 },
-    { name: "JB Hi-Fi", category: "Tech", baseValue: 800000 },
-    { name: "Vegemite", category: "Food", baseValue: 600000 },
-    { name: "Optus", category: "Telco", baseValue: 2000000 },
-    { name: "Carlton Draught", category: "Beverage", baseValue: 1200000 },
-    { name: "Akubra", category: "Apparel", baseValue: 400000 },
-    { name: "Telstra", category: "Telco", baseValue: 1900000 },
-    { name: "Bendigo Bank", category: "Finance", baseValue: 800000 },
-    { name: "BCF", category: "Retail", baseValue: 500000 },
-    { name: "Mitre 10", category: "Retail", baseValue: 350000 },
-    { name: "Local Pub Co.", category: "Beverage", baseValue: 80000 },
-    { name: "Servo & Smash", category: "Auto", baseValue: 40000 },
-  ];
-  const tierMult = tier === 1 ? 1 : tier === 2 ? 0.18 : 0.04;
-  seedRng(SEED + 11);
-  const count = rand(min, max);
-  return Array.from({ length: count }, () => {
-    const s = pick(pool);
-    return {
-      id: `sp_${rand(1000,9999)}_${s.name}`,
-      name: s.name,
-      category: s.category,
-      annualValue: Math.round(s.baseValue * tierMult * (0.7 + rng() * 0.6)),
-      yearsLeft: rand(1, 4),
-      type: pick(["Major", "Stadium", "Apparel", "Premier", "Community"])
-    };
-  });
-}
-
-function generateStaff(tier) {
-  const mult = tier === 1 ? 1 : tier === 2 ? 0.25 : 0.05;
-  return [
-    { id: "s1", role: "Senior Coach", name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(60, 88), wage: Math.round(450000 * mult), contract: rand(1,3) },
-    { id: "s2", role: "Assistant Coach (Forwards)", name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(55, 82), wage: Math.round(180000 * mult), contract: rand(1,3) },
-    { id: "s3", role: "Assistant Coach (Defence)", name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(55, 82), wage: Math.round(180000 * mult), contract: rand(1,3) },
-    { id: "s4", role: "Midfield Coach", name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(55, 82), wage: Math.round(170000 * mult), contract: rand(1,3) },
-    { id: "s5", role: "Head of Strength & Conditioning", name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(50, 80), wage: Math.round(150000 * mult), contract: rand(1,3) },
-    { id: "s6", role: "Head of Medical", name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(55, 85), wage: Math.round(180000 * mult), contract: rand(1,3) },
-    { id: "s7", role: "Head Recruiter", name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(55, 85), wage: Math.round(160000 * mult), contract: rand(1,3) },
-    { id: "s8", role: "Senior Scout", name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(50, 80), wage: Math.round(110000 * mult), contract: rand(1,3) },
-    { id: "s9", role: "Academy Manager", name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(50, 78), wage: Math.round(120000 * mult), contract: rand(1,3) },
-    { id: "s10", role: "Performance Analyst", name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(50, 80), wage: Math.round(100000 * mult), contract: rand(1,3) },
-  ];
-}
-
-function defaultKits(colors) {
-  return {
-    home: { primary: colors[0], secondary: colors[1], accent: colors[2], pattern: "solid", numberColor: "#FFFFFF" },
-    away: { primary: "#FFFFFF", secondary: colors[0], accent: colors[1], pattern: "solid", numberColor: colors[0] },
-    clash: { primary: "#1A1A1A", secondary: colors[0], accent: colors[2], pattern: "stripes", numberColor: colors[1] },
-  };
-}
-
-// helpers
-const fmt = (n) => "$" + Math.round(n).toLocaleString("en-AU");
-const fmtK = (n) => n >= 1000000 ? `$${(n/1000000).toFixed(1)}M` : n >= 1000 ? `$${(n/1000).toFixed(0)}k` : `$${n}`;
-const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-
-
-// ============================================================================
-// MATCH SIM + LEAGUE SIM
-// ============================================================================
-function teamRating(squad, lineup, training, facilitiesAvg, staffAvg) {
-  const top22 = lineup && lineup.length ? lineup.map(id => squad.find(p=>p.id===id)).filter(Boolean) : squad.slice().sort((a,b)=>b.overall-a.overall).slice(0,22);
-  if (top22.length === 0) return 50;
-  // Use trueRating (absolute ability) for match outcomes; display overall is tier-relative
-  const avgOverall = top22.reduce((a,b)=>a+(b.trueRating||b.overall),0) / top22.length;
-  const avgForm = top22.reduce((a,b)=>a+b.form,0) / top22.length;
-  const avgFitness = top22.reduce((a,b)=>a+b.fitness,0) / top22.length;
-  const trainingBoost = (training.intensity - 50) * 0.04;
-  return avgOverall + (avgForm - 70) * 0.15 + (avgFitness - 90) * 0.1 + trainingBoost + (facilitiesAvg - 1) * 1.2 + (staffAvg - 60) * 0.15;
-}
-
-function simMatch(home, away, isPlayerHome, playerStrength) {
-  const hAdv = 4;
-  const hStr = isPlayerHome ? playerStrength + hAdv : home.rating + hAdv;
-  const aStr = !isPlayerHome ? playerStrength : away.rating;
-  const diff = hStr - aStr;
-  const expHome = clamp(80 + diff * 1.6, 30, 160);
-  const expAway = clamp(80 - diff * 1.6, 30, 160);
-  const hScore = Math.max(20, Math.round(randNorm(expHome, 18)));
-  const aScore = Math.max(20, Math.round(randNorm(expAway, 18)));
-  const hGoals = Math.floor(hScore / 6) + (hScore % 6 > 3 ? 1 : 0);
-  const hBeh = Math.max(0, Math.round((hScore - hGoals * 6) / 1) + rand(2, 9));
-  const aGoals = Math.floor(aScore / 6) + (aScore % 6 > 3 ? 1 : 0);
-  const aBeh = Math.max(0, Math.round((aScore - aGoals * 6) / 1) + rand(2, 9));
-  const homeTotal = hGoals * 6 + hBeh;
-  const awayTotal = aGoals * 6 + aBeh;
-  return {
-    homeGoals: hGoals, homeBehinds: hBeh, homeTotal,
-    awayGoals: aGoals, awayBehinds: aBeh, awayTotal,
-    winner: homeTotal === awayTotal ? "draw" : homeTotal > awayTotal ? "home" : "away"
-  };
-}
-
-function generateFixtures(leagueClubs, playerClubId) {
-  const ids = leagueClubs.map(c => c.id);
-  const rounds = [];
-  const n = ids.length;
-  // Round-robin pairings (simple)
-  const arr = [...ids];
-  if (n % 2 !== 0) arr.push(null);
-  const teams = arr.length;
-  const half = teams / 2;
-  let rotation = arr.slice(1);
-  for (let r = 0; r < teams - 1; r++) {
-    const round = [];
-    const left = [arr[0], ...rotation.slice(0, half - 1)];
-    const right = rotation.slice(half - 1).reverse();
-    for (let i = 0; i < half; i++) {
-      const h = left[i], a = right[i];
-      if (h && a) round.push({ home: h, away: a });
-    }
-    rounds.push(round);
-    rotation = [rotation[rotation.length - 1], ...rotation.slice(0, -1)];
-  }
-  return rounds;
-}
-
-function blankLadder(leagueClubs) {
-  return leagueClubs.map(c => ({
-    id: c.id, name: c.name, short: c.short,
-    P: 0, W: 0, L: 0, D: 0, F: 0, A: 0, pts: 0, pct: 0
-  }));
-}
-
-function applyResultToLadder(ladder, homeId, awayId, hScore, aScore) {
-  return ladder.map(row => {
-    if (row.id !== homeId && row.id !== awayId) return row;
-    const isHome = row.id === homeId;
-    const fr = isHome ? hScore : aScore;
-    const ag = isHome ? aScore : hScore;
-    const W = row.W + (fr > ag ? 1 : 0);
-    const L = row.L + (fr < ag ? 1 : 0);
-    const D = row.D + (fr === ag ? 1 : 0);
-    const F = row.F + fr;
-    const A = row.A + ag;
-    const pts = W * 4 + D * 2;
-    const pct = A === 0 ? 0 : (F / A) * 100;
-    return { ...row, P: row.P + 1, W, L, D, F, A, pts, pct };
-  });
-}
-
-function sortedLadder(ladder) {
-  return [...ladder].sort((a, b) => b.pts - a.pts || b.pct - a.pct || b.F - a.F);
-}
-
-// AI clubs each get a "rating" we vary slightly each match for unpredictability
-function aiClubRating(clubId, tier) {
-  const c = findClub(clubId);
-  if (!c) return 60;
-  // Stable baseline using id-as-seed, with tier mean
-  // trueRating space: T1 ~75, T2 ~60 (68*0.80 avg star), T3 ~48 (68*0.64 avg star)
-  const tierMean = tier === 1 ? 75 : tier === 2 ? 60 : 48;
-  const sum = c.id.split("").reduce((a,ch) => a + ch.charCodeAt(0), 0);
-  return tierMean + ((sum % 17) - 8);
-}
-
-
-// ============================================================================
-// UI HELPERS
-// ============================================================================
 const css = {
   panel: "bg-white rounded-2xl border border-[#E2E8F0] shadow-sm",
   panelHover: "bg-white rounded-2xl border border-[#E2E8F0] shadow-sm hover:shadow-md hover:border-[#CBD5E1] transition-all cursor-pointer",
@@ -571,8 +111,6 @@ export default function AFLManager() {
   const [career, setCareer] = useState(null); // null = no career
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
-  const [matchPlaying, setMatchPlaying] = useState(false);
-  const [matchLog, setMatchLog] = useState([]);
 
   // ============== CAREER SETUP ==============
   if (!career) return <CareerSetup onStart={(c) => { setCareer(c); setScreen("hub"); }} />;
@@ -581,20 +119,20 @@ export default function AFLManager() {
   const league = PYRAMID[career.leagueKey];
   const myLineup = career.lineup;
 
-  // ============== ADVANCE WEEK ==============
-  function advanceWeek() {
+  // ============== ADVANCE TO NEXT EVENT ==============
+  function advanceToNextEvent() {
     const c = JSON.parse(JSON.stringify(career));
 
-    // Already in finals — advance finals week
+    // Finals override — keep old logic
     if (c.inFinals) {
       advanceFinalsWeek(c);
       setCareer(c);
       return;
     }
 
-    const round = c.fixtures[c.week];
-    if (!round) {
-      // End of home-and-away — check for finals
+    // Check for end-of-season (all rounds done, not in finals yet)
+    const anyIncomplete = (c.eventQueue || []).find(e => !e.completed);
+    if (!anyIncomplete) {
       const finalists = getFinalsTeams(c.ladder, league.tier);
       if (finalists.length >= 2) {
         startFinals(c);
@@ -604,80 +142,193 @@ export default function AFLManager() {
       setCareer(c);
       return;
     }
-    // Sim all matches in round
-    const myMatch = round.find(m => m.home === c.clubId || m.away === c.clubId);
-    let log = [];
-    let myResult = null;
-    round.forEach(m => {
-      if (m.home === c.clubId || m.away === c.clubId) {
-        const isHome = m.home === c.clubId;
-        const opp = findClub(isHome ? m.away : m.home);
-        const oppRating = aiClubRating(opp.id, league.tier);
-        const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
-        // Apply tactic bonus to match rating
-        const TACTIC_BONUS = { attack: 6, balanced: 0, defensive: -4, flood: -2 };
-        const tacBonus = TACTIC_BONUS[c.tacticChoice || "balanced"] || 0;
-        const result = simMatch(
-          { rating: isHome ? myRating : oppRating },
-          { rating: isHome ? oppRating : myRating },
-          isHome, isHome ? myRating : oppRating, tacBonus
-        );
-        // For player match, we treat their rating as the rating of "whoever they are"
-        const playerScore = isHome ? result.homeTotal : result.awayTotal;
-        const oppScore = isHome ? result.awayTotal : result.homeTotal;
-        c.ladder = applyResultToLadder(c.ladder, m.home, m.away, result.homeTotal, result.awayTotal);
-        m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
-        myResult = { isHome, opp, result, playerScore, oppScore, win: playerScore > oppScore, draw: playerScore === oppScore };
-        // Player attributes update slightly: boost form for top performers, fitness drop, gold/silver effects
-        c.squad = c.squad.map(p => {
-          if (!c.lineup.includes(p.id)) return p;
-          const fitDrop = rand(8, 18);
-          const formChange = (myResult.win ? rand(2, 6) : myResult.draw ? rand(-2, 2) : rand(-6, -1));
-          const gAdd = p.position === "KF" || p.position === "HF" ? rand(0, 3) : p.position === "C" || p.position === "R" ? rand(0, 1) : 0;
-          const dispAdd = p.position === "C" || p.position === "R" || p.position === "WG" ? rand(15, 32) : rand(8, 22);
-          return { ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: clamp(p.form + formChange, 30, 100), goals: p.goals + gAdd, behinds: p.behinds + rand(0,2), disposals: p.disposals + dispAdd, marks: p.marks + rand(2,7), tackles: p.tackles + rand(1,5), gamesPlayed: p.gamesPlayed + 1 };
-        });
-        // small injury chance
-        if (rng() < 0.18 && c.lineup.length > 0) {
-          const injId = pick(c.lineup);
-          c.squad = c.squad.map(p => p.id === injId ? { ...p, injured: rand(1, 4) } : p);
-        }
-      } else {
-        // AI vs AI match
-        const r1 = aiClubRating(m.home, league.tier);
-        const r2 = aiClubRating(m.away, league.tier);
-        const result = simMatch({ rating: r1 }, { rating: r2 }, false, r2);
-        c.ladder = applyResultToLadder(c.ladder, m.home, m.away, result.homeTotal, result.awayTotal);
-        m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
-      }
-    });
-    // Recover players not in lineup
-    c.squad = c.squad.map(p => {
-      if (c.lineup.includes(p.id)) return p;
-      return { ...p, fitness: clamp(p.fitness + rand(8, 14), 30, 100), injured: Math.max(0, p.injured - 1) };
-    });
-    // Weekly finance: gate revenue, sponsor accruals, expenses
-    const isHomeMatch = myMatch && myMatch.home === c.clubId;
-    const stadiumLevel = c.facilities.stadium.level;
-    const baseAtt = league.tier === 1 ? 35000 : league.tier === 2 ? 4000 : 600;
-    const att = Math.round(baseAtt * (0.6 + stadiumLevel * 0.15) * (0.7 + c.finance.fanHappiness / 200));
-    const ticketRev = isHomeMatch ? Math.round(att * (league.tier === 1 ? 38 : league.tier === 2 ? 16 : 10)) : 0;
-    const sponsorAccrual = Math.round(c.sponsors.reduce((a, s) => a + s.annualValue, 0) / 22);
-    const wageWeekly = Math.round((c.squad.reduce((a, p) => a + p.wage, 0) + c.staff.reduce((a, s) => a + s.wage, 0)) / 52);
-    const facilityCosts = Math.round(Object.values(c.facilities).reduce((a, f) => a + f.level * 2500, 0));
-    const weekProfit = ticketRev + sponsorAccrual - wageWeekly - facilityCosts;
-    c.finance.cash += weekProfit;
-    c.weeklyHistory = (c.weeklyHistory || []).slice(-15);
-    c.weeklyHistory.push({ week: c.week + 1, profit: weekProfit, cash: c.finance.cash });
-    if (myResult) {
-      c.finance.fanHappiness = clamp(c.finance.fanHappiness + (myResult.win ? 3 : myResult.draw ? 0 : -2), 10, 100);
-      c.finance.boardConfidence = clamp(c.finance.boardConfidence + (myResult.win ? 2 : myResult.draw ? 0 : -1), 10, 100);
-      c.news = [{ week: c.week + 1, type: myResult.win ? "win" : myResult.draw ? "draw" : "loss",
-        text: `${myResult.isHome ? "vs" : "@"} ${myResult.opp.short}: ${myResult.playerScore}-${myResult.oppScore} (${myResult.win ? "W" : myResult.draw ? "D" : "L"})` }, ...(c.news || [])].slice(0, 12);
+
+    const evIdx = (c.eventQueue || []).findIndex(e => !e.completed);
+    if (evIdx === -1) { setCareer(c); return; }
+    const ev = c.eventQueue[evIdx];
+    c.currentDate = ev.date;
+    c.phase = ev.phase || 'preseason';
+    c.eventQueue[evIdx] = { ...ev, completed: true };
+
+    // ── Training event ──
+    if (ev.type === 'training') {
+      const { squad, gains, staffName, staffRating, devNotes } = applyTraining(
+        c.squad, c.lineup, ev.subtype, c.staff
+      );
+      c.squad = squad;
+      const info = TRAINING_INFO[ev.subtype] || {};
+      c.lastEvent = { type: 'training', subtype: ev.subtype, name: info.name || ev.subtype, date: ev.date, gains, staffName, staffRating, devNotes };
+      setCareer(c);
+      setScreen('hub');
+      return;
     }
-    c.week += 1;
+
+    // ── Key event ──
+    if (ev.type === 'key_event') {
+      const extraNews = [];
+      // AI transfer activity
+      if (ev.name === 'Transfer Window Opens') {
+        const aiClubs = (league.clubs || []).filter(cl => cl.id !== c.clubId).slice(0, 4);
+        aiClubs.forEach(cl => {
+          const pool = c.tradePool || [];
+          const target = pool[rand(0, Math.max(0, pool.length - 1))];
+          if (target) extraNews.push({ week: c.week, type: 'info', text: `🔀 ${cl.name} linked with ${target.firstName} ${target.lastName} (${target.overall} OVR)` });
+        });
+      }
+      if (ev.name === 'Transfer Window Closes') {
+        // Refresh trade pool — simulate AI clubs completing signings
+        c.tradePool = generateTradePool(c.leagueKey, c.season + ev.date.slice(0, 4) * 0);
+        const aiClubs = (league.clubs || []).filter(cl => cl.id !== c.clubId).slice(0, 3);
+        aiClubs.forEach(cl => {
+          extraNews.push({ week: c.week, type: 'info', text: `✍️ ${cl.name} complete their pre-season recruitment` });
+        });
+      }
+      c.lastEvent = { type: 'key_event', name: ev.name, description: ev.description, action: ev.action, date: ev.date };
+      c.news = [
+        { week: c.week, type: 'info', text: `📅 ${ev.name}: ${ev.description}` },
+        ...extraNews,
+        ...(c.news || []),
+      ].slice(0, 20);
+      setCareer(c);
+      setScreen('hub');
+      return;
+    }
+
+    // ── Pre-season match ──
+    if (ev.type === 'preseason_match') {
+      const isHome = ev.homeId === c.clubId;
+      const oppId  = isHome ? ev.awayId : ev.homeId;
+      const opp    = findClub(oppId);
+      const myRating  = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
+      const oppRating = aiClubRating(oppId, league.tier);
+      const result = simMatchWithQuarters(
+        { rating: isHome ? myRating : oppRating },
+        { rating: isHome ? oppRating : myRating },
+        isHome, myRating
+      );
+      const myTotal  = isHome ? result.homeTotal : result.awayTotal;
+      const oppTotal = isHome ? result.awayTotal : result.homeTotal;
+      const won = myTotal > oppTotal;
+      const drew = myTotal === oppTotal;
+
+      c.squad = c.squad.map(p => {
+        if (!c.lineup.includes(p.id)) return p;
+        const fitDrop = rand(5, 12);
+        const formChange = won ? rand(1, 4) : drew ? rand(-1, 2) : rand(-3, 1);
+        const gAdd = (p.position === 'KF' || p.position === 'HF') ? rand(0, 2) : 0;
+        return { ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: clamp(p.form + formChange, 30, 100),
+                 goals: p.goals + gAdd, behinds: p.behinds + rand(0, 1), disposals: p.disposals + rand(6, 18),
+                 marks: p.marks + rand(1, 4), tackles: p.tackles + rand(1, 3), gamesPlayed: p.gamesPlayed + 1 };
+      });
+      c.news = [{ week: 0, type: won ? 'win' : drew ? 'draw' : 'loss',
+        text: `${ev.label}: ${isHome ? 'vs' : '@'} ${opp?.short} ${myTotal}–${oppTotal} (${won ? 'W' : drew ? 'D' : 'L'})` }, ...(c.news || [])].slice(0, 15);
+      c.lastEvent = { type: 'preseason_match', label: ev.label, date: ev.date, isHome, opp, result, myTotal, oppTotal, won, drew };
+      c.inMatchDay = true;
+      c.currentMatchResult = { ...result, isHome, opp, myTotal, oppTotal, won, drew, isPreseason: true, label: ev.label, isAFL: league.tier === 1 };
+      setCareer(c);
+      return;
+    }
+
+    // ── Regular season round ──
+    if (ev.type === 'round') {
+      const round   = ev.matches || [];
+      const myMatch = round.find(m => m.home === c.clubId || m.away === c.clubId);
+      let myResult  = null;
+
+      round.forEach(m => {
+        if (m.home === c.clubId || m.away === c.clubId) {
+          const isHome = m.home === c.clubId;
+          const opp    = findClub(isHome ? m.away : m.home);
+          const myRating  = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
+          const oppRating = aiClubRating(opp.id, league.tier);
+          const TACTIC_BONUS = { attack: 6, balanced: 0, defensive: -4, flood: -2 };
+          const tacBonus = TACTIC_BONUS[c.tacticChoice || 'balanced'] || 0;
+          const effRating = clamp(myRating + tacBonus, 20, 120);
+          const result = simMatchWithQuarters(
+            { rating: isHome ? effRating : oppRating },
+            { rating: isHome ? oppRating : effRating },
+            isHome, effRating
+          );
+          const myTotal  = isHome ? result.homeTotal : result.awayTotal;
+          const oppTotal = isHome ? result.awayTotal : result.homeTotal;
+          const won = myTotal > oppTotal;
+          const drew = myTotal === oppTotal;
+          c.ladder = applyResultToLadder(c.ladder, m.home, m.away, result.homeTotal, result.awayTotal);
+          m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
+          myResult = { isHome, opp, result, myTotal, oppTotal, won, drew };
+
+          c.squad = c.squad.map(p => {
+            if (!c.lineup.includes(p.id)) return p;
+            const fitDrop = rand(8, 18);
+            const formChange = won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1);
+            const gAdd = (p.position === 'KF' || p.position === 'HF') ? rand(0, 3) : (p.position === 'C' || p.position === 'R') ? rand(0, 1) : 0;
+            const dispAdd = (p.position === 'C' || p.position === 'R' || p.position === 'WG') ? rand(15, 32) : rand(8, 22);
+            return { ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: clamp(p.form + formChange, 30, 100),
+                     goals: p.goals + gAdd, behinds: p.behinds + rand(0, 2), disposals: p.disposals + dispAdd,
+                     marks: p.marks + rand(2, 7), tackles: p.tackles + rand(1, 5), gamesPlayed: p.gamesPlayed + 1 };
+          });
+          if (rng() < 0.18 && c.lineup.length > 0) {
+            const injId = pick(c.lineup);
+            c.squad = c.squad.map(p => p.id === injId ? { ...p, injured: rand(1, 4) } : p);
+          }
+        } else {
+          const r1 = aiClubRating(m.home, league.tier);
+          const r2 = aiClubRating(m.away, league.tier);
+          const result = simMatch({ rating: r1 }, { rating: r2 }, false, r2);
+          c.ladder = applyResultToLadder(c.ladder, m.home, m.away, result.homeTotal, result.awayTotal);
+          m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
+        }
+      });
+
+      // Recover bench players
+      c.squad = c.squad.map(p => {
+        if (c.lineup.includes(p.id)) return p;
+        return { ...p, fitness: clamp(p.fitness + rand(8, 14), 30, 100), injured: Math.max(0, p.injured - 1) };
+      });
+
+      // Finance for this round
+      const isHomeMatch = myMatch && myMatch.home === c.clubId;
+      const stadiumLevel = c.facilities.stadium.level;
+      const baseAtt = league.tier === 1 ? 35000 : league.tier === 2 ? 4000 : 600;
+      const att = Math.round(baseAtt * (0.6 + stadiumLevel * 0.15) * (0.7 + c.finance.fanHappiness / 200));
+      const ticketRev = isHomeMatch ? Math.round(att * (league.tier === 1 ? 38 : league.tier === 2 ? 16 : 10)) : 0;
+      const sponsorAccrual = Math.round(c.sponsors.reduce((a, s) => a + s.annualValue, 0) / 22);
+      const wageWeekly = Math.round((c.squad.reduce((a, p) => a + p.wage, 0) + c.staff.reduce((a, s) => a + s.wage, 0)) / 52);
+      const facilityCosts = Math.round(Object.values(c.facilities).reduce((a, f) => a + f.level * 2500, 0));
+      c.finance.cash += ticketRev + sponsorAccrual - wageWeekly - facilityCosts;
+      c.weeklyHistory = (c.weeklyHistory || []).slice(-15);
+      c.weeklyHistory.push({ week: ev.round, profit: ticketRev + sponsorAccrual - wageWeekly - facilityCosts, cash: c.finance.cash });
+
+      if (myResult) {
+        c.finance.fanHappiness = clamp(c.finance.fanHappiness + (myResult.won ? 3 : myResult.drew ? 0 : -2), 10, 100);
+        c.finance.boardConfidence = clamp(c.finance.boardConfidence + (myResult.won ? 2 : myResult.drew ? 0 : -1), 10, 100);
+        c.news = [{ week: ev.round, type: myResult.won ? 'win' : myResult.drew ? 'draw' : 'loss',
+          text: `Rd ${ev.round}: ${myResult.isHome ? 'vs' : '@'} ${myResult.opp?.short} ${myResult.myTotal}–${myResult.oppTotal} (${myResult.won ? 'W' : myResult.drew ? 'D' : 'L'})` },
+          ...(c.news || [])].slice(0, 12);
+      }
+
+      c.week = ev.round;
+      c.lastEvent = myResult ? { type: 'round', round: ev.round, date: ev.date, ...myResult } : null;
+
+      // Check if all regular-season rounds complete
+      const hasMoreRounds = (c.eventQueue || []).some(e => !e.completed && e.type === 'round' && e.phase === 'season');
+      if (!hasMoreRounds) {
+        const finalists = getFinalsTeams(c.ladder, league.tier);
+        if (finalists.length >= 2) startFinals(c);
+        else finishSeason(c);
+      }
+
+      if (myResult) {
+        c.inMatchDay = true;
+        c.currentMatchResult = { ...myResult.result, isHome: myResult.isHome, opp: myResult.opp,
+          myTotal: myResult.myTotal, oppTotal: myResult.oppTotal, won: myResult.won, drew: myResult.drew,
+          isPreseason: false, label: `Round ${ev.round}`, isAFL: league.tier === 1 };
+      }
+      setCareer(c);
+      return;
+    }
+
     setCareer(c);
-    setScreen("hub");
   }
 
   function startFinals(c) {
@@ -722,7 +373,7 @@ export default function AFLManager() {
     }
 
     const newAlive = [];
-    const myRating = teamRating(c.squad, c.lineup, c.training, Object.values(c.facilities).reduce((a,f)=>a+f.level,0)/6, c.staff.reduce((a,s)=>a+s.rating,0)/c.staff.length);
+    const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
     const roundLabel = finalsLabel(c.finalsRound, c.finalsTotalRounds);
 
     for (const m of pairs) {
@@ -730,21 +381,33 @@ export default function AFLManager() {
       const isHome = m.home === c.clubId;
       const homeR = m.home === c.clubId ? myRating : aiClubRating(m.home, league.tier);
       const awayR = m.away === c.clubId ? myRating : aiClubRating(m.away, league.tier);
-      const result = simMatch({ rating: homeR }, { rating: awayR }, isHome, isHome ? myRating : awayR);
+      const result = isPlayerMatch
+        ? simMatchWithQuarters({ rating: homeR }, { rating: awayR }, isHome, myRating)
+        : simMatch({ rating: homeR }, { rating: awayR }, false, awayR);
       const winnerId = result.winner === "home" ? m.home : result.winner === "away" ? m.away : m.home;
       newAlive.push(winnerId);
       m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
 
       if (isPlayerMatch) {
         const playerWon = (isHome && result.winner === "home") || (!isHome && result.winner === "away");
-        const myScore = isHome ? result.homeTotal : result.awayTotal;
-        const oppScore = isHome ? result.awayTotal : result.homeTotal;
+        const myScore  = isHome ? result.homeTotal : result.awayTotal;
+        const oppScore = isHome ? result.awayTotal  : result.homeTotal;
         const opp = findClub(isHome ? m.away : m.home);
         c.news = [{ week: c.week, type: playerWon ? "win" : "loss",
           text: playerWon
             ? `✅ ${roundLabel} WIN! ${myScore} def ${opp?.short} ${oppScore}`
             : `❌ Eliminated in ${roundLabel}. ${opp?.short} ${oppScore} def ${myScore}` },
-          ...c.news].slice(0,15);
+          ...c.news].slice(0, 15);
+        c.inMatchDay = true;
+        c.currentMatchResult = {
+          ...result,
+          isHome, opp,
+          myTotal: myScore, oppTotal: oppScore,
+          won: playerWon, drew: myScore === oppScore,
+          isPreseason: false, label: roundLabel, isAFL: league.tier === 1,
+        };
+        c.lastEvent = { type: 'round', round: roundLabel, date: c.currentDate || '', isHome, opp,
+          result, myTotal: myScore, oppTotal: oppScore, won: playerWon, drew: myScore === oppScore };
       }
       c.finalsResults.push({ round: c.finalsRound, label: roundLabel, ...m });
     }
@@ -761,7 +424,24 @@ export default function AFLManager() {
   function finishSeason(c) {
     const sorted = sortedLadder(c.ladder);
     const myPos = sorted.findIndex(r => r.id === c.clubId) + 1;
+    const myRow = sorted.find(r => r.id === c.clubId) || {};
     let promoted = false, relegated = false;
+
+    // Capture summary BEFORE resetting squad stats
+    const pName = p => p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Unknown');
+    const byGoals     = [...c.squad].sort((a, b) => (b.goals     || 0) - (a.goals     || 0));
+    const byDisposals = [...c.squad].sort((a, b) => (b.disposals || 0) - (a.disposals || 0));
+    const lineupSquad = c.squad.filter(p => c.lineup.includes(p.id));
+    const bafPlayer   = [...lineupSquad].sort((a, b) => {
+      const scoreA = (a.disposals || 0) / Math.max(1, a.gamesPlayed || 1);
+      const scoreB = (b.disposals || 0) / Math.max(1, b.gamesPlayed || 1);
+      return scoreB - scoreA;
+    })[0] || null;
+    const champion = c.premiership === c.season;
+    const oldLeagueKey   = c.leagueKey;
+    const oldLeagueName  = PYRAMID[oldLeagueKey]?.name  || '';
+    const oldLeagueShort = PYRAMID[oldLeagueKey]?.short || '';
+
     // Game-fictional pyramid promo/releg
     if (league.tier > 1) {
       if (myPos === 1) {
@@ -775,7 +455,6 @@ export default function AFLManager() {
         }
       } else if (myPos === sorted.length) {
         relegated = true;
-        // For tier 3 we just stay put (no tier 4 in our model)
         if (league.tier < 3) {
           const newLeagueKey = pickRelegationLeague(league);
           if (newLeagueKey) {
@@ -790,10 +469,29 @@ export default function AFLManager() {
         c.ladder = blankLadder(league.clubs);
       }
     } else {
-      // AFL: regenerate fixtures + handle premiership
       c.fixtures = generateFixtures(league.clubs);
       c.ladder = blankLadder(league.clubs);
     }
+
+    // Season summary (saved before squad reset so stats are intact)
+    c.seasonSummary = {
+      season:      c.season,
+      leagueName:  oldLeagueName,
+      leagueShort: oldLeagueShort,
+      leagueTier:  league.tier,
+      position:    myPos,
+      totalTeams:  sorted.length,
+      W: myRow.W || 0, L: myRow.L || 0, D: myRow.D || 0,
+      pts: myRow.pts || 0,
+      pct: Math.round(myRow.pct || 0),
+      F:   myRow.F   || 0, A: myRow.A || 0,
+      promoted,  relegated, champion,
+      topScorer:   byGoals[0]     ? { name: pName(byGoals[0]),     goals:     byGoals[0].goals     || 0, games: byGoals[0].gamesPlayed     || 0 } : null,
+      topDisposal: byDisposals[0] ? { name: pName(byDisposals[0]), disposals: byDisposals[0].disposals || 0, games: byDisposals[0].gamesPlayed || 0 } : null,
+      baf:         bafPlayer      ? { name: pName(bafPlayer),      overall:   bafPlayer.overall,    games: bafPlayer.gamesPlayed || 0 } : null,
+    };
+    c.showSeasonSummary = true;
+
     c.season += 1;
     c.week = 0;
     // Determine new league tier for recalibration
@@ -820,85 +518,15 @@ export default function AFLManager() {
         text: promoted ? `🏆 Promoted! Finished ${myPos}st in ${league.short}.` : relegated ? `⬇️ Relegated. Finished ${myPos}/${sorted.length}.` : `Season complete: finished ${myPos}/${sorted.length}` },
       ...c.news
     ].slice(0, 15);
+    // Regenerate event queue for the new season
+    const nextLeague = PYRAMID[c.leagueKey];
+    c.eventQueue = generateSeasonCalendar(c.season, nextLeague.clubs, c.fixtures, c.clubId);
+    c.currentDate = `${c.season - 1}-12-01`;
+    c.phase = 'preseason';
+    c.lastEvent = null;
+    c.inMatchDay = false;
+    c.currentMatchResult = null;
     return c;
-  }
-
-  function pickPromotionLeague(league) {
-    if (league.tier === 1) return null;
-    if (league.tier === 2) return "AFL";
-    if (league.tier === 3) {
-      // Move to state's tier-2 league
-      if (league.state === "VIC") return "VFL";
-      if (league.state === "SA") return "SANFL";
-      if (league.state === "WA") return "WAFL";
-      if (league.state === "TAS") return "TSL";
-      if (league.state === "NT") return "NTFL";
-      if (league.state === "QLD") return "QAFL";
-      if (league.state === "NSW") return "AFLSyd";
-    }
-    return null;
-  }
-  function pickRelegationLeague(league) {
-    if (league.tier === 1) return league.state === "VIC" ? "VFL" : league.state === "SA" ? "SANFL" : league.state === "WA" ? "WAFL" : null;
-    if (league.tier === 2) {
-      // Pick the best community league of state
-      if (league.state === "VIC") return "EFL";
-      // others: stay (no tier 3 modeled)
-      return null;
-    }
-    return null;
-  }
-
-  // ============================================================================
-// FINALS ENGINE
-// ============================================================================
-function getFinalsTeams(ladder, leagueTier) {
-  const sorted = sortedLadder(ladder);
-  const n = leagueTier === 1 ? 8 : leagueTier === 2 ? 6 : 4;
-  return sorted.slice(0, Math.min(n, sorted.length));
-}
-
-// Generate finals fixtures for a given round
-// AFL-style: week 1 = QF (1v4, 2v3, 5v8, 6v7 for top8), simplified to page system
-function generateFinalsFixtures(finalists, round) {
-  // Simple knockout: winners advance, losers eliminated
-  // Round 0 = first week of finals (all finalists play)
-  const n = finalists.length;
-  if (round === 0) {
-    // Pair 1v4, 2v3, 5v8, 6v7 etc
-    const pairs = [];
-    for (let i = 0; i < n / 2; i++) {
-      pairs.push({ home: finalists[i].id, away: finalists[n - 1 - i].id, label: `Elimination Final` });
-    }
-    return pairs;
-  }
-  return []; // subsequent rounds generated after results known
-}
-
-function finalsLabel(round, totalRounds) {
-  const remaining = totalRounds - round;
-  if (remaining === 0) return "Grand Final";
-  if (remaining === 1) return "Preliminary Final";
-  if (remaining === 2) return "Semi Final";
-  return "Elimination Final";
-}
-
-function generateTradePool(leagueKey, season) {
-    seedRng(season * 333 + 7);
-    return Array.from({ length: 25 }, (_, i) => {
-      const tierForPlayer = rand(1,3);
-      const p = generatePlayer(tierForPlayer, 5000 + i + season * 50);
-      return { ...p, fromClub: pick(ALL_CLUBS).short };
-    });
-  }
-
-  // utility for facility avg etc
-  function avgFacilities(f) {
-    const vals = Object.values(f).map(x => x.level);
-    return vals.reduce((a,b)=>a+b,0) / vals.length;
-  }
-  function avgStaff(s) {
-    return s.reduce((a,b)=>a+b.rating,0) / s.length;
   }
 
   // ============== UPDATER ==============
@@ -911,35 +539,67 @@ function generateTradePool(leagueKey, season) {
   })();
 
   // ============== RENDER ==============
+  const globalStyle = (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sora:wght@300;400;500;600;700;800&display=swap');
+      body, html { background:#F1F5F9; margin:0; }
+      ::-webkit-scrollbar { width:5px; height:5px; }
+      ::-webkit-scrollbar-track { background:#F1F5F9; }
+      ::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
+      ::-webkit-scrollbar-thumb:hover { background:#94A3B8; }
+      @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(232,154,74,0.3);}50%{box-shadow:0 0 14px 3px rgba(232,154,74,0.18);} }
+      .glow { animation: pulseGlow 2.5s ease-in-out infinite; }
+      @keyframes slideIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
+      .anim-in { animation: slideIn 0.2s ease-out; }
+      select option { background:#FFF; color:#0F172A; }
+      select { color:#0F172A; background:#FFF; }
+      input[type=color] { padding:2px; cursor:pointer; border-radius:6px; }
+      button:disabled { opacity:0.4; cursor:not-allowed; }
+      * { box-sizing:border-box; }
+    `}</style>
+  );
+
+  if (career.showSeasonSummary && career.seasonSummary) {
+    return (
+      <div className="font-['Sora',sans-serif]">
+        {globalStyle}
+        <SeasonSummaryScreen
+          summary={career.seasonSummary}
+          club={club}
+          onContinue={() => updateCareer({ showSeasonSummary: false })}
+        />
+      </div>
+    );
+  }
+
+  if (career.inMatchDay && career.currentMatchResult) {
+    return (
+      <div className="font-['Sora',sans-serif]">
+        {globalStyle}
+        <MatchDayScreen
+          result={career.currentMatchResult}
+          league={league}
+          career={career}
+          club={club}
+          onContinue={() => updateCareer({ inMatchDay: false, currentMatchResult: null })}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F1F5F9] text-[#0F172A] font-['Sora',sans-serif] flex">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sora:wght@300;400;500;600;700;800&display=swap');
-        body, html { background:#F1F5F9; margin:0; }
-        ::-webkit-scrollbar { width:5px; height:5px; }
-        ::-webkit-scrollbar-track { background:#F1F5F9; }
-        ::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
-        ::-webkit-scrollbar-thumb:hover { background:#94A3B8; }
-        @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(232,154,74,0.3);}50%{box-shadow:0 0 14px 3px rgba(232,154,74,0.18);} }
-        .glow { animation: pulseGlow 2.5s ease-in-out infinite; }
-        @keyframes slideIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
-        .anim-in { animation: slideIn 0.2s ease-out; }
-        select option { background:#FFF; color:#0F172A; }
-        select { color:#0F172A; background:#FFF; }
-        input[type=color] { padding:2px; cursor:pointer; border-radius:6px; }
-        button:disabled { opacity:0.4; cursor:not-allowed; }
-        * { box-sizing:border-box; }
-      `}</style>
-      <Sidebar screen={screen} setScreen={(s)=>{setScreen(s);setTab(null);}} club={club} league={league} season={career.season} week={career.week} myLadderPos={myLadderPos} />
+      {globalStyle}
+      <Sidebar screen={screen} setScreen={(s)=>{setScreen(s);setTab(null);}} club={club} league={league} career={career} myLadderPos={myLadderPos} />
       <main className="flex-1 overflow-y-auto">
-        <TopBar career={career} club={club} league={league} myLadderPos={myLadderPos} onAdvance={advanceWeek} />
+        <TopBar career={career} club={club} league={league} myLadderPos={myLadderPos} onAdvance={advanceToNextEvent} />
         <div className="p-6 max-w-[1400px] mx-auto">
-          {screen === "hub" && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={setScreen} />}
-          {screen === "squad" && <SquadScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
-          {screen === "match" && <MatchScreen career={career} club={club} league={league} onAdvance={advanceWeek} updateCareer={updateCareer} />}
-          {screen === "club" && <ClubScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
-          {screen === "recruit" && <RecruitScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
-          {screen === "compete" && <CompetitionScreen career={career} club={club} league={league} tab={tab} setTab={setTab} />}
+          {screen === "hub"      && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={setScreen} onAdvance={advanceToNextEvent} />}
+          {screen === "squad"    && <SquadScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
+          {screen === "schedule" && <ScheduleScreen career={career} club={club} league={league} />}
+          {screen === "club"     && <ClubScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
+          {screen === "recruit"  && <RecruitScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
+          {screen === "compete"  && <CompetitionScreen career={career} club={club} league={league} tab={tab} setTab={setTab} />}
         </div>
       </main>
     </div>
@@ -965,15 +625,24 @@ function CareerSetup({ onStart }) {
     if (!clubId) return;
     const club = findClub(clubId);
     const league = PYRAMID[leagueKey];
-    SEED = clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7) + 1;
+    const SEASON = 2026;
+    seedRng(clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7) + 1);
     const squad = generateSquad(clubId, league.tier);
     const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
+    const fixtures = generateFixtures(league.clubs);
+    const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
     onStart({
       managerName: managerName || "Coach",
       clubId,
       leagueKey,
-      season: 2026,
+      season: SEASON,
       week: 0,
+      currentDate: `${SEASON - 1}-12-01`,
+      phase: 'preseason',
+      eventQueue,
+      lastEvent: null,
+      inMatchDay: false,
+      currentMatchResult: null,
       squad,
       lineup,
       training: DEFAULT_TRAINING(),
@@ -983,11 +652,11 @@ function CareerSetup({ onStart }) {
       staff: generateStaff(league.tier),
       kits: defaultKits(club.colors),
       ladder: blankLadder(league.clubs),
-      fixtures: generateFixtures(league.clubs),
+      fixtures,
       tradePool: (() => { seedRng(7777); return Array.from({ length: 25 }, (_, i) => { const p = generatePlayer(rand(1,3), 5000+i); return { ...p, fromClub: pick(ALL_CLUBS).short }; }); })(),
       draftPool: Array.from({ length: 60 }, (_, i) => generatePlayer(2, 9000 + i)),
       youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
-      news: [{ week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}.` }],
+      news: [{ week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` }],
       weeklyHistory: [],
       inFinals: false,
       finalsRound: 0,
@@ -1157,14 +826,17 @@ function CareerSetup({ onStart }) {
 // ============================================================================
 // SIDEBAR + TOPBAR
 // ============================================================================
-function Sidebar({ screen, setScreen, club, league, season, week, myLadderPos }) {
+function Sidebar({ screen, setScreen, club, league, career, myLadderPos }) {
+  const season = career.season;
+  const week   = career.week;
+  const phase  = career.phase || 'preseason';
   const items = [
-    { key: "hub",     label: "Hub",         icon: Home,      desc: "Overview" },
-    { key: "squad",   label: "Squad",        icon: Users,     desc: "Players & Tactics" },
-    { key: "match",   label: "Match Day",    icon: Play,      desc: "Live Sim" },
-    { key: "club",    label: "Club",         icon: Building2, desc: "Finances & Ops" },
-    { key: "recruit", label: "Recruit",      icon: Repeat,    desc: "Trade & Draft" },
-    { key: "compete", label: "Competition",  icon: Trophy,    desc: "Ladder & Fixtures" },
+    { key: "hub",      label: "Hub",        icon: Home,      desc: "Overview" },
+    { key: "squad",    label: "Squad",       icon: Users,     desc: "Players & Tactics" },
+    { key: "schedule", label: "Schedule",    icon: Calendar,  desc: "Calendar & Fixtures" },
+    { key: "club",     label: "Club",        icon: Building2, desc: "Finances & Ops" },
+    { key: "recruit",  label: "Recruit",     icon: Repeat,    desc: "Trade & Draft" },
+    { key: "compete",  label: "Competition", icon: Trophy,    desc: "Ladder & Fixtures" },
   ];
   return (
     <aside className="w-64 flex flex-col sticky top-0 h-screen shrink-0" style={{background:"#1E293B", borderRight:"1px solid #293548"}}>
@@ -1197,7 +869,7 @@ function Sidebar({ screen, setScreen, club, league, season, week, myLadderPos })
               </div>
             </div>
             <div className="grid grid-cols-3 gap-1 text-center">
-              {[["SEASON", season], ["ROUND", week+1], ["POS", myLadderPos||"—"]].map(([l,v])=>(
+              {[["SEASON", season], [phase === 'preseason' ? "PHASE" : "ROUND", phase === 'preseason' ? "PRE" : week], ["POS", myLadderPos||"—"]].map(([l,v])=>(
                 <div key={l} className="rounded-lg py-1.5" style={{background:"#F1F5F9"}}>
                   <div className="text-[8px] text-[#64748B] uppercase tracking-widest font-bold">{l}</div>
                   <div className="font-['Bebas_Neue'] text-xl text-[#E89A4A] leading-tight">{v}</div>
@@ -1238,28 +910,63 @@ function Sidebar({ screen, setScreen, club, league, season, week, myLadderPos })
 }
 
 function TopBar({ career, club, league, myLadderPos, onAdvance }) {
-  const nextRound = career.fixtures[career.week];
-  const myMatch = nextRound ? nextRound.find(m => m.home === career.clubId || m.away === career.clubId) : null;
-  const isHome = myMatch ? myMatch.home === career.clubId : null;
-  const opp = myMatch ? findClub(isHome ? myMatch.away : myMatch.home) : null;
-  const seasonOver = career.week >= career.fixtures.length;
+  const nextEv = (career.eventQueue || []).find(e => !e.completed);
+  const phaseColors = { preseason: '#4ADBE8', season: '#E89A4A', finals: '#E84A6F', offseason: '#A78BFA' };
+  const phaseLabel  = { preseason: 'Pre-Season', season: 'Season', finals: 'Finals', offseason: 'Off-Season' };
+  const phase = career.phase || 'preseason';
+
+  let nextLabel = 'End of Season';
+  let nextIcon  = null;
+  if (career.inFinals) {
+    nextLabel = 'Finals Match';
+    nextIcon  = '🏆';
+  } else if (nextEv) {
+    if (nextEv.type === 'training') {
+      const info = TRAINING_INFO[nextEv.subtype] || {};
+      nextLabel = info.name || 'Training';
+      nextIcon  = info.icon || '🏋️';
+    } else if (nextEv.type === 'key_event') {
+      nextLabel = nextEv.name;
+      nextIcon  = '📅';
+    } else if (nextEv.type === 'preseason_match') {
+      nextLabel = nextEv.label;
+      nextIcon  = '⚽';
+    } else if (nextEv.type === 'round') {
+      const myMatch = (nextEv.matches || []).find(m => m.home === career.clubId || m.away === career.clubId);
+      if (myMatch) {
+        const isHome = myMatch.home === career.clubId;
+        const opp = findClub(isHome ? myMatch.away : myMatch.home);
+        nextLabel = `Rd ${nextEv.round}: ${isHome ? 'vs' : '@'} ${opp?.short || ''}`;
+        nextIcon  = '🏉';
+      } else {
+        nextLabel = `Round ${nextEv.round}`;
+        nextIcon  = '🏉';
+      }
+    }
+  }
+
   return (
-    <header className="sticky top-0 z-20 px-6 py-0" style={{background:"rgba(255,255,255,0.95)", backdropFilter:"blur(12px)", borderBottom:"1px solid #E2E8F0", boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+    <header className="sticky top-0 z-20 px-6 py-0" style={{background:"rgba(255,255,255,0.97)", backdropFilter:"blur(12px)", borderBottom:"1px solid #E2E8F0", boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
       <div className="flex items-center justify-between max-w-[1400px] mx-auto h-16">
-        {/* Club stats row */}
-        <div className="flex items-center gap-1">
+        {/* Left: date + phase + finance stats */}
+        <div className="flex items-center gap-0">
+          {/* Date + phase */}
+          <div className="pr-4 mr-2" style={{borderRight:"1px solid #F1F5F9"}}>
+            <div className="text-[10px] font-bold uppercase tracking-widest" style={{color: phaseColors[phase]}}>{phaseLabel[phase]}</div>
+            <div className="font-['Bebas_Neue'] text-lg leading-tight text-[#0F172A]">{career.currentDate ? formatDate(career.currentDate) : '—'}</div>
+          </div>
           {[
-            { label: "Cash", value: fmtK(career.finance.cash), color: "#4AE89A" },
+            { label: "Cash",     value: fmtK(career.finance.cash),           color: "#4AE89A" },
             { label: "Transfer", value: fmtK(career.finance.transferBudget), color: "#4ADBE8" },
-            { label: "Board", value: career.finance.boardConfidence, color: "#E89A4A", bar: true },
-            { label: "Fans", value: career.finance.fanHappiness, color: "#A78BFA", bar: true },
+            { label: "Board",    value: career.finance.boardConfidence,       color: "#E89A4A", bar: true },
+            { label: "Fans",     value: career.finance.fanHappiness,          color: "#A78BFA", bar: true },
           ].map(({ label, value, color, bar }) => (
-            <div key={label} className="flex items-center gap-3 px-4 h-full" style={{borderRight:"1px solid #F1F5F9"}}>
+            <div key={label} className="flex items-center px-4 h-full" style={{borderRight:"1px solid #F1F5F9"}}>
               <div>
                 <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#64748B]">{label}</div>
                 {bar ? (
                   <div className="flex items-center gap-2 mt-0.5">
-                    <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{background:"#FFFFFF", border:"1px solid #E2E8F0"}}>
+                    <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{background:"#F1F5F9", border:"1px solid #E2E8F0"}}>
                       <div className="h-full rounded-full" style={{width:`${value}%`, background:`linear-gradient(90deg,${color}88,${color})`}} />
                     </div>
                     <span className="font-['Bebas_Neue'] text-lg leading-none" style={{color}}>{value}</span>
@@ -1272,29 +979,15 @@ function TopBar({ career, club, league, myLadderPos, onAdvance }) {
           ))}
         </div>
 
-        {/* Right: next match + advance */}
+        {/* Right: next event + advance button */}
         <div className="flex items-center gap-3">
-          {seasonOver ? (
-            <button onClick={onAdvance} className={`${css.btnPrimary} flex items-center gap-2 text-sm`}>
-              <ChevronsUp className="w-4 h-4" /> END SEASON
-            </button>
-          ) : myMatch && opp ? (
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-[9px] font-bold uppercase tracking-widest text-[#94A3B8]">{isHome ? "Home" : "Away"} · Rd {career.week + 1}</div>
-                <div className="text-sm font-bold text-white">{isHome ? "vs" : "@"} {opp.short}</div>
-              </div>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center font-['Bebas_Neue'] text-base"
-                style={{background:`linear-gradient(135deg,${opp.colors[0]},${opp.colors[1]})`, color:opp.colors[2]}}>
-                {opp.short}
-              </div>
-              <button onClick={onAdvance} className={`${css.btnPrimary} flex items-center gap-2 text-sm glow`}>
-                <Play className="w-4 h-4" /> ADVANCE WEEK
-              </button>
-            </div>
-          ) : (
-            <button onClick={onAdvance} className={`${css.btnPrimary} text-sm`}>ADVANCE</button>
-          )}
+          <div className="text-right hidden md:block">
+            <div className="text-[9px] font-bold uppercase tracking-widest text-[#94A3B8]">Next Event</div>
+            <div className="text-sm font-semibold text-[#0F172A]">{nextIcon} {nextLabel}</div>
+          </div>
+          <button onClick={onAdvance} className={`${css.btnPrimary} flex items-center gap-2 text-sm glow`}>
+            <Play className="w-4 h-4" /> ADVANCE
+          </button>
         </div>
       </div>
     </header>
@@ -1304,7 +997,7 @@ function TopBar({ career, club, league, myLadderPos, onAdvance }) {
 // ============================================================================
 // HUB SCREEN
 // ============================================================================
-function HubScreen({ career, club, league, myLadderPos, setScreen }) {
+function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) {
   const sorted = sortedLadder(career.ladder);
   const top5 = sorted.slice(0, 5);
   const myRow = sorted.find(r => r.id === career.clubId);
@@ -1313,6 +1006,12 @@ function HubScreen({ career, club, league, myLadderPos, setScreen }) {
   const sponsorsAnnual = career.sponsors.reduce((a, s) => a + s.annualValue, 0);
   const squadAvg = career.squad.length ? Math.round(career.squad.reduce((a, p) => a + p.overall, 0) / career.squad.length) : 0;
   const posColor = myLadderPos <= 2 ? "#4AE89A" : myLadderPos <= 5 ? "#E89A4A" : "#E84A6F";
+
+  // Next 7 upcoming events
+  const upcoming7 = (career.eventQueue || []).filter(e => !e.completed).slice(0, 7);
+
+  // Last event display
+  const lastEv = career.lastEvent;
 
   return (
     <div className="anim-in space-y-5">
@@ -1328,7 +1027,11 @@ function HubScreen({ career, club, league, myLadderPos, setScreen }) {
             <h1 className="font-['Bebas_Neue'] text-5xl tracking-wide text-white leading-none">{club.name.toUpperCase()}</h1>
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <Pill color="#E89A4A">Tier {league.tier}</Pill>
-              <Pill color="#4ADBE8">Round {career.week + 1}</Pill>
+              {career.phase === 'preseason'
+                ? <Pill color="#4ADBE8">Pre-Season {career.season}</Pill>
+                : career.inFinals
+                  ? <Pill color="#E84A6F">Finals</Pill>
+                  : <Pill color="#4ADBE8">Round {career.week}</Pill>}
               <Pill color={posColor}>#{myLadderPos || "—"} on Ladder</Pill>
               {myRow && <Pill color="#64748B">{myRow.W}W {myRow.L}L {myRow.D}D</Pill>}
             </div>
@@ -1341,6 +1044,108 @@ function HubScreen({ career, club, league, myLadderPos, setScreen }) {
           </div>
         </div>
       </div>
+
+      {/* Last Event Result Card */}
+      {lastEv && (
+        <div className={`${css.panel} p-4 anim-in`}>
+          {lastEv.type === 'training' && (
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'#F0FDF4', border:'1px solid #BBF7D0'}}>
+                {TRAINING_INFO[lastEv.subtype]?.icon || '🏋️'}
+              </div>
+              <div className="flex-1">
+                <div className={css.label}>Last Session</div>
+                <div className="font-bold text-[#0F172A]">{lastEv.name} <span className="text-[#64748B] font-normal text-sm">· {formatDate(lastEv.date)}</span></div>
+                <div className="text-xs text-[#64748B] mt-1">Led by {lastEv.staffName} (Rating: {lastEv.staffRating}) · Gains:&nbsp;
+                  {Object.entries(lastEv.gains || {}).map(([k, v]) => `${k} +${v}`).join(', ') || '—'}
+                </div>
+                {lastEv.devNotes && lastEv.devNotes.length > 0 && (
+                  <div className="text-xs text-[#4ADE80] mt-1 leading-relaxed">
+                    {lastEv.devNotes.join(' · ')}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {lastEv.type === 'key_event' && (
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'#EFF6FF', border:'1px solid #BFDBFE'}}>📅</div>
+              <div className="flex-1">
+                <div className={css.label}>Event</div>
+                <div className="font-bold text-[#0F172A]">{lastEv.name}</div>
+                <div className="text-xs text-[#64748B] mt-1">{lastEv.description}</div>
+              </div>
+              {lastEv.action && (
+                <button onClick={() => setScreen(lastEv.action)} className={css.btnPrimary + ' text-xs'}>Go →</button>
+              )}
+            </div>
+          )}
+          {(lastEv.type === 'round' || lastEv.type === 'preseason_match') && (
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0`}
+                style={{background: lastEv.won ? '#F0FDF4' : lastEv.drew ? '#FFFBEB' : '#FEF2F2', border: `1px solid ${lastEv.won ? '#BBF7D0' : lastEv.drew ? '#FDE68A' : '#FECACA'}`}}>
+                {lastEv.won ? '✅' : lastEv.drew ? '🤝' : '❌'}
+              </div>
+              <div className="flex-1">
+                <div className={css.label}>{lastEv.type === 'preseason_match' ? lastEv.label : `Round ${lastEv.round}`}</div>
+                <div className="font-bold text-[#0F172A]">
+                  {lastEv.isHome ? 'vs' : '@'} {lastEv.opp?.name}
+                  <span className="ml-3 font-['Bebas_Neue'] text-xl" style={{color: lastEv.won ? '#4AE89A' : lastEv.drew ? '#E89A4A' : '#E84A6F'}}>
+                    {lastEv.myTotal} – {lastEv.oppTotal}
+                  </span>
+                </div>
+                <div className="text-xs text-[#64748B] mt-1">{formatDate(lastEv.date)} · {lastEv.won ? 'Win' : lastEv.drew ? 'Draw' : 'Loss'}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Upcoming Events Strip */}
+      {upcoming7.length > 0 && (
+        <div className={css.panel}>
+          <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+            <h3 className="font-['Bebas_Neue'] text-lg text-[#0F172A] tracking-wide">UPCOMING</h3>
+            <button onClick={() => setScreen('schedule')} className="text-[11px] font-bold text-[#E89A4A] uppercase tracking-wider hover:text-[#F0A558]">Full calendar →</button>
+          </div>
+          <div className="flex gap-2 px-4 pb-4 overflow-x-auto">
+            {upcoming7.map((ev, i) => {
+              const isMatch = ev.type === 'round' || ev.type === 'preseason_match';
+              const isTraining = ev.type === 'training';
+              const isKey = ev.type === 'key_event';
+              const info = isTraining ? TRAINING_INFO[ev.subtype] : null;
+              const color = isMatch ? '#E89A4A' : isKey ? '#4ADBE8' : (info?.color || '#94A3B8');
+              let evLabel = '';
+              if (isMatch && ev.type === 'round') {
+                const m = (ev.matches || []).find(m2 => m2.home === career.clubId || m2.away === career.clubId);
+                const opp2 = m ? findClub(m.home === career.clubId ? m.away : m.home) : null;
+                evLabel = opp2 ? `Rd ${ev.round} ${opp2.short}` : `Rd ${ev.round}`;
+              } else if (ev.type === 'preseason_match') {
+                const oppId = ev.homeId === career.clubId ? ev.awayId : ev.homeId;
+                evLabel = findClub(oppId)?.short || ev.label;
+              } else if (isTraining) {
+                evLabel = info?.name || ev.subtype;
+              } else {
+                evLabel = ev.name || 'Event';
+              }
+              return (
+                <div key={ev.id} className="flex-shrink-0 rounded-xl p-3 text-center min-w-[88px]" style={{background:`${color}10`, border:`1px solid ${color}30`}}>
+                  <div className="text-[9px] font-bold uppercase tracking-wider" style={{color}}>{formatDate(ev.date).split(' ').slice(0,-1).join(' ')}</div>
+                  <div className="text-lg mt-1">{isTraining ? (info?.icon || '🏋️') : isKey ? '📅' : '🏉'}</div>
+                  <div className="text-[10px] font-semibold text-[#0F172A] mt-1 leading-tight">{evLabel}</div>
+                </div>
+              );
+            })}
+            <div className="flex-shrink-0 flex items-center justify-center min-w-[60px]">
+              <button onClick={onAdvance} className="rounded-xl px-3 py-2 text-[11px] font-bold text-white flex flex-col items-center gap-1"
+                style={{background:'linear-gradient(135deg,#E89A4A,#D07A2A)'}}>
+                <Play className="w-4 h-4" />
+                <span>Next</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Finals Banner */}
       {career.inFinals && (
@@ -1447,7 +1252,7 @@ function HubScreen({ career, club, league, myLadderPos, setScreen }) {
                   <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{background: c, boxShadow:`0 0 6px ${c}`}} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white leading-snug">{n.text}</div>
-                    <div className="text-[9px] text-[#94A3B8] uppercase tracking-widest mt-0.5 font-bold">Round {n.week}</div>
+                    <div className="text-[9px] text-[#94A3B8] uppercase tracking-widest mt-0.5 font-bold">{n.week === 0 ? 'Pre-Season' : `Round ${n.week}`}</div>
                   </div>
                 </div>
               );
@@ -1466,6 +1271,24 @@ function HubScreen({ career, club, league, myLadderPos, setScreen }) {
           </div>
         </div>
       )}
+
+      {/* Contract Expiry Warnings */}
+      {(() => {
+        const expiring = career.squad.filter(p => (career.lineup || []).includes(p.id) && p.contract <= 1);
+        if (!expiring.length) return null;
+        return (
+          <div className="rounded-2xl p-4 flex items-start gap-3" style={{background:"#FFFBEB", border:"1.5px solid #FDE68A"}}>
+            <span className="text-2xl flex-shrink-0">📋</span>
+            <div>
+              <div className="font-bold text-sm text-[#D97706]">Contracts Expiring — Act Now</div>
+              <div className="text-xs text-[#92400E] mt-1">
+                {expiring.map(p => `${p.firstName} ${p.lastName} (${p.contract === 0 ? 'Out of contract' : '1 year left'})`).join(' · ')}
+              </div>
+              <button onClick={() => setScreen('squad')} className="mt-2 text-xs font-bold text-[#D97706] hover:text-[#B45309]">Manage contracts →</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Quick links */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1494,6 +1317,431 @@ function HubScreen({ career, club, league, myLadderPos, setScreen }) {
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================================
+// SCHEDULE SCREEN — month calendar grid with event dots
+// ============================================================================
+function ScheduleScreen({ career, club, league }) {
+  const startDate = career.currentDate || `${career.season - 1}-12-01`;
+  const [viewDate, setViewDate] = React.useState(startOfMonth(startDate));
+
+  const allEvents = career.eventQueue || [];
+  const eventsByDate = {};
+  allEvents.forEach(ev => {
+    if (!eventsByDate[ev.date]) eventsByDate[ev.date] = [];
+    eventsByDate[ev.date].push(ev);
+  });
+
+  const monthStart = startOfMonth(viewDate);
+  const firstDow   = getDayOfWeek(monthStart); // 0=Sun
+  const totalDays  = daysInMonth(viewDate);
+  const cells      = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= totalDays; d++) {
+    const y = viewDate.slice(0, 4);
+    const m = viewDate.slice(5, 7);
+    cells.push(`${y}-${m}-${String(d).padStart(2, '0')}`);
+  }
+
+  const today  = career.currentDate || startDate;
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  // Upcoming events list
+  const upcoming = allEvents.filter(e => !e.completed && e.date >= today).slice(0, 15);
+
+  function evDot(ev) {
+    if (ev.type === 'training')        return { color: TRAINING_INFO[ev.subtype]?.color || '#94A3B8', icon: TRAINING_INFO[ev.subtype]?.icon || '🏋️', label: TRAINING_INFO[ev.subtype]?.name || ev.subtype };
+    if (ev.type === 'key_event')       return { color: '#4ADBE8', icon: '📅', label: ev.name };
+    if (ev.type === 'preseason_match') return { color: '#E84A6F', icon: '⚽', label: ev.label };
+    if (ev.type === 'round') {
+      const m = (ev.matches || []).find(m2 => m2.home === career.clubId || m2.away === career.clubId);
+      const opp = m ? findClub(m.home === career.clubId ? m.away : m.home) : null;
+      return { color: '#E89A4A', icon: '🏉', label: opp ? `Rd ${ev.round} vs ${opp.short}` : `Rd ${ev.round}` };
+    }
+    return { color: '#94A3B8', icon: '●', label: 'Event' };
+  }
+
+  return (
+    <div className="anim-in space-y-5">
+      <div className="flex items-center justify-between">
+        <h1 className={`${css.h1} text-3xl`}>SEASON CALENDAR</h1>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setViewDate(prevMonth(viewDate))} className={css.btnGhost + ' px-3 py-2'}><ChevronLeft className="w-4 h-4" /></button>
+          <span className="font-['Bebas_Neue'] text-xl tracking-wide text-[#0F172A] min-w-[180px] text-center">{formatMonth(viewDate)}</span>
+          <button onClick={() => setViewDate(nextMonth(viewDate))} className={css.btnGhost + ' px-3 py-2'}><ChevronRight className="w-4 h-4" /></button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Calendar grid */}
+        <div className={`${css.panel} lg:col-span-2 p-4`}>
+          <div className="grid grid-cols-7 mb-2">
+            {dayNames.map(d => (
+              <div key={d} className="text-center text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] py-1">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((dateStr, i) => {
+              if (!dateStr) return <div key={`empty-${i}`} />;
+              const dayEvs  = eventsByDate[dateStr] || [];
+              const isToday = dateStr === today;
+              const isPast  = dateStr < today;
+              return (
+                <div key={dateStr}
+                  className={`rounded-lg p-1.5 min-h-[64px] transition-all ${isToday ? 'ring-2 ring-[#E89A4A]' : ''}`}
+                  style={{background: isToday ? '#FFF7ED' : isPast && dayEvs.length ? '#F8FAFC' : '#FFFFFF', border: '1px solid #F1F5F9'}}>
+                  <div className={`text-[11px] font-bold mb-1 ${isToday ? 'text-[#E89A4A]' : isPast ? 'text-[#CBD5E1]' : 'text-[#475569]'}`}>
+                    {dateStr.slice(8)}
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {dayEvs.slice(0, 3).map((ev, ei) => {
+                      const dot = evDot(ev);
+                      return (
+                        <div key={ei} className="rounded text-[8px] font-bold px-1 py-0.5 truncate leading-tight"
+                          style={{background: `${dot.color}18`, color: dot.color, opacity: ev.completed ? 0.4 : 1}}>
+                          {dot.icon} {dot.label}
+                        </div>
+                      );
+                    })}
+                    {dayEvs.length > 3 && (
+                      <div className="text-[8px] text-[#94A3B8] px-1">+{dayEvs.length - 3} more</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Legend */}
+          <div className="flex flex-wrap gap-3 mt-4 pt-3" style={{borderTop:'1px solid #F1F5F9'}}>
+            {[
+              { color: '#4ADE80', label: 'Ball Skills' },
+              { color: '#60A5FA', label: 'Running' },
+              { color: '#A78BFA', label: 'Tactics' },
+              { color: '#F97316', label: 'Gym' },
+              { color: '#E89A4A', label: 'Match Day' },
+              { color: '#E84A6F', label: 'Pre-Season Match' },
+              { color: '#4ADBE8', label: 'Key Event' },
+            ].map(({ color, label }) => (
+              <div key={label} className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{background: color}} />
+                <span className="text-[10px] text-[#64748B]">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Upcoming events list */}
+        <div className={`${css.panel} p-4`}>
+          <h3 className="font-['Bebas_Neue'] text-lg text-[#0F172A] tracking-wide mb-3">UPCOMING EVENTS</h3>
+          <div className="space-y-2">
+            {upcoming.length === 0 && <div className="text-sm text-[#64748B] py-4 text-center">No more events this season.</div>}
+            {upcoming.map(ev => {
+              const dot = evDot(ev);
+              return (
+                <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl" style={{background:'#F8FAFC', border:'1px solid #F1F5F9'}}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0" style={{background:`${dot.color}18`}}>
+                    {dot.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] font-bold uppercase tracking-widest" style={{color: dot.color}}>{formatDate(ev.date)}</div>
+                    <div className="text-sm font-semibold text-[#0F172A] leading-tight truncate">{dot.label}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================================
+// SEASON SUMMARY SCREEN
+// ============================================================================
+function SeasonSummaryScreen({ summary, club, onContinue }) {
+  const posColor   = summary.position <= 1 ? '#FFD700' : summary.position <= 4 ? '#4AE89A' : summary.position <= summary.totalTeams / 2 ? '#E89A4A' : '#E84A6F';
+  const tierColors = { 1: '#E84A6F', 2: '#E89A4A', 3: '#4ADBE8' };
+  const tierColor  = tierColors[summary.leagueTier] || '#E89A4A';
+
+  let outcomeText  = `Finished ${summary.position}${summary.position===1?'st':summary.position===2?'nd':summary.position===3?'rd':'th'} of ${summary.totalTeams}`;
+  let outcomeIcon  = summary.champion ? '🏆' : summary.promoted ? '⬆️' : summary.relegated ? '⬇️' : summary.position <= 4 ? '✅' : '📊';
+  let outcomeSub   = summary.champion   ? 'PREMIERS — ' + summary.leagueShort + ' Champions!'
+    : summary.promoted  ? `Promoted to the next division`
+    : summary.relegated ? `Relegated — bounce back next season`
+    : outcomeText;
+
+  const AwardCard = ({ icon, label, name, stat, sub }) => (
+    <div className="rounded-2xl p-4 flex items-center gap-4" style={{background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)'}}>
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+        style={{background:'rgba(232,154,74,0.15)', border:'1px solid rgba(232,154,74,0.3)'}}>
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">{label}</div>
+        <div className="font-bold text-white truncate">{name || '—'}</div>
+        <div className="text-sm font-['Bebas_Neue'] text-[#E89A4A]">{stat}</div>
+      </div>
+      {sub && <div className="text-[10px] text-slate-500 text-right leading-tight">{sub}</div>}
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{background:'linear-gradient(160deg,#0F172A 0%,#1E293B 100%)'}}>
+      {/* Header */}
+      <div className="text-center px-6 py-10" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+        <div className="text-5xl mb-4">{outcomeIcon}</div>
+        <div className="text-[11px] font-bold uppercase tracking-[0.3em] mb-2" style={{color: tierColor}}>{summary.leagueName} · Season {summary.season}</div>
+        <div className="font-['Bebas_Neue'] text-6xl leading-none text-white mb-2">{summary.leagueShort} {summary.season}</div>
+        <div className="font-bold text-xl" style={{color: posColor}}>{outcomeSub}</div>
+
+        {/* Season record strip */}
+        <div className="flex items-center justify-center gap-6 mt-8">
+          {[
+            { label: 'Position', value: `#${summary.position}`, color: posColor },
+            { label: 'Wins',     value: summary.W,  color: '#4AE89A' },
+            { label: 'Losses',   value: summary.L,  color: '#E84A6F' },
+            { label: 'Draws',    value: summary.D,  color: '#E89A4A' },
+            { label: 'Points',   value: summary.pts, color: '#A78BFA' },
+            { label: 'Pct',      value: `${summary.pct}%`, color: '#4ADBE8' },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="text-center">
+              <div className="font-['Bebas_Neue'] text-4xl leading-none" style={{color}}>{value}</div>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Awards */}
+      <div className="flex-1 px-6 py-8 max-w-2xl mx-auto w-full space-y-3">
+        <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 mb-4">Season Awards</div>
+
+        {summary.champion && (
+          <div className="rounded-2xl p-4 text-center mb-4" style={{background:'linear-gradient(135deg,rgba(255,215,0,0.15),rgba(232,154,74,0.1))', border:'2px solid rgba(255,215,0,0.4)'}}>
+            <div className="text-4xl mb-2">🏆</div>
+            <div className="font-['Bebas_Neue'] text-3xl text-[#FFD700]">PREMIERS!</div>
+            <div className="text-sm text-slate-300 mt-1">{club.name} are the {summary.season} {summary.leagueShort} Champions</div>
+          </div>
+        )}
+
+        <AwardCard
+          icon="🥇" label="Best & Fairest"
+          name={summary.baf?.name}
+          stat={summary.baf ? `${summary.baf.overall} OVR · ${summary.baf.games} games` : '—'}
+        />
+        <AwardCard
+          icon="⚽" label="Top Goal Kicker"
+          name={summary.topScorer?.name}
+          stat={summary.topScorer ? `${summary.topScorer.goals} goals` : '—'}
+          sub={summary.topScorer ? `${summary.topScorer.games} games` : null}
+        />
+        <AwardCard
+          icon="🤝" label="Disposal King"
+          name={summary.topDisposal?.name}
+          stat={summary.topDisposal ? `${summary.topDisposal.disposals} disposals` : '—'}
+          sub={summary.topDisposal ? `${summary.topDisposal.games} games` : null}
+        />
+
+        {(summary.promoted || summary.relegated) && (
+          <div className="rounded-2xl p-4 mt-2" style={{background: summary.promoted ? 'rgba(74,232,154,0.1)' : 'rgba(232,74,111,0.1)', border: `1px solid ${summary.promoted ? 'rgba(74,232,154,0.3)' : 'rgba(232,74,111,0.3)'}`}}>
+            <div className="font-bold text-base" style={{color: summary.promoted ? '#4AE89A' : '#E84A6F'}}>
+              {summary.promoted ? '⬆️ Promoted!' : '⬇️ Relegated'}
+            </div>
+            <div className="text-sm text-slate-400 mt-1">
+              {summary.promoted ? 'A new challenge awaits in the division above.' : 'Time to rebuild and fight back up.'}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 py-6" style={{borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+        <div className="max-w-2xl mx-auto">
+          <button onClick={onContinue}
+            className="w-full py-4 rounded-2xl font-['Bebas_Neue'] text-xl tracking-widest text-white transition-all"
+            style={{background:'linear-gradient(135deg,#E89A4A,#D07A2A)', boxShadow:'0 4px 20px rgba(232,154,74,0.4)'}}>
+            START SEASON {summary.season + 1} →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================================
+// MATCH DAY SCREEN — quarter-by-quarter visual scoreboard
+// ============================================================================
+function MatchDayScreen({ result, league, career, club, onContinue }) {
+  const [revealed, setRevealed] = React.useState(0);
+
+  const quarters = result.quarters || [];
+  const qLabels  = ['Q1', 'Q2', 'Q3', 'Q4'];
+
+  // Cumulative scores per quarter
+  const cumHome = [], cumAway = [];
+  let hG = 0, hB = 0, aG = 0, aB = 0;
+  quarters.forEach(q => {
+    hG += q.homeGoals;   hB += q.homeBehinds;
+    aG += q.awayGoals;   aB += q.awayBehinds;
+    cumHome.push({ g: hG, b: hB, total: hG * 6 + hB });
+    cumAway.push({ g: aG, b: aB, total: aG * 6 + aB });
+  });
+
+  const homeClub = result.isHome ? club : result.opp;
+  const awayClub = result.isHome ? result.opp : club;
+  const myColor  = club.colors[0] || '#E89A4A';
+  const oppColor = result.opp?.colors?.[0] || '#64748B';
+
+  const won  = result.won;
+  const drew = result.drew;
+  const resultLabel = won ? 'WIN' : drew ? 'DRAW' : 'LOSS';
+  const resultColor = won ? '#4AE89A' : drew ? '#E89A4A' : '#E84A6F';
+
+  // AFL-tier commentary lines
+  const commentary = result.isAFL ? [
+    won  ? `${club.name} put in a dominant performance today.` : drew ? `An even contest — both sides had their chances.` : `A tough day at the office for ${club.name}.`,
+    result.myTotal > 80 ? 'The forward line was electric, converting at a high rate.' : result.myTotal > 60 ? 'A solid if unremarkable offensive effort.' : 'The team struggled to convert inside 50.',
+    won && result.myTotal - result.oppTotal > 30 ? 'It was never in doubt from the third quarter on.' : won ? 'They held on for a hard-fought victory.' : '',
+    result.isPreseason ? 'Pre-season result — ladders unaffected.' : `${league.short} Round ${result.label.replace('Round ', '')}.`,
+  ].filter(Boolean) : [];
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{background:'linear-gradient(160deg, #0F172A 0%, #1E293B 100%)'}}>
+      {/* Header */}
+      <div className="px-6 py-5 text-center" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+        <div className="text-[11px] font-bold uppercase tracking-[0.3em] mb-1" style={{color: result.isPreseason ? '#4ADBE8' : '#E89A4A'}}>
+          {result.label} · {career.currentDate ? formatDate(career.currentDate) : ''}
+          {result.isPreseason && ' · Pre-Season'}
+        </div>
+
+        {/* Teams */}
+        <div className="flex items-center justify-center gap-6 mt-4">
+          {/* Home */}
+          <div className="text-center flex-1">
+            <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center font-['Bebas_Neue'] text-2xl mb-2"
+              style={{background:`linear-gradient(135deg,${homeClub?.colors?.[0]||'#E89A4A'},${homeClub?.colors?.[1]||'#D07A2A'})`,color:homeClub?.colors?.[2]||'#FFF'}}>
+              {homeClub?.short}
+            </div>
+            <div className="text-white font-bold text-sm">{homeClub?.name}</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-widest">HOME</div>
+          </div>
+
+          {/* Score */}
+          <div className="text-center px-6">
+            <div className="font-['Bebas_Neue'] text-6xl leading-none" style={{color: resultColor}}>
+              {result.homeTotal} – {result.awayTotal}
+            </div>
+            <div className="text-[11px] font-bold uppercase tracking-widest mt-1" style={{color: resultColor}}>{resultLabel}</div>
+          </div>
+
+          {/* Away */}
+          <div className="text-center flex-1">
+            <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center font-['Bebas_Neue'] text-2xl mb-2"
+              style={{background:`linear-gradient(135deg,${awayClub?.colors?.[0]||'#64748B'},${awayClub?.colors?.[1]||'#475569'})`,color:awayClub?.colors?.[2]||'#FFF'}}>
+              {awayClub?.short}
+            </div>
+            <div className="text-white font-bold text-sm">{awayClub?.name}</div>
+            <div className="text-[10px] text-slate-400 uppercase tracking-widest">AWAY</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quarter breakdown */}
+      <div className="flex-1 px-6 py-6 max-w-2xl mx-auto w-full">
+        <div className="mb-4">
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-3">Quarter by Quarter</div>
+          {quarters.length === 0 && (
+            <div className="text-slate-400 text-sm text-center py-4">No quarter data available.</div>
+          )}
+          <div className="space-y-3">
+            {quarters.map((q, i) => {
+              const isShowing = i < revealed || revealed === quarters.length;
+              const hCum = cumHome[i] || { g: 0, b: 0, total: 0 };
+              const aCum = cumAway[i] || { g: 0, b: 0, total: 0 };
+              const qWinner = hCum.total > aCum.total ? 'home' : aCum.total > hCum.total ? 'away' : 'draw';
+              return (
+                <div key={i} className={`rounded-2xl p-4 transition-all duration-300 ${isShowing ? 'opacity-100' : 'opacity-0 translate-y-2'}`}
+                  style={{background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)'}}>
+                  <div className="flex items-center justify-between">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{qLabels[i]}</div>
+                    {isShowing && (
+                      <div className="text-[10px] text-slate-500">
+                        {q.homeGoals}.{q.homeBehinds} — {q.awayGoals}.{q.awayBehinds} (this qtr)
+                      </div>
+                    )}
+                  </div>
+                  {isShowing && (
+                    <div className="flex items-center gap-4 mt-2">
+                      <div className="text-right flex-1">
+                        <span className="font-['Bebas_Neue'] text-3xl" style={{color: result.isHome ? myColor : oppColor}}>{hCum.total}</span>
+                        <div className="text-[10px] text-slate-400">{hCum.g}.{hCum.b}</div>
+                      </div>
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        style={{background: qWinner === (result.isHome ? 'home' : 'away') ? '#4AE89A22' : '#64748B22', color: qWinner === (result.isHome ? 'home' : 'away') ? '#4AE89A' : '#64748B'}}>
+                        {qWinner === 'draw' ? '=' : qWinner === (result.isHome ? 'home' : 'away') ? '▲' : '▼'}
+                      </div>
+                      <div className="text-left flex-1">
+                        <span className="font-['Bebas_Neue'] text-3xl" style={{color: result.isHome ? oppColor : myColor}}>{aCum.total}</span>
+                        <div className="text-[10px] text-slate-400">{aCum.g}.{aCum.b}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Reveal controls */}
+          {quarters.length > 0 && revealed < quarters.length && (
+            <button onClick={() => setRevealed(r => Math.min(r + 1, quarters.length))}
+              className="mt-4 w-full rounded-xl py-3 text-sm font-bold uppercase tracking-widest transition-all"
+              style={{background:'rgba(232,154,74,0.15)', color:'#E89A4A', border:'1px solid rgba(232,154,74,0.3)'}}>
+              Show {qLabels[revealed]} →
+            </button>
+          )}
+        </div>
+
+        {/* AFL Commentary */}
+        {result.isAFL && commentary.length > 0 && revealed === quarters.length && (
+          <div className="rounded-2xl p-4 mt-2" style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)'}}>
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-3">Match Commentary</div>
+            <div className="space-y-2">
+              {commentary.map((line, i) => (
+                <div key={i} className="flex gap-2 text-sm text-slate-300">
+                  <span className="text-[#E89A4A] flex-shrink-0">›</span>
+                  <span>{line}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 py-5" style={{borderTop:'1px solid rgba(255,255,255,0.08)'}}>
+        <div className="max-w-2xl mx-auto flex items-center gap-3">
+          {revealed < quarters.length && quarters.length > 0 ? (
+            <button onClick={() => setRevealed(quarters.length)}
+              className="flex-1 py-3 rounded-xl text-sm font-bold text-slate-400 uppercase tracking-widest"
+              style={{border:'1px solid rgba(255,255,255,0.1)'}}>
+              Skip to Full Time
+            </button>
+          ) : null}
+          <button onClick={onContinue}
+            className={`flex-1 py-3 rounded-xl font-bold uppercase tracking-widest text-white transition-all`}
+            style={{background:`linear-gradient(135deg,${resultColor}CC,${resultColor})`, boxShadow:`0 4px 20px ${resultColor}44`}}>
+            Continue →
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1884,255 +2132,6 @@ function TrainingTab({ career, updateCareer }) {
 
 
 // ============================================================================
-// MATCH SCREEN — live simulation
-// ============================================================================
-// Match event templates
-const GOAL_EVENTS_HOME = [
-  p => `${p} marks strongly and nails the set shot — GOAL!`,
-  p => `${p} receives a handball, turns and threads it through — GOAL!`,
-  p => `${p} snaps brilliantly off the left boot — GOAL!`,
-  p => `${p} is on his own in the goal square — easy major!`,
-  p => `${p} runs into an open goal — GOAL!`,
-  p => `Beautiful chain of handballs, ${p} finishes — GOAL!`,
-];
-const BEHIND_EVENTS_HOME = [
-  p => `${p} goes for goal — narrowly off to the left. Behind.`,
-  p => `${p} hits the post! Unlucky — only a behind.`,
-  p => `${p} snaps but a defender spoils — forced behind.`,
-];
-const GOAL_EVENTS_AWAY = [
-  s => `${s} kick a goal against the run of play!`,
-  s => `${s} counter-attack — they snap one!`,
-  s => `${s} punish a turnover — GOAL!`,
-  s => `${s} mark it in the forward 50 and convert.`,
-];
-const NEUTRAL_EVENTS = [
-  "Contested ball in the centre — neither team getting clean possession.",
-  "Heavy rain making ball handling difficult — both defences on top.",
-  "Umpire controversy — free kick dispute holds up play.",
-  "Big collision in the ruck — trainers on the ground.",
-  "Interchange sub comes on — fresh legs for both sides.",
-  "Pressure building — who blinks first?",
-  "Both coaches throwing their arms around on the boundary.",
-];
-
-function MatchScreen({ career, club, league, onAdvance, updateCareer }) {
-  const [simState, setSimState] = useState("idle");
-  const [quarter, setQuarter] = useState(1);
-  const [hScore, setHScore] = useState({ g: 0, b: 0 });
-  const [aScore, setAScore] = useState({ g: 0, b: 0 });
-  const [events, setEvents] = useState([]);
-  const [tactic, setTactic] = useState(career.tacticChoice || "balanced");
-  const intervalRef = useRef(null);
-
-  const round = career.fixtures[career.week];
-  const myMatch = round ? round.find(m => m.home === career.clubId || m.away === career.clubId) : null;
-  if (!round || !myMatch) {
-    return <div className={`${css.panel} p-12 text-center text-[#64748B]`}>No match scheduled. <button onClick={onAdvance} className="text-[#E89A4A] underline font-semibold">Advance week →</button></div>;
-  }
-  const isHome = myMatch.home === career.clubId;
-  const opp = findClub(isHome ? myMatch.away : myMatch.home);
-  const TACTIC_BONUS = { attack: 6, balanced: 0, defensive: -4, flood: -2 };
-  const TACTIC_INFO = {
-    attack:    { label: "Attack",    icon: "⚡", desc: "+6 rating, more goals — risky if you fall behind", color: "#E84A6F" },
-    balanced:  { label: "Balanced",  icon: "⚖️", desc: "Standard setup — reliable across all game states", color: "#E89A4A" },
-    defensive: { label: "Defensive", icon: "🛡️", desc: "−4 rating, but limits opponents scoring — good vs top sides", color: "#4ADBE8" },
-    flood:     { label: "Flood",     icon: "🌊", desc: "Pack your defensive 50 — grind opponents down", color: "#A78BFA" },
-  };
-  const baseRating = teamRating(career.squad, career.lineup, career.training, Object.values(career.facilities).reduce((a,f)=>a+f.level,0)/6, career.staff.reduce((a,s)=>a+s.rating,0)/career.staff.length);
-  const myRating = baseRating + (TACTIC_BONUS[tactic] || 0);
-  const oppRating = aiClubRating(opp.id, league.tier);
-  const favoured = myRating > oppRating + 5 ? club.short : oppRating > myRating + 5 ? opp.short : null;
-  const diff = (myRating - oppRating).toFixed(1);
-
-  const myPlayers = career.squad.filter(p => career.lineup.includes(p.id));
-  const pName = p => p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || "Unknown");
-
-  function startSim() {
-    // Save tactic choice to career
-    updateCareer({ tacticChoice: tactic });
-    setSimState("playing");
-    setQuarter(1); setHScore({g:0,b:0}); setAScore({g:0,b:0}); setEvents([]);
-
-    const finalResult = simMatch(
-      { rating: isHome ? myRating : oppRating },
-      { rating: isHome ? oppRating : myRating },
-      isHome, isHome ? myRating : oppRating, TACTIC_BONUS[tactic] || 0
-    );
-    const myFinalG  = isHome ? finalResult.homeGoals : finalResult.awayGoals;
-    const myFinalB  = isHome ? finalResult.homeBehinds : finalResult.awayBehinds;
-    const oppFinalG = isHome ? finalResult.awayGoals : finalResult.homeGoals;
-    const oppFinalB = isHome ? finalResult.awayBehinds : finalResult.homeBehinds;
-    const qData     = finalResult.quarters;
-
-    let q = 0;
-    const hCum = { g: 0, b: 0 };
-    const aCum = { g: 0, b: 0 };
-
-    intervalRef.current = setInterval(() => {
-      if (q >= 4) {
-        setHScore({ g: myFinalG, b: myFinalB });
-        setAScore({ g: oppFinalG, b: oppFinalB });
-        const myT = myFinalG*6+myFinalB, oppT = oppFinalG*6+oppFinalB;
-        setEvents(prev => [{
-          q: 4, type: "ft",
-          text: `FULL TIME: ${club.short} ${myFinalG}.${myFinalB} (${myT}) — ${opp.short} ${oppFinalG}.${oppFinalB} (${oppT}). ${myT > oppT ? club.short+" WIN!" : oppT > myT ? opp.short+" WIN!" : "DRAW!"}`,
-          color: myT > oppT ? "#4AE89A" : myT < oppT ? "#E84A6F" : "#E89A4A"
-        }, ...prev].slice(0,20));
-        clearInterval(intervalRef.current);
-        setSimState("done");
-        return;
-      }
-
-      const myQG  = isHome ? qData.hG[q] : qData.aG[q];
-      const myQB  = isHome ? qData.hB[q] : qData.aB[q];
-      const oppQG = isHome ? qData.aG[q] : qData.hG[q];
-      const oppQB = isHome ? qData.aB[q] : qData.hB[q];
-
-      hCum.g += myQG; hCum.b += myQB;
-      aCum.g += oppQG; aCum.b += oppQB;
-      setHScore({ g: hCum.g, b: hCum.b });
-      setAScore({ g: aCum.g, b: aCum.b });
-      setQuarter(q + 1);
-
-      const newEvents = [];
-      const scorer = myPlayers.length > 0 ? pName(pick(myPlayers)) : club.short;
-      if (myQG > 0) newEvents.push({ q: q+1, type:"goal", text: pick(GOAL_EVENTS_HOME)(scorer), color: "#4AE89A" });
-      if (myQB > 0 && rng() > 0.5) newEvents.push({ q: q+1, type:"behind", text: pick(BEHIND_EVENTS_HOME)(scorer), color: "#94A3B8" });
-      if (oppQG > 0) newEvents.push({ q: q+1, type:"opp_goal", text: pick(GOAL_EVENTS_AWAY)(opp.short), color: "#E84A6F" });
-      if (newEvents.length === 0) newEvents.push({ q: q+1, type:"neutral", text: pick(NEUTRAL_EVENTS), color: "#94A3B8" });
-
-      // Momentum commentary
-      const myQT = myQG*6+myQB, oppQT = oppQG*6+oppQB;
-      if (myQT - oppQT >= 20) newEvents.push({ q: q+1, type:"momentum", text: `Dominant quarter from ${club.short} — they've taken control!`, color: "#4AE89A" });
-      else if (oppQT - myQT >= 20) newEvents.push({ q: q+1, type:"momentum", text: `${opp.short} running riot in Q${q+1}. Big comeback on the cards?`, color: "#E84A6F" });
-
-      setEvents(prev => [...newEvents.reverse(), ...prev].slice(0, 20));
-      q++;
-    }, 1400);
-  }
-  useEffect(() => () => intervalRef.current && clearInterval(intervalRef.current), []);
-
-  const myTotal = hScore.g * 6 + hScore.b;
-  const oppTotal = aScore.g * 6 + aScore.b;
-  const winning = myTotal > oppTotal;
-  const scoreColor = simState === "idle" ? "#CBD5E1" : winning ? "#4AE89A" : myTotal === oppTotal ? "#E89A4A" : "#E84A6F";
-  return (
-    <div className="anim-in space-y-4">
-      {/* Scoreboard */}
-      <div className="rounded-2xl overflow-hidden border border-[#E2E8F0] shadow-sm">
-        <div className="px-6 py-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] bg-[#F8FAFC]" style={{borderBottom:"1px solid #E2E8F0"}}>
-          <span className="text-[#64748B]">{league.short} · Round {career.week + 1}</span>
-          <Pill color={simState === "playing" ? "#E84A6F" : simState === "done" ? "#4AE89A" : "#94A3B8"}>
-            {simState === "playing" ? `● LIVE Q${quarter}` : simState === "done" ? "✓ FULL TIME" : "PRE-GAME"}
-          </Pill>
-          <span className="text-[#64748B]">{isHome ? "🏠 Home" : "✈️ Away"}</span>
-        </div>
-        <div className="grid grid-cols-3 items-center gap-4 px-6 py-6" style={{background:"linear-gradient(180deg,#F0FDF4,#FFFFFF 70%)"}}>
-          <div className="text-center">
-            <Jersey kit={career.kits.home} size={80} />
-            <div className="font-['Bebas_Neue'] text-xl text-[#0F172A] mt-1">{club.short}</div>
-            <div className="text-[10px] text-[#94A3B8]">Str {Math.round(myRating)}</div>
-          </div>
-          <div className="text-center">
-            <div className="font-['Bebas_Neue'] leading-none text-7xl" style={{color: scoreColor}}>
-              {myTotal}<span className="text-[#CBD5E1] text-5xl mx-1">–</span>{oppTotal}
-            </div>
-            <div className="font-mono text-sm text-[#64748B] mt-1">{hScore.g}.{hScore.b} — {aScore.g}.{aScore.b}</div>
-            {simState !== "idle" && (
-              <div className="mt-1.5 text-xs font-bold" style={{color: scoreColor}}>
-                {myTotal > oppTotal ? `${club.short} +${myTotal-oppTotal}` : myTotal < oppTotal ? `${opp.short} +${oppTotal-myTotal}` : "LEVEL"}
-              </div>
-            )}
-          </div>
-          <div className="text-center">
-            <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center font-['Bebas_Neue'] text-2xl"
-              style={{background:`linear-gradient(135deg,${opp.colors[0]},${opp.colors[1]})`, color:opp.colors[2]}}>
-              {opp.short}
-            </div>
-            <div className="font-['Bebas_Neue'] text-xl text-[#0F172A] mt-1">{opp.short}</div>
-            <div className="text-[10px] text-[#94A3B8]">Str {Math.round(oppRating)}</div>
-          </div>
-        </div>
-        <div className="px-6 py-2.5 flex items-center gap-2 bg-[#F8FAFC]" style={{borderTop:"1px solid #E2E8F0"}}>
-          <span className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] w-14">Quarter</span>
-          {[1,2,3,4].map(q => (
-            <div key={q} className="flex-1 h-2 rounded-full transition-all" style={{background: q < quarter ? "#E89A4A" : q === quarter && simState==="playing" ? "#FCD34D88" : "#E2E8F0"}} />
-          ))}
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* Match Feed */}
-        <div className={`${css.panel} p-5 md:col-span-2`}>
-          <h3 className="font-['Bebas_Neue'] text-2xl text-[#0F172A] mb-3">MATCH FEED</h3>
-          <div className="space-y-1.5 max-h-80 overflow-y-auto">
-            {events.length === 0 && simState === "idle" && (
-              <div className="text-center py-10">
-                <Activity className="w-8 h-8 mx-auto mb-2 text-[#E2E8F0]" />
-                <div className="text-sm text-[#94A3B8]">Select a tactic and press <span className="text-[#E89A4A] font-bold">PLAY MATCH</span></div>
-              </div>
-            )}
-            {events.map((e, i) => (
-              <div key={i} className="flex gap-3 p-3 rounded-xl text-sm" style={{background:"#F8FAFC", borderLeft:`3px solid ${e.color}`}}>
-                <span className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] mt-0.5 w-5">Q{e.q}</span>
-                <span className="flex-1 font-medium leading-snug" style={{color: e.type==="neutral"||e.type==="behind" ? "#64748B" : e.color}}>{e.text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="space-y-3">
-          {simState === "idle" && (
-            <div className={`${css.panel} p-4`}>
-              <div className={`${css.label} mb-3`}>Game Plan</div>
-              <div className="space-y-2">
-                {Object.entries(TACTIC_INFO).map(([key, t]) => (
-                  <button key={key} onClick={()=>setTactic(key)}
-                    className="w-full text-left p-3 rounded-xl transition-all"
-                    style={{background: tactic===key ? `${t.color}12` : "#F8FAFC", border:`1.5px solid ${tactic===key ? t.color : "#E2E8F0"}`}}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{t.icon}</span>
-                      <span className="font-bold text-sm" style={{color: tactic===key ? t.color : "#0F172A"}}>{t.label}</span>
-                      {tactic===key && <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded" style={{background:t.color+"22",color:t.color}}>✓ SELECTED</span>}
-                    </div>
-                    <div className="text-[10px] text-[#94A3B8] mt-0.5 ml-6">{t.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {simState === "idle" && (
-            <div className={`${css.panel} p-4`}>
-              <div className={css.label}>Match Preview</div>
-              <div className="mt-2 font-bold text-sm">{favoured ? `${favoured} favoured` : "Even contest"}</div>
-              <div className="text-[11px] text-[#64748B]">Rating diff: {Number(diff)>0?"+":""}{diff}</div>
-              <div className="text-[11px] text-[#64748B] mt-1">{career.lineup.length}/22 in lineup</div>
-            </div>
-          )}
-          <div className={`${css.panel} p-4`}>
-            {simState === "idle" && (
-              <button onClick={startSim} className={`${css.btnPrimary} w-full py-3 text-base glow flex items-center justify-center gap-2`}>
-                <Play className="w-5 h-5" />PLAY MATCH
-              </button>
-            )}
-            {simState === "playing" && (
-              <button disabled className="w-full py-3 rounded-xl bg-[#F1F5F9] text-[#94A3B8] font-bold">⏱ SIMULATING…</button>
-            )}
-            {simState === "done" && (
-              <button onClick={onAdvance} className={`${css.btnPrimary} w-full py-3 text-base flex items-center justify-center gap-2`}>
-                <ArrowRight className="w-5 h-5" />NEXT WEEK
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
 // CLUB SCREEN — finances, sponsors, kits, facilities, staff
 // ============================================================================
 function ClubScreen({ career, club, updateCareer, tab, setTab }) {
@@ -2164,6 +2163,9 @@ function FinancesTab({ career }) {
   const gateRev = Math.round(career.finance.annualIncome * 0.4);
   const broadcastRev = Math.round(career.finance.annualIncome * 0.35);
   const annualNet = (gateRev + broadcastRev + sponsors) - (wages + staffWages + facilityCosts);
+  const wageCap = career.finance.wageBudget || 0;
+  const wagePct = wageCap > 0 ? Math.min(100, Math.round((wages / wageCap) * 100)) : 0;
+  const wageCapColor = wagePct >= 95 ? "#E84A6F" : wagePct >= 80 ? "#E89A4A" : "#4AE89A";
   return (
     <div className="space-y-4">
       <div className="grid md:grid-cols-4 gap-4">
@@ -2172,6 +2174,26 @@ function FinancesTab({ career }) {
         <Stat label="Wage Bill" value={fmtK(wages + staffWages)} sub="players + staff" accent="#E89A4A" />
         <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="#4ADBE8" />
       </div>
+
+      {/* Salary Cap Bar */}
+      {wageCap > 0 && (
+        <div className={`${css.panel} p-5`}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className={`${css.h1} text-2xl`}>SALARY CAP</h3>
+            <span className="text-xs font-bold" style={{color: wageCapColor}}>{wagePct}% used</span>
+          </div>
+          <div className="flex justify-between text-xs text-[#64748B] mb-2">
+            <span>Player wages: <span className="font-bold text-[#0F172A]">{fmtK(wages)}</span></span>
+            <span>Cap: <span className="font-bold text-[#0F172A]">{fmtK(wageCap)}</span></span>
+          </div>
+          <div className="h-4 rounded-full overflow-hidden" style={{background:"#F1F5F9"}}>
+            <div className="h-full rounded-full transition-all" style={{width:`${wagePct}%`, background: wageCapColor}} />
+          </div>
+          <div className="text-xs text-[#64748B] mt-2">
+            {fmtK(wageCap - wages)} remaining · {wagePct >= 95 ? '⚠️ Near cap — limited signing ability' : wagePct >= 80 ? 'Cap tightening — plan ahead' : 'Healthy cap space available'}
+          </div>
+        </div>
+      )}
       <div className="grid md:grid-cols-2 gap-4">
         <div className={`${css.panel} p-5`}>
           <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (ANNUAL)</h3>
@@ -2574,21 +2596,44 @@ function RecruitScreen({ career, club, updateCareer, tab, setTab }) {
 function TradeTab({ career, updateCareer }) {
   const [filter, setFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("overall");
+  const [negotiating, setNegotiating] = useState(null); // { playerId, wage, years, counterUsed }
   const pool = career.tradePool || [];
   const filtered = pool.filter(p => filter === "ALL" || p.position === filter);
   const sorted = [...filtered].sort((a,b) => sortBy === "overall" ? b.overall - a.overall : sortBy === "value" ? b.value - a.value : a.age - b.age);
 
-  const acquire = (p) => {
+  const currentWages = career.squad.reduce((a, p) => a + p.wage, 0);
+  const wageCap = career.finance.wageBudget || Infinity;
+
+  const openNegotiation = (p) => {
+    const demandedWage  = Math.round(p.wage * (1.05 + Math.random() * 0.2));
+    const demandedYears = 1 + Math.floor(Math.random() * 3);
+    setNegotiating({ playerId: p.id, wage: demandedWage, years: demandedYears, counterUsed: false });
+  };
+
+  const acceptDeal = (p) => {
     if (career.finance.transferBudget < p.value) return;
     if (career.squad.length >= 40) return;
-    const newSquad = [...career.squad, { ...p, id: Date.now() + Math.random() }];
-    const newPool = pool.filter(x => x.id !== p.id);
+    if (currentWages + negotiating.wage > wageCap) return;
+    const signedPlayer = { ...p, id: Date.now() + Math.random(), wage: negotiating.wage, contract: negotiating.years };
     updateCareer({
-      squad: newSquad,
-      tradePool: newPool,
+      squad: [...career.squad, signedPlayer],
+      tradePool: pool.filter(x => x.id !== p.id),
       finance: { ...career.finance, transferBudget: career.finance.transferBudget - p.value, cash: career.finance.cash - Math.round(p.value * 0.3) },
-      news: [{ week: career.week, type: "win", text: `🤝 Traded in ${p.firstName} ${p.lastName} (${p.overall} OVR) from ${p.fromClub} for ${fmtK(p.value)}` }, ...career.news].slice(0,15),
+      news: [{ week: career.week, type: "win", text: `🤝 Signed ${p.firstName} ${p.lastName} (${p.overall} OVR) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr` }, ...career.news].slice(0,15),
     });
+    setNegotiating(null);
+  };
+
+  const counterOffer = (p) => {
+    if (negotiating.counterUsed) return;
+    const counterWage = Math.round(negotiating.wage * 0.88);
+    const success = Math.random() < 0.65;
+    if (success) {
+      setNegotiating({ ...negotiating, wage: counterWage, counterUsed: true });
+    } else {
+      setNegotiating(null);
+      updateCareer({ news: [{ week: career.week, type: "info", text: `❌ ${p.firstName} ${p.lastName} rejected your counter-offer and walked away` }, ...career.news].slice(0,15) });
+    }
   };
 
   return (
@@ -2631,21 +2676,65 @@ function TradeTab({ career, updateCareer }) {
         <div className="max-h-[60vh] overflow-y-auto">
           {sorted.map(p => {
             const canAfford = career.finance.transferBudget >= p.value;
+            const capRoom = wageCap - currentWages;
+            const isNeg = negotiating?.playerId === p.id;
+            const capBlock = negotiating && isNeg && (currentWages + negotiating.wage > wageCap);
             return (
-              <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid #E2E8F0"}} onMouseEnter={e=>e.currentTarget.style.background="#F8FAFC"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                <div className="col-span-3">
-                  <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
-                  <div className="text-[10px] text-[#64748B]">Wage: ${(p.wage/1000).toFixed(0)}k/yr</div>
+              <div key={p.id}>
+                <div className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom: isNeg ? "none" : "1px solid #E2E8F0"}} onMouseEnter={e=>e.currentTarget.style.background="#F8FAFC"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div className="col-span-3">
+                    <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
+                    <div className="text-[10px] text-[#64748B]">Listed wage: {fmtK(p.wage)}/yr</div>
+                  </div>
+                  <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
+                  <div className="col-span-1 text-sm">{p.age}</div>
+                  <div className="col-span-1"><RatingDot value={p.overall} /></div>
+                  <div className="col-span-1 text-sm text-[#4AE89A]">{p.potential}</div>
+                  <div className="col-span-2 text-xs text-[#64748B]">{p.fromClub}</div>
+                  <div className="col-span-2 text-right text-sm font-mono font-bold" style={{color: canAfford ? "#4AE89A" : "#E84A6F"}}>{fmtK(p.value)}</div>
+                  <div className="col-span-1 flex justify-end">
+                    {isNeg
+                      ? <button onClick={()=>setNegotiating(null)} className="text-xs text-[#94A3B8] hover:text-[#64748B] px-2 py-1">✕</button>
+                      : <button onClick={()=>canAfford ? openNegotiation(p) : null} disabled={!canAfford} className={canAfford ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-[#F1F5F9] text-[#CBD5E1]"}>{canAfford ? "Negotiate" : "Too dear"}</button>
+                    }
+                  </div>
                 </div>
-                <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
-                <div className="col-span-1 text-sm">{p.age}</div>
-                <div className="col-span-1"><RatingDot value={p.overall} /></div>
-                <div className="col-span-1 text-sm text-[#4AE89A]">{p.potential}</div>
-                <div className="col-span-2 text-xs text-[#64748B]">{p.fromClub}</div>
-                <div className="col-span-2 text-right text-sm font-mono font-bold" style={{color: canAfford ? "#4AE89A" : "#E84A6F"}}>{fmtK(p.value)}</div>
-                <div className="col-span-1 flex justify-end">
-                  <button onClick={()=>acquire(p)} disabled={!canAfford} className={canAfford ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-[#F1F5F9] text-[#CBD5E1]"}>{canAfford ? "Acquire" : "Too dear"}</button>
-                </div>
+                {isNeg && (
+                  <div className="mx-4 mb-3 rounded-xl p-4" style={{background:"#F0FDF4", border:"1px solid #BBF7D0"}}>
+                    <div className="text-xs font-bold text-[#166534] mb-2">📋 {p.firstName} {p.lastName}'s demands</div>
+                    <div className="flex gap-6 mb-3">
+                      <div>
+                        <div className="text-[10px] text-[#64748B] uppercase tracking-wider">Wage demand</div>
+                        <div className="font-['Bebas_Neue'] text-xl text-[#0F172A]">{fmtK(negotiating.wage)}<span className="text-sm font-sans">/yr</span></div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-[#64748B] uppercase tracking-wider">Contract length</div>
+                        <div className="font-['Bebas_Neue'] text-xl text-[#0F172A]">{negotiating.years}<span className="text-sm font-sans"> yr</span></div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-[#64748B] uppercase tracking-wider">Cap room after</div>
+                        <div className={`font-['Bebas_Neue'] text-xl ${capBlock ? 'text-[#E84A6F]' : 'text-[#4AE89A]'}`}>{fmtK(capRoom - negotiating.wage)}</div>
+                      </div>
+                    </div>
+                    {capBlock && <div className="text-xs text-[#E84A6F] mb-2">⚠️ Signing this player would exceed your salary cap.</div>}
+                    <div className="flex gap-2">
+                      <button onClick={()=>acceptDeal(p)} disabled={capBlock} className={capBlock ? "px-4 py-2 rounded-lg text-xs bg-[#F1F5F9] text-[#CBD5E1]" : `${css.btnPrimary} text-xs px-4 py-2`}>
+                        ✅ Accept deal
+                      </button>
+                      {!negotiating.counterUsed && (
+                        <button onClick={()=>counterOffer(p)} className="px-4 py-2 rounded-lg text-xs font-bold bg-[#FFF7ED] text-[#D97706] border border-[#FDE68A] hover:bg-[#FEF3C7]">
+                          🔄 Counter (−12%)
+                        </button>
+                      )}
+                      {negotiating.counterUsed && (
+                        <span className="px-4 py-2 text-xs text-[#94A3B8]">Counter used — accept or walk away</span>
+                      )}
+                      <button onClick={()=>setNegotiating(null)} className="px-4 py-2 rounded-lg text-xs font-bold bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]">
+                        Walk away
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
