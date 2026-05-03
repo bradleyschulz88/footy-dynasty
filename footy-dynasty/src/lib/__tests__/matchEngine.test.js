@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { seedRng } from '../rng.js';
-import { teamRating, simMatch, aiClubRating } from '../matchEngine.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating } from '../matchEngine.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -203,5 +203,98 @@ describe('aiClubRating', () => {
     const r1 = aiClubRating('col', 1);
     const r2 = aiClubRating('col', 1);
     expect(r1).toBe(r2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// simMatchWithQuarters
+// ---------------------------------------------------------------------------
+describe('simMatchWithQuarters', () => {
+  const home = { rating: 70 };
+  const away = { rating: 65 };
+
+  it('returns a result with a quarters array of length 4', () => {
+    seedRng(42);
+    const r = simMatchWithQuarters(home, away, false, 70);
+    expect(Array.isArray(r.quarters)).toBe(true);
+    expect(r.quarters.length).toBe(4);
+  });
+
+  it('each quarter has the expected shape', () => {
+    seedRng(42);
+    const r = simMatchWithQuarters(home, away, false, 70);
+    r.quarters.forEach(q => {
+      expect(q).toHaveProperty('homeGoals');
+      expect(q).toHaveProperty('homeBehinds');
+      expect(q).toHaveProperty('homeTotal');
+      expect(q).toHaveProperty('awayGoals');
+      expect(q).toHaveProperty('awayBehinds');
+      expect(q).toHaveProperty('awayTotal');
+    });
+  });
+
+  it('sum of quarter homeGoals equals result homeGoals', () => {
+    seedRng(42);
+    const r = simMatchWithQuarters(home, away, false, 70);
+    const sum = r.quarters.reduce((a, q) => a + q.homeGoals, 0);
+    expect(sum).toBe(r.homeGoals);
+  });
+
+  it('sum of quarter awayGoals equals result awayGoals', () => {
+    seedRng(42);
+    const r = simMatchWithQuarters(home, away, false, 70);
+    const sum = r.quarters.reduce((a, q) => a + q.awayGoals, 0);
+    expect(sum).toBe(r.awayGoals);
+  });
+
+  it('sum of quarter homeBehinds equals result homeBehinds', () => {
+    seedRng(42);
+    const r = simMatchWithQuarters(home, away, false, 70);
+    const sum = r.quarters.reduce((a, q) => a + q.homeBehinds, 0);
+    expect(sum).toBe(r.homeBehinds);
+  });
+
+  it('sum of quarter awayBehinds equals result awayBehinds', () => {
+    seedRng(42);
+    const r = simMatchWithQuarters(home, away, false, 70);
+    const sum = r.quarters.reduce((a, q) => a + q.awayBehinds, 0);
+    expect(sum).toBe(r.awayBehinds);
+  });
+
+  it('all quarter score components are non-negative', () => {
+    seedRng(42);
+    const r = simMatchWithQuarters(home, away, false, 70);
+    r.quarters.forEach(q => {
+      expect(q.homeGoals).toBeGreaterThanOrEqual(0);
+      expect(q.homeBehinds).toBeGreaterThanOrEqual(0);
+      expect(q.homeTotal).toBeGreaterThanOrEqual(0);
+      expect(q.awayGoals).toBeGreaterThanOrEqual(0);
+      expect(q.awayBehinds).toBeGreaterThanOrEqual(0);
+      expect(q.awayTotal).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  it('top-level homeTotal, awayTotal, and winner match underlying simMatch', () => {
+    seedRng(42);
+    const base = simMatch(home, away, false, 70);
+    seedRng(42);
+    const r = simMatchWithQuarters(home, away, false, 70);
+    expect(r.homeTotal).toBe(base.homeTotal);
+    expect(r.awayTotal).toBe(base.awayTotal);
+    expect(r.winner).toBe(base.winner);
+  });
+
+  it('top-level scores are deterministic from the same seed', () => {
+    seedRng(42);
+    const a = simMatchWithQuarters(home, away, false, 70);
+    seedRng(42);
+    const b = simMatchWithQuarters(home, away, false, 70);
+    expect(a.homeGoals).toBe(b.homeGoals);
+    expect(a.awayGoals).toBe(b.awayGoals);
+    expect(a.homeBehinds).toBe(b.homeBehinds);
+    expect(a.awayBehinds).toBe(b.awayBehinds);
+    expect(a.homeTotal).toBe(b.homeTotal);
+    expect(a.awayTotal).toBe(b.awayTotal);
+    expect(a.winner).toBe(b.winner);
   });
 });
