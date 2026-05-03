@@ -152,12 +152,12 @@ export default function AFLManager() {
 
     // ── Training event ──
     if (ev.type === 'training') {
-      const { squad, gains, staffName, staffRating } = applyTraining(
+      const { squad, gains, staffName, staffRating, devNotes } = applyTraining(
         c.squad, c.lineup, ev.subtype, c.staff
       );
       c.squad = squad;
       const info = TRAINING_INFO[ev.subtype] || {};
-      c.lastEvent = { type: 'training', subtype: ev.subtype, name: info.name || ev.subtype, date: ev.date, gains, staffName, staffRating };
+      c.lastEvent = { type: 'training', subtype: ev.subtype, name: info.name || ev.subtype, date: ev.date, gains, staffName, staffRating, devNotes };
       setCareer(c);
       setScreen('hub');
       return;
@@ -165,8 +165,30 @@ export default function AFLManager() {
 
     // ── Key event ──
     if (ev.type === 'key_event') {
+      const extraNews = [];
+      // AI transfer activity
+      if (ev.name === 'Transfer Window Opens') {
+        const aiClubs = (league.clubs || []).filter(cl => cl.id !== c.clubId).slice(0, 4);
+        aiClubs.forEach(cl => {
+          const pool = c.tradePool || [];
+          const target = pool[rand(0, Math.max(0, pool.length - 1))];
+          if (target) extraNews.push({ week: c.week, type: 'info', text: `🔀 ${cl.name} linked with ${target.firstName} ${target.lastName} (${target.overall} OVR)` });
+        });
+      }
+      if (ev.name === 'Transfer Window Closes') {
+        // Refresh trade pool — simulate AI clubs completing signings
+        c.tradePool = generateTradePool(c.leagueKey, c.season + ev.date.slice(0, 4) * 0);
+        const aiClubs = (league.clubs || []).filter(cl => cl.id !== c.clubId).slice(0, 3);
+        aiClubs.forEach(cl => {
+          extraNews.push({ week: c.week, type: 'info', text: `✍️ ${cl.name} complete their pre-season recruitment` });
+        });
+      }
       c.lastEvent = { type: 'key_event', name: ev.name, description: ev.description, action: ev.action, date: ev.date };
-      c.news = [{ week: c.week, type: 'info', text: `📅 ${ev.name}: ${ev.description}` }, ...(c.news || [])].slice(0, 15);
+      c.news = [
+        { week: c.week, type: 'info', text: `📅 ${ev.name}: ${ev.description}` },
+        ...extraNews,
+        ...(c.news || []),
+      ].slice(0, 20);
       setCareer(c);
       setScreen('hub');
       return;
@@ -1037,6 +1059,11 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
                 <div className="text-xs text-[#64748B] mt-1">Led by {lastEv.staffName} (Rating: {lastEv.staffRating}) · Gains:&nbsp;
                   {Object.entries(lastEv.gains || {}).map(([k, v]) => `${k} +${v}`).join(', ') || '—'}
                 </div>
+                {lastEv.devNotes && lastEv.devNotes.length > 0 && (
+                  <div className="text-xs text-[#4ADE80] mt-1 leading-relaxed">
+                    {lastEv.devNotes.join(' · ')}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1244,6 +1271,24 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
           </div>
         </div>
       )}
+
+      {/* Contract Expiry Warnings */}
+      {(() => {
+        const expiring = career.squad.filter(p => (career.lineup || []).includes(p.id) && p.contract <= 1);
+        if (!expiring.length) return null;
+        return (
+          <div className="rounded-2xl p-4 flex items-start gap-3" style={{background:"#FFFBEB", border:"1.5px solid #FDE68A"}}>
+            <span className="text-2xl flex-shrink-0">📋</span>
+            <div>
+              <div className="font-bold text-sm text-[#D97706]">Contracts Expiring — Act Now</div>
+              <div className="text-xs text-[#92400E] mt-1">
+                {expiring.map(p => `${p.firstName} ${p.lastName} (${p.contract === 0 ? 'Out of contract' : '1 year left'})`).join(' · ')}
+              </div>
+              <button onClick={() => setScreen('squad')} className="mt-2 text-xs font-bold text-[#D97706] hover:text-[#B45309]">Manage contracts →</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Quick links */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -2118,6 +2163,9 @@ function FinancesTab({ career }) {
   const gateRev = Math.round(career.finance.annualIncome * 0.4);
   const broadcastRev = Math.round(career.finance.annualIncome * 0.35);
   const annualNet = (gateRev + broadcastRev + sponsors) - (wages + staffWages + facilityCosts);
+  const wageCap = career.finance.wageBudget || 0;
+  const wagePct = wageCap > 0 ? Math.min(100, Math.round((wages / wageCap) * 100)) : 0;
+  const wageCapColor = wagePct >= 95 ? "#E84A6F" : wagePct >= 80 ? "#E89A4A" : "#4AE89A";
   return (
     <div className="space-y-4">
       <div className="grid md:grid-cols-4 gap-4">
@@ -2126,6 +2174,26 @@ function FinancesTab({ career }) {
         <Stat label="Wage Bill" value={fmtK(wages + staffWages)} sub="players + staff" accent="#E89A4A" />
         <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="#4ADBE8" />
       </div>
+
+      {/* Salary Cap Bar */}
+      {wageCap > 0 && (
+        <div className={`${css.panel} p-5`}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className={`${css.h1} text-2xl`}>SALARY CAP</h3>
+            <span className="text-xs font-bold" style={{color: wageCapColor}}>{wagePct}% used</span>
+          </div>
+          <div className="flex justify-between text-xs text-[#64748B] mb-2">
+            <span>Player wages: <span className="font-bold text-[#0F172A]">{fmtK(wages)}</span></span>
+            <span>Cap: <span className="font-bold text-[#0F172A]">{fmtK(wageCap)}</span></span>
+          </div>
+          <div className="h-4 rounded-full overflow-hidden" style={{background:"#F1F5F9"}}>
+            <div className="h-full rounded-full transition-all" style={{width:`${wagePct}%`, background: wageCapColor}} />
+          </div>
+          <div className="text-xs text-[#64748B] mt-2">
+            {fmtK(wageCap - wages)} remaining · {wagePct >= 95 ? '⚠️ Near cap — limited signing ability' : wagePct >= 80 ? 'Cap tightening — plan ahead' : 'Healthy cap space available'}
+          </div>
+        </div>
+      )}
       <div className="grid md:grid-cols-2 gap-4">
         <div className={`${css.panel} p-5`}>
           <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (ANNUAL)</h3>
@@ -2528,21 +2596,44 @@ function RecruitScreen({ career, club, updateCareer, tab, setTab }) {
 function TradeTab({ career, updateCareer }) {
   const [filter, setFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("overall");
+  const [negotiating, setNegotiating] = useState(null); // { playerId, wage, years, counterUsed }
   const pool = career.tradePool || [];
   const filtered = pool.filter(p => filter === "ALL" || p.position === filter);
   const sorted = [...filtered].sort((a,b) => sortBy === "overall" ? b.overall - a.overall : sortBy === "value" ? b.value - a.value : a.age - b.age);
 
-  const acquire = (p) => {
+  const currentWages = career.squad.reduce((a, p) => a + p.wage, 0);
+  const wageCap = career.finance.wageBudget || Infinity;
+
+  const openNegotiation = (p) => {
+    const demandedWage  = Math.round(p.wage * (1.05 + Math.random() * 0.2));
+    const demandedYears = 1 + Math.floor(Math.random() * 3);
+    setNegotiating({ playerId: p.id, wage: demandedWage, years: demandedYears, counterUsed: false });
+  };
+
+  const acceptDeal = (p) => {
     if (career.finance.transferBudget < p.value) return;
     if (career.squad.length >= 40) return;
-    const newSquad = [...career.squad, { ...p, id: Date.now() + Math.random() }];
-    const newPool = pool.filter(x => x.id !== p.id);
+    if (currentWages + negotiating.wage > wageCap) return;
+    const signedPlayer = { ...p, id: Date.now() + Math.random(), wage: negotiating.wage, contract: negotiating.years };
     updateCareer({
-      squad: newSquad,
-      tradePool: newPool,
+      squad: [...career.squad, signedPlayer],
+      tradePool: pool.filter(x => x.id !== p.id),
       finance: { ...career.finance, transferBudget: career.finance.transferBudget - p.value, cash: career.finance.cash - Math.round(p.value * 0.3) },
-      news: [{ week: career.week, type: "win", text: `🤝 Traded in ${p.firstName} ${p.lastName} (${p.overall} OVR) from ${p.fromClub} for ${fmtK(p.value)}` }, ...career.news].slice(0,15),
+      news: [{ week: career.week, type: "win", text: `🤝 Signed ${p.firstName} ${p.lastName} (${p.overall} OVR) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr` }, ...career.news].slice(0,15),
     });
+    setNegotiating(null);
+  };
+
+  const counterOffer = (p) => {
+    if (negotiating.counterUsed) return;
+    const counterWage = Math.round(negotiating.wage * 0.88);
+    const success = Math.random() < 0.65;
+    if (success) {
+      setNegotiating({ ...negotiating, wage: counterWage, counterUsed: true });
+    } else {
+      setNegotiating(null);
+      updateCareer({ news: [{ week: career.week, type: "info", text: `❌ ${p.firstName} ${p.lastName} rejected your counter-offer and walked away` }, ...career.news].slice(0,15) });
+    }
   };
 
   return (
@@ -2585,21 +2676,65 @@ function TradeTab({ career, updateCareer }) {
         <div className="max-h-[60vh] overflow-y-auto">
           {sorted.map(p => {
             const canAfford = career.finance.transferBudget >= p.value;
+            const capRoom = wageCap - currentWages;
+            const isNeg = negotiating?.playerId === p.id;
+            const capBlock = negotiating && isNeg && (currentWages + negotiating.wage > wageCap);
             return (
-              <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid #E2E8F0"}} onMouseEnter={e=>e.currentTarget.style.background="#F8FAFC"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                <div className="col-span-3">
-                  <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
-                  <div className="text-[10px] text-[#64748B]">Wage: ${(p.wage/1000).toFixed(0)}k/yr</div>
+              <div key={p.id}>
+                <div className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom: isNeg ? "none" : "1px solid #E2E8F0"}} onMouseEnter={e=>e.currentTarget.style.background="#F8FAFC"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div className="col-span-3">
+                    <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
+                    <div className="text-[10px] text-[#64748B]">Listed wage: {fmtK(p.wage)}/yr</div>
+                  </div>
+                  <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
+                  <div className="col-span-1 text-sm">{p.age}</div>
+                  <div className="col-span-1"><RatingDot value={p.overall} /></div>
+                  <div className="col-span-1 text-sm text-[#4AE89A]">{p.potential}</div>
+                  <div className="col-span-2 text-xs text-[#64748B]">{p.fromClub}</div>
+                  <div className="col-span-2 text-right text-sm font-mono font-bold" style={{color: canAfford ? "#4AE89A" : "#E84A6F"}}>{fmtK(p.value)}</div>
+                  <div className="col-span-1 flex justify-end">
+                    {isNeg
+                      ? <button onClick={()=>setNegotiating(null)} className="text-xs text-[#94A3B8] hover:text-[#64748B] px-2 py-1">✕</button>
+                      : <button onClick={()=>canAfford ? openNegotiation(p) : null} disabled={!canAfford} className={canAfford ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-[#F1F5F9] text-[#CBD5E1]"}>{canAfford ? "Negotiate" : "Too dear"}</button>
+                    }
+                  </div>
                 </div>
-                <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
-                <div className="col-span-1 text-sm">{p.age}</div>
-                <div className="col-span-1"><RatingDot value={p.overall} /></div>
-                <div className="col-span-1 text-sm text-[#4AE89A]">{p.potential}</div>
-                <div className="col-span-2 text-xs text-[#64748B]">{p.fromClub}</div>
-                <div className="col-span-2 text-right text-sm font-mono font-bold" style={{color: canAfford ? "#4AE89A" : "#E84A6F"}}>{fmtK(p.value)}</div>
-                <div className="col-span-1 flex justify-end">
-                  <button onClick={()=>acquire(p)} disabled={!canAfford} className={canAfford ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-[#F1F5F9] text-[#CBD5E1]"}>{canAfford ? "Acquire" : "Too dear"}</button>
-                </div>
+                {isNeg && (
+                  <div className="mx-4 mb-3 rounded-xl p-4" style={{background:"#F0FDF4", border:"1px solid #BBF7D0"}}>
+                    <div className="text-xs font-bold text-[#166534] mb-2">📋 {p.firstName} {p.lastName}'s demands</div>
+                    <div className="flex gap-6 mb-3">
+                      <div>
+                        <div className="text-[10px] text-[#64748B] uppercase tracking-wider">Wage demand</div>
+                        <div className="font-['Bebas_Neue'] text-xl text-[#0F172A]">{fmtK(negotiating.wage)}<span className="text-sm font-sans">/yr</span></div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-[#64748B] uppercase tracking-wider">Contract length</div>
+                        <div className="font-['Bebas_Neue'] text-xl text-[#0F172A]">{negotiating.years}<span className="text-sm font-sans"> yr</span></div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-[#64748B] uppercase tracking-wider">Cap room after</div>
+                        <div className={`font-['Bebas_Neue'] text-xl ${capBlock ? 'text-[#E84A6F]' : 'text-[#4AE89A]'}`}>{fmtK(capRoom - negotiating.wage)}</div>
+                      </div>
+                    </div>
+                    {capBlock && <div className="text-xs text-[#E84A6F] mb-2">⚠️ Signing this player would exceed your salary cap.</div>}
+                    <div className="flex gap-2">
+                      <button onClick={()=>acceptDeal(p)} disabled={capBlock} className={capBlock ? "px-4 py-2 rounded-lg text-xs bg-[#F1F5F9] text-[#CBD5E1]" : `${css.btnPrimary} text-xs px-4 py-2`}>
+                        ✅ Accept deal
+                      </button>
+                      {!negotiating.counterUsed && (
+                        <button onClick={()=>counterOffer(p)} className="px-4 py-2 rounded-lg text-xs font-bold bg-[#FFF7ED] text-[#D97706] border border-[#FDE68A] hover:bg-[#FEF3C7]">
+                          🔄 Counter (−12%)
+                        </button>
+                      )}
+                      {negotiating.counterUsed && (
+                        <span className="px-4 py-2 text-xs text-[#94A3B8]">Counter used — accept or walk away</span>
+                      )}
+                      <button onClick={()=>setNegotiating(null)} className="px-4 py-2 rounded-lg text-xs font-bold bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]">
+                        Walk away
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

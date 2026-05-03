@@ -99,38 +99,73 @@ export const TRAINING_ROTATION = [
 ];
 
 // ---------------------------------------------------------------------------
-// applyTraining — returns { squad, gains, staffName, staffRating }
-// gains = { attrName: totalGain } across all lineup players
+// applyTraining — returns { squad, gains, staffName, staffRating, devNotes }
+// gains     = { attrName: totalGain } summed across all lineup players
+// devNotes  = string[] notable development events (youth boost, near cap, etc.)
 // ---------------------------------------------------------------------------
+function ageMult(age) {
+  if (age <= 21) return 1.5;
+  if (age <= 25) return 1.2;
+  if (age <= 29) return 1.0;
+  if (age <= 32) return 0.6;
+  return 0.3;
+}
+
 export function applyTraining(squad, lineup, subtype, staff) {
   const info = TRAINING_INFO[subtype];
   if (!info || !lineup?.length) {
-    return { squad, gains: {}, staffName: 'Unknown', staffRating: 60 };
+    return { squad, gains: {}, staffName: 'Unknown', staffRating: 60, devNotes: [] };
   }
 
   const staffMember = (staff || []).find(s => s.id === info.staffId);
   const staffRating = staffMember?.rating ?? 60;
   const staffName   = staffMember?.name   ?? 'Unknown Coach';
-  const scale       = staffRating / 75;
+  const baseScale   = staffRating / 75;
 
-  const gains = {};
+  const gains    = {};
+  const devNotes = [];
+
   const newSquad = squad.map(p => {
     if (!lineup.includes(p.id)) return p;
+
+    const age       = p.age      ?? 24;
+    const fitness   = p.fitness  ?? 90;
+    const potential = p.potential ?? 99;
+    const overall   = p.overall  ?? 60;
+
+    // Per-player multipliers
+    const ageScale     = ageMult(age);
+    const fitnessScale = fitness / 90;
+
+    // Soft ceiling: halve gains when within 3 of potential
+    const nearCap = overall >= potential - 3;
+    const capScale = nearCap ? 0.5 : 1.0;
+
+    const scale = baseScale * ageScale * fitnessScale * capScale;
+
     const updated = { ...p, attrs: { ...p.attrs } };
     info.attrs.forEach(attr => {
       if (attr in updated.attrs) {
-        const g = Math.max(0, Math.round((Math.random() * 1.5 + 0.5) * scale));
-        updated.attrs[attr] = Math.min(99, updated.attrs[attr] + g);
+        const raw = Math.max(0, Math.round((Math.random() * 1.5 + 0.5) * scale));
+        const g   = Math.min(raw, Math.max(0, potential - updated.attrs[attr]));
+        updated.attrs[attr] = Math.min(potential, updated.attrs[attr] + g);
         gains[attr] = (gains[attr] || 0) + g;
       }
     });
-    // Re-derive overall from attrs mean
+
+    // Re-derive overall
     const vals = Object.values(updated.attrs);
     updated.overall = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+
+    // Dev notes
+    const lastName = p.lastName || p.name?.split(' ').slice(-1)[0] || 'Player';
+    if (age <= 21)  devNotes.push(`${lastName} (age ${age}) — youth boost`);
+    else if (nearCap) devNotes.push(`${lastName} — near potential cap`);
+
     return updated;
   });
 
-  return { squad: newSquad, gains, staffName, staffRating };
+  return { squad: newSquad, gains, staffName, staffRating, devNotes };
 }
 
 // ---------------------------------------------------------------------------
