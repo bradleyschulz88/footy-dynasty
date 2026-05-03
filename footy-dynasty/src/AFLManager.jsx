@@ -351,7 +351,7 @@ export default function AFLManager() {
     }
 
     const newAlive = [];
-    const myRating = teamRating(c.squad, c.lineup, c.training, Object.values(c.facilities).reduce((a,f)=>a+f.level,0)/6, c.staff.reduce((a,s)=>a+s.rating,0)/c.staff.length);
+    const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
     const roundLabel = finalsLabel(c.finalsRound, c.finalsTotalRounds);
 
     for (const m of pairs) {
@@ -359,21 +359,33 @@ export default function AFLManager() {
       const isHome = m.home === c.clubId;
       const homeR = m.home === c.clubId ? myRating : aiClubRating(m.home, league.tier);
       const awayR = m.away === c.clubId ? myRating : aiClubRating(m.away, league.tier);
-      const result = simMatch({ rating: homeR }, { rating: awayR }, isHome, isHome ? myRating : awayR);
+      const result = isPlayerMatch
+        ? simMatchWithQuarters({ rating: homeR }, { rating: awayR }, isHome, myRating)
+        : simMatch({ rating: homeR }, { rating: awayR }, false, awayR);
       const winnerId = result.winner === "home" ? m.home : result.winner === "away" ? m.away : m.home;
       newAlive.push(winnerId);
       m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
 
       if (isPlayerMatch) {
         const playerWon = (isHome && result.winner === "home") || (!isHome && result.winner === "away");
-        const myScore = isHome ? result.homeTotal : result.awayTotal;
-        const oppScore = isHome ? result.awayTotal : result.homeTotal;
+        const myScore  = isHome ? result.homeTotal : result.awayTotal;
+        const oppScore = isHome ? result.awayTotal  : result.homeTotal;
         const opp = findClub(isHome ? m.away : m.home);
         c.news = [{ week: c.week, type: playerWon ? "win" : "loss",
           text: playerWon
             ? `✅ ${roundLabel} WIN! ${myScore} def ${opp?.short} ${oppScore}`
             : `❌ Eliminated in ${roundLabel}. ${opp?.short} ${oppScore} def ${myScore}` },
-          ...c.news].slice(0,15);
+          ...c.news].slice(0, 15);
+        c.inMatchDay = true;
+        c.currentMatchResult = {
+          ...result,
+          isHome, opp,
+          myTotal: myScore, oppTotal: oppScore,
+          won: playerWon, drew: myScore === oppScore,
+          isPreseason: false, label: roundLabel, isAFL: league.tier === 1,
+        };
+        c.lastEvent = { type: 'round', round: roundLabel, date: c.currentDate || '', isHome, opp,
+          result, myTotal: myScore, oppTotal: oppScore, won: playerWon, drew: myScore === oppScore };
       }
       c.finalsResults.push({ round: c.finalsRound, label: roundLabel, ...m });
     }
@@ -449,6 +461,14 @@ export default function AFLManager() {
         text: promoted ? `🏆 Promoted! Finished ${myPos}st in ${league.short}.` : relegated ? `⬇️ Relegated. Finished ${myPos}/${sorted.length}.` : `Season complete: finished ${myPos}/${sorted.length}` },
       ...c.news
     ].slice(0, 15);
+    // Regenerate event queue for the new season
+    const nextLeague = PYRAMID[c.leagueKey];
+    c.eventQueue = generateSeasonCalendar(c.season, nextLeague.clubs, c.fixtures, c.clubId);
+    c.currentDate = `${c.season - 1}-12-01`;
+    c.phase = 'preseason';
+    c.lastEvent = null;
+    c.inMatchDay = false;
+    c.currentMatchResult = null;
     return c;
   }
 
@@ -937,7 +957,11 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
             <h1 className="font-['Bebas_Neue'] text-5xl tracking-wide text-white leading-none">{club.name.toUpperCase()}</h1>
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <Pill color="#E89A4A">Tier {league.tier}</Pill>
-              <Pill color="#4ADBE8">Round {career.week + 1}</Pill>
+              {career.phase === 'preseason'
+                ? <Pill color="#4ADBE8">Pre-Season {career.season}</Pill>
+                : career.inFinals
+                  ? <Pill color="#E84A6F">Finals</Pill>
+                  : <Pill color="#4ADBE8">Round {career.week}</Pill>}
               <Pill color={posColor}>#{myLadderPos || "—"} on Ladder</Pill>
               {myRow && <Pill color="#64748B">{myRow.W}W {myRow.L}L {myRow.D}D</Pill>}
             </div>
@@ -1153,7 +1177,7 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
                   <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{background: c, boxShadow:`0 0 6px ${c}`}} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white leading-snug">{n.text}</div>
-                    <div className="text-[9px] text-[#94A3B8] uppercase tracking-widest mt-0.5 font-bold">Round {n.week}</div>
+                    <div className="text-[9px] text-[#94A3B8] uppercase tracking-widest mt-0.5 font-bold">{n.week === 0 ? 'Pre-Season' : `Round ${n.week}`}</div>
                   </div>
                 </div>
               );
@@ -1899,255 +1923,6 @@ function TrainingTab({ career, updateCareer }) {
   );
 }
 
-
-// ============================================================================
-// MATCH SCREEN — live simulation
-// ============================================================================
-// Match event templates
-const GOAL_EVENTS_HOME = [
-  p => `${p} marks strongly and nails the set shot — GOAL!`,
-  p => `${p} receives a handball, turns and threads it through — GOAL!`,
-  p => `${p} snaps brilliantly off the left boot — GOAL!`,
-  p => `${p} is on his own in the goal square — easy major!`,
-  p => `${p} runs into an open goal — GOAL!`,
-  p => `Beautiful chain of handballs, ${p} finishes — GOAL!`,
-];
-const BEHIND_EVENTS_HOME = [
-  p => `${p} goes for goal — narrowly off to the left. Behind.`,
-  p => `${p} hits the post! Unlucky — only a behind.`,
-  p => `${p} snaps but a defender spoils — forced behind.`,
-];
-const GOAL_EVENTS_AWAY = [
-  s => `${s} kick a goal against the run of play!`,
-  s => `${s} counter-attack — they snap one!`,
-  s => `${s} punish a turnover — GOAL!`,
-  s => `${s} mark it in the forward 50 and convert.`,
-];
-const NEUTRAL_EVENTS = [
-  "Contested ball in the centre — neither team getting clean possession.",
-  "Heavy rain making ball handling difficult — both defences on top.",
-  "Umpire controversy — free kick dispute holds up play.",
-  "Big collision in the ruck — trainers on the ground.",
-  "Interchange sub comes on — fresh legs for both sides.",
-  "Pressure building — who blinks first?",
-  "Both coaches throwing their arms around on the boundary.",
-];
-
-function MatchScreen({ career, club, league, onAdvance, updateCareer }) {
-  const [simState, setSimState] = useState("idle");
-  const [quarter, setQuarter] = useState(1);
-  const [hScore, setHScore] = useState({ g: 0, b: 0 });
-  const [aScore, setAScore] = useState({ g: 0, b: 0 });
-  const [events, setEvents] = useState([]);
-  const [tactic, setTactic] = useState(career.tacticChoice || "balanced");
-  const intervalRef = useRef(null);
-
-  const round = career.fixtures[career.week];
-  const myMatch = round ? round.find(m => m.home === career.clubId || m.away === career.clubId) : null;
-  if (!round || !myMatch) {
-    return <div className={`${css.panel} p-12 text-center text-[#64748B]`}>No match scheduled. <button onClick={onAdvance} className="text-[#E89A4A] underline font-semibold">Advance week →</button></div>;
-  }
-  const isHome = myMatch.home === career.clubId;
-  const opp = findClub(isHome ? myMatch.away : myMatch.home);
-  const TACTIC_BONUS = { attack: 6, balanced: 0, defensive: -4, flood: -2 };
-  const TACTIC_INFO = {
-    attack:    { label: "Attack",    icon: "⚡", desc: "+6 rating, more goals — risky if you fall behind", color: "#E84A6F" },
-    balanced:  { label: "Balanced",  icon: "⚖️", desc: "Standard setup — reliable across all game states", color: "#E89A4A" },
-    defensive: { label: "Defensive", icon: "🛡️", desc: "−4 rating, but limits opponents scoring — good vs top sides", color: "#4ADBE8" },
-    flood:     { label: "Flood",     icon: "🌊", desc: "Pack your defensive 50 — grind opponents down", color: "#A78BFA" },
-  };
-  const baseRating = teamRating(career.squad, career.lineup, career.training, Object.values(career.facilities).reduce((a,f)=>a+f.level,0)/6, career.staff.reduce((a,s)=>a+s.rating,0)/career.staff.length);
-  const myRating = baseRating + (TACTIC_BONUS[tactic] || 0);
-  const oppRating = aiClubRating(opp.id, league.tier);
-  const favoured = myRating > oppRating + 5 ? club.short : oppRating > myRating + 5 ? opp.short : null;
-  const diff = (myRating - oppRating).toFixed(1);
-
-  const myPlayers = career.squad.filter(p => career.lineup.includes(p.id));
-  const pName = p => p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || "Unknown");
-
-  function startSim() {
-    // Save tactic choice to career
-    updateCareer({ tacticChoice: tactic });
-    setSimState("playing");
-    setQuarter(1); setHScore({g:0,b:0}); setAScore({g:0,b:0}); setEvents([]);
-
-    const finalResult = simMatch(
-      { rating: isHome ? myRating : oppRating },
-      { rating: isHome ? oppRating : myRating },
-      isHome, isHome ? myRating : oppRating, TACTIC_BONUS[tactic] || 0
-    );
-    const myFinalG  = isHome ? finalResult.homeGoals : finalResult.awayGoals;
-    const myFinalB  = isHome ? finalResult.homeBehinds : finalResult.awayBehinds;
-    const oppFinalG = isHome ? finalResult.awayGoals : finalResult.homeGoals;
-    const oppFinalB = isHome ? finalResult.awayBehinds : finalResult.homeBehinds;
-    const qData     = finalResult.quarters;
-
-    let q = 0;
-    const hCum = { g: 0, b: 0 };
-    const aCum = { g: 0, b: 0 };
-
-    intervalRef.current = setInterval(() => {
-      if (q >= 4) {
-        setHScore({ g: myFinalG, b: myFinalB });
-        setAScore({ g: oppFinalG, b: oppFinalB });
-        const myT = myFinalG*6+myFinalB, oppT = oppFinalG*6+oppFinalB;
-        setEvents(prev => [{
-          q: 4, type: "ft",
-          text: `FULL TIME: ${club.short} ${myFinalG}.${myFinalB} (${myT}) — ${opp.short} ${oppFinalG}.${oppFinalB} (${oppT}). ${myT > oppT ? club.short+" WIN!" : oppT > myT ? opp.short+" WIN!" : "DRAW!"}`,
-          color: myT > oppT ? "#4AE89A" : myT < oppT ? "#E84A6F" : "#E89A4A"
-        }, ...prev].slice(0,20));
-        clearInterval(intervalRef.current);
-        setSimState("done");
-        return;
-      }
-
-      const myQG  = isHome ? qData.hG[q] : qData.aG[q];
-      const myQB  = isHome ? qData.hB[q] : qData.aB[q];
-      const oppQG = isHome ? qData.aG[q] : qData.hG[q];
-      const oppQB = isHome ? qData.aB[q] : qData.hB[q];
-
-      hCum.g += myQG; hCum.b += myQB;
-      aCum.g += oppQG; aCum.b += oppQB;
-      setHScore({ g: hCum.g, b: hCum.b });
-      setAScore({ g: aCum.g, b: aCum.b });
-      setQuarter(q + 1);
-
-      const newEvents = [];
-      const scorer = myPlayers.length > 0 ? pName(pick(myPlayers)) : club.short;
-      if (myQG > 0) newEvents.push({ q: q+1, type:"goal", text: pick(GOAL_EVENTS_HOME)(scorer), color: "#4AE89A" });
-      if (myQB > 0 && rng() > 0.5) newEvents.push({ q: q+1, type:"behind", text: pick(BEHIND_EVENTS_HOME)(scorer), color: "#94A3B8" });
-      if (oppQG > 0) newEvents.push({ q: q+1, type:"opp_goal", text: pick(GOAL_EVENTS_AWAY)(opp.short), color: "#E84A6F" });
-      if (newEvents.length === 0) newEvents.push({ q: q+1, type:"neutral", text: pick(NEUTRAL_EVENTS), color: "#94A3B8" });
-
-      // Momentum commentary
-      const myQT = myQG*6+myQB, oppQT = oppQG*6+oppQB;
-      if (myQT - oppQT >= 20) newEvents.push({ q: q+1, type:"momentum", text: `Dominant quarter from ${club.short} — they've taken control!`, color: "#4AE89A" });
-      else if (oppQT - myQT >= 20) newEvents.push({ q: q+1, type:"momentum", text: `${opp.short} running riot in Q${q+1}. Big comeback on the cards?`, color: "#E84A6F" });
-
-      setEvents(prev => [...newEvents.reverse(), ...prev].slice(0, 20));
-      q++;
-    }, 1400);
-  }
-  useEffect(() => () => intervalRef.current && clearInterval(intervalRef.current), []);
-
-  const myTotal = hScore.g * 6 + hScore.b;
-  const oppTotal = aScore.g * 6 + aScore.b;
-  const winning = myTotal > oppTotal;
-  const scoreColor = simState === "idle" ? "#CBD5E1" : winning ? "#4AE89A" : myTotal === oppTotal ? "#E89A4A" : "#E84A6F";
-  return (
-    <div className="anim-in space-y-4">
-      {/* Scoreboard */}
-      <div className="rounded-2xl overflow-hidden border border-[#E2E8F0] shadow-sm">
-        <div className="px-6 py-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.2em] bg-[#F8FAFC]" style={{borderBottom:"1px solid #E2E8F0"}}>
-          <span className="text-[#64748B]">{league.short} · Round {career.week + 1}</span>
-          <Pill color={simState === "playing" ? "#E84A6F" : simState === "done" ? "#4AE89A" : "#94A3B8"}>
-            {simState === "playing" ? `● LIVE Q${quarter}` : simState === "done" ? "✓ FULL TIME" : "PRE-GAME"}
-          </Pill>
-          <span className="text-[#64748B]">{isHome ? "🏠 Home" : "✈️ Away"}</span>
-        </div>
-        <div className="grid grid-cols-3 items-center gap-4 px-6 py-6" style={{background:"linear-gradient(180deg,#F0FDF4,#FFFFFF 70%)"}}>
-          <div className="text-center">
-            <Jersey kit={career.kits.home} size={80} />
-            <div className="font-['Bebas_Neue'] text-xl text-[#0F172A] mt-1">{club.short}</div>
-            <div className="text-[10px] text-[#94A3B8]">Str {Math.round(myRating)}</div>
-          </div>
-          <div className="text-center">
-            <div className="font-['Bebas_Neue'] leading-none text-7xl" style={{color: scoreColor}}>
-              {myTotal}<span className="text-[#CBD5E1] text-5xl mx-1">–</span>{oppTotal}
-            </div>
-            <div className="font-mono text-sm text-[#64748B] mt-1">{hScore.g}.{hScore.b} — {aScore.g}.{aScore.b}</div>
-            {simState !== "idle" && (
-              <div className="mt-1.5 text-xs font-bold" style={{color: scoreColor}}>
-                {myTotal > oppTotal ? `${club.short} +${myTotal-oppTotal}` : myTotal < oppTotal ? `${opp.short} +${oppTotal-myTotal}` : "LEVEL"}
-              </div>
-            )}
-          </div>
-          <div className="text-center">
-            <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center font-['Bebas_Neue'] text-2xl"
-              style={{background:`linear-gradient(135deg,${opp.colors[0]},${opp.colors[1]})`, color:opp.colors[2]}}>
-              {opp.short}
-            </div>
-            <div className="font-['Bebas_Neue'] text-xl text-[#0F172A] mt-1">{opp.short}</div>
-            <div className="text-[10px] text-[#94A3B8]">Str {Math.round(oppRating)}</div>
-          </div>
-        </div>
-        <div className="px-6 py-2.5 flex items-center gap-2 bg-[#F8FAFC]" style={{borderTop:"1px solid #E2E8F0"}}>
-          <span className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] w-14">Quarter</span>
-          {[1,2,3,4].map(q => (
-            <div key={q} className="flex-1 h-2 rounded-full transition-all" style={{background: q < quarter ? "#E89A4A" : q === quarter && simState==="playing" ? "#FCD34D88" : "#E2E8F0"}} />
-          ))}
-        </div>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* Match Feed */}
-        <div className={`${css.panel} p-5 md:col-span-2`}>
-          <h3 className="font-['Bebas_Neue'] text-2xl text-[#0F172A] mb-3">MATCH FEED</h3>
-          <div className="space-y-1.5 max-h-80 overflow-y-auto">
-            {events.length === 0 && simState === "idle" && (
-              <div className="text-center py-10">
-                <Activity className="w-8 h-8 mx-auto mb-2 text-[#E2E8F0]" />
-                <div className="text-sm text-[#94A3B8]">Select a tactic and press <span className="text-[#E89A4A] font-bold">PLAY MATCH</span></div>
-              </div>
-            )}
-            {events.map((e, i) => (
-              <div key={i} className="flex gap-3 p-3 rounded-xl text-sm" style={{background:"#F8FAFC", borderLeft:`3px solid ${e.color}`}}>
-                <span className="text-[9px] font-black uppercase tracking-widest text-[#94A3B8] mt-0.5 w-5">Q{e.q}</span>
-                <span className="flex-1 font-medium leading-snug" style={{color: e.type==="neutral"||e.type==="behind" ? "#64748B" : e.color}}>{e.text}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="space-y-3">
-          {simState === "idle" && (
-            <div className={`${css.panel} p-4`}>
-              <div className={`${css.label} mb-3`}>Game Plan</div>
-              <div className="space-y-2">
-                {Object.entries(TACTIC_INFO).map(([key, t]) => (
-                  <button key={key} onClick={()=>setTactic(key)}
-                    className="w-full text-left p-3 rounded-xl transition-all"
-                    style={{background: tactic===key ? `${t.color}12` : "#F8FAFC", border:`1.5px solid ${tactic===key ? t.color : "#E2E8F0"}`}}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{t.icon}</span>
-                      <span className="font-bold text-sm" style={{color: tactic===key ? t.color : "#0F172A"}}>{t.label}</span>
-                      {tactic===key && <span className="ml-auto text-[9px] font-black px-1.5 py-0.5 rounded" style={{background:t.color+"22",color:t.color}}>✓ SELECTED</span>}
-                    </div>
-                    <div className="text-[10px] text-[#94A3B8] mt-0.5 ml-6">{t.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {simState === "idle" && (
-            <div className={`${css.panel} p-4`}>
-              <div className={css.label}>Match Preview</div>
-              <div className="mt-2 font-bold text-sm">{favoured ? `${favoured} favoured` : "Even contest"}</div>
-              <div className="text-[11px] text-[#64748B]">Rating diff: {Number(diff)>0?"+":""}{diff}</div>
-              <div className="text-[11px] text-[#64748B] mt-1">{career.lineup.length}/22 in lineup</div>
-            </div>
-          )}
-          <div className={`${css.panel} p-4`}>
-            {simState === "idle" && (
-              <button onClick={startSim} className={`${css.btnPrimary} w-full py-3 text-base glow flex items-center justify-center gap-2`}>
-                <Play className="w-5 h-5" />PLAY MATCH
-              </button>
-            )}
-            {simState === "playing" && (
-              <button disabled className="w-full py-3 rounded-xl bg-[#F1F5F9] text-[#94A3B8] font-bold">⏱ SIMULATING…</button>
-            )}
-            {simState === "done" && (
-              <button onClick={onAdvance} className={`${css.btnPrimary} w-full py-3 text-base flex items-center justify-center gap-2`}>
-                <ArrowRight className="w-5 h-5" />NEXT WEEK
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ============================================================================
 // CLUB SCREEN — finances, sponsors, kits, facilities, staff
