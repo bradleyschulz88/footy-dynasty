@@ -6,7 +6,7 @@ import {
   Star, Zap, Heart, Target, Activity, Flame, Sparkles, Crown,
   TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
   Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
-  Map, Award, AlertCircle, ChevronsUp, FileText
+  Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw
 } from "lucide-react";
 import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub } from './data/pyramid.js';
@@ -118,10 +118,16 @@ class ErrorBoundary extends React.Component {
             <div className="text-3xl mb-3">💥</div>
             <div className="font-['Bebas_Neue'] text-2xl text-[#E84A6F] mb-2">Something went wrong</div>
             <pre className="text-xs text-[#94A3B8] bg-[#0F172A] rounded-lg p-3 overflow-auto max-h-48 mb-4">{this.state.error?.message}{'\n'}{this.state.error?.stack}</pre>
-            <button onClick={() => { this.setState({ error: null }); window.location.reload(); }}
-              className="px-4 py-2 rounded-lg text-sm font-bold bg-[#E84A6F] text-white hover:bg-[#F06070]">
-              Reload game
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => this.setState({ error: null })}
+                className="px-4 py-2 rounded-lg text-sm font-bold bg-[#E89A4A] text-white hover:bg-[#D07A2A]">
+                Try again
+              </button>
+              <button onClick={() => { localStorage.removeItem('footy-dynasty-career'); this.setState({ error: null }); }}
+                className="px-4 py-2 rounded-lg text-sm font-bold bg-[#E84A6F] text-white hover:bg-[#F06070]">
+                Start new game
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -137,10 +143,32 @@ export default function AFLManager() {
   return <ErrorBoundary><AFLManagerInner /></ErrorBoundary>;
 }
 
+const SAVE_KEY = 'footy-dynasty-career';
+
 function AFLManagerInner() {
-  const [career, setCareer] = useState(null); // null = no career
+  const [career, setCareer] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SAVE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
+
+  useEffect(() => {
+    try {
+      if (career) localStorage.setItem(SAVE_KEY, JSON.stringify(career));
+      else localStorage.removeItem(SAVE_KEY);
+    } catch { /* quota exceeded — silently ignore */ }
+  }, [career]);
+
+  function handleNewGame() {
+    if (!window.confirm('Abandon your current career and start a new game?')) return;
+    localStorage.removeItem(SAVE_KEY);
+    setCareer(null);
+    setScreen('hub');
+    setTab(null);
+  }
 
   // ============== CAREER SETUP ==============
   if (!career) return <CareerSetup onStart={(c) => { setCareer(c); setScreen("hub"); }} />;
@@ -620,7 +648,7 @@ function AFLManagerInner() {
   return (
     <div className="min-h-screen bg-[#F1F5F9] text-[#0F172A] font-['Sora',sans-serif] flex">
       {globalStyle}
-      <Sidebar screen={screen} setScreen={(s)=>{setScreen(s);setTab(null);}} club={club} league={league} career={career} myLadderPos={myLadderPos} />
+      <Sidebar screen={screen} setScreen={(s)=>{setScreen(s);setTab(null);}} club={club} league={league} career={career} myLadderPos={myLadderPos} onNewGame={handleNewGame} />
       <main className="flex-1 overflow-y-auto">
         <TopBar career={career} club={club} league={league} myLadderPos={myLadderPos} onAdvance={advanceToNextEvent} />
         <div className="p-6 max-w-[1400px] mx-auto">
@@ -877,7 +905,7 @@ function CareerSetup({ onStart }) {
 // ============================================================================
 // SIDEBAR + TOPBAR
 // ============================================================================
-function Sidebar({ screen, setScreen, club, league, career, myLadderPos }) {
+function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGame }) {
   const season = career.season;
   const week   = career.week;
   const phase  = career.phase || 'preseason';
@@ -955,7 +983,12 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos }) {
           );
         })}
       </nav>
-      <div className="px-4 py-3 text-[9px] text-[#CBD5E1] text-center uppercase tracking-widest" style={{borderTop:"1px solid #E2E8F0"}}>Footy Dynasty v2.0</div>
+      <div className="px-4 py-3 space-y-2" style={{borderTop:"1px solid #293548"}}>
+        <button onClick={onNewGame} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[#94A3B8] hover:text-[#E84A6F] hover:bg-[#E84A6F10] transition text-xs font-bold uppercase tracking-widest">
+          <RefreshCw className="w-3.5 h-3.5" /> New Career
+        </button>
+        <div className="text-[9px] text-[#475569] text-center uppercase tracking-widest">Footy Dynasty v2.0</div>
+      </div>
     </aside>
   );
 }
