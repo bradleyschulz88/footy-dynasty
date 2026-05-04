@@ -123,7 +123,7 @@ class ErrorBoundary extends React.Component {
                 className="px-4 py-2 rounded-lg text-sm font-bold bg-[#E89A4A] text-white hover:bg-[#D07A2A]">
                 Try again
               </button>
-              <button onClick={() => { localStorage.removeItem('footy-dynasty-career'); this.setState({ error: null }); }}
+              <button onClick={() => { sessionStorage.removeItem('footy-dynasty-setup'); localStorage.removeItem('footy-dynasty-career'); this.setState({ error: null }); }}
                 className="px-4 py-2 rounded-lg text-sm font-bold bg-[#E84A6F] text-white hover:bg-[#F06070]">
                 Start new game
               </button>
@@ -144,6 +144,7 @@ export default function AFLManager() {
 }
 
 const SAVE_KEY = 'footy-dynasty-career';
+const SETUP_SS_KEY = 'footy-dynasty-setup';
 
 function AFLManagerInner() {
   const [career, setCareer] = useState(() => {
@@ -164,6 +165,7 @@ function AFLManagerInner() {
 
   function handleNewGame() {
     if (!window.confirm('Abandon your current career and start a new game?')) return;
+    sessionStorage.removeItem(SETUP_SS_KEY);
     localStorage.removeItem(SAVE_KEY);
     setCareer(null);
     setScreen('hub');
@@ -668,14 +670,28 @@ function AFLManagerInner() {
 // ============================================================================
 // CAREER SETUP SCREEN
 // ============================================================================
+function loadSetup() {
+  try { return JSON.parse(sessionStorage.getItem(SETUP_SS_KEY) || '{}'); } catch { return {}; }
+}
+function saveSetup(patch) {
+  try { sessionStorage.setItem(SETUP_SS_KEY, JSON.stringify({ ...loadSetup(), ...patch })); } catch {}
+}
+
 function CareerSetup({ onStart }) {
-  const [step, setStep] = useState(0);
-  const [state, setSelState] = useState(null);
-  const [tier, setTier] = useState(null);
-  const [leagueKey, setLeagueKey] = useState(null);
-  const [clubId, setClubId] = useState(null);
-  const [managerName, setManagerName] = useState("");
+  const saved = loadSetup();
+  const [step, _setStep] = useState(saved.step ?? 0);
+  const [state, _setSelState] = useState(saved.state ?? null);
+  const [tier, _setTier] = useState(saved.tier ?? null);
+  const [leagueKey, _setLeagueKey] = useState(saved.leagueKey ?? null);
+  const [clubId, _setClubId] = useState(saved.clubId ?? null);
+  const [managerName, setManagerName] = useState(saved.managerName ?? "");
   const [loading, setLoading] = useState(false);
+
+  const setStep      = (v) => { saveSetup({ step: v });      _setStep(v); };
+  const setSelState  = (v) => { saveSetup({ state: v });     _setSelState(v); };
+  const setTier      = (v) => { saveSetup({ tier: v });      _setTier(v); };
+  const setLeagueKey = (v) => { saveSetup({ leagueKey: v }); _setLeagueKey(v); };
+  const setClubId    = (v) => { saveSetup({ clubId: v });    _setClubId(v); };
 
   const availableLeagues = state ? LEAGUES_BY_STATE(state).filter(l => tier ? l.tier === tier : true) : [];
   const availableClubs = leagueKey ? PYRAMID[leagueKey].clubs : [];
@@ -695,6 +711,7 @@ function CareerSetup({ onStart }) {
     const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
     const fixtures = generateFixtures(league.clubs);
     const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
+    sessionStorage.removeItem(SETUP_SS_KEY);
     onStart({
       managerName: managerName || "Coach",
       clubId,
