@@ -242,8 +242,8 @@ describe('pickPromotionLeague', () => {
     expect(pickPromotionLeague({ tier: 3, state: 'WA' })).toBe('WAFL');
   });
 
-  it('promotes tier-3 QLD clubs to the QAFL', () => {
-    expect(pickPromotionLeague({ tier: 3, state: 'QLD' })).toBe('QAFL');
+  it('promotes tier-3 QLD clubs to the VFL (no state Tier 2)', () => {
+    expect(pickPromotionLeague({ tier: 3, state: 'QLD' })).toBe('VFL');
   });
 
   it('promotes tier-3 NSW clubs to AFL Sydney', () => {
@@ -267,13 +267,16 @@ describe('pickRelegationLeague', () => {
     expect(pickRelegationLeague({ tier: 1, state: 'WA' })).toBe('WAFL');
   });
 
-  it('relegates a tier-2 VIC club to the EFL', () => {
-    expect(pickRelegationLeague({ tier: 2, state: 'VIC' })).toBe('EFL');
+  it('relegates a tier-2 VIC club to the EFNL', () => {
+    expect(pickRelegationLeague({ tier: 2, state: 'VIC' })).toBe('EFNL');
+  });
+
+  it('relegates a tier-2 SA club to the Adelaide FL', () => {
+    expect(pickRelegationLeague({ tier: 2, state: 'SA' })).toBe('AdelFL');
   });
 
   it('returns null for tier-2 states without a modelled tier-3 league', () => {
     expect(pickRelegationLeague({ tier: 2, state: 'QLD' })).toBeNull();
-    expect(pickRelegationLeague({ tier: 2, state: 'SA' })).toBeNull();
   });
 
   it('returns null for tier-3 clubs (no lower tier modelled)', () => {
