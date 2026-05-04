@@ -651,6 +651,7 @@ function CareerSetup({ onStart }) {
 
   const availableLeagues = state ? LEAGUES_BY_STATE(state).filter(l => tier ? l.tier === tier : true) : [];
   const availableClubs = leagueKey ? PYRAMID[leagueKey].clubs : [];
+  const tiersForState = state ? [1, 2, 3].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t)) : [1, 2, 3];
 
   function start() {
     if (!clubId || !leagueKey || loading) return;
@@ -745,8 +746,8 @@ function CareerSetup({ onStart }) {
             <p className="text-[#64748B] mb-8">Where will your story begin? Each state has its own football culture and pyramid.</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {STATES.map(s => {
-                const flag = { VIC: "🏉", SA: "🦘", WA: "🌅", TAS: "🍎", NT: "🐊", QLD: "🌴", NSW: "🌉" };
-                const desc = { VIC: "The heartland. Most clubs.", SA: "SANFL country.", WA: "WAFL & two AFL sides.", TAS: "Tassie Devils incoming.", NT: "Top End footy.", QLD: "Sun, Suns, Lions.", NSW: "Swans & Giants country." };
+                const flag = { VIC: "🏉", SA: "🦘", WA: "🌅", TAS: "🍎", NT: "🐊", QLD: "🌴", NSW: "🌉", ACT: "🏛️" };
+                const desc = { VIC: "The heartland. Most clubs.", SA: "SANFL country.", WA: "WAFL & two AFL sides.", TAS: "Tassie Devils incoming.", NT: "Top End footy.", QLD: "Sun, Suns, Lions.", NSW: "Swans & Giants country.", ACT: "Capital territory footy." };
                 return (
                   <button key={s} onClick={()=>{setSelState(s); setStep(1);}} className={`${css.panelHover} p-6 text-left group`}>
                     <div className="text-4xl mb-2">{flag[s]}</div>
@@ -764,29 +765,35 @@ function CareerSetup({ onStart }) {
           <div className="fade-up">
             <button onClick={()=>setStep(0)} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>CHOOSE YOUR DIFFICULTY</h2>
-            <p className="text-[#64748B] mb-8">Start at the top, the middle, or the bottom of the pyramid.</p>
-            <div className="grid md:grid-cols-3 gap-4">
-              <button onClick={()=>{setTier(3); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
-                <Pill color="#4ADBE8">Underdog</Pill>
-                <div className={`${css.h1} text-4xl mt-3`}>TIER 3</div>
-                <div className="text-sm text-[#0F172A] font-semibold mt-1">Community / Local</div>
-                <div className="text-[12px] text-[#64748B] mt-3">Suburban grounds. Tiny budgets. Long road. Most rewarding climb.</div>
-                <div className="text-[#4ADBE8] text-xs mt-4 font-bold uppercase tracking-widest">3 Promotions to AFL</div>
-              </button>
-              <button onClick={()=>{setTier(2); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
-                <Pill color="#E89A4A">Established</Pill>
-                <div className={`${css.h1} text-4xl mt-3`}>TIER 2</div>
-                <div className="text-sm text-[#0F172A] font-semibold mt-1">State League</div>
-                <div className="text-[12px] text-[#64748B] mt-3">VFL, SANFL, WAFL etc. Real budgets. One step from the big show.</div>
-                <div className="text-[#E89A4A] text-xs mt-4 font-bold uppercase tracking-widest">1 Promotion to AFL</div>
-              </button>
-              <button onClick={()=>{setTier(1); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
-                <Pill color="#E84A6F">Big Time</Pill>
-                <div className={`${css.h1} text-4xl mt-3`}>TIER 1</div>
-                <div className="text-sm text-[#0F172A] font-semibold mt-1">AFL</div>
-                <div className="text-[12px] text-[#64748B] mt-3">Premiership pressure. Salary caps. Trade weeks. Every game on TV.</div>
-                <div className="text-[#E84A6F] text-xs mt-4 font-bold uppercase tracking-widest">Win the Cup</div>
-              </button>
+            <p className="text-[#64748B] mb-8">Start at the top, the middle, or the bottom of the pyramid. Showing tiers available in <strong>{state}</strong>.</p>
+            <div className={`grid gap-4 ${tiersForState.length === 1 ? 'md:grid-cols-1 max-w-sm' : tiersForState.length === 2 ? 'md:grid-cols-2 max-w-2xl' : 'md:grid-cols-3'}`}>
+              {tiersForState.includes(3) && (
+                <button onClick={()=>{setTier(3); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+                  <Pill color="#4ADBE8">Underdog</Pill>
+                  <div className={`${css.h1} text-4xl mt-3`}>TIER 3</div>
+                  <div className="text-sm text-[#0F172A] font-semibold mt-1">Community / Local</div>
+                  <div className="text-[12px] text-[#64748B] mt-3">Suburban grounds. Tiny budgets. Long road. Most rewarding climb.</div>
+                  <div className="text-[#4ADBE8] text-xs mt-4 font-bold uppercase tracking-widest">3 Promotions to AFL</div>
+                </button>
+              )}
+              {tiersForState.includes(2) && (
+                <button onClick={()=>{setTier(2); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+                  <Pill color="#E89A4A">Established</Pill>
+                  <div className={`${css.h1} text-4xl mt-3`}>TIER 2</div>
+                  <div className="text-sm text-[#0F172A] font-semibold mt-1">State League</div>
+                  <div className="text-[12px] text-[#64748B] mt-3">VFL, SANFL, WAFL etc. Real budgets. One step from the big show.</div>
+                  <div className="text-[#E89A4A] text-xs mt-4 font-bold uppercase tracking-widest">1 Promotion to AFL</div>
+                </button>
+              )}
+              {tiersForState.includes(1) && (
+                <button onClick={()=>{setTier(1); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+                  <Pill color="#E84A6F">Big Time</Pill>
+                  <div className={`${css.h1} text-4xl mt-3`}>TIER 1</div>
+                  <div className="text-sm text-[#0F172A] font-semibold mt-1">AFL</div>
+                  <div className="text-[12px] text-[#64748B] mt-3">Premiership pressure. Salary caps. Trade weeks. Every game on TV.</div>
+                  <div className="text-[#E84A6F] text-xs mt-4 font-bold uppercase tracking-widest">Win the Cup</div>
+                </button>
+              )}
             </div>
           </div>
         )}
