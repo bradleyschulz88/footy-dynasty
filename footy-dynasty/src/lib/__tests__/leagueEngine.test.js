@@ -5,6 +5,7 @@ import {
   sortedLadder,
   generateFixtures,
   getFinalsTeams,
+  generateFinalsFixtures,
   finalsLabel,
   pickPromotionLeague,
   pickRelegationLeague,
@@ -253,6 +254,42 @@ describe('pickPromotionLeague', () => {
 
 // ---------------------------------------------------------------------------
 // pickRelegationLeague
+// ---------------------------------------------------------------------------
+describe('generateFinalsFixtures', () => {
+  const finalists = [
+    { id: 'a', name: 'A', short: 'A' },
+    { id: 'b', name: 'B', short: 'B' },
+    { id: 'c', name: 'C', short: 'C' },
+    { id: 'd', name: 'D', short: 'D' },
+  ];
+
+  it('round 0 pairs 1st vs last and 2nd vs second-last', () => {
+    const pairs = generateFinalsFixtures(finalists, 0);
+    expect(pairs[0]).toMatchObject({ home: 'a', away: 'd' });
+    expect(pairs[1]).toMatchObject({ home: 'b', away: 'c' });
+  });
+
+  it('round 0 returns n/2 matches for n finalists', () => {
+    const pairs = generateFinalsFixtures(finalists, 0);
+    expect(pairs).toHaveLength(2);
+  });
+
+  it('round 0 fixtures are labelled Elimination Final', () => {
+    const pairs = generateFinalsFixtures(finalists, 0);
+    for (const p of pairs) expect(p.label).toBe('Elimination Final');
+  });
+
+  it('non-zero round returns an empty array', () => {
+    expect(generateFinalsFixtures(finalists, 1)).toEqual([]);
+  });
+
+  it('works for 8 finalists at round 0 producing 4 pairs', () => {
+    const eight = Array.from({ length: 8 }, (_, i) => ({ id: String(i), name: String(i), short: String(i) }));
+    const pairs = generateFinalsFixtures(eight, 0);
+    expect(pairs).toHaveLength(4);
+  });
+});
+
 // ---------------------------------------------------------------------------
 describe('pickRelegationLeague', () => {
   it('relegates a tier-1 VIC club to the VFL', () => {
