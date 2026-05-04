@@ -6,7 +6,7 @@ import {
   Star, Zap, Heart, Target, Activity, Flame, Sparkles, Crown,
   TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
   Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
-  Map, Award, AlertCircle, ChevronsUp, FileText
+  Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw
 } from "lucide-react";
 import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub } from './data/pyramid.js';
@@ -118,10 +118,16 @@ class ErrorBoundary extends React.Component {
             <div className="text-3xl mb-3">💥</div>
             <div className="font-['Bebas_Neue'] text-2xl text-[#E84A6F] mb-2">Something went wrong</div>
             <pre className="text-xs text-[#94A3B8] bg-[#0F172A] rounded-lg p-3 overflow-auto max-h-48 mb-4">{this.state.error?.message}{'\n'}{this.state.error?.stack}</pre>
-            <button onClick={() => { this.setState({ error: null }); window.location.reload(); }}
-              className="px-4 py-2 rounded-lg text-sm font-bold bg-[#E84A6F] text-white hover:bg-[#F06070]">
-              Reload game
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => this.setState({ error: null })}
+                className="px-4 py-2 rounded-lg text-sm font-bold bg-[#E89A4A] text-white hover:bg-[#D07A2A]">
+                Try again
+              </button>
+              <button onClick={() => { localStorage.removeItem('footy-dynasty-career'); this.setState({ error: null }); }}
+                className="px-4 py-2 rounded-lg text-sm font-bold bg-[#E84A6F] text-white hover:bg-[#F06070]">
+                Start new game
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -137,10 +143,32 @@ export default function AFLManager() {
   return <ErrorBoundary><AFLManagerInner /></ErrorBoundary>;
 }
 
+const SAVE_KEY = 'footy-dynasty-career';
+
 function AFLManagerInner() {
-  const [career, setCareer] = useState(null); // null = no career
+  const [career, setCareer] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SAVE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
+
+  useEffect(() => {
+    try {
+      if (career) localStorage.setItem(SAVE_KEY, JSON.stringify(career));
+      else localStorage.removeItem(SAVE_KEY);
+    } catch { /* quota exceeded — silently ignore */ }
+  }, [career]);
+
+  function handleNewGame() {
+    if (!window.confirm('Abandon your current career and start a new game?')) return;
+    localStorage.removeItem(SAVE_KEY);
+    setCareer(null);
+    setScreen('hub');
+    setTab(null);
+  }
 
   // ============== CAREER SETUP ==============
   if (!career) return <CareerSetup onStart={(c) => { setCareer(c); setScreen("hub"); }} />;
@@ -620,7 +648,7 @@ function AFLManagerInner() {
   return (
     <div className="min-h-screen bg-[#F1F5F9] text-[#0F172A] font-['Sora',sans-serif] flex">
       {globalStyle}
-      <Sidebar screen={screen} setScreen={(s)=>{setScreen(s);setTab(null);}} club={club} league={league} career={career} myLadderPos={myLadderPos} />
+      <Sidebar screen={screen} setScreen={(s)=>{setScreen(s);setTab(null);}} club={club} league={league} career={career} myLadderPos={myLadderPos} onNewGame={handleNewGame} />
       <main className="flex-1 overflow-y-auto">
         <TopBar career={career} club={club} league={league} myLadderPos={myLadderPos} onAdvance={advanceToNextEvent} />
         <div className="p-6 max-w-[1400px] mx-auto">
@@ -651,6 +679,7 @@ function CareerSetup({ onStart }) {
 
   const availableLeagues = state ? LEAGUES_BY_STATE(state).filter(l => tier ? l.tier === tier : true) : [];
   const availableClubs = leagueKey ? PYRAMID[leagueKey].clubs : [];
+  const tiersForState = state ? [1, 2, 3].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t)) : [1, 2, 3];
 
   function start() {
     if (!clubId || !leagueKey || loading) return;
@@ -745,8 +774,8 @@ function CareerSetup({ onStart }) {
             <p className="text-[#64748B] mb-8">Where will your story begin? Each state has its own football culture and pyramid.</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {STATES.map(s => {
-                const flag = { VIC: "🏉", SA: "🦘", WA: "🌅", TAS: "🍎", NT: "🐊", QLD: "🌴", NSW: "🌉" };
-                const desc = { VIC: "The heartland. Most clubs.", SA: "SANFL country.", WA: "WAFL & two AFL sides.", TAS: "Tassie Devils incoming.", NT: "Top End footy.", QLD: "Sun, Suns, Lions.", NSW: "Swans & Giants country." };
+                const flag = { VIC: "🏉", SA: "🦘", WA: "🌅", TAS: "🍎", NT: "🐊", QLD: "🌴", NSW: "🌉", ACT: "🏛️" };
+                const desc = { VIC: "The heartland. Most clubs.", SA: "SANFL country.", WA: "WAFL & two AFL sides.", TAS: "Tassie Devils incoming.", NT: "Top End footy.", QLD: "Sun, Suns, Lions.", NSW: "Swans & Giants country.", ACT: "Capital territory footy." };
                 return (
                   <button key={s} onClick={()=>{setSelState(s); setStep(1);}} className={`${css.panelHover} p-6 text-left group`}>
                     <div className="text-4xl mb-2">{flag[s]}</div>
@@ -764,29 +793,35 @@ function CareerSetup({ onStart }) {
           <div className="fade-up">
             <button onClick={()=>setStep(0)} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>CHOOSE YOUR DIFFICULTY</h2>
-            <p className="text-[#64748B] mb-8">Start at the top, the middle, or the bottom of the pyramid.</p>
-            <div className="grid md:grid-cols-3 gap-4">
-              <button onClick={()=>{setTier(3); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
-                <Pill color="#4ADBE8">Underdog</Pill>
-                <div className={`${css.h1} text-4xl mt-3`}>TIER 3</div>
-                <div className="text-sm text-[#0F172A] font-semibold mt-1">Community / Local</div>
-                <div className="text-[12px] text-[#64748B] mt-3">Suburban grounds. Tiny budgets. Long road. Most rewarding climb.</div>
-                <div className="text-[#4ADBE8] text-xs mt-4 font-bold uppercase tracking-widest">3 Promotions to AFL</div>
-              </button>
-              <button onClick={()=>{setTier(2); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
-                <Pill color="#E89A4A">Established</Pill>
-                <div className={`${css.h1} text-4xl mt-3`}>TIER 2</div>
-                <div className="text-sm text-[#0F172A] font-semibold mt-1">State League</div>
-                <div className="text-[12px] text-[#64748B] mt-3">VFL, SANFL, WAFL etc. Real budgets. One step from the big show.</div>
-                <div className="text-[#E89A4A] text-xs mt-4 font-bold uppercase tracking-widest">1 Promotion to AFL</div>
-              </button>
-              <button onClick={()=>{setTier(1); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
-                <Pill color="#E84A6F">Big Time</Pill>
-                <div className={`${css.h1} text-4xl mt-3`}>TIER 1</div>
-                <div className="text-sm text-[#0F172A] font-semibold mt-1">AFL</div>
-                <div className="text-[12px] text-[#64748B] mt-3">Premiership pressure. Salary caps. Trade weeks. Every game on TV.</div>
-                <div className="text-[#E84A6F] text-xs mt-4 font-bold uppercase tracking-widest">Win the Cup</div>
-              </button>
+            <p className="text-[#64748B] mb-8">Start at the top, the middle, or the bottom of the pyramid. Showing tiers available in <strong>{state}</strong>.</p>
+            <div className={`grid gap-4 ${tiersForState.length === 1 ? 'md:grid-cols-1 max-w-sm' : tiersForState.length === 2 ? 'md:grid-cols-2 max-w-2xl' : 'md:grid-cols-3'}`}>
+              {tiersForState.includes(3) && (
+                <button onClick={()=>{setTier(3); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+                  <Pill color="#4ADBE8">Underdog</Pill>
+                  <div className={`${css.h1} text-4xl mt-3`}>TIER 3</div>
+                  <div className="text-sm text-[#0F172A] font-semibold mt-1">Community / Local</div>
+                  <div className="text-[12px] text-[#64748B] mt-3">Suburban grounds. Tiny budgets. Long road. Most rewarding climb.</div>
+                  <div className="text-[#4ADBE8] text-xs mt-4 font-bold uppercase tracking-widest">3 Promotions to AFL</div>
+                </button>
+              )}
+              {tiersForState.includes(2) && (
+                <button onClick={()=>{setTier(2); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+                  <Pill color="#E89A4A">Established</Pill>
+                  <div className={`${css.h1} text-4xl mt-3`}>TIER 2</div>
+                  <div className="text-sm text-[#0F172A] font-semibold mt-1">State League</div>
+                  <div className="text-[12px] text-[#64748B] mt-3">VFL, SANFL, WAFL etc. Real budgets. One step from the big show.</div>
+                  <div className="text-[#E89A4A] text-xs mt-4 font-bold uppercase tracking-widest">1 Promotion to AFL</div>
+                </button>
+              )}
+              {tiersForState.includes(1) && (
+                <button onClick={()=>{setTier(1); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+                  <Pill color="#E84A6F">Big Time</Pill>
+                  <div className={`${css.h1} text-4xl mt-3`}>TIER 1</div>
+                  <div className="text-sm text-[#0F172A] font-semibold mt-1">AFL</div>
+                  <div className="text-[12px] text-[#64748B] mt-3">Premiership pressure. Salary caps. Trade weeks. Every game on TV.</div>
+                  <div className="text-[#E84A6F] text-xs mt-4 font-bold uppercase tracking-widest">Win the Cup</div>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -870,7 +905,7 @@ function CareerSetup({ onStart }) {
 // ============================================================================
 // SIDEBAR + TOPBAR
 // ============================================================================
-function Sidebar({ screen, setScreen, club, league, career, myLadderPos }) {
+function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGame }) {
   const season = career.season;
   const week   = career.week;
   const phase  = career.phase || 'preseason';
@@ -948,7 +983,12 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos }) {
           );
         })}
       </nav>
-      <div className="px-4 py-3 text-[9px] text-[#CBD5E1] text-center uppercase tracking-widest" style={{borderTop:"1px solid #E2E8F0"}}>Footy Dynasty v2.0</div>
+      <div className="px-4 py-3 space-y-2" style={{borderTop:"1px solid #293548"}}>
+        <button onClick={onNewGame} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[#94A3B8] hover:text-[#E84A6F] hover:bg-[#E84A6F10] transition text-xs font-bold uppercase tracking-widest">
+          <RefreshCw className="w-3.5 h-3.5" /> New Career
+        </button>
+        <div className="text-[9px] text-[#475569] text-center uppercase tracking-widest">Footy Dynasty v2.0</div>
+      </div>
     </aside>
   );
 }
