@@ -1,0 +1,7450 @@
+[
+    {
+        "Tier": 1,
+        "State": "SA",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Adelaide Crows",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "SA",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Port Adelaide Power",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "QLD",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Brisbane Lions",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "QLD",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Gold Coast Suns",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "VIC",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Carlton Blues",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "VIC",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Collingwood Magpies",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "VIC",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Essendon Bombers",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "VIC",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Geelong Cats",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "VIC",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Hawthorn Hawks",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "VIC",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Melbourne Demons",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "VIC",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "North Melbourne Kangaroos",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "VIC",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Richmond Tigers",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "VIC",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "St Kilda Saints",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "VIC",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Western Bulldogs",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "WA",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Fremantle Dockers",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "WA",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "West Coast Eagles",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "NSW",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "GWS Giants",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "NSW",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Sydney Swans",
+        "Notes": ""
+    },
+    {
+        "Tier": 1,
+        "State": "TAS",
+        "League": "AFL",
+        "Division": "National",
+        "Club Name": "Tasmania FC (Devils)",
+        "Notes": "AFL entry 2028; VFL from 2026"
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "VFL",
+        "Division": "State (Standalone)",
+        "Club Name": "Coburg Lions",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "VFL",
+        "Division": "State (Standalone)",
+        "Club Name": "Frankston",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "VFL",
+        "Division": "State (Standalone)",
+        "Club Name": "Port Melbourne",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "VFL",
+        "Division": "State (Standalone)",
+        "Club Name": "Sandringham",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "VFL",
+        "Division": "State (Standalone)",
+        "Club Name": "Werribee",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "VFL",
+        "Division": "State (Standalone)",
+        "Club Name": "Williamstown",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "QLD",
+        "League": "VFL",
+        "Division": "State (Standalone)",
+        "Club Name": "Southport Sharks",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "TAS",
+        "League": "VFL",
+        "Division": "State (Standalone)",
+        "Club Name": "Tasmania Devils",
+        "Notes": "VFL debut 2026"
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "VFL",
+        "Division": "State (AFL-Aligned)",
+        "Club Name": "Box Hill Hawks",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "VFL",
+        "Division": "State (AFL-Aligned)",
+        "Club Name": "Casey Demons",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "Brisbane Lions",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "Carlton",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "Collingwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "Essendon",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "Footscray (Western Bulldogs)",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "Geelong",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "Gold Coast Suns",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "GWS Giants",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "North Melbourne",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "Richmond",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "St Kilda",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "Various",
+        "League": "VFL",
+        "Division": "State (AFL-Affiliated)",
+        "Club Name": "Sydney Swans",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "SA",
+        "League": "SANFL",
+        "Division": "State",
+        "Club Name": "Central District",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "SA",
+        "League": "SANFL",
+        "Division": "State",
+        "Club Name": "Glenelg",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "SA",
+        "League": "SANFL",
+        "Division": "State",
+        "Club Name": "North Adelaide",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "SA",
+        "League": "SANFL",
+        "Division": "State",
+        "Club Name": "Norwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "SA",
+        "League": "SANFL",
+        "Division": "State",
+        "Club Name": "South Adelaide",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "SA",
+        "League": "SANFL",
+        "Division": "State",
+        "Club Name": "Sturt",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "SA",
+        "League": "SANFL",
+        "Division": "State",
+        "Club Name": "West Adelaide",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "SA",
+        "League": "SANFL",
+        "Division": "State",
+        "Club Name": "Woodville-West Torrens",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "SA",
+        "League": "SANFL",
+        "Division": "State",
+        "Club Name": "Adelaide",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "SA",
+        "League": "SANFL",
+        "Division": "State",
+        "Club Name": "Port Adelaide",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "WA",
+        "League": "WAFL",
+        "Division": "State",
+        "Club Name": "Claremont",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "WA",
+        "League": "WAFL",
+        "Division": "State",
+        "Club Name": "East Fremantle",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "WA",
+        "League": "WAFL",
+        "Division": "State",
+        "Club Name": "East Perth",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "WA",
+        "League": "WAFL",
+        "Division": "State",
+        "Club Name": "Peel Thunder",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "WA",
+        "League": "WAFL",
+        "Division": "State",
+        "Club Name": "Perth",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "WA",
+        "League": "WAFL",
+        "Division": "State",
+        "Club Name": "South Fremantle",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "WA",
+        "League": "WAFL",
+        "Division": "State",
+        "Club Name": "Subiaco",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "WA",
+        "League": "WAFL",
+        "Division": "State",
+        "Club Name": "Swan Districts",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "WA",
+        "League": "WAFL",
+        "Division": "State",
+        "Club Name": "West Perth",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "WA",
+        "League": "WAFL",
+        "Division": "State",
+        "Club Name": "West Coast Eagles",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "NT",
+        "League": "NTFL",
+        "Division": "State",
+        "Club Name": "Darwin Buffaloes",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "NT",
+        "League": "NTFL",
+        "Division": "State",
+        "Club Name": "Nightcliff",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "NT",
+        "League": "NTFL",
+        "Division": "State",
+        "Club Name": "Palmerston Magpies",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "NT",
+        "League": "NTFL",
+        "Division": "State",
+        "Club Name": "PINT",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "NT",
+        "League": "NTFL",
+        "Division": "State",
+        "Club Name": "Southern Districts",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "NT",
+        "League": "NTFL",
+        "Division": "State",
+        "Club Name": "St Mary's",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "NT",
+        "League": "NTFL",
+        "Division": "State",
+        "Club Name": "Tiwi Bombers",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "NT",
+        "League": "NTFL",
+        "Division": "State",
+        "Club Name": "Wanderers",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "NT",
+        "League": "NTFL",
+        "Division": "State",
+        "Club Name": "Waratah",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "TAS",
+        "League": "SFL",
+        "Division": "State",
+        "Club Name": "Clarence",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "TAS",
+        "League": "SFL",
+        "Division": "State",
+        "Club Name": "Glenorchy",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "TAS",
+        "League": "SFL",
+        "Division": "State",
+        "Club Name": "Kingborough Tigers",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "TAS",
+        "League": "SFL",
+        "Division": "State",
+        "Club Name": "Lauderdale",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "TAS",
+        "League": "SFL",
+        "Division": "State",
+        "Club Name": "North Hobart",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "TAS",
+        "League": "SFL",
+        "Division": "State",
+        "Club Name": "Brighton",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "TAS",
+        "League": "NTFA",
+        "Division": "State",
+        "Club Name": "Launceston",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "TAS",
+        "League": "NTFA",
+        "Division": "State",
+        "Club Name": "North Launceston",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Bendigo Pioneers",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Calder Cannons",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Dandenong Stingrays",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Eastern Ranges",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Geelong Falcons",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Gippsland Power",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Greater Western Victoria Rebels (GWV Rebels)",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Murray Bushrangers",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Northern Knights",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Oakleigh Chargers",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Sandringham Dragons",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "VIC",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Western Jets",
+        "Notes": ""
+    },
+    {
+        "Tier": 2,
+        "State": "TAS",
+        "League": "Talent League",
+        "Division": "State (U18)",
+        "Club Name": "Tasmania Devils",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 1",
+        "Club Name": "Balwyn",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 1",
+        "Club Name": "Blackburn",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 1",
+        "Club Name": "East Ringwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 1",
+        "Club Name": "Rowville",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 1",
+        "Club Name": "Vermont",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 1",
+        "Club Name": "South Croydon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 1",
+        "Club Name": "Noble Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 1",
+        "Club Name": "Doncaster East",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 1",
+        "Club Name": "Berwick",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 1",
+        "Club Name": "Mitcham",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 2",
+        "Club Name": "Park Orchards",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 2",
+        "Club Name": "South Belgrave",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 2",
+        "Club Name": "Beaconsfield",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 2",
+        "Club Name": "Boronia",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 2",
+        "Club Name": "North Ringwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 2",
+        "Club Name": "Montrose",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 2",
+        "Club Name": "Mooroolbark",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 2",
+        "Club Name": "Bayswater",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 2",
+        "Club Name": "Norwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 2",
+        "Club Name": "Wantirna South",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 2",
+        "Club Name": "Doncaster",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 3",
+        "Club Name": "Templestowe",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 3",
+        "Club Name": "Surrey Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 3",
+        "Club Name": "Mulgrave",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 3",
+        "Club Name": "Heathmont",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 3",
+        "Club Name": "Ringwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 3",
+        "Club Name": "Waverley Blues",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 3",
+        "Club Name": "Croydon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 3",
+        "Club Name": "East Burwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 3",
+        "Club Name": "Lilydale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 3",
+        "Club Name": "The Basin",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 3",
+        "Club Name": "Belgrave",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 4",
+        "Club Name": "Donvale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 4",
+        "Club Name": "Scoresby",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 4",
+        "Club Name": "Knox",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 4",
+        "Club Name": "Upper Ferntree Gully",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 4",
+        "Club Name": "Silvan",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 4",
+        "Club Name": "Ferntree Gully",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 4",
+        "Club Name": "Oakleigh District",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 4",
+        "Club Name": "Coldstream",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 4",
+        "Club Name": "Fairpark",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 4",
+        "Club Name": "Warrandyte",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 5",
+        "Club Name": "Chirnside Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 5",
+        "Club Name": "Whitehorse Pioneers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 5",
+        "Club Name": "Kilsyth",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 5",
+        "Club Name": "Bulleen Templestowe",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 5",
+        "Club Name": "Croydon North-MLOC",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 5",
+        "Club Name": "Forest Hill",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EFNL",
+        "Division": "Division 5",
+        "Club Name": "Nunawading",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 1",
+        "Club Name": "Aberfeldie",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 1",
+        "Club Name": "Airport West",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 1",
+        "Club Name": "Deer Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 1",
+        "Club Name": "Essendon Doutta Stars",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 1",
+        "Club Name": "Greenvale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 1",
+        "Club Name": "Hillside",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 1",
+        "Club Name": "Keilor",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 1",
+        "Club Name": "Maribyrnong Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 1",
+        "Club Name": "Pascoe Vale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 1",
+        "Club Name": "Strathmore",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 2",
+        "Club Name": "Avondale Heights",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 2",
+        "Club Name": "Craigieburn",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 2",
+        "Club Name": "East Keilor",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 2",
+        "Club Name": "Moonee Valley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 2",
+        "Club Name": "Oak Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 2",
+        "Club Name": "Rupertswood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 2",
+        "Club Name": "St Albans",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 2",
+        "Club Name": "Taylors Lakes",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 2",
+        "Club Name": "Tullamarine",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 2",
+        "Club Name": "West Coburg",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 3",
+        "Club Name": "Burnside Heights",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 3",
+        "Club Name": "Coburg Districts",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 3",
+        "Club Name": "East Sunbury",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 3",
+        "Club Name": "Glenroy",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 3",
+        "Club Name": "Hadfield",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 3",
+        "Club Name": "Jacana",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 3",
+        "Club Name": "Keilor Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 3",
+        "Club Name": "Northern Saints",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 3",
+        "Club Name": "Roxburgh Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 3",
+        "Club Name": "Sunbury Kangaroos",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "EDFL",
+        "Division": "Division 3",
+        "Club Name": "Westmeadows",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 1",
+        "Club Name": "Banyule",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 1",
+        "Club Name": "Bundoora",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 1",
+        "Club Name": "Diamond Creek",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 1",
+        "Club Name": "Eltham",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 1",
+        "Club Name": "Greensborough",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 1",
+        "Club Name": "Heidelberg",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 1",
+        "Club Name": "Hurstbridge",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 1",
+        "Club Name": "Montmorency",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 1",
+        "Club Name": "North Heidelberg",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 1",
+        "Club Name": "West Preston Lakeside",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 2",
+        "Club Name": "Fitzroy Stars",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 2",
+        "Club Name": "Lower Plenty",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 2",
+        "Club Name": "Macleod",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 2",
+        "Club Name": "Northcote Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 2",
+        "Club Name": "Old Paradians",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 2",
+        "Club Name": "Panton Hill",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 2",
+        "Club Name": "South Morang",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 2",
+        "Club Name": "St Mary's",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 2",
+        "Club Name": "Thomastown",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 2",
+        "Club Name": "Whittlesea",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Epping",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Heidelberg West",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Ivanhoe",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Kilmore",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Kinglake",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Lalor",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Laurimar",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Mernda",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Old Eltham Collegians",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Reservoir",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Watsonia",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "NFNL",
+        "Division": "Division 3",
+        "Club Name": "Wallan",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier",
+        "Club Name": "Old Scotch",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier",
+        "Club Name": "Old Brighton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier",
+        "Club Name": "St Kevin's",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier",
+        "Club Name": "Old Xaverians",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier",
+        "Club Name": "University Blues",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier",
+        "Club Name": "University Blacks",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier",
+        "Club Name": "St Bernard's",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier",
+        "Club Name": "Fitzroy",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier",
+        "Club Name": "Old Melburnians",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier B",
+        "Club Name": "Collegians",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier B",
+        "Club Name": "De La Salle",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier B",
+        "Club Name": "Beaumaris",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier B",
+        "Club Name": "AJAX",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier B",
+        "Club Name": "Old Ivanhoe",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier B",
+        "Club Name": "Old Camberwell",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier B",
+        "Club Name": "Williamstown CYMS",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier B",
+        "Club Name": "Old Carey",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier B",
+        "Club Name": "Old Geelong",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier C",
+        "Club Name": "Glen Eira",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier C",
+        "Club Name": "Hampton Rovers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier C",
+        "Club Name": "Marcellin",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier C",
+        "Club Name": "Mazenod",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier C",
+        "Club Name": "Parkdale Vultures",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Premier C",
+        "Club Name": "PEGS",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 1",
+        "Club Name": "Kew",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 1",
+        "Club Name": "Monash Blues",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 1",
+        "Club Name": "Oakleigh",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 1",
+        "Club Name": "Old Peninsula",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 1",
+        "Club Name": "Old Yarra Cobras",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 1",
+        "Club Name": "Ormond",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 1",
+        "Club Name": "Parkside",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 1",
+        "Club Name": "Prahran",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 1",
+        "Club Name": "Preston Bullants",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 1",
+        "Club Name": "St Mary's Salesian",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 1",
+        "Club Name": "UHS-VU",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 2",
+        "Club Name": "Aquinas",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 2",
+        "Club Name": "Brunswick",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 2",
+        "Club Name": "Canterbury",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 2",
+        "Club Name": "Elsternwick",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 2",
+        "Club Name": "Glen Eira",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 2",
+        "Club Name": "North Brunswick",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 2",
+        "Club Name": "Power House",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 2",
+        "Club Name": "South Melbourne Districts",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 2",
+        "Club Name": "Therry Penola",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 3",
+        "Club Name": "Albert Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 3",
+        "Club Name": "Hawthorn",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 3",
+        "Club Name": "La Trobe University",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 3",
+        "Club Name": "Richmond Central",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "VAFA",
+        "Division": "Division 3",
+        "Club Name": "Wattle Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 1",
+        "Club Name": "Bentleigh",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 1",
+        "Club Name": "Cheltenham",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 1",
+        "Club Name": "Cranbourne",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 1",
+        "Club Name": "Dingley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 1",
+        "Club Name": "Hampton Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 1",
+        "Club Name": "Murrumbeena",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 1",
+        "Club Name": "Narre Warren",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 1",
+        "Club Name": "Port Melbourne Colts",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 1",
+        "Club Name": "Springvale Districts",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 1",
+        "Club Name": "St Paul's McKinnon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 2",
+        "Club Name": "Caulfield Bears",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 2",
+        "Club Name": "Chelsea Heights",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 2",
+        "Club Name": "Doveton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 2",
+        "Club Name": "East Brighton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 2",
+        "Club Name": "East Malvern",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 2",
+        "Club Name": "Frankston Dolphins",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 2",
+        "Club Name": "Hampton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 2",
+        "Club Name": "Highett",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 2",
+        "Club Name": "Keysborough",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 2",
+        "Club Name": "Mordialloc",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 3",
+        "Club Name": "Ashwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 3",
+        "Club Name": "Black Rock",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 3",
+        "Club Name": "Carrum Patterson Lakes",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 3",
+        "Club Name": "Endeavour Hills",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 3",
+        "Club Name": "Hallam",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 3",
+        "Club Name": "Heatherton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 3",
+        "Club Name": "Lyndhurst",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 3",
+        "Club Name": "Skye",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 3",
+        "Club Name": "South Mornington",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 3",
+        "Club Name": "St Kilda City",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 3",
+        "Club Name": "Berwick Springs",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 4",
+        "Club Name": "Clayton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 4",
+        "Club Name": "Dandenong West",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 4",
+        "Club Name": "Doveton Eagles",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 4",
+        "Club Name": "Lyndale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 4",
+        "Club Name": "Moorabbin Kangaroos",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 4",
+        "Club Name": "Narre South Saints",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 4",
+        "Club Name": "St John's Old Collegians",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 4",
+        "Club Name": "Cerberus",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 4",
+        "Club Name": "Mount Waverley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 4",
+        "Club Name": "Sandown Cobras",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "SFNL",
+        "Division": "Division 4",
+        "Club Name": "South Yarra",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Albion",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Altona",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Caroline Springs",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Hoppers Crossing",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Newport",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Parkside",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Point Cook",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Point Cook Centrals",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Spotswood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Sunshine",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Werribee Districts",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 1",
+        "Club Name": "Yarraville Seddon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "Albanvale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "Braybrook",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "Laverton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "North Footscray",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "Wyndham Suns",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "Sunshine Heights",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "Tarneit",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "West Footscray",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "Western Rams",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "Wyndhamvale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "Glen Orden",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "Manor Lakes",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "WFNL",
+        "Division": "Division 2",
+        "Club Name": "North Sunshine",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ballarat FNL",
+        "Division": "Division 1",
+        "Club Name": "Bacchus Marsh",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ballarat FNL",
+        "Division": "Division 1",
+        "Club Name": "Ballarat",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ballarat FNL",
+        "Division": "Division 1",
+        "Club Name": "Darley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ballarat FNL",
+        "Division": "Division 1",
+        "Club Name": "East Point",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ballarat FNL",
+        "Division": "Division 1",
+        "Club Name": "Lake Wendouree",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ballarat FNL",
+        "Division": "Division 1",
+        "Club Name": "Melton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ballarat FNL",
+        "Division": "Division 1",
+        "Club Name": "Melton South",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ballarat FNL",
+        "Division": "Division 1",
+        "Club Name": "North Ballarat City",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ballarat FNL",
+        "Division": "Division 1",
+        "Club Name": "Redan",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ballarat FNL",
+        "Division": "Division 1",
+        "Club Name": "Sebastopol",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ballarat FNL",
+        "Division": "Division 1",
+        "Club Name": "Sunbury",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bellarine FNL",
+        "Division": "Division 1",
+        "Club Name": "Anglesea",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bellarine FNL",
+        "Division": "Division 1",
+        "Club Name": "Barwon Heads",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bellarine FNL",
+        "Division": "Division 1",
+        "Club Name": "Drysdale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bellarine FNL",
+        "Division": "Division 1",
+        "Club Name": "Geelong Amateur",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bellarine FNL",
+        "Division": "Division 1",
+        "Club Name": "Modewarre",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bellarine FNL",
+        "Division": "Division 1",
+        "Club Name": "Newcomb Power",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bellarine FNL",
+        "Division": "Division 1",
+        "Club Name": "Ocean Grove",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bellarine FNL",
+        "Division": "Division 1",
+        "Club Name": "Portarlington",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bellarine FNL",
+        "Division": "Division 1",
+        "Club Name": "Queenscliff",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bellarine FNL",
+        "Division": "Division 1",
+        "Club Name": "Torquay",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bendigo FNL",
+        "Division": "Division 1",
+        "Club Name": "Castlemaine",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bendigo FNL",
+        "Division": "Division 1",
+        "Club Name": "Eaglehawk",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bendigo FNL",
+        "Division": "Division 1",
+        "Club Name": "Gisborne",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bendigo FNL",
+        "Division": "Division 1",
+        "Club Name": "Golden Square",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bendigo FNL",
+        "Division": "Division 1",
+        "Club Name": "Kangaroo Flat",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bendigo FNL",
+        "Division": "Division 1",
+        "Club Name": "Kyneton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bendigo FNL",
+        "Division": "Division 1",
+        "Club Name": "Maryborough",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bendigo FNL",
+        "Division": "Division 1",
+        "Club Name": "Sandhurst",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bendigo FNL",
+        "Division": "Division 1",
+        "Club Name": "South Bendigo",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Bendigo FNL",
+        "Division": "Division 1",
+        "Club Name": "Strathfieldsaye",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "Bell Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "Colac",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "Geelong West Giants",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "Grovedale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "Lara",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "Leopold",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "Newtown & Chilwell",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "North Shore",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "South Barwon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "St Albans",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "St Mary's",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong FNL",
+        "Division": "Division 1",
+        "Club Name": "St Joseph's",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Bairnsdale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Drouin",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Leongatha",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Maffra",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Moe",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Morwell",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Sale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Traralgon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Warragul",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Wonthaggi Power",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Benalla",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Echuca",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Euroa",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Kyabram",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Mansfield",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Mooroopna",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Rochester",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Seymour",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Shepparton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Shepparton Swans",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Shepparton United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Goulburn Valley FNL",
+        "Division": "Division 1",
+        "Club Name": "Tatura",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Hampden FNL",
+        "Division": "Division 1",
+        "Club Name": "Camperdown",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Hampden FNL",
+        "Division": "Division 1",
+        "Club Name": "Cobden",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Hampden FNL",
+        "Division": "Division 1",
+        "Club Name": "Hamilton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Hampden FNL",
+        "Division": "Division 1",
+        "Club Name": "Koroit",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Hampden FNL",
+        "Division": "Division 1",
+        "Club Name": "North Warrnambool",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Hampden FNL",
+        "Division": "Division 1",
+        "Club Name": "Port Fairy",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Hampden FNL",
+        "Division": "Division 1",
+        "Club Name": "Portland",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Hampden FNL",
+        "Division": "Division 1",
+        "Club Name": "South Warrnambool",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Hampden FNL",
+        "Division": "Division 1",
+        "Club Name": "Terang Mortlake",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Hampden FNL",
+        "Division": "Division 1",
+        "Club Name": "Warrnambool",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "Various",
+        "League": "Ovens & Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Albury",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "Various",
+        "League": "Ovens & Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Corowa Rutherglen",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "Various",
+        "League": "Ovens & Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Lavington",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "Various",
+        "League": "Ovens & Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Myrtleford",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "Various",
+        "League": "Ovens & Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "North Albury",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "Various",
+        "League": "Ovens & Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Wangaratta",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "Various",
+        "League": "Ovens & Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Wangaratta Rovers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "Various",
+        "League": "Ovens & Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Wodonga",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "Various",
+        "League": "Ovens & Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Wodonga Raiders",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Sunraysia FL",
+        "Division": "Division 1",
+        "Club Name": "Imperials",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Sunraysia FL",
+        "Division": "Division 1",
+        "Club Name": "Irymple",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Sunraysia FL",
+        "Division": "Division 1",
+        "Club Name": "Merbein",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Sunraysia FL",
+        "Division": "Division 1",
+        "Club Name": "Mildura",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Sunraysia FL",
+        "Division": "Division 1",
+        "Club Name": "Ouyen United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Sunraysia FL",
+        "Division": "Division 1",
+        "Club Name": "Red Cliffs",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Sunraysia FL",
+        "Division": "Division 1",
+        "Club Name": "Robinvale Euston",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Sunraysia FL",
+        "Division": "Division 1",
+        "Club Name": "South Mildura",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Sunraysia FL",
+        "Division": "Division 1",
+        "Club Name": "Wentworth",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Wimmera FL",
+        "Division": "Division 1",
+        "Club Name": "Ararat",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Wimmera FL",
+        "Division": "Division 1",
+        "Club Name": "Dimboola",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Wimmera FL",
+        "Division": "Division 1",
+        "Club Name": "Horsham Demons",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Wimmera FL",
+        "Division": "Division 1",
+        "Club Name": "Horsham Saints",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Wimmera FL",
+        "Division": "Division 1",
+        "Club Name": "Minyip Murtoa",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Wimmera FL",
+        "Division": "Division 1",
+        "Club Name": "Nhill",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Wimmera FL",
+        "Division": "Division 1",
+        "Club Name": "Southern Mallee Giants",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Wimmera FL",
+        "Division": "Division 1",
+        "Club Name": "Stawell",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Wimmera FL",
+        "Division": "Division 1",
+        "Club Name": "Warracknabeal",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Alberton FL",
+        "Division": "Division 1",
+        "Club Name": "Fish Creek",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Alberton FL",
+        "Division": "Division 1",
+        "Club Name": "Foster",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Alberton FL",
+        "Division": "Division 1",
+        "Club Name": "Meeniyan Dumbalk United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Alberton FL",
+        "Division": "Division 1",
+        "Club Name": "Stony Creek",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Alberton FL",
+        "Division": "Division 1",
+        "Club Name": "Tarwin",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Alberton FL",
+        "Division": "Division 1",
+        "Club Name": "Toora & District",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Ballan",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Beaufort",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Bungaree",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Buninyong",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Carngham Linton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Clunes",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Creswick",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Daylesford",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Dunnstown",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Gordon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Hepburn",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Learmonth",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Newlyn",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Rokewood Corindhap",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Skipton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Springbank",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Highlands FL",
+        "Division": "Division 1",
+        "Club Name": "Waubra",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Balranald",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Cohuna Kangas",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Kerang",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Koondrook Barham",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Lake Boga",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Mallee Eagles",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Nyah Nyah West United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Swan Hill",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Tooleybuc Manangatang",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Tyntynder",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Central Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Woorinen",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Colac & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Alvie",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Colac & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Apollo Bay",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Colac & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Birregurra",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Colac & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Colac Imperials",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Colac & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Irrewarra-Beeac",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Colac & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Lorne",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Colac & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Simpson",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Colac & District FNL",
+        "Division": "Division 1",
+        "Club Name": "South Colac",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Colac & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Otway Districts",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Colac & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Western Eagles",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "East Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Boisdale Briagolong",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "East Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Lakes Entrance",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "East Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Lindenow",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "East Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Lucknow",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "East Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Orbost Snowy Rovers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "East Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Paynesville",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "East Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Stratford",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "East Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Wy Yung",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ellinbank & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Buln Buln",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ellinbank & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Catani",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ellinbank & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Ellinbank",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ellinbank & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Lang Lang",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ellinbank & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Longwarry",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ellinbank & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Neerim-Neerim South",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ellinbank & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Nilma Darnum",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ellinbank & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Nyora",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ellinbank & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Poowong",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ellinbank & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Warragul Industrials",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Anakie",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Bannockburn",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Bell Post Hill",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Belmont Lions",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Corio",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "East Geelong",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Geelong West Giants",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Inverleigh",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "North Geelong",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Thomson",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Winchelsea",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Geelong & District FNL",
+        "Division": "Division 1",
+        "Club Name": "Werribee Centrals",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Golden Rivers FL",
+        "Division": "Division 1",
+        "Club Name": "Hay",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Golden Rivers FL",
+        "Division": "Division 1",
+        "Club Name": "Macorna",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Golden Rivers FL",
+        "Division": "Division 1",
+        "Club Name": "Moulamein",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Golden Rivers FL",
+        "Division": "Division 1",
+        "Club Name": "Murrabit",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Golden Rivers FL",
+        "Division": "Division 1",
+        "Club Name": "Nullawil",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Golden Rivers FL",
+        "Division": "Division 1",
+        "Club Name": "Quambatook",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Golden Rivers FL",
+        "Division": "Division 1",
+        "Club Name": "Ultima",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Golden Rivers FL",
+        "Division": "Division 1",
+        "Club Name": "Wakool",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Golden Rivers FL",
+        "Division": "Division 1",
+        "Club Name": "Wandella",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Heathcote DFL",
+        "Division": "Division 1",
+        "Club Name": "Colbinabbin",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Heathcote DFL",
+        "Division": "Division 1",
+        "Club Name": "Elmore",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Heathcote DFL",
+        "Division": "Division 1",
+        "Club Name": "Heathcote",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Heathcote DFL",
+        "Division": "Division 1",
+        "Club Name": "Huntly",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Heathcote DFL",
+        "Division": "Division 1",
+        "Club Name": "Leitchville Gunbower",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Heathcote DFL",
+        "Division": "Division 1",
+        "Club Name": "Lockington Bamawm United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Heathcote DFL",
+        "Division": "Division 1",
+        "Club Name": "Mount Pleasant",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Heathcote DFL",
+        "Division": "Division 1",
+        "Club Name": "North Bendigo",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Heathcote DFL",
+        "Division": "Division 1",
+        "Club Name": "White Hills",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Edenhope-Apsley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Harrow-Balmoral",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Jeparit Rainbow",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Kalkee",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Kaniva-Leeor United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Laharum",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Natimuk United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Noradjuha-Quantong",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Pimpinio",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Rupanyup",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Stawell Swifts",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Horsham & District FL",
+        "Division": "Division 1",
+        "Club Name": "Taylors Lake",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Ardmona",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Avenel",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Dookie United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Girgarre",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Lancaster",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Longwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Merrigum",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Murchison",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Nagambie",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Rushworth",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Stanhope",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Tallygaroopna",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Undera",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Kyabram & District FL",
+        "Division": "Division 1",
+        "Club Name": "Violet Town",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Loddon Valley FL",
+        "Division": "Division 1",
+        "Club Name": "Bears Lagoon-Serpentine",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Loddon Valley FL",
+        "Division": "Division 1",
+        "Club Name": "Bridgewater",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Loddon Valley FL",
+        "Division": "Division 1",
+        "Club Name": "Calivil United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Loddon Valley FL",
+        "Division": "Division 1",
+        "Club Name": "Inglewood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Loddon Valley FL",
+        "Division": "Division 1",
+        "Club Name": "Marong & District",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Loddon Valley FL",
+        "Division": "Division 1",
+        "Club Name": "Mitiamo",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Loddon Valley FL",
+        "Division": "Division 1",
+        "Club Name": "Newbridge",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Loddon Valley FL",
+        "Division": "Division 1",
+        "Club Name": "Pyramid Hill",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Loddon Valley FL",
+        "Division": "Division 1",
+        "Club Name": "YCW",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Avoca",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Campbells Creek",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Carisbrook",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Dunolly",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Harcourt",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Lexton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Maldon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Maryborough Rovers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Natte Bealiba",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Navarre",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Newstead",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Royal Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Talbot",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Maryborough Castlemaine DFL",
+        "Division": "Division 1",
+        "Club Name": "Trentham",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mid Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Boolarra",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mid Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Hill End",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mid Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Mirboo North",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mid Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Morwell East",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mid Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Newborough",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mid Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Thorpdale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mid Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Trafalgar",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mid Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Yallourn Yallourn North",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mid Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Yarragon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mid Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Yinnar",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Millewa FL",
+        "Division": "Division 1",
+        "Club Name": "Bambill",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Millewa FL",
+        "Division": "Division 1",
+        "Club Name": "Cardross",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Millewa FL",
+        "Division": "Division 1",
+        "Club Name": "Gol Gol",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Millewa FL",
+        "Division": "Division 1",
+        "Club Name": "Meringur",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Millewa FL",
+        "Division": "Division 1",
+        "Club Name": "Nangiloc",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Millewa FL",
+        "Division": "Division 1",
+        "Club Name": "Werrimull",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "Ararat Eagles",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "Caramut",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "Glenthompson-Dunkeld",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "Great Western",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "Hawkesdale-Macarthur",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "Lismore-Derrinallum",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "Moyston-Willaura",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "Penshurst",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "SMW Rovers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "Tatyoon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "Wickliffe-Lake Bolac",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Mininera & District FL",
+        "Division": "Division 1",
+        "Club Name": "Woorndoo-Mortlake",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Barooga",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Cobram",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Congupna",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Deniliquin",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Echuca United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Finley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Katandra",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Moama",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Mulwala",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Nathalia",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Numurkah",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Rumbalara",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Murray FNL",
+        "Division": "Division 1",
+        "Club Name": "Tongala",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Central FL",
+        "Division": "Division 1",
+        "Club Name": "Birchip-Watchem",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Central FL",
+        "Division": "Division 1",
+        "Club Name": "Boort",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Central FL",
+        "Division": "Division 1",
+        "Club Name": "Charlton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Central FL",
+        "Division": "Division 1",
+        "Club Name": "Donald",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Central FL",
+        "Division": "Division 1",
+        "Club Name": "St Arnaud",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Central FL",
+        "Division": "Division 1",
+        "Club Name": "Sea Lake Nandaly",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Central FL",
+        "Division": "Division 1",
+        "Club Name": "Wedderburn",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Central FL",
+        "Division": "Division 1",
+        "Club Name": "Wycheproof-Narraport",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Churchill",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Cowwarr",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Glengarry",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Gormandale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Heyfield",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Rosedale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Sale City",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Traralgon Tyers United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Woodside",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "North Gippsland FNL",
+        "Division": "Division 1",
+        "Club Name": "Yarram",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Omeo & District FL",
+        "Division": "Division 1",
+        "Club Name": "Bruthen",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Omeo & District FL",
+        "Division": "Division 1",
+        "Club Name": "Buchan",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Omeo & District FL",
+        "Division": "Division 1",
+        "Club Name": "Lindenow South",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Omeo & District FL",
+        "Division": "Division 1",
+        "Club Name": "Omeo-Benambra",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Omeo & District FL",
+        "Division": "Division 1",
+        "Club Name": "Swan Reach",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Omeo & District FL",
+        "Division": "Division 1",
+        "Club Name": "Swifts Creek",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "Benalla All Blacks",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "Bonnie Doon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "Bright",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "Glenrowan",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "Goorambat",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "Greta",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "King Valley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "Milawa",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "Moyhu",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "North Wangaratta",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "Tarrawingee",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Ovens & King FL",
+        "Division": "Division 1",
+        "Club Name": "Whorouly",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Berrigan",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Blighty",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Deniliquin Rovers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Jerilderie",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Katamatite",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Katunga",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Mathoura",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Picola United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Rennie",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Strathmerton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Tocumwal",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Waaia",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Picola & District FL",
+        "Division": "Division 1",
+        "Club Name": "Yarroweyah",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Diggers Rest",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Gisborne Giants",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Kyneton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Lancefield",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Macedon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Melton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Melton Centrals",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Melton South",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Riddell",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Romsey",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Sunbury",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Wallan",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Riddell DFNL",
+        "Division": "Division 1",
+        "Club Name": "Woodend-Hesket",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "South West DFL",
+        "Division": "Division 1",
+        "Club Name": "Branxholme-Wallacedale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "South West DFL",
+        "Division": "Division 1",
+        "Club Name": "Cavendish",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "South West DFL",
+        "Division": "Division 1",
+        "Club Name": "Coleraine",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "South West DFL",
+        "Division": "Division 1",
+        "Club Name": "Dartmoor",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "South West DFL",
+        "Division": "Division 1",
+        "Club Name": "Heathmere",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "South West DFL",
+        "Division": "Division 1",
+        "Club Name": "Heywood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "South West DFL",
+        "Division": "Division 1",
+        "Club Name": "Tyrendarra",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "South West DFL",
+        "Division": "Division 1",
+        "Club Name": "Westerns",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Barnawartha",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Beechworth",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Chiltern",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Dederang Mount Beauty",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Kiewa-Sandy Creek",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Mitta United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Rutherglen",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Tallangatta",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Thurgoona",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Wahgunyah",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Wodonga Saints",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Tallangatta & District FL",
+        "Division": "Division 1",
+        "Club Name": "Yackandandah",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Upper Murray FL",
+        "Division": "Division 1",
+        "Club Name": "Border Walwa",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Upper Murray FL",
+        "Division": "Division 1",
+        "Club Name": "Bullioh",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Upper Murray FL",
+        "Division": "Division 1",
+        "Club Name": "Corryong",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Upper Murray FL",
+        "Division": "Division 1",
+        "Club Name": "Cudgewa",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Upper Murray FL",
+        "Division": "Division 1",
+        "Club Name": "Federal",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Upper Murray FL",
+        "Division": "Division 1",
+        "Club Name": "Tumbarumba",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Warrnambool & District FL",
+        "Division": "Division 1",
+        "Club Name": "Allansford",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Warrnambool & District FL",
+        "Division": "Division 1",
+        "Club Name": "Dennington",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Warrnambool & District FL",
+        "Division": "Division 1",
+        "Club Name": "East Warrnambool",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Warrnambool & District FL",
+        "Division": "Division 1",
+        "Club Name": "Kolora-Noorat",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Warrnambool & District FL",
+        "Division": "Division 1",
+        "Club Name": "Merrivale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Warrnambool & District FL",
+        "Division": "Division 1",
+        "Club Name": "Nirranda",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Warrnambool & District FL",
+        "Division": "Division 1",
+        "Club Name": "Old Collegians",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Warrnambool & District FL",
+        "Division": "Division 1",
+        "Club Name": "Panmure",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Warrnambool & District FL",
+        "Division": "Division 1",
+        "Club Name": "Russell's Creek",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Warrnambool & District FL",
+        "Division": "Division 1",
+        "Club Name": "South Rovers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Warrnambool & District FL",
+        "Division": "Division 1",
+        "Club Name": "Timboon Demons",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 1",
+        "Club Name": "Dromana",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 1",
+        "Club Name": "Mt Eliza",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 1",
+        "Club Name": "Frankston YCW",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 1",
+        "Club Name": "Rosebud",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 1",
+        "Club Name": "Sorrento",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 1",
+        "Club Name": "Pines",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 1",
+        "Club Name": "Mornington",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 1",
+        "Club Name": "Langwarrin",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 1",
+        "Club Name": "Devon Meadows",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 1",
+        "Club Name": "Edithvale-Aspendale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Bonbeach",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Chelsea",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Crib Point",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Frankston Bombers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Hastings",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Karingal",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Pearcedale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Red Hill",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Rye",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Seaford",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Somerville",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "MPFNL",
+        "Division": "Division 2",
+        "Club Name": "Tyabb",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Premier",
+        "Club Name": "Beaconsfield",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Premier",
+        "Club Name": "Berwick",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Premier",
+        "Club Name": "Emerald",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Premier",
+        "Club Name": "Gembrook-Cockatoo",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Premier",
+        "Club Name": "Healesville",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Premier",
+        "Club Name": "Monbulk",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Premier",
+        "Club Name": "Mount Evelyn",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Premier",
+        "Club Name": "Olinda-Ferny Creek",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Premier",
+        "Club Name": "Upwey-Tecoma",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Premier",
+        "Club Name": "Warburton-Millgrove",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Alexandra",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Belgrave",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Broadford",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Coldstream",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Kinglake",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Pakenham",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Powelltown",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Seville",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Thornton-Eildon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Wandin",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Woori Yallock",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Yarra Glen",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Yarra Junction",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "Outer East FNL",
+        "Division": "Division 1",
+        "Club Name": "Yea",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 1",
+        "Club Name": "Athelstone",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 1",
+        "Club Name": "Glenunga",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 1",
+        "Club Name": "Golden Grove",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 1",
+        "Club Name": "Payneham NU",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 1",
+        "Club Name": "Port District",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 1",
+        "Club Name": "Rostrevor OC",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 1",
+        "Club Name": "Sacred Heart OC",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 1",
+        "Club Name": "Salisbury North",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 1",
+        "Club Name": "St Peters OC",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 1",
+        "Club Name": "Tea Tree Gully",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 2",
+        "Club Name": "Brighton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 2",
+        "Club Name": "Broadview",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 2",
+        "Club Name": "Flinders Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 2",
+        "Club Name": "Goodwood Saints",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 2",
+        "Club Name": "Henley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 2",
+        "Club Name": "Modbury",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 2",
+        "Club Name": "Old Ignatians",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 2",
+        "Club Name": "Prince Alfred OC",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 2",
+        "Club Name": "Unley Mercedes",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 2",
+        "Club Name": "Westminster OS",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 3",
+        "Club Name": "Adelaide University",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 3",
+        "Club Name": "Edwardstown",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 3",
+        "Club Name": "Kilburn",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 3",
+        "Club Name": "Lockleys",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 3",
+        "Club Name": "North Haven",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 3",
+        "Club Name": "Pembroke OS",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 3",
+        "Club Name": "PHOS Camden",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 3",
+        "Club Name": "Plympton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 3",
+        "Club Name": "Seaton Ramblers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 3",
+        "Club Name": "Walkerville",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 4",
+        "Club Name": "CBC OC",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 4",
+        "Club Name": "Colonel Light Gardens",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 4",
+        "Club Name": "Gepps Cross",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 4",
+        "Club Name": "Hectorville",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 4",
+        "Club Name": "Hope Valley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 4",
+        "Club Name": "Marion",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 4",
+        "Club Name": "Mitcham",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 4",
+        "Club Name": "Morphettville Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 4",
+        "Club Name": "Pulteney",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 4",
+        "Club Name": "Scotch OC",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Eastern Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Fitzroy",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Greenacres",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Kenilworth",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Pooraka",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Portland",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Hackham",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Brahma Lodge",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Smithfield",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Adelaide Lutheran",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "West Croydon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Central United",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Flinders University",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "SA",
+        "League": "Adelaide Footy League",
+        "Division": "Division 5-7",
+        "Club Name": "Mitchell Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "A Grade",
+        "Club Name": "Baldivis",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "A Grade",
+        "Club Name": "Curtin University Wesley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "A Grade",
+        "Club Name": "Fremantle CBC",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "A Grade",
+        "Club Name": "Kingsway",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "A Grade",
+        "Club Name": "Mount Lawley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "A Grade",
+        "Club Name": "North Beach",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "A Grade",
+        "Club Name": "Trinity Aquinas",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "A Grade",
+        "Club Name": "University",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "B Grade",
+        "Club Name": "Brentwood Booragoon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "B Grade",
+        "Club Name": "Bullcreek Leeming",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "B Grade",
+        "Club Name": "Cockburn Lakes",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "B Grade",
+        "Club Name": "Collegians",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "B Grade",
+        "Club Name": "Kalamunda",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "B Grade",
+        "Club Name": "Kingsley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "B Grade",
+        "Club Name": "Whitford",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "C Grade",
+        "Club Name": "Ballajura",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "C Grade",
+        "Club Name": "Bassendean",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "C Grade",
+        "Club Name": "Belmont Districts",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "C Grade",
+        "Club Name": "Canning South Perth",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "C Grade",
+        "Club Name": "Canning Vale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "C Grade",
+        "Club Name": "Cockburn Cobras",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "C Grade",
+        "Club Name": "Cottesloe",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "C Grade",
+        "Club Name": "Forrestdale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "C Grade",
+        "Club Name": "Gosnells",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "C Grade",
+        "Club Name": "Hamersley Carine",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "C Grade",
+        "Club Name": "Jandakot",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Carlisle",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Coolbinia",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "East Fremantle",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Ellenbrook",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "High Wycombe",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Kenwick",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Maddington",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Winnacott",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Bayswater",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Dianella Morley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Forrestfield",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Joondalup Jets",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Lynwood Ferndale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Rossmoyne",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Osborne Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "SNESA",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "WA",
+        "League": "Perth Football League",
+        "Division": "D/E Grade",
+        "Club Name": "Yanchep",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Premier",
+        "Club Name": "North Shore",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Premier",
+        "Club Name": "Manly Warringah Wolves",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Premier",
+        "Club Name": "Pennant Hills",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Premier",
+        "Club Name": "St George",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Premier",
+        "Club Name": "Sydney University",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Premier",
+        "Club Name": "UNSW-ES",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Premier",
+        "Club Name": "UTS",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Premier",
+        "Club Name": "Inner West Magpies",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Premier",
+        "Club Name": "East Coast Eagles",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Premier",
+        "Club Name": "South West Sydney",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Platinum",
+        "Club Name": "Balmain",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Platinum",
+        "Club Name": "Camden",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Platinum",
+        "Club Name": "Holroyd-Parramatta",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Platinum",
+        "Club Name": "Macquarie University",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Platinum",
+        "Club Name": "Penrith",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Platinum",
+        "Club Name": "Southern Power",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Sydney",
+        "Division": "Platinum",
+        "Club Name": "Western Magic",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "First Grade",
+        "Club Name": "Queanbeyan Tigers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "First Grade",
+        "Club Name": "Ainslie",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "First Grade",
+        "Club Name": "Eastlake",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "First Grade",
+        "Club Name": "Belconnen Magpies",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "First Grade",
+        "Club Name": "Tuggeranong Valley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "First Grade",
+        "Club Name": "Gungahlin",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "First Grade",
+        "Club Name": "Batemans Bay Seahawks",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "Community",
+        "Club Name": "ADFA",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "Community",
+        "Club Name": "ANU",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "Community",
+        "Club Name": "Googong Hogs",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "Community",
+        "Club Name": "Goulburn City Swans",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "Community",
+        "Club Name": "Molonglo",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "Community",
+        "Club Name": "Southern Cats",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "Community",
+        "Club Name": "Woden Blues",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "Community",
+        "Club Name": "Yass",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "ACT",
+        "League": "AFL Canberra",
+        "Division": "Community",
+        "Club Name": "Cootamundra",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Cup",
+        "Club Name": "Cardiff Hawks",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Cup",
+        "Club Name": "Newcastle City",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Cup",
+        "Club Name": "Terrigal Avoca",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Cup",
+        "Club Name": "Warners Bay",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Cup",
+        "Club Name": "Killarney Vale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Cup",
+        "Club Name": "Maitland",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Cup",
+        "Club Name": "Wyong Lakes",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Cup",
+        "Club Name": "Nelson Bay Marlins",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Cup",
+        "Club Name": "The Entrance Bateau Bay",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Cup",
+        "Club Name": "Singleton",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Plate/Shield",
+        "Club Name": "Gosford Tigers",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Plate/Shield",
+        "Club Name": "Lake Macquarie",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Plate/Shield",
+        "Club Name": "Muswellbrook",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Plate/Shield",
+        "Club Name": "Wallsend-West Newcastle",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "NSW",
+        "League": "AFL Hunter Central Coast",
+        "Division": "Plate/Shield",
+        "Club Name": "University of Newcastle Seahorses",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Bayswater Junior",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Belgrave",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Blackburn Junior",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Chirnside Park",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Coldstream",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Croydon",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Donvale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "East Burwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "East Ringwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Emerald",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Ferntree Gully",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Forest Hill",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Gembrook-Cockatoo",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Glen Waverley",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Healesville",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Heathmont",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Kilsyth",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Knox",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Lilydale",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Mitcham",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Monbulk Junior",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Montrose",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Mooroolbark",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Mount Evelyn",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "North Ringwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Norwood",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Olinda Ferny Creek",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Rowville Hawks",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Rowville Knights",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "South Belgrave / Lysterfield Junior",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "The Basin",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Upper Ferntree Gully",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Upwey-Tecoma Junior",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Vermont",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Wandin",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Waverley Blues",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Yarra Glen",
+        "Notes": ""
+    },
+    {
+        "Tier": 3,
+        "State": "VIC",
+        "League": "ERGFL (Female)",
+        "Division": "Junior/Youth",
+        "Club Name": "Yarra Junction",
+        "Notes": ""
+    }
+]
