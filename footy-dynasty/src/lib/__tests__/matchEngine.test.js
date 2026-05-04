@@ -174,7 +174,7 @@ describe('aiClubRating', () => {
   it('returns a higher base rating for tier 1 than tier 3', () => {
     // Use a known AFL club for tier 1 and a tier-3 club for tier 3
     const t1 = aiClubRating('ade', 1);
-    const t3 = aiClubRating('balwyn', 3);
+    const t3 = aiClubRating('efnl_balwyn', 3);
     expect(t1).toBeGreaterThan(t3);
   });
 
@@ -188,13 +188,13 @@ describe('aiClubRating', () => {
   });
 
   it('tier-2 ratings fall within the expected range', () => {
-    const r = aiClubRating('boxhill', 2);
+    const r = aiClubRating('vfl_box_hill_hawks', 2);
     expect(r).toBeGreaterThanOrEqual(52);
     expect(r).toBeLessThanOrEqual(68);
   });
 
   it('tier-3 ratings fall within the expected range', () => {
-    const r = aiClubRating('balwyn', 3);
+    const r = aiClubRating('efnl_balwyn', 3);
     expect(r).toBeGreaterThanOrEqual(40);
     expect(r).toBeLessThanOrEqual(56);
   });
