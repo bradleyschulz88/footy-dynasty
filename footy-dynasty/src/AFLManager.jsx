@@ -690,6 +690,7 @@ function CareerSetup({ onStart }) {
   const [clubId, _setClubId] = useState(saved.clubId ?? null);
   const [managerName, setManagerName] = useState(saved.managerName ?? "");
   const [loading, setLoading] = useState(false);
+  const [startError, setStartError] = useState(null);
 
   const setStep      = (v) => { saveSetup({ step: v });      _setStep(v); };
   const setSelState  = (v) => { saveSetup({ state: v });     _setSelState(v); };
@@ -701,58 +702,60 @@ function CareerSetup({ onStart }) {
   const availableClubs = leagueKey ? PYRAMID[leagueKey].clubs : [];
   const tiersForState = state ? [1, 2, 3].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t)) : [1, 2, 3];
 
-  function start() {
+  function start(e) {
+    if (e) e.preventDefault();
     if (!clubId || !leagueKey || loading) return;
+    setStartError(null);
     setLoading(true);
     try {
-    const club = findClub(clubId);
-    const league = PYRAMID[leagueKey];
-    if (!club) throw new Error(`Club not found: ${clubId}`);
-    if (!league) throw new Error(`League not found: ${leagueKey}`);
-    const SEASON = 2026;
-    seedRng(clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7) + 1);
-    const squad = generateSquad(clubId, league.tier);
-    const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
-    const fixtures = generateFixtures(league.clubs);
-    const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
-    onStart({
-      managerName: managerName || "Coach",
-      clubId,
-      leagueKey,
-      season: SEASON,
-      week: 0,
-      currentDate: `${SEASON - 1}-12-01`,
-      phase: 'preseason',
-      eventQueue,
-      lastEvent: null,
-      inMatchDay: false,
-      currentMatchResult: null,
-      squad,
-      lineup,
-      training: DEFAULT_TRAINING(),
-      facilities: DEFAULT_FACILITIES(),
-      finance: defaultFinance(league.tier),
-      sponsors: generateSponsors(league.tier),
-      staff: generateStaff(league.tier),
-      kits: defaultKits(club.colors),
-      ladder: blankLadder(league.clubs),
-      fixtures,
-      tradePool: (() => { seedRng(7777); return Array.from({ length: 25 }, (_, i) => { const p = generatePlayer(rand(1,3), 5000+i); return { ...p, fromClub: pick(ALL_CLUBS).short }; }); })(),
-      draftPool: Array.from({ length: 60 }, (_, i) => generatePlayer(2, 9000 + i)),
-      youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
-      news: [{ week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` }],
-      weeklyHistory: [],
-      inFinals: false,
-      finalsRound: 0,
-      finalsFixtures: [],
-      finalsResults: [],
-      premiership: null,
-      tacticChoice: "balanced",
-      seasonHistory: [],
-    });
+      const club = findClub(clubId);
+      const league = PYRAMID[leagueKey];
+      if (!club) throw new Error(`Club not found: ${clubId}`);
+      if (!league) throw new Error(`League not found: ${leagueKey}`);
+      const SEASON = 2026;
+      seedRng(clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7) + 1);
+      const squad = generateSquad(clubId, league.tier);
+      const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
+      const fixtures = generateFixtures(league.clubs);
+      const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
+      onStart({
+        managerName: managerName || "Coach",
+        clubId,
+        leagueKey,
+        season: SEASON,
+        week: 0,
+        currentDate: `${SEASON - 1}-12-01`,
+        phase: 'preseason',
+        eventQueue,
+        lastEvent: null,
+        inMatchDay: false,
+        currentMatchResult: null,
+        squad,
+        lineup,
+        training: DEFAULT_TRAINING(),
+        facilities: DEFAULT_FACILITIES(),
+        finance: defaultFinance(league.tier),
+        sponsors: generateSponsors(league.tier),
+        staff: generateStaff(league.tier),
+        kits: defaultKits(club.colors),
+        ladder: blankLadder(league.clubs),
+        fixtures,
+        tradePool: (() => { seedRng(7777); return Array.from({ length: 25 }, (_, i) => { const p = generatePlayer(rand(1,3), 5000+i); return { ...p, fromClub: pick(ALL_CLUBS).short }; }); })(),
+        draftPool: Array.from({ length: 60 }, (_, i) => generatePlayer(2, 9000 + i)),
+        youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
+        news: [{ week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` }],
+        weeklyHistory: [],
+        inFinals: false,
+        finalsRound: 0,
+        finalsFixtures: [],
+        finalsResults: [],
+        premiership: null,
+        tacticChoice: "balanced",
+        seasonHistory: [],
+      });
     } catch (err) {
       setLoading(false);
-      alert(`Failed to start career: ${err.message}\n\nCheck browser console for details.`);
+      setStartError(err.message);
       console.error('[start] career init error:', err);
     }
   }
@@ -894,7 +897,7 @@ function CareerSetup({ onStart }) {
 
         {step === 4 && clubId && leagueKey && findClub(clubId) && (
           <div className="fade-up max-w-xl">
-            <button onClick={()=>{ setClubId(null); setStep(3); }} disabled={loading} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
+            <button type="button" onClick={()=>{ setClubId(null); setStep(3); }} disabled={loading} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>YOUR DETAILS</h2>
             <div className={`${css.panel} p-6 mb-4`}>
               {(() => { const c = findClub(clubId); return (
@@ -908,9 +911,21 @@ function CareerSetup({ onStart }) {
               </div>
               ); })()}
               <label className={css.label}>Manager Name</label>
-              <input value={managerName} onChange={(e)=>setManagerName(e.target.value)} placeholder="Bluey McGee" className="w-full mt-2 bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#E89A4A] outline-none rounded-lg px-4 py-3 text-[#0F172A]" disabled={loading} />
+              <input
+                value={managerName}
+                onChange={(e) => setManagerName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') start(e); }}
+                placeholder="Bluey McGee"
+                className="w-full mt-2 bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#E89A4A] outline-none rounded-lg px-4 py-3 text-[#0F172A]"
+                disabled={loading}
+              />
             </div>
-            <button onClick={start} disabled={loading} className={`${css.btnPrimary} w-full text-lg py-4 ${loading ? 'opacity-70' : 'glow'}`}>
+            {startError && (
+              <div className="mb-3 p-3 rounded-xl text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA]">
+                ⚠️ {startError}
+              </div>
+            )}
+            <button type="button" onClick={start} disabled={loading} className={`${css.btnPrimary} w-full text-lg py-4 ${loading ? 'opacity-70' : 'glow'}`}>
               {loading ? '⏳ Starting career…' : 'START CAREER →'}
             </button>
           </div>
