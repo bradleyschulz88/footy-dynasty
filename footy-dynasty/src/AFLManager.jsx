@@ -158,8 +158,12 @@ function AFLManagerInner() {
 
   useEffect(() => {
     try {
-      if (career) localStorage.setItem(SAVE_KEY, JSON.stringify(career));
-      else localStorage.removeItem(SAVE_KEY);
+      if (career) {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(career));
+        sessionStorage.removeItem(SETUP_SS_KEY);
+      } else {
+        localStorage.removeItem(SAVE_KEY);
+      }
     } catch { /* quota exceeded — silently ignore */ }
   }, [career]);
 
@@ -1293,6 +1297,7 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
           <div>
             {top5.map((row, i) => {
               const c = findClub(row.id);
+              if (!c) return null;
               const isMe = row.id === career.clubId;
               const rankColor = i === 0 ? "#FFD700" : i === 1 ? "#C0C0C0" : i === 2 ? "#CD7F32" : "#94A3B8";
               return (
