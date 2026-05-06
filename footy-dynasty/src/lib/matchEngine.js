@@ -124,6 +124,9 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
   const oppLineup    = opts.oppLineup || [];
   const oppTactic    = opts.oppTactic || 'balanced';
   const oppProfile   = TACTIC_PROFILES[oppTactic] || TACTIC_PROFILES.balanced;
+  // Spec 3D: ground-condition multipliers — defaults to no effect.
+  const groundScoring = clamp(opts.groundScoringMod ?? 1.0, 0.5, 1.1);
+  const groundAccuracy = clamp(opts.groundAccuracyMod ?? 1.0, 0.5, 1.1);
 
   const hAdv = 4;
   const hStr = isPlayerHome ? playerStrength + hAdv : home.rating + hAdv;
@@ -155,15 +158,15 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
       ? rates.away * (1 + playerSideMod) * (1 - oppOppMod * 0.5)
       : rates.away * (1 + oppSideMod) * (1 - playerOppMod * 0.5);
 
-    const homeShots = poisson(Math.max(2, homeShotMean));
-    const awayShots = poisson(Math.max(2, awayShotMean));
+    const homeShots = poisson(Math.max(2, homeShotMean * groundScoring));
+    const awayShots = poisson(Math.max(2, awayShotMean * groundScoring));
 
     let hG = 0, hB = 0, aG = 0, aB = 0;
     const qEvents = [];
 
     // Resolve home shots
     for (let i = 0; i < homeShots; i++) {
-      const accuracy = clamp(0.42 + diff * 0.004 + (rng() - 0.5) * 0.18, 0.18, 0.72);
+      const accuracy = clamp((0.42 + diff * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy, 0.10, 0.78);
       const minute = rand(q * 25, q * 25 + 24);
       const r = rng();
       if (r < accuracy) {
@@ -191,7 +194,7 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
     }
     // Resolve away shots
     for (let i = 0; i < awayShots; i++) {
-      const accuracy = clamp(0.42 - diff * 0.004 + (rng() - 0.5) * 0.18, 0.18, 0.72);
+      const accuracy = clamp((0.42 - diff * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy, 0.10, 0.78);
       const minute = rand(q * 25, q * 25 + 24);
       const r = rng();
       if (r < accuracy) {
