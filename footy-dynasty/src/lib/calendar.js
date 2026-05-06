@@ -117,11 +117,43 @@ function ageMult(age) {
   return 0.3;
 }
 
-export function applyTraining(squad, lineup, subtype, staff) {
+// Training focus profile — biases attribute gain by the focus distribution
+// the player set in the Training tab. focus = { skills, fitness, tactics, recovery } (totals 100)
+const FOCUS_ATTR_WEIGHTS = {
+  skills:   ['kicking', 'marking', 'handball'],
+  fitness:  ['speed', 'endurance', 'strength'],
+  tactics:  ['decision', 'tackling'],
+  recovery: [], // no direct gain — boosts fitness recovery / injury resistance
+};
+
+function focusBoostFor(attr, focus) {
+  if (!focus) return 1.0;
+  let boost = 0.7; // baseline when an attribute isn't a primary focus target
+  for (const [key, attrs] of Object.entries(FOCUS_ATTR_WEIGHTS)) {
+    if (attrs.includes(attr)) {
+      const share = (focus[key] ?? 25) / 25; // 25% = neutral, 50% = double
+      boost = Math.max(boost, share);
+    }
+  }
+  return boost;
+}
+
+// Intensity 20–100 acts as a multiplier on raw attribute gain (with diminishing returns above 80)
+function intensityScale(intensity) {
+  const i = Math.max(20, Math.min(100, intensity ?? 60));
+  if (i <= 80) return 0.6 + (i - 20) * (0.6 / 60); // 20→0.6, 80→1.2
+  return 1.2 + (i - 80) * 0.005;                   // 80→1.2, 100→1.3
+}
+
+export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
   const info = TRAINING_INFO[subtype];
   if (!info || !lineup?.length) {
     return { squad, gains: {}, staffName: 'Unknown', staffRating: 60, devNotes: [] };
   }
+
+  const focus     = opts.focus     ?? null;
+  const intensity = opts.intensity ?? 60;
+  const intScale  = intensityScale(intensity);
 
   const staffMember = (staff || []).find(s => s.id === info.staffId);
   const staffRating = staffMember?.rating ?? 60;
@@ -139,31 +171,28 @@ export function applyTraining(squad, lineup, subtype, staff) {
     const potential = p.potential ?? 99;
     const overall   = p.overall  ?? 60;
 
-    // Per-player multipliers
     const ageScale     = ageMult(age);
     const fitnessScale = fitness / 90;
 
-    // Soft ceiling: halve gains when within 3 of potential
     const nearCap = overall >= potential - 3;
     const capScale = nearCap ? 0.5 : 1.0;
 
-    const scale = baseScale * ageScale * fitnessScale * capScale;
+    const scale = baseScale * ageScale * fitnessScale * capScale * intScale;
 
     const updated = { ...p, attrs: { ...p.attrs } };
     info.attrs.forEach(attr => {
       if (attr in updated.attrs) {
-        const raw = Math.max(0, Math.round((Math.random() * 1.5 + 0.5) * scale));
+        const focusBoost = focusBoostFor(attr, focus);
+        const raw = Math.max(0, Math.round((Math.random() * 1.5 + 0.5) * scale * focusBoost));
         const g   = Math.min(raw, Math.max(0, potential - updated.attrs[attr]));
         updated.attrs[attr] = Math.min(potential, updated.attrs[attr] + g);
         gains[attr] = (gains[attr] || 0) + g;
       }
     });
 
-    // Re-derive overall
     const vals = Object.values(updated.attrs);
     updated.overall = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
 
-    // Dev notes
     const lastName = p.lastName || p.name?.split(' ').slice(-1)[0] || 'Player';
     if (age <= 21)  devNotes.push(`${lastName} (age ${age}) — youth boost`);
     else if (nearCap) devNotes.push(`${lastName} — near potential cap`);
@@ -171,7 +200,11 @@ export function applyTraining(squad, lineup, subtype, staff) {
     return updated;
   });
 
-  return { squad: newSquad, gains, staffName, staffRating, devNotes };
+  if (focus && focus.recovery >= 35) {
+    devNotes.push(`Recovery focus (${focus.recovery}%) — squad fitness boost`);
+  }
+
+  return { squad: newSquad, gains, staffName, staffRating, devNotes, intensity };
 }
 
 // ---------------------------------------------------------------------------

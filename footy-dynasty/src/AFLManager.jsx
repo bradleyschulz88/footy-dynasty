@@ -9,100 +9,18 @@ import {
   Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw
 } from "lucide-react";
 import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
-import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub } from './data/pyramid.js';
-import { POSITIONS, POSITION_NAMES, generatePlayer, generateSquad } from './lib/playerGen.js';
+import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf } from './data/pyramid.js';
+import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad } from './lib/playerGen.js';
 import { teamRating, simMatch, simMatchWithQuarters, aiClubRating } from './lib/matchEngine.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague } from './lib/leagueEngine.js';
 import { defaultFinance, DEFAULT_FACILITIES, DEFAULT_TRAINING, generateSponsors, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO, formatDate, formatDateLong, formatMonth, addDays, daysInMonth, startOfMonth, getDayOfWeek, isSameMonth, prevMonth, nextMonth } from './lib/calendar.js';
-
-const css = {
-  panel: "panel",
-  panelHover: "panel card-hover cursor-pointer",
-  inset: "panel-flat",
-  btn: "px-4 py-2.5 rounded-md font-semibold transition-all font-mono text-[10px] uppercase tracking-[0.18em]",
-  btnPrimary: "btn-primary text-[11px] px-5 py-2.5 font-mono font-bold uppercase tracking-[0.2em]",
-  btnGhost: "btn-ghost px-5 py-2.5",
-  btnDanger: "px-5 py-2.5 rounded-md font-semibold border border-aneg/40 text-aneg hover:bg-aneg/10 transition-all",
-  label: "label",
-  h1: "display tracking-wider text-atext",
-  num: "font-display tracking-wide text-atext",
-  divider: "border-t border-aline",
-  tableHead: "px-4 py-3 font-mono text-[10px] uppercase tracking-[0.15em] text-atext-mute font-bold border-b border-aline bg-apanel/40",
-  tableRow: "border-b border-aline/80 hover:bg-aaccent/5 transition-colors",
-};
-
-// Progress bar with optional label
-const Bar = ({ value, color = "var(--A-accent)", small = false, showVal = false }) => (
-  <div className="flex items-center gap-2 w-full">
-    <div className={`flex-1 ${small ? "h-1.5" : "h-2.5"} bg-apanel-2 rounded-full overflow-hidden`} style={{border:"1px solid var(--A-line)"}}>
-      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.max(2,value)}%`, background: `linear-gradient(90deg, ${color}CC, ${color})` }} />
-    </div>
-    {showVal && <span className="text-[11px] font-bold w-7 text-right" style={{color}}>{value}</span>}
-  </div>
-);
-
-const RatingDot = ({ value, size = "md" }) => {
-  const c = value >= 85 ? "#4AE89A" : value >= 75 ? "#4ADBE8" : value >= 65 ? "var(--A-accent)" : value >= 55 ? "#E8D44A" : "#E84A6F";
-  const sz = size === "lg" ? "w-12 h-12 text-base" : size === "sm" ? "w-7 h-7 text-[10px]" : "w-10 h-10 text-[13px]";
-  return (
-    <span className={`inline-flex items-center justify-center font-black ${sz} rounded-xl flex-shrink-0`}
-      style={{ background: `linear-gradient(135deg, ${c}22, ${c}0A)`, color: c, border: `1.5px solid ${c}55`, boxShadow: `0 0 8px ${c}22` }}>
-      {value}
-    </span>
-  );
-};
-
-const Pill = ({ children, color = "#64748B" }) => (
-  <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] px-2.5 py-1 rounded-lg"
-    style={{ background: `${color}18`, color, border: `1px solid ${color}40` }}>
-    {children}
-  </span>
-);
-
-const Stat = ({ label, value, sub, accent = "var(--A-accent)", icon: Icon }) => (
-  <div className={`${css.panel} p-5 relative overflow-hidden`}>
-    <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{background: accent}} />
-    {Icon && <Icon className="w-5 h-5 mb-2 opacity-60" style={{color: accent}} />}
-    <div className={css.label}>{label}</div>
-    <div className={`${css.num} text-4xl mt-1.5 leading-none`} style={{ color: accent }}>{value}</div>
-    {sub && <div className="text-xs text-atext-dim mt-1.5 font-medium">{sub}</div>}
-  </div>
-);
-
-// JerseyIcon: simple inline SVG kit preview
-const Jersey = ({ kit, size = 64 }) => {
-  const k = kit || { primary: "var(--A-accent)", secondary: "#FFFFFF", accent: "var(--A-accent)", pattern: "solid", numberColor: "#FFFFFF" };
-  return (
-    <svg viewBox="0 0 100 100" width={size} height={size}>
-      <defs>
-        <linearGradient id={`gr-${k.primary}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={k.primary} stopOpacity="1" />
-          <stop offset="100%" stopColor={k.primary} stopOpacity="0.85" />
-        </linearGradient>
-      </defs>
-      <path d="M20 20 L35 12 L50 18 L65 12 L80 20 L75 35 L72 35 L72 88 L28 88 L28 35 L25 35 Z"
-        fill={`url(#gr-${k.primary})`} stroke="#000" strokeWidth="0.8" />
-      {k.pattern === "stripes" && (
-        <g fill={k.secondary} opacity="0.85">
-          <rect x="42" y="20" width="6" height="68" />
-          <rect x="52" y="20" width="6" height="68" />
-        </g>
-      )}
-      {k.pattern === "v" && (
-        <polygon points="35,20 50,42 65,20 50,28" fill={k.secondary} opacity="0.95" />
-      )}
-      {k.pattern === "sash" && (
-        <polygon points="22,28 78,72 78,82 22,38" fill={k.secondary} opacity="0.95" />
-      )}
-      {k.pattern === "yoke" && (
-        <path d="M28 20 L72 20 L72 38 L50 44 L28 38 Z" fill={k.secondary} opacity="0.95" />
-      )}
-      <text x="50" y="62" textAnchor="middle" fontSize="22" fontWeight="900" fontFamily="Bebas Neue, sans-serif" fill={k.numberColor}>9</text>
-    </svg>
-  );
-};
+import { ensureSquadsForLeague, aiClubRatingFromSquad, tickAiSquads, ageAiSquads, selectAiLineup } from './lib/aiSquads.js';
+import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from './lib/save.js';
+import { css, Bar, RatingDot, Pill, Stat, Jersey, GlobalStyle } from './components/primitives.jsx';
+import TabNav from './components/TabNav.jsx';
+import GameOverScreen from './screens/GameOverScreen.jsx';
 
 // ============================================================================
 // ERROR BOUNDARY
@@ -143,41 +61,92 @@ export default function AFLManager() {
   return <ErrorBoundary><AFLManagerInner /></ErrorBoundary>;
 }
 
-const SAVE_KEY = 'footy-dynasty-career';
 const SETUP_SS_KEY = 'footy-dynasty-setup';
 
 function AFLManagerInner() {
+  const [activeSlot, setActiveSlotState] = useState(() => getActiveSlot());
+  const [showSlotPicker, setShowSlotPicker] = useState(false);
+  const [slotMetaTick, setSlotMetaTick] = useState(0);
   const [career, setCareer] = useState(() => {
-    try {
-      const saved = localStorage.getItem(SAVE_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
+    const slot = getActiveSlot();
+    if (slot) {
+      const fromSlot = readSlot(slot);
+      if (fromSlot) return fromSlot;
+    }
+    // Try legacy key migration
+    return migrateLegacy();
   });
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
 
+  // Autosave on career change to active slot
   useEffect(() => {
-    try {
-      if (career) {
-        localStorage.setItem(SAVE_KEY, JSON.stringify(career));
-        sessionStorage.removeItem(SETUP_SS_KEY);
-      } else {
-        localStorage.removeItem(SAVE_KEY);
-      }
-    } catch { /* quota exceeded — silently ignore */ }
-  }, [career]);
+    if (!career || !activeSlot) return;
+    const opts = career.options || { autosave: true };
+    if (!opts.autosave) return;
+    writeSlot(activeSlot, career);
+    sessionStorage.removeItem(SETUP_SS_KEY);
+    setSlotMetaTick(t => t + 1);
+  }, [career, activeSlot]);
 
   function handleNewGame() {
     if (!window.confirm('Abandon your current career and start a new game?')) return;
     sessionStorage.removeItem(SETUP_SS_KEY);
-    localStorage.removeItem(SAVE_KEY);
+    setActiveSlot(null);
+    setActiveSlotState(null);
     setCareer(null);
     setScreen('hub');
     setTab(null);
   }
 
+  function handleSaveNow() {
+    if (!career || !activeSlot) return;
+    writeSlot(activeSlot, career);
+    setSlotMetaTick(t => t + 1);
+  }
+
+  function handleSwitchSlot(slot) {
+    if (slot === activeSlot) {
+      setShowSlotPicker(false);
+      return;
+    }
+    if (career && activeSlot) writeSlot(activeSlot, career);
+    const loaded = readSlot(slot);
+    setActiveSlot(slot);
+    setActiveSlotState(slot);
+    setCareer(loaded);
+    setScreen('hub');
+    setTab(null);
+    setShowSlotPicker(false);
+  }
+
+  function handleDeleteSlot(slot) {
+    if (!window.confirm(`Delete save in slot ${slot}? This cannot be undone.`)) return;
+    deleteSlot(slot);
+    if (slot === activeSlot) {
+      setActiveSlot(null);
+      setActiveSlotState(null);
+      setCareer(null);
+    }
+    setSlotMetaTick(t => t + 1);
+  }
+
   // ============== CAREER SETUP ==============
-  if (!career) return <CareerSetup onStart={(c) => { setCareer(c); setScreen("hub"); }} />;
+  if (!career) {
+    return <CareerSetup onStart={(c) => {
+      const meta = readSlotMeta();
+      let slot = activeSlot;
+      if (!slot) {
+        slot = SLOT_IDS.find(s => !meta[s]) || 'A';
+      }
+      setActiveSlot(slot);
+      setActiveSlotState(slot);
+      const initialised = { ...c, saveVersion: SAVE_VERSION, options: c.options || { autosave: true } };
+      writeSlot(slot, initialised);
+      setCareer(initialised);
+      setScreen("hub");
+    }} existingSlots={readSlotMeta()} onResume={(slot) => { handleSwitchSlot(slot); }} />;
+  }
 
   const club = findClub(career.clubId);
   const league = PYRAMID[career.leagueKey];
@@ -217,11 +186,35 @@ function AFLManagerInner() {
     // ── Training event ──
     if (ev.type === 'training') {
       const { squad, gains, staffName, staffRating, devNotes } = applyTraining(
-        c.squad, c.lineup, ev.subtype, c.staff
+        c.squad, c.lineup, ev.subtype, c.staff,
+        { focus: c.training?.focus, intensity: c.training?.intensity }
       );
       c.squad = squad;
+
+      // Training-day injury: intensity-driven, mitigated by medical and recovery focus
+      const intensity = c.training?.intensity ?? 60;
+      const recoveryFocus = c.training?.focus?.recovery ?? 20;
+      const medLevel = c.facilities?.medical?.level ?? 1;
+      const trainingInjuryProb = Math.max(0, ((intensity - 50) * 0.0014) + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008);
+      if (rng() < trainingInjuryProb && c.lineup.length > 0) {
+        const injId = pick(c.lineup);
+        const baseWeeks = rand(1, 2);
+        const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1));
+        c.squad = c.squad.map(p => p.id === injId ? { ...p, injured: weeks } : p);
+        const injPlayer = c.squad.find(p => p.id === injId);
+        if (injPlayer) {
+          c.news = [{ week: c.week, type: 'loss', text: `🩹 ${injPlayer.firstName} ${injPlayer.lastName} pulled up sore at training (${weeks}w)` }, ...(c.news || [])].slice(0, 20);
+        }
+      }
+
+      // Apply small fitness recovery for the entire squad based on recovery focus
+      const recoveryBoost = Math.round((recoveryFocus - 20) * 0.05);
+      if (recoveryBoost > 0) {
+        c.squad = c.squad.map(p => ({ ...p, fitness: clamp((p.fitness ?? 90) + recoveryBoost, 30, 100) }));
+      }
+
       const info = TRAINING_INFO[ev.subtype] || {};
-      c.lastEvent = { type: 'training', subtype: ev.subtype, name: info.name || ev.subtype, date: ev.date, gains, staffName, staffRating, devNotes };
+      c.lastEvent = { type: 'training', subtype: ev.subtype, name: info.name || ev.subtype, date: ev.date, gains, staffName, staffRating, devNotes, intensity };
       setCareer(c);
       setScreen('hub');
       return;
@@ -238,10 +231,47 @@ function AFLManagerInner() {
           const target = pool[rand(0, Math.max(0, pool.length - 1))];
           if (target) extraNews.push({ week: c.week, type: 'info', text: `🔀 ${cl.name} linked with ${target.firstName} ${target.lastName} (${target.overall} OVR)` });
         });
+
+        // Generate 2-4 AI trade offers for our players
+        const tradableSquad = c.squad.filter(p => p.contract > 0 && p.overall >= 65 && !c.lineup.slice(0, 5).includes(p.id));
+        const offerCount = Math.min(tradableSquad.length, rand(2, 4));
+        const offerClubs = (league.clubs || []).filter(cl => cl.id !== c.clubId);
+        const offers = [];
+        for (let i = 0; i < offerCount; i++) {
+          const targetPlayer = tradableSquad[Math.floor(Math.random() * tradableSquad.length)];
+          const offeringClub = offerClubs[Math.floor(Math.random() * offerClubs.length)];
+          if (!targetPlayer || !offeringClub || offers.find(o => o.targetPlayerId === targetPlayer.id)) continue;
+          const cashOffer = Math.round(targetPlayer.value * (0.5 + Math.random() * 0.6));
+          // Optional swap player from their AI squad
+          const aiSq = c.aiSquads?.[offeringClub.id] || [];
+          const swapPlayer = aiSq.length > 0
+            ? aiSq.filter(ap => Math.abs(ap.overall - targetPlayer.overall) <= 8).slice(0, 5)[Math.floor(Math.random() * 5)] || null
+            : null;
+          offers.push({
+            id: `offer_${Date.now()}_${i}`,
+            fromClubId: offeringClub.id,
+            fromClubName: offeringClub.name,
+            targetPlayerId: targetPlayer.id,
+            offerCash: cashOffer,
+            offerPlayerId: swapPlayer?.id || null,
+            offerPlayerSnapshot: swapPlayer ? { id: swapPlayer.id, firstName: swapPlayer.firstName, lastName: swapPlayer.lastName, overall: swapPlayer.overall, position: swapPlayer.position, age: swapPlayer.age, wage: swapPlayer.wage } : null,
+            status: 'pending',
+            createdAt: ev.date,
+          });
+        }
+        c.pendingTradeOffers = [...(c.pendingTradeOffers || []), ...offers];
+        if (offers.length > 0) {
+          extraNews.push({ week: c.week, type: 'info', text: `📨 ${offers.length} new trade offer${offers.length > 1 ? 's' : ''} on the table — check the Trades screen.` });
+        }
       }
       if (ev.name === 'Transfer Window Closes') {
-        // Refresh trade pool — simulate AI clubs completing signings
         c.tradePool = generateTradePool(c.leagueKey, c.season + ev.date.slice(0, 4) * 0);
+        // Auto-reject any pending offers
+        const stale = (c.pendingTradeOffers || []).filter(o => o.status === 'pending');
+        if (stale.length > 0) {
+          extraNews.push({ week: c.week, type: 'info', text: `📨 ${stale.length} trade offer${stale.length > 1 ? 's' : ''} expired with the window.` });
+        }
+        c.pendingTradeOffers = (c.pendingTradeOffers || []).filter(o => o.status !== 'pending');
         const aiClubs = (league.clubs || []).filter(cl => cl.id !== c.clubId).slice(0, 3);
         aiClubs.forEach(cl => {
           extraNews.push({ week: c.week, type: 'info', text: `✍️ ${cl.name} complete their pre-season recruitment` });
@@ -299,19 +329,32 @@ function AFLManagerInner() {
       const myMatch = round.find(m => m.home === c.clubId || m.away === c.clubId);
       let myResult  = null;
 
+      // Lazily ensure AI squads exist for opponents
+      c.aiSquads = ensureSquadsForLeague(c, league);
+
+      const ratingFor = (clubId) => {
+        if (clubId === c.clubId) return null;
+        const sq = c.aiSquads?.[clubId];
+        const live = aiClubRatingFromSquad(sq);
+        return live ?? aiClubRating(clubId, league.tier);
+      };
+
       round.forEach(m => {
         if (m.home === c.clubId || m.away === c.clubId) {
           const isHome = m.home === c.clubId;
           const opp    = findClub(isHome ? m.away : m.home);
           const myRating  = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
-          const oppRating = aiClubRating(opp.id, league.tier);
-          const TACTIC_BONUS = { attack: 6, balanced: 0, defensive: -4, flood: -2 };
-          const tacBonus = TACTIC_BONUS[c.tacticChoice || 'balanced'] || 0;
-          const effRating = clamp(myRating + tacBonus, 20, 120);
+          const oppRating = ratingFor(opp.id);
+          const playerLineup = c.lineup.map(id => c.squad.find(p => p.id === id)).filter(Boolean);
+          const oppSquad = c.aiSquads?.[opp.id];
+          const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
+          // Pick a tactic for the AI based on their squad strength vs ours
+          const oppTactic = oppRating > myRating + 4 ? 'attack' : oppRating < myRating - 4 ? 'defensive' : 'balanced';
           const result = simMatchWithQuarters(
-            { rating: isHome ? effRating : oppRating },
-            { rating: isHome ? oppRating : effRating },
-            isHome, effRating
+            { rating: isHome ? myRating : oppRating },
+            { rating: isHome ? oppRating : myRating },
+            isHome, myRating,
+            { tactic: c.tacticChoice || 'balanced', playerLineup, oppLineup, oppTactic }
           );
           const myTotal  = isHome ? result.homeTotal : result.awayTotal;
           const oppTotal = isHome ? result.awayTotal : result.homeTotal;
@@ -321,27 +364,71 @@ function AFLManagerInner() {
           m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
           myResult = { isHome, opp, result, myTotal, oppTotal, won, drew };
 
+          // Aggregate goals from match attribution onto player records
+          const attribution = result.goalAttribution || {};
           c.squad = c.squad.map(p => {
             if (!c.lineup.includes(p.id)) return p;
             const fitDrop = rand(8, 18);
             const formChange = won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1);
-            const gAdd = (p.position === 'KF' || p.position === 'HF') ? rand(0, 3) : (p.position === 'C' || p.position === 'R') ? rand(0, 1) : 0;
+            const att = attribution[p.id] || { goals: 0, behinds: 0 };
             const dispAdd = (p.position === 'C' || p.position === 'R' || p.position === 'WG') ? rand(15, 32) : rand(8, 22);
             return { ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: clamp(p.form + formChange, 30, 100),
-                     goals: p.goals + gAdd, behinds: p.behinds + rand(0, 2), disposals: p.disposals + dispAdd,
+                     goals: p.goals + (att.goals || 0), behinds: p.behinds + (att.behinds || 0), disposals: p.disposals + dispAdd,
                      marks: p.marks + rand(2, 7), tackles: p.tackles + rand(1, 5), gamesPlayed: p.gamesPlayed + 1 };
           });
-          if (rng() < 0.18 && c.lineup.length > 0) {
+
+          // Match-day injuries — derived from intensity, mitigated by medical level and recovery focus
+          const intensity = c.training?.intensity ?? 60;
+          const medLevel = c.facilities?.medical?.level ?? 1;
+          const recoveryFocus = c.training?.focus?.recovery ?? 20;
+          const baseInjuryProb = 0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001;
+          const injuryProb = clamp(baseInjuryProb, 0.04, 0.28);
+          // Add key-event injuries from the match engine
+          (result.injuredPlayerIds || []).forEach(pid => {
+            if (!c.lineup.includes(pid)) return;
+            const baseWeeks = rand(1, 4);
+            const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1));
+            c.squad = c.squad.map(p => p.id === pid ? { ...p, injured: weeks } : p);
+          });
+          if (rng() < injuryProb && c.lineup.length > 0) {
             const injId = pick(c.lineup);
-            c.squad = c.squad.map(p => p.id === injId ? { ...p, injured: rand(1, 4) } : p);
+            const baseWeeks = rand(1, 4);
+            const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1));
+            c.squad = c.squad.map(p => p.id === injId ? { ...p, injured: weeks } : p);
           }
+          // Suspensions from reported moments
+          (result.reportedPlayerIds || []).forEach(pid => {
+            if (rng() < 0.35) {
+              const weeks = rand(1, 3);
+              c.squad = c.squad.map(p => p.id === pid ? { ...p, suspended: (p.suspended || 0) + weeks } : p);
+              const player = c.squad.find(p => p.id === pid);
+              if (player) {
+                c.news = [{ week: c.week, type: 'loss', text: `⚖️ ${player.firstName} ${player.lastName} suspended ${weeks} match${weeks > 1 ? 'es' : ''} at the tribunal` }, ...(c.news || [])].slice(0, 20);
+              }
+            }
+          });
+
+          // Brownlow votes — accumulate this season
+          c.brownlow = c.brownlow || {};
+          (result.votes || []).forEach(v => {
+            c.brownlow[v.playerId] = (c.brownlow[v.playerId] || 0) + v.votes;
+          });
         } else {
-          const r1 = aiClubRating(m.home, league.tier);
-          const r2 = aiClubRating(m.away, league.tier);
+          // AI-vs-AI macro sim using persistent squads
+          const r1 = ratingFor(m.home);
+          const r2 = ratingFor(m.away);
           const result = simMatch({ rating: r1 }, { rating: r2 }, false, r2);
           c.ladder = applyResultToLadder(c.ladder, m.home, m.away, result.homeTotal, result.awayTotal);
           m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
         }
+      });
+
+      // Tick AI squads (fitness recovery, mild form drift)
+      c.aiSquads = tickAiSquads(c.aiSquads || {});
+      // Decrement suspensions and injuries for bench
+      c.squad = c.squad.map(p => {
+        const susp = Math.max(0, (p.suspended || 0) - 1);
+        return susp !== (p.suspended || 0) ? { ...p, suspended: susp } : p;
       });
 
       // Recover bench players
@@ -369,6 +456,25 @@ function AFLManagerInner() {
         c.news = [{ week: ev.round, type: myResult.won ? 'win' : myResult.drew ? 'draw' : 'loss',
           text: `Rd ${ev.round}: ${myResult.isHome ? 'vs' : '@'} ${myResult.opp?.short} ${myResult.myTotal}–${myResult.oppTotal} (${myResult.won ? 'W' : myResult.drew ? 'D' : 'L'})` },
           ...(c.news || [])].slice(0, 12);
+      }
+
+      // Board sacking: two consecutive rounds at <=10 confidence triggers game over
+      if (c.finance.boardConfidence <= 10) {
+        c.boardWarning = (c.boardWarning || 0) + 1;
+        if (c.boardWarning >= 2) {
+          c.gameOver = {
+            reason: 'sacked',
+            club: club.name,
+            season: c.season,
+            week: ev.round,
+            premiership: c.premiership || null,
+          };
+          c.news = [{ week: ev.round, type: 'loss', text: `💼 The board has terminated your contract at ${club.name}.` }, ...(c.news || [])].slice(0, 20);
+        } else {
+          c.news = [{ week: ev.round, type: 'loss', text: `⚠️ Final warning from the board — turn it around or you're gone.` }, ...(c.news || [])].slice(0, 20);
+        }
+      } else if (c.finance.boardConfidence > 30) {
+        c.boardWarning = 0;
       }
 
       c.week = ev.round;
@@ -556,13 +662,30 @@ function AFLManagerInner() {
     };
     c.showSeasonSummary = true;
 
+    // Compute Brownlow winner (player squad only — opp clubs use macro sim)
+    const brownlowEntries = Object.entries(c.brownlow || {}).sort((a, b) => b[1] - a[1]);
+    let brownlowWinner = null;
+    if (brownlowEntries.length > 0) {
+      const [winnerId, votes] = brownlowEntries[0];
+      const player = c.squad.find(p => p.id === winnerId);
+      if (player) {
+        brownlowWinner = { name: pName(player), votes, position: player.position };
+      }
+    }
+    c.seasonSummary = {
+      ...c.seasonSummary,
+      brownlow: brownlowWinner,
+    };
+
     c.season += 1;
     c.week = 0;
     // Determine new league tier for recalibration
     const newLeagueTier = PYRAMID[c.leagueKey]?.tier || league.tier;
     const newTierScale = TIER_SCALE[newLeagueTier] || 1.0;
-    // Age players, re-roll form/fitness, reduce contracts
-    // Also recalibrate display overall when tier has changed
+
+    // Age players: capture retirements as narratives
+    const retiredThisYear = [];
+    const beforeIds = new Set(c.squad.map(p => p.id));
     c.squad = c.squad.map(p => {
       const newAge = p.age + 1;
       const decline = newAge >= 30 ? rand(2, 6) : newAge >= 27 ? rand(0, 3) : newAge <= 22 ? -rand(2, 6) : 0;
@@ -571,17 +694,65 @@ function AFLManagerInner() {
       const newOverall = clamp(Math.round(newTrue / newTierScale) - (newLeagueTier < (p.tier||league.tier) ? rand(0,3) : 0), 30, 99);
       return { ...p, age: newAge, overall: newOverall, trueRating: newTrue, tier: newLeagueTier,
                contract: Math.max(0, p.contract - 1), form: rand(50, 80), fitness: rand(85, 100),
-               goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0 };
-    }).filter(p => p.age <= 36 && p.contract > 0);
+               goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0,
+               suspended: 0 };
+    });
+    // Capture retirees/leavers
+    const survivors = c.squad.filter(p => p.age <= 36 && p.contract > 0);
+    const leavers = c.squad.filter(p => p.age > 36 || p.contract <= 0);
+    leavers.forEach(p => {
+      retiredThisYear.push({
+        id: p.id,
+        name: p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'),
+        age: p.age,
+        reason: p.age > 36 ? 'retired' : 'released',
+        career: { goals: p.goals || 0, gamesPlayed: p.gamesPlayed || 0 },
+      });
+    });
+    c.squad = survivors;
+    c.retiredThisSeason = retiredThisYear;
+    // Age AI squads in parallel
+    c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier);
     // Generate draft pool for off-season
     seedRng(c.season * 999 + 17);
     c.draftPool = Array.from({ length: 60 }, (_, i) => generatePlayer(2, 9000 + i + c.season * 100));
     c.tradePool = generateTradePool(c.leagueKey, c.season);
+    // Generate ordered draft (reverse ladder order)
+    const newLeague = PYRAMID[c.leagueKey];
+    const draftOrder = sortedLadder(c.ladder.length ? c.ladder : blankLadder(newLeague.clubs))
+      .slice().reverse().map(r => r.id);
+    c.draftOrder = draftOrder.map((clubId, i) => ({ pick: i + 1, clubId, used: false }));
+
+    // Honours history: append a row for the season just completed
+    c.history = c.history || [];
+    c.history.push({
+      season: c.season - 1,
+      leagueKey: oldLeagueKey,
+      leagueShort: oldLeagueShort,
+      position: myPos,
+      W: myRow.W || 0, L: myRow.L || 0, D: myRow.D || 0,
+      pts: myRow.pts || 0,
+      pct: Math.round(myRow.pct || 0),
+      promoted, relegated, champion,
+      topScorer: byGoals[0] ? { name: pName(byGoals[0]), goals: byGoals[0].goals || 0 } : null,
+      brownlow: brownlowWinner,
+    });
+    c.brownlow = {};
+    c.boardWarning = 0;
+
+    // Retirement news
+    retiredThisYear.slice(0, 4).forEach(r => {
+      c.news = [{ week: 0, type: 'info', text: `🏁 ${r.name} ${r.reason === 'retired' ? `retires at ${r.age}` : `released after contract expired`} (${r.career.gamesPlayed} games, ${r.career.goals} goals)` }, ...(c.news || [])].slice(0, 20);
+    });
+
     c.news = [
       { week: 0, type: promoted ? "win" : relegated ? "loss" : "draw",
         text: promoted ? `🏆 Promoted! Finished ${myPos}st in ${league.short}.` : relegated ? `⬇️ Relegated. Finished ${myPos}/${sorted.length}.` : `Season complete: finished ${myPos}/${sorted.length}` },
       ...c.news
-    ].slice(0, 15);
+    ].slice(0, 20);
+    if (brownlowWinner) {
+      c.news = [{ week: 0, type: 'info', text: `🥇 Brownlow Medal: ${brownlowWinner.name} (${brownlowWinner.votes} votes)` }, ...c.news].slice(0, 20);
+    }
     // Regenerate event queue for the new season
     const nextLeague = PYRAMID[c.leagueKey];
     c.eventQueue = generateSeasonCalendar(c.season, nextLeague.clubs, c.fixtures, c.clubId);
@@ -603,32 +774,79 @@ function AFLManagerInner() {
   })();
 
   // ============== RENDER ==============
-  const globalStyle = (
-    <style>{`
-      body, html { background:var(--A-bg); margin:0; color:var(--A-text); }
-      ::-webkit-scrollbar { width:5px; height:5px; }
-      ::-webkit-scrollbar-track { background:var(--A-bg); }
-      ::-webkit-scrollbar-thumb { background:rgba(124,161,207,0.25); border-radius:4px; }
-      ::-webkit-scrollbar-thumb:hover { background:rgba(0,224,255,0.35); }
-      @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(0,224,255,0.25);}50%{box-shadow:0 0 14px 3px rgba(0,224,255,0.15);} }
-      .glow { animation: pulseGlow 2.5s ease-in-out infinite; }
-      @keyframes slideIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
-      .anim-in { animation: slideIn 0.2s ease-out; }
-      .dirA select option { background:var(--A-panel); color:var(--A-text); }
-      .dirA select { color:var(--A-text); background:var(--A-panel); border:1px solid var(--A-line); border-radius:8px; }
-      input[type=color] { padding:2px; cursor:pointer; border-radius:6px; }
-      button:disabled { opacity:0.4; cursor:not-allowed; }
-      * { box-sizing:border-box; }
-    `}</style>
-  );
+  const globalStyle = <GlobalStyle />;
+
+  // ============== GAME OVER (sacking) ==============
+  if (career.gameOver) {
+    return (
+      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+        {globalStyle}
+        <GameOverScreen
+          career={career}
+          club={club}
+          onRestart={() => {
+            setActiveSlot(null);
+            setActiveSlotState(null);
+            setCareer(null);
+            setScreen('hub');
+            setTab(null);
+          }}
+          onTakeNewJob={() => {
+            // Drop the player back a tier (or stay in tier 3) at a random club
+            const currentTier = league.tier;
+            const targetTier = Math.min(3, currentTier + 1);
+            const candidates = Object.entries(PYRAMID).filter(([k, l]) => l.tier === targetTier && l.clubs.length > 0);
+            if (!candidates.length) {
+              // fallback — keep tier
+              setCareer({ ...career, gameOver: null, finance: { ...career.finance, boardConfidence: 55 }, boardWarning: 0 });
+              return;
+            }
+            const [newKey, newLeague] = candidates[Math.floor(Math.random() * candidates.length)];
+            const newClub = newLeague.clubs[Math.floor(Math.random() * newLeague.clubs.length)];
+            seedRng(Date.now() % 100000);
+            const newSquad = generateSquad(newClub.id, newLeague.tier);
+            const newLineup = newSquad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p => p.id);
+            const newFixtures = generateFixtures(newLeague.clubs);
+            const SEASON = career.season;
+            const eventQueue = generateSeasonCalendar(SEASON, newLeague.clubs, newFixtures, newClub.id);
+            setCareer({
+              ...career,
+              gameOver: null,
+              clubId: newClub.id,
+              leagueKey: newKey,
+              week: 0,
+              currentDate: `${SEASON - 1}-12-01`,
+              phase: 'preseason',
+              eventQueue,
+              squad: newSquad,
+              lineup: newLineup,
+              kits: defaultKits(newClub.colors),
+              ladder: blankLadder(newLeague.clubs),
+              fixtures: newFixtures,
+              finance: { ...defaultFinance(newLeague.tier), boardConfidence: 55 },
+              sponsors: generateSponsors(newLeague.tier),
+              boardWarning: 0,
+              aiSquads: {},
+              brownlow: {},
+              news: [
+                { week: 0, type: 'win', text: `🪄 Fresh start: ${career.managerName} appointed at ${newClub.name}.` },
+                ...(career.news || []),
+              ].slice(0, 20),
+            });
+          }}
+        />
+      </div>
+    );
+  }
 
   if (career.showSeasonSummary && career.seasonSummary) {
     return (
-      <div className="dirA font-sans min-h-screen">
+      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
         {globalStyle}
         <SeasonSummaryScreen
           summary={career.seasonSummary}
           club={club}
+          retiredThisSeason={career.retiredThisSeason}
           onContinue={() => updateCareer({ showSeasonSummary: false })}
         />
       </div>
@@ -637,7 +855,7 @@ function AFLManagerInner() {
 
   if (career.inMatchDay && career.currentMatchResult) {
     return (
-      <div className="dirA font-sans min-h-screen">
+      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
         {globalStyle}
         <MatchDayScreen
           result={career.currentMatchResult}
@@ -651,12 +869,22 @@ function AFLManagerInner() {
   }
 
   return (
-    <div className="dirA min-h-screen font-sans text-atext flex w-full">
+    <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
       {globalStyle}
-      <Sidebar screen={screen} setScreen={(s)=>{setScreen(s);setTab(null);}} club={club} league={league} career={career} myLadderPos={myLadderPos} onNewGame={handleNewGame} />
-      <main className="flex-1 overflow-y-auto">
+      <Sidebar screen={screen} setScreen={(s)=>{setScreen(s);setTab(null);}} club={club} league={league} career={career} myLadderPos={myLadderPos}
+        onNewGame={handleNewGame}
+        onSaveNow={handleSaveNow}
+        activeSlot={activeSlot}
+        onTogglePicker={() => setShowSlotPicker(s => !s)}
+        showSlotPicker={showSlotPicker}
+        slotMeta={readSlotMeta()}
+        slotMetaTick={slotMetaTick}
+        onSwitchSlot={handleSwitchSlot}
+        onDeleteSlot={handleDeleteSlot}
+      />
+      <main className="flex-1 overflow-y-auto min-w-0">
         <TopBar career={career} club={club} league={league} myLadderPos={myLadderPos} onAdvance={advanceToNextEvent} />
-        <div className="p-6 max-w-[1400px] mx-auto">
+        <div className="p-3 md:p-6 max-w-[1400px] mx-auto">
           {screen === "hub"      && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={setScreen} onAdvance={advanceToNextEvent} />}
           {screen === "squad"    && <SquadScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
           {screen === "schedule" && <ScheduleScreen career={career} club={club} league={league} />}
@@ -680,7 +908,7 @@ function saveSetup(patch) {
   try { sessionStorage.setItem(SETUP_SS_KEY, JSON.stringify({ ...loadSetup(), ...patch })); } catch {}
 }
 
-function CareerSetup({ onStart }) {
+function CareerSetup({ onStart, existingSlots = {}, onResume }) {
   const saved = loadSetup();
   const [step, _setStep] = useState(saved.step ?? 0);
   const [state, _setSelState] = useState(saved.state ?? null);
@@ -690,6 +918,7 @@ function CareerSetup({ onStart }) {
   const [managerName, setManagerName] = useState(saved.managerName ?? "");
   const [loading, setLoading] = useState(false);
   const [startError, setStartError] = useState(null);
+  const slotsWithSaves = SLOT_IDS.filter(s => existingSlots && existingSlots[s]);
 
   const setStep      = (v) => { saveSetup({ step: v });      _setStep(v); };
   const setSelState  = (v) => { saveSetup({ state: v });     _setSelState(v); };
@@ -752,6 +981,18 @@ function CareerSetup({ onStart }) {
       premiership: null,
       tacticChoice: "balanced",
       seasonHistory: [],
+      // v2 additions
+      saveVersion: SAVE_VERSION,
+      aiSquads: {},
+      draftOrder: [],
+      history: [],
+      brownlow: {},
+      boardWarning: 0,
+      gameOver: null,
+      themeMode: 'A',
+      options: { autosave: true },
+      pendingTradeOffers: [],
+      retiredThisSeason: [],
     });
     } catch (err) {
       setLoading(false);
@@ -763,6 +1004,7 @@ function CareerSetup({ onStart }) {
   return (
     <div className="dirA min-h-screen font-sans text-atext flex flex-col">
       <style>{`
+        body, html { background:var(--A-bg); margin:0; color:var(--A-text); }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         .fade-up { animation: fadeUp 0.4s ease-out; }
       `}</style>
@@ -790,9 +1032,33 @@ function CareerSetup({ onStart }) {
           ))}
         </div>
 
+        {step === 0 && slotsWithSaves.length > 0 && (
+          <div className="fade-up mb-8">
+            <h2 className={`${css.h1} text-3xl mb-3`}>RESUME A CAREER</h2>
+            <p className="text-atext-dim mb-4 text-sm">Pick up where you left off, or scroll down to start a fresh career in another save slot.</p>
+            <div className="grid md:grid-cols-3 gap-3">
+              {slotsWithSaves.map(slot => {
+                const meta = existingSlots[slot];
+                const c = findClub(meta.clubId);
+                return (
+                  <button key={slot} onClick={() => onResume && onResume(slot)} className={`${css.panelHover} p-4 text-left`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-aaccent">SLOT {slot}</span>
+                      <span className="text-[10px] text-atext-mute">·</span>
+                      <span className="text-[10px] text-atext-mute">Season {meta.season}{meta.week ? ` · R${meta.week}` : ''}</span>
+                    </div>
+                    <div className="font-bold text-atext truncate">{meta.managerName || 'Coach'}</div>
+                    <div className="text-xs text-atext-dim truncate">{c?.name || meta.clubId}</div>
+                    {meta.premiership && <div className="text-[10px] text-aaccent mt-2 font-mono">🏆 {meta.premiership}</div>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {step === 0 && (
           <div className="fade-up">
-            <h2 className={`${css.h1} text-4xl mb-4`}>PICK A STATE</h2>
+            <h2 className={`${css.h1} text-4xl mb-4`}>{slotsWithSaves.length > 0 ? 'OR START A NEW CAREER' : 'PICK A STATE'}</h2>
             <p className="text-atext-dim mb-8">Where will your story begin? Each state has its own football culture and pyramid.</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {STATES.map(s => {
@@ -939,7 +1205,7 @@ function CareerSetup({ onStart }) {
 // ============================================================================
 // SIDEBAR + TOPBAR
 // ============================================================================
-function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGame }) {
+function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGame, onSaveNow, activeSlot, slotMeta, slotMetaTick, onTogglePicker, showSlotPicker, onSwitchSlot, onDeleteSlot }) {
   const season = career.season;
   const week   = career.week;
   const phase  = career.phase || 'preseason';
@@ -952,9 +1218,9 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGa
     { key: "compete",  label: "Competition", icon: Trophy,    desc: "Ladder & Fixtures" },
   ];
   return (
-    <aside className="w-64 flex flex-col sticky top-0 h-screen shrink-0 bg-apanel border-r border-aline">
+    <aside className="w-full md:w-64 md:flex flex-col md:sticky md:top-0 md:h-screen shrink-0 bg-apanel border-b md:border-b-0 md:border-r border-aline">
       {/* Brand */}
-      <div className="px-5 py-4 border-b border-aline">
+      <div className="px-5 py-4 border-b border-aline hidden md:block">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{background:"linear-gradient(135deg, var(--A-accent), #0098b0)", boxShadow:"0 4px 12px rgba(0,224,255,0.25)"}}>
             <Trophy className="w-5 h-5 text-[#001520]" />
@@ -967,7 +1233,7 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGa
       </div>
 
       {/* Club identity card */}
-      <div className="px-4 py-3 border-b border-aline">
+      <div className="px-4 py-3 border-b border-aline hidden md:block">
         <div className="panel rounded-xl overflow-hidden">
           <div className="h-1.5 w-full" style={{background:`linear-gradient(90deg, ${club.colors[0]}, ${club.colors[1]})`}} />
           <div className="p-3">
@@ -994,26 +1260,68 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGa
       </div>
 
       {/* Nav */}
-      <nav className="p-3 flex-1 space-y-0.5 overflow-y-auto">
+      <nav className="p-2 md:p-3 flex md:flex-col gap-1 md:gap-0.5 md:flex-1 overflow-x-auto md:overflow-y-auto md:overflow-x-visible">
         {items.map(it => {
           const Icon = it.icon;
           const active = screen === it.key;
           return (
             <button key={it.key} onClick={()=>setScreen(it.key)}
-              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group border ${active ? "bg-aaccent/10 border-aaccent/40 text-aaccent" : "border-transparent text-atext-dim hover:bg-aaccent/5 hover:text-atext"}`}>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${active ? "bg-aaccent/15 text-aaccent" : "text-atext-mute"}`}>
+              className={`flex items-center gap-2 md:gap-3 px-3 py-2 md:py-3 rounded-xl transition-all group border whitespace-nowrap md:w-full ${active ? "bg-aaccent/10 border-aaccent/40 text-aaccent" : "border-transparent text-atext-dim hover:bg-aaccent/5 hover:text-atext"}`}>
+              <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${active ? "bg-aaccent/15 text-aaccent" : "text-atext-mute"}`}>
                 <Icon className="w-4 h-4" />
               </div>
-              <div className="text-left min-w-0">
+              <div className="text-left min-w-0 hidden sm:block">
                 <div className={`text-sm font-bold leading-tight ${active ? "text-aaccent" : "text-atext-dim group-hover:text-atext"}`}>{it.label}</div>
-                <div className={`text-[9px] truncate ${active ? "text-aaccent/80" : "text-atext-mute"}`}>{it.desc}</div>
+                <div className={`text-[9px] truncate hidden md:block ${active ? "text-aaccent/80" : "text-atext-mute"}`}>{it.desc}</div>
               </div>
-              {active && <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0 text-aaccent" />}
+              {active && <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0 text-aaccent hidden md:inline" />}
             </button>
           );
         })}
       </nav>
-      <div className="px-4 py-3 space-y-2 border-t border-aline">
+      <div className="px-4 py-3 space-y-2 border-t border-aline hidden md:block">
+        {/* Save status */}
+        {onSaveNow && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <button onClick={onSaveNow} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-apanel-2 hover:bg-aaccent/10 hover:text-aaccent transition text-[10px] font-bold uppercase tracking-widest font-mono text-atext-dim">
+                <Save className="w-3.5 h-3.5" /> Save{activeSlot ? ` Slot ${activeSlot}` : ''}
+              </button>
+              <button onClick={onTogglePicker} className="px-2 py-2 rounded-lg bg-apanel-2 hover:bg-aaccent/10 hover:text-aaccent transition text-[10px] font-bold uppercase font-mono text-atext-dim">
+                <ChevronsUp className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {showSlotPicker && SLOT_IDS && (
+              <div className="rounded-lg overflow-hidden text-[10px]" style={{background:'var(--A-panel-2)', border:'1px solid var(--A-line)'}} key={slotMetaTick}>
+                {SLOT_IDS.map(s => {
+                  const meta = slotMeta?.[s];
+                  const isActive = s === activeSlot;
+                  return (
+                    <div key={s} className={`flex items-center gap-2 px-2.5 py-1.5 ${isActive ? 'bg-aaccent/10' : ''}`} style={{borderBottom:'1px solid var(--A-line)'}}>
+                      <span className={`font-mono font-bold ${isActive ? 'text-aaccent' : 'text-atext-dim'}`}>{s}</span>
+                      {meta ? (
+                        <>
+                          <span className="flex-1 text-atext-dim truncate">S{meta.season}{meta.week ? ` R${meta.week}` : ''} · {findClub(meta.clubId)?.short || meta.clubId}</span>
+                          {!isActive && (
+                            <button onClick={() => onSwitchSlot && onSwitchSlot(s)} className="text-aaccent hover:text-[#4ADBE8] font-bold">Load</button>
+                          )}
+                          <button onClick={() => onDeleteSlot && onDeleteSlot(s)} className="text-atext-mute hover:text-aneg">×</button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex-1 text-atext-mute italic">empty</span>
+                          {career && !isActive && (
+                            <button onClick={() => onSwitchSlot && onSwitchSlot(s)} className="text-aaccent hover:text-[#4ADBE8] font-bold">Use</button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
         <button onClick={onNewGame} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-atext-mute hover:text-aneg hover:bg-aneg/10 transition text-xs font-bold uppercase tracking-widest font-mono">
           <RefreshCw className="w-3.5 h-3.5" /> New Career
         </button>
@@ -1060,46 +1368,49 @@ function TopBar({ career, club, league, myLadderPos, onAdvance }) {
   }
 
   return (
-    <header className="sticky top-0 z-20 px-6 py-0 bg-apanel/90 backdrop-blur-md border-b border-aline shadow-[0_1px_0_rgba(0,224,255,0.06)]">
-      <div className="flex items-center justify-between max-w-[1400px] mx-auto h-16">
+    <header className="sticky top-0 z-20 px-3 md:px-6 py-0 bg-apanel/90 backdrop-blur-md border-b border-aline shadow-[0_1px_0_rgba(0,224,255,0.06)]">
+      <div className="flex items-center justify-between gap-2 max-w-[1400px] mx-auto h-16">
         {/* Left: date + phase + finance stats */}
-        <div className="flex items-center gap-0">
+        <div className="flex items-center gap-0 min-w-0 overflow-hidden">
           {/* Date + phase */}
-          <div className="pr-4 mr-2 border-r border-aline">
+          <div className="pr-3 mr-2 md:pr-4 md:mr-2 border-r border-aline flex-shrink-0">
             <div className="text-[10px] font-mono font-bold uppercase tracking-widest" style={{color: phaseColors[phase]}}>{phaseLabel[phase]}</div>
-            <div className="font-display text-lg leading-tight text-atext">{career.currentDate ? formatDate(career.currentDate) : '—'}</div>
+            <div className="font-display text-base md:text-lg leading-tight text-atext">{career.currentDate ? formatDate(career.currentDate) : '—'}</div>
           </div>
           {[
-            { label: "Cash",     value: fmtK(career.finance.cash),           color: "var(--A-pos)" },
-            { label: "Transfer", value: fmtK(career.finance.transferBudget), color: "var(--A-accent)" },
-            { label: "Board",    value: career.finance.boardConfidence,       color: "var(--A-accent-2)", bar: true },
-            { label: "Fans",     value: career.finance.fanHappiness,          color: "#A78BFA", bar: true },
-          ].map(({ label, value, color, bar }) => (
-            <div key={label} className="flex items-center px-4 h-full border-r border-aline last:border-r-0">
-              <div>
-                <div className="text-[9px] font-mono font-bold uppercase tracking-[0.18em] text-atext-mute">{label}</div>
-                {bar ? (
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <div className="w-16 h-1.5 rounded-full overflow-hidden bg-apanel border border-aline">
-                      <div className="h-full rounded-full" style={{width:`${value}%`, background:`linear-gradient(90deg,${color}88,${color})`}} />
+            { label: "Cash",     value: fmtK(career.finance.cash),           color: "var(--A-pos)",       hideBelow: 'sm' },
+            { label: "Transfer", value: fmtK(career.finance.transferBudget), color: "var(--A-accent)",    hideBelow: 'lg' },
+            { label: "Board",    value: career.finance.boardConfidence,       color: "var(--A-accent-2)", bar: true, hideBelow: 'md' },
+            { label: "Fans",     value: career.finance.fanHappiness,          color: "#A78BFA",           bar: true, hideBelow: 'lg' },
+          ].map(({ label, value, color, bar, hideBelow }) => {
+            const cls = hideBelow === 'lg' ? 'hidden lg:flex' : hideBelow === 'md' ? 'hidden md:flex' : hideBelow === 'sm' ? 'hidden sm:flex' : 'flex';
+            return (
+              <div key={label} className={`${cls} items-center px-3 md:px-4 h-full border-r border-aline last:border-r-0 flex-shrink-0`}>
+                <div>
+                  <div className="text-[9px] font-mono font-bold uppercase tracking-[0.18em] text-atext-mute">{label}</div>
+                  {bar ? (
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <div className="w-12 lg:w-16 h-1.5 rounded-full overflow-hidden bg-apanel border border-aline">
+                        <div className="h-full rounded-full" style={{width:`${value}%`, background:`linear-gradient(90deg,${color}88,${color})`}} />
+                      </div>
+                      <span className="font-display text-lg leading-none" style={{color}}>{value}</span>
                     </div>
-                    <span className="font-display text-lg leading-none" style={{color}}>{value}</span>
-                  </div>
-                ) : (
-                  <div className="font-display text-xl leading-tight" style={{color}}>{value}</div>
-                )}
+                  ) : (
+                    <div className="font-display text-lg md:text-xl leading-tight" style={{color}}>{value}</div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Right: next event + advance button */}
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden md:block">
+        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+          <div className="text-right hidden lg:block">
             <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-atext-mute">Next Event</div>
             <div className="text-sm font-semibold text-atext">{nextIcon} {nextLabel}</div>
           </div>
-          <button onClick={onAdvance} className={`${css.btnPrimary} flex items-center gap-2 glow`}>
+          <button onClick={onAdvance} className={`${css.btnPrimary} flex items-center gap-1.5 md:gap-2 glow text-[10px] md:text-[11px] px-3 md:px-5`}>
             <Play className="w-4 h-4" /> ADVANCE
           </button>
         </div>
@@ -1495,7 +1806,8 @@ function ScheduleScreen({ career, club, league }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Calendar grid */}
-        <div className={`${css.panel} lg:col-span-2 p-4`}>
+        <div className={`${css.panel} lg:col-span-2 p-2 md:p-4 overflow-x-auto`}>
+          <div className="min-w-[420px]">
           <div className="grid grid-cols-7 mb-2">
             {dayNames.map(d => (
               <div key={d} className="text-center text-[10px] font-bold uppercase tracking-widest text-atext-mute py-1">{d}</div>
@@ -1533,6 +1845,7 @@ function ScheduleScreen({ career, club, league }) {
             })}
           </div>
 
+          </div>
           {/* Legend */}
           <div className="flex flex-wrap gap-3 mt-4 pt-3" style={{borderTop:'1px solid var(--A-line)'}}>
             {[
@@ -1582,7 +1895,7 @@ function ScheduleScreen({ career, club, league }) {
 // ============================================================================
 // SEASON SUMMARY SCREEN
 // ============================================================================
-function SeasonSummaryScreen({ summary, club, onContinue }) {
+function SeasonSummaryScreen({ summary, club, retiredThisSeason = [], onContinue }) {
   const posColor   = summary.position <= 1 ? '#FFD700' : summary.position <= 4 ? '#4AE89A' : summary.position <= summary.totalTeams / 2 ? 'var(--A-accent)' : '#E84A6F';
   const tierColors = { 1: '#E84A6F', 2: 'var(--A-accent)', 3: '#4ADBE8' };
   const tierColor  = tierColors[summary.leagueTier] || 'var(--A-accent)';
@@ -1666,6 +1979,29 @@ function SeasonSummaryScreen({ summary, club, onContinue }) {
           sub={summary.topDisposal ? `${summary.topDisposal.games} games` : null}
         />
 
+        <AwardCard
+          icon="🥇" label="Brownlow Medal"
+          name={summary.brownlow?.name || '—'}
+          stat={summary.brownlow ? `${summary.brownlow.votes} votes` : 'Outside our club this year'}
+          sub={summary.brownlow?.position}
+        />
+
+        {retiredThisSeason && retiredThisSeason.length > 0 && (
+          <div className="rounded-2xl p-4 mt-2" style={{background:'rgba(168,139,250,0.08)', border:'1px solid rgba(168,139,250,0.3)'}}>
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#A78BFA] mb-3">Retirements & Departures</div>
+            <div className="space-y-1.5">
+              {retiredThisSeason.map((r, i) => (
+                <div key={r.id || i} className="flex items-center justify-between text-sm">
+                  <span className="text-slate-200 font-semibold">{r.name}</span>
+                  <span className="text-[11px] text-slate-400">
+                    {r.reason === 'retired' ? `🏁 retired @ ${r.age}` : `📤 released`} · {r.career.gamesPlayed} games · {r.career.goals} goals
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {(summary.promoted || summary.relegated) && (
           <div className="rounded-2xl p-4 mt-2" style={{background: summary.promoted ? 'rgba(74,232,154,0.1)' : 'rgba(232,74,111,0.1)', border: `1px solid ${summary.promoted ? 'rgba(74,232,154,0.3)' : 'rgba(232,74,111,0.3)'}`}}>
             <div className="font-bold text-base" style={{color: summary.promoted ? '#4AE89A' : '#E84A6F'}}>
@@ -1694,10 +2030,14 @@ function SeasonSummaryScreen({ summary, club, onContinue }) {
 
 
 // ============================================================================
+// GAME OVER SCREEN
+// ============================================================================
+// ============================================================================
 // MATCH DAY SCREEN — quarter-by-quarter visual scoreboard
 // ============================================================================
 function MatchDayScreen({ result, league, career, club, onContinue }) {
   const [revealed, setRevealed] = React.useState(0);
+  const [showEvents, setShowEvents] = React.useState(true);
 
   const quarters = result.quarters || [];
   const qLabels  = ['Q1', 'Q2', 'Q3', 'Q4'];
@@ -1711,6 +2051,20 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
     cumHome.push({ g: hG, b: hB, total: hG * 6 + hB });
     cumAway.push({ g: aG, b: aB, total: aG * 6 + aB });
   });
+
+  // Events for the broadcast feed — only visible up to current revealed quarter
+  const visibleQuarter = revealed === 0 ? 0 : Math.min(revealed, quarters.length);
+  const eventFeed = (result.events || []).filter(ev => ev.q <= visibleQuarter);
+  // Lookup helper for event scorer / moment player
+  const playerLookup = useMemo(() => {
+    const map = {};
+    (career.squad || []).forEach(p => { map[p.id] = p; });
+    return map;
+  }, [career.squad]);
+
+  // Final-quarter momentum (from event-driven engine if available)
+  const momentumEnd = quarters.length ? (quarters[Math.min(visibleQuarter, quarters.length) - 1]?.momentumEnd ?? 0) : 0;
+  const momentumPct = ((momentumEnd + 1) / 2) * 100; // -1..1 -> 0..100
 
   const homeClub = result.isHome ? club : result.opp;
   const awayClub = result.isHome ? result.opp : club;
@@ -1770,6 +2124,58 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
           </div>
         </div>
       </div>
+
+      {/* Momentum bar */}
+      {(result.events && result.events.length > 0) && (
+        <div className="px-6 py-3 max-w-2xl mx-auto w-full">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Momentum {visibleQuarter > 0 ? `· End of ${qLabels[visibleQuarter - 1]}` : ''}</div>
+            <div className="text-[10px] text-slate-400">
+              {momentumEnd > 0.15 ? `${(result.isHome ? club.short : result.opp?.short) || 'Home'} on top` : momentumEnd < -0.15 ? `${(result.isHome ? result.opp?.short : club.short) || 'Away'} on top` : 'Even contest'}
+            </div>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden flex" style={{background:'rgba(255,255,255,0.05)'}}>
+            <div className="h-full" style={{width: `${momentumPct}%`, background: 'linear-gradient(90deg,#4ADBE8,#4AE89A)'}} />
+            <div className="h-full" style={{width: `${100 - momentumPct}%`, background: 'linear-gradient(90deg,#E84A6F,#A78BFA)'}} />
+          </div>
+        </div>
+      )}
+
+      {/* Live event feed */}
+      {(result.events && result.events.length > 0) && (
+        <div className="px-6 max-w-2xl mx-auto w-full">
+          <button onClick={() => setShowEvents(s => !s)} className="text-[10px] font-bold uppercase tracking-[0.2em] text-aaccent flex items-center gap-1 mb-2">
+            {showEvents ? '▾' : '▸'} Broadcast Feed
+            {result.events.filter(e => e.kind === 'moment').length > 0 && (
+              <span className="text-[9px] text-slate-400 ml-2">{result.events.filter(e => e.kind === 'moment').length} key moments</span>
+            )}
+          </button>
+          {showEvents && (
+            <div className="rounded-2xl p-3 max-h-48 overflow-y-auto space-y-1" style={{background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)'}}>
+              {eventFeed.length === 0 && <div className="text-xs text-slate-500 text-center py-3">Waiting for first quarter…</div>}
+              {eventFeed.slice().reverse().map((ev, i) => {
+                const player = ev.scorer ? playerLookup[ev.scorer] : ev.playerId ? playerLookup[ev.playerId] : null;
+                const sideMine = (result.isHome ? 'home' : 'away') === ev.side;
+                const color = ev.kind === 'goal' ? '#4AE89A' : ev.kind === 'behind' ? 'var(--A-accent)' : ev.kind === 'moment' ? '#A78BFA' : '#64748B';
+                const icon = ev.kind === 'goal' ? '⚽' : ev.kind === 'behind' ? '○' : ev.kind === 'miss' ? '×' : '✦';
+                let label = '';
+                if (ev.kind === 'goal') label = 'GOAL';
+                else if (ev.kind === 'behind') label = 'Behind';
+                else if (ev.kind === 'miss') label = 'Out on the full / OOB';
+                else if (ev.kind === 'moment') label = ev.text;
+                return (
+                  <div key={i} className="flex items-center gap-2 text-xs py-1 px-2 rounded" style={{background: i === 0 ? `${color}10` : 'transparent'}}>
+                    <span className="text-[9px] font-mono text-slate-500 w-12 flex-shrink-0">Q{ev.q} {String(ev.minute % 25).padStart(2, '0')}'</span>
+                    <span style={{color}} className="font-bold w-4">{icon}</span>
+                    <span className="text-[10px] uppercase tracking-wider font-bold w-12 flex-shrink-0" style={{color: sideMine ? '#4AE89A' : '#E84A6F'}}>{sideMine ? club.short : (result.opp?.short || 'OPP')}</span>
+                    <span className="text-slate-300 flex-1 truncate">{player ? `${player.firstName ? player.firstName[0] + '. ' : ''}${player.lastName || player.name || ''}: ` : ''}{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quarter breakdown */}
       <div className="flex-1 px-6 py-6 max-w-2xl mx-auto w-full">
@@ -1867,26 +2273,6 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
 // ============================================================================
 // SHARED TAB NAV
 // ============================================================================
-function TabNav({ tabs, active, onChange }) {
-  return (
-    <div className="flex gap-1 p-1 rounded-xl mb-5" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)"}}>
-      {tabs.map(tb => {
-        const Icon = tb.icon;
-        const isActive = active === tb.key;
-        return (
-          <button key={tb.key} onClick={()=>onChange(tb.key)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all flex-1 justify-center"
-            style={isActive
-              ? {background:"linear-gradient(135deg, var(--A-accent), #0099b0)", color:"#001520", boxShadow:"0 2px 8px rgba(0, 224, 255, 0.25)"}
-              : {color:"var(--A-text-dim)"}}>
-            <Icon className="w-4 h-4" /><span>{tb.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 // ============================================================================
 // SQUAD SCREEN — players, tactics, training
 // ============================================================================
@@ -1921,7 +2307,7 @@ function PlayersTab({ career, updateCareer }) {
   const pName = p => p.firstName ? p.firstName+" "+p.lastName : (p.name||"Player");
 
   return (
-    <div className="flex gap-5">
+    <div className="flex flex-col lg:flex-row gap-5">
       {/* Left: filters + table */}
       <div className="flex-1 min-w-0">
         {/* Filters */}
@@ -1949,12 +2335,13 @@ function PlayersTab({ career, updateCareer }) {
 
         {/* Table */}
         <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)"}}>
-          <div className="grid px-4 py-3" style={{gridTemplateColumns:"2rem 1fr 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
+          <div className="overflow-x-auto">
+          <div className="grid px-4 py-3 min-w-[820px]" style={{gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
             {["#","Player","Pos","Age","OVR","Form","Fitness","Wage","Status"].map((h,i)=>(
               <div key={h} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${i>1?"text-center":""} ${i===7?"text-right":""}`}>{h}</div>
             ))}
           </div>
-          <div className="max-h-[65vh] overflow-y-auto" style={{background:"var(--A-panel)"}}>
+          <div className="max-h-[65vh] overflow-y-auto min-w-[820px]" style={{background:"var(--A-panel)"}}>
             {players.map((p, i) => {
               const inLineup = career.lineup.includes(p.id);
               const isSelected = selected?.id === p.id;
@@ -1964,7 +2351,7 @@ function PlayersTab({ career, updateCareer }) {
                 <button key={p.id} onClick={()=>setSelected(isSelected ? null : p)}
                   className="w-full grid px-4 py-3 transition-all"
                   style={{
-                    gridTemplateColumns:"2rem 1fr 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem",
+                    gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem",
                     borderBottom:"1px solid var(--A-line)",
                     background: isSelected ? "rgba(0, 224, 255, 0.08)" : "transparent",
                     borderLeft: isSelected ? "3px solid var(--A-accent)" : "3px solid transparent",
@@ -1995,18 +2382,25 @@ function PlayersTab({ career, updateCareer }) {
                   </div>
                   <div className="text-right text-xs font-mono text-atext-dim">{fmtK(p.wage)}</div>
                   <div className="text-center">
-                    {p.injured > 0 ? <Pill color="#E84A6F">{p.injured}w</Pill> : inLineup ? <Pill color="#4AE89A">XI</Pill> : <span className="text-atext-mute text-xs">—</span>}
+                    {p.suspended > 0
+                      ? <Pill color="#A78BFA">SUS {p.suspended}w</Pill>
+                      : p.injured > 0
+                        ? <Pill color="#E84A6F">{p.injured}w</Pill>
+                        : inLineup
+                          ? <Pill color="#4AE89A">XI</Pill>
+                          : <span className="text-atext-mute text-xs">—</span>}
                   </div>
                 </button>
               );
             })}
+          </div>
           </div>
         </div>
         <div className="mt-2 text-[10px] text-atext-mute">{players.length} players · {career.lineup.length}/22 in XXII · {career.squad.length} total squad</div>
       </div>
 
       {/* Right: player detail */}
-      <div className="w-72 flex-shrink-0">
+      <div className="w-full lg:w-72 flex-shrink-0">
         {selected ? (
           <PlayerDetail player={selected} career={career} updateCareer={updateCareer} onClose={()=>setSelected(null)} />
         ) : (
@@ -2124,11 +2518,47 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
   );
 }
 
+const TACTIC_CARDS = [
+  { key: 'defensive', label: 'Defensive', icon: ShieldCheck, color: '#4ADBE8',  desc: 'Lock down the contest. Lower scoring both ways.' },
+  { key: 'flood',     label: 'Flood',     icon: Activity,    color: '#A78BFA',  desc: 'Pack defensive 50. Frustrates flair sides.' },
+  { key: 'balanced',  label: 'Balanced',  icon: Target,      color: 'var(--A-accent)', desc: 'Even spread. No team-rating swing.' },
+  { key: 'press',     label: 'Press',     icon: Zap,         color: '#4AE89A',  desc: 'Forward press, choke turnovers in our half.' },
+  { key: 'run',       label: 'Run-and-Gun', icon: TrendingUp, color: '#FFB347', desc: 'Open the game up. High-scoring shootout.' },
+  { key: 'attack',    label: 'All-Out Attack', icon: Flame,  color: '#E84A6F',  desc: 'Pump it long. Big upside, leakier defensively.' },
+];
+
 function TacticsTab({ career, updateCareer }) {
   const lineup = career.lineup.map(id => career.squad.find(p => p.id === id)).filter(Boolean);
   const byPos = POSITIONS.reduce((acc, p) => ({ ...acc, [p]: lineup.filter(pl => pl.position === p) }), {});
-  // Visualize positions on a footy field
+  const currentTactic = career.tacticChoice || 'balanced';
   return (
+    <div className="space-y-4">
+      <div className={`${css.panel} p-5`}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className={`${css.h1} text-2xl`}>MATCH-DAY APPROACH</h3>
+          <Pill color="var(--A-accent)">Active: {TACTIC_CARDS.find(t => t.key === currentTactic)?.label || 'Balanced'}</Pill>
+        </div>
+        <p className="text-xs text-atext-dim mb-4">Sets shot rate, momentum gain and risk for every match. Switch tactics to suit the opposition.</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {TACTIC_CARDS.map(t => {
+            const Icon = t.icon;
+            const active = currentTactic === t.key;
+            return (
+              <button key={t.key} onClick={() => updateCareer({ tacticChoice: t.key })}
+                className={`text-left p-4 rounded-2xl border transition-all ${active ? 'ring-2 ring-aaccent' : 'hover:border-aaccent/40'}`}
+                style={{ background: active ? `${t.color}15` : 'var(--A-panel)', borderColor: active ? t.color : 'var(--A-line)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${t.color}22`, color: t.color, border: `1px solid ${t.color}55` }}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="font-display text-xl text-atext tracking-wide">{t.label.toUpperCase()}</div>
+                </div>
+                <div className="text-[12px] text-atext-dim leading-relaxed">{t.desc}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
     <div className="grid md:grid-cols-2 gap-4">
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>FORMATION (XXII)</h3>
@@ -2193,6 +2623,7 @@ function TacticsTab({ career, updateCareer }) {
         </div>
       </div>
     </div>
+    </div>
   );
 }
 
@@ -2207,6 +2638,14 @@ function TrainingTab({ career, updateCareer }) {
     others.forEach(x => { newFocus[x] = oldOthers === 0 ? Math.round(remain / others.length) : Math.round((t.focus[x] / oldOthers) * remain); });
     updateCareer({ training: { ...t, focus: newFocus } });
   };
+
+  const medLevel = career.facilities?.medical?.level ?? 1;
+  const recoveryFocus = t.focus.recovery ?? 20;
+  const intensity = t.intensity ?? 60;
+  // Mirror the formula in advanceToNextEvent for honesty
+  const matchInjuryProb = clamp(0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001, 0.04, 0.28);
+  const trainingInjuryProb = Math.max(0, ((intensity - 50) * 0.0014) + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008);
+
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <div className={`${css.panel} p-5`}>
@@ -2219,22 +2658,34 @@ function TrainingTab({ career, updateCareer }) {
             <div className="flex justify-between text-[10px] text-atext-dim mt-1 uppercase tracking-widest"><span>Easy</span><span>Hard</span></div>
           </div>
         </div>
-        <div className={`${css.inset} p-3 mt-4`}>
-          <div className="flex items-center gap-2 text-xs">
-            <AlertCircle className="w-4 h-4 text-aaccent" />
-            <span>{t.intensity > 80 ? "High injury risk" : t.intensity > 60 ? "Balanced" : "Conservative — slow growth"}</span>
+        <div className={`${css.inset} p-3 mt-4 space-y-2`}>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-atext-dim uppercase tracking-widest font-mono">Match-day injury risk</span>
+            <span className="font-display text-base" style={{ color: matchInjuryProb > 0.20 ? '#E84A6F' : matchInjuryProb > 0.13 ? 'var(--A-accent)' : '#4AE89A' }}>
+              {(matchInjuryProb * 100).toFixed(1)}%
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-atext-dim uppercase tracking-widest font-mono">Training-day injury risk</span>
+            <span className="font-display text-base" style={{ color: trainingInjuryProb > 0.04 ? '#E84A6F' : trainingInjuryProb > 0.02 ? 'var(--A-accent)' : '#4AE89A' }}>
+              {(trainingInjuryProb * 100).toFixed(2)}%
+            </span>
+          </div>
+          <div className="text-[10px] text-atext-mute leading-relaxed">
+            Medical Centre Lvl {medLevel} cuts injury rate{medLevel > 1 ? ` and recovery time by ${medLevel - 1}w` : ''}. Recovery focus ({recoveryFocus}%) further softens hits.
           </div>
         </div>
       </div>
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>TRAINING FOCUS</h3>
-        <p className="text-xs text-atext-dim mb-4">Distribution must total 100. Adjusting one re-balances the others.</p>
+        <p className="text-xs text-atext-dim mb-4">Distribution must total 100. Skills boosts kicking/marking/handball. Fitness boosts speed/endurance/strength. Tactics boosts decision/tackling. Recovery cuts injuries.</p>
         {Object.entries(t.focus).map(([k, v]) => {
           const colors = { skills: "var(--A-accent)", fitness: "#4ADBE8", tactics: "#E84A6F", recovery: "#4AE89A" };
+          const labels = { skills: "Skills", fitness: "Fitness", tactics: "Tactics", recovery: "Recovery" };
           return (
             <div key={k} className="mb-3">
               <div className="flex justify-between mb-1">
-                <span className="text-sm capitalize font-semibold" style={{ color: colors[k] }}>{k}</span>
+                <span className="text-sm capitalize font-semibold" style={{ color: colors[k] }}>{labels[k] || k}</span>
                 <span className="font-display text-lg">{v}%</span>
               </div>
               <input type="range" min="5" max="80" value={v} onChange={(e)=>setFocus(k, +e.target.value)} className="w-full" style={{ accentColor: colors[k] }} />
@@ -2258,6 +2709,9 @@ function ClubScreen({ career, club, updateCareer, tab, setTab }) {
     { key: "kits", label: "Kits", icon: Shirt },
     { key: "facilities", label: "Facilities", icon: Building2 },
     { key: "staff", label: "Staff", icon: UserCog },
+    { key: "honours", label: "Honours", icon: Award },
+    { key: "rookies", label: "Rookie List", icon: Sprout },
+    { key: "settings", label: "Settings", icon: Settings },
   ];
   return (
     <div className="anim-in">
@@ -2267,6 +2721,178 @@ function ClubScreen({ career, club, updateCareer, tab, setTab }) {
       {t === "kits"       && <KitsTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "facilities" && <FacilitiesTab career={career} updateCareer={updateCareer} />}
       {t === "staff"      && <StaffTab career={career} updateCareer={updateCareer} />}
+      {t === "honours"    && <HonoursTab career={career} club={club} />}
+      {t === "rookies"    && <RookieListTab career={career} updateCareer={updateCareer} />}
+      {t === "settings"   && <SettingsTab career={career} updateCareer={updateCareer} />}
+    </div>
+  );
+}
+
+function HonoursTab({ career, club }) {
+  const history = career.history || [];
+  const titles  = history.filter(h => h.champion).length;
+  const promotions = history.filter(h => h.promoted).length;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className={`${css.h1} text-3xl`}>HONOURS</div>
+          <div className="text-xs text-atext-dim">Your career story, season by season.</div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Stat label="Premierships" value={titles} accent="#FFD200" icon={Trophy} />
+          <Stat label="Promotions" value={promotions} accent="#4AE89A" icon={ChevronsUp} />
+          <Stat label="Seasons" value={history.length} accent="var(--A-accent)" icon={Calendar} />
+        </div>
+      </div>
+
+      {history.length === 0 ? (
+        <div className={`${css.panel} p-12 text-center`}>
+          <Award className="w-12 h-12 mx-auto mb-3 opacity-30 text-atext-mute" />
+          <div className="text-sm text-atext-dim">Your career honour roll fills up after each season ends. Get to work.</div>
+        </div>
+      ) : (
+        <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
+          <div className="overflow-x-auto">
+          <div className="grid gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b min-w-[680px]"
+            style={{gridTemplateColumns:"5rem 1fr 4rem 4rem 4rem 4rem 1fr 1fr",borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
+            <div>Season</div>
+            <div>League</div>
+            <div className="text-center">Pos</div>
+            <div className="text-center">W-L-D</div>
+            <div className="text-center">Pts</div>
+            <div className="text-center">%</div>
+            <div>Top Scorer</div>
+            <div>Brownlow</div>
+          </div>
+          {[...history].reverse().map((h, i) => (
+            <div key={i} className="grid gap-2 px-4 py-3 text-sm items-center min-w-[680px]"
+              style={{gridTemplateColumns:"5rem 1fr 4rem 4rem 4rem 4rem 1fr 1fr",borderBottom:"1px solid var(--A-line)"}}>
+              <div className="font-display text-lg text-aaccent">{h.season}</div>
+              <div>
+                <span className="font-semibold">{h.leagueShort}</span>
+                {h.champion && <Pill color="#FFD200">🏆 Premiers</Pill>}
+                {h.promoted && <Pill color="#4AE89A">⬆ Promoted</Pill>}
+                {h.relegated && <Pill color="#E84A6F">⬇ Relegated</Pill>}
+              </div>
+              <div className="text-center font-bold">{h.position}</div>
+              <div className="text-center font-mono text-xs">{h.W}-{h.L}-{h.D}</div>
+              <div className="text-center font-mono">{h.pts}</div>
+              <div className="text-center font-mono text-xs">{h.pct}%</div>
+              <div className="text-xs text-atext-dim truncate">{h.topScorer ? `${h.topScorer.name} · ${h.topScorer.goals}g` : '—'}</div>
+              <div className="text-xs text-atext-dim truncate">{h.brownlow ? `${h.brownlow.name} · ${h.brownlow.votes}v` : '—'}</div>
+            </div>
+          ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RookieListTab({ career, updateCareer }) {
+  const rookies = career.squad.filter(p => p.rookie || p.age <= 19);
+  const promote = (p) => {
+    updateCareer({
+      squad: career.squad.map(x => x.id === p.id ? { ...x, rookie: false, wage: Math.round(x.wage * 1.4) } : x),
+      news: [{ week: career.week, type: 'info', text: `📈 Promoted ${p.firstName} ${p.lastName} to senior list` }, ...(career.news || [])].slice(0, 20),
+    });
+  };
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className={`${css.h1} text-3xl`}>ROOKIE LIST</div>
+          <div className="text-xs text-atext-dim">Track your young talent. Promote when ready — wage rises 40% on elevation.</div>
+        </div>
+        <Stat label="Rookies" value={rookies.length} accent="#4ADBE8" icon={Sprout} />
+      </div>
+      {rookies.length === 0 ? (
+        <div className={`${css.panel} p-12 text-center`}>
+          <Sprout className="w-12 h-12 mx-auto mb-3 opacity-30 text-atext-mute" />
+          <div className="text-sm text-atext-dim">No rookies on your list. Draft or sign academy talent to start your pipeline.</div>
+        </div>
+      ) : (
+        <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
+          {rookies.map((p, i) => (
+            <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center" style={{borderBottom:"1px solid var(--A-line)"}}>
+              <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">age {p.age}</span></div>
+              <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
+              <div className="col-span-1"><RatingDot value={p.overall} /></div>
+              <div className="col-span-2 flex items-center gap-1 text-[11px]">
+                <span className="text-atext-mute">POT</span>
+                <span className="font-bold text-[#4AE89A]">{p.potential}</span>
+              </div>
+              <div className="col-span-2 text-xs text-atext-dim">{p.contract}yr · {fmtK(p.wage)}/yr</div>
+              <div className="col-span-2 flex justify-end">
+                {p.rookie
+                  ? <button onClick={() => promote(p)} className={`${css.btnPrimary} text-xs px-3 py-1.5`}>Promote</button>
+                  : <span className="text-[10px] text-atext-mute uppercase tracking-widest">Senior</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SettingsTab({ career, updateCareer }) {
+  const themeMode = career.themeMode || 'A';
+  const autosave = career.options?.autosave !== false;
+  const setTheme = (mode) => updateCareer({ themeMode: mode });
+  const setAutosave = (v) => updateCareer({ options: { ...(career.options || {}), autosave: v } });
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className={`${css.h1} text-3xl`}>SETTINGS</div>
+        <div className="text-xs text-atext-dim">Tune the game's look and persistence to suit your vibe.</div>
+      </div>
+
+      <div className={`${css.panel} p-5`}>
+        <h3 className={`${css.h1} text-2xl mb-3`}>VISUAL THEME</h3>
+        <p className="text-xs text-atext-dim mb-4">Switch between two cinematic palettes. Your choice persists with the save.</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {[
+            { key: 'A', label: 'Broadcast Cinematic', sub: 'Warm cyan + slate. The default.' },
+            { key: 'B', label: 'Stadium Carbon',      sub: 'Cool monochrome with green pop.' },
+          ].map(t => {
+            const active = themeMode === t.key;
+            return (
+              <button key={t.key} onClick={() => setTheme(t.key)}
+                className={`text-left p-4 rounded-2xl border transition-all ${active ? 'ring-2 ring-aaccent' : 'hover:border-aaccent/40'}`}
+                style={{ background: active ? 'rgba(0,224,255,0.10)' : 'var(--A-panel-2)', borderColor: active ? 'var(--A-accent)' : 'var(--A-line)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="font-display text-2xl tracking-wide">DIRECTION {t.key}</div>
+                  {active && <Pill color="var(--A-accent)">Active</Pill>}
+                </div>
+                <div className="font-semibold text-sm text-atext">{t.label}</div>
+                <div className="text-xs text-atext-dim">{t.sub}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className={`${css.panel} p-5`}>
+        <h3 className={`${css.h1} text-2xl mb-3`}>SAVE</h3>
+        <p className="text-xs text-atext-dim mb-4">Autosave runs every event. Disable if you'd rather control saves manually from the sidebar.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-bold text-sm">Autosave on advance</div>
+            <div className="text-[11px] text-atext-dim">Saves the active slot after every event tick.</div>
+          </div>
+          <button onClick={() => setAutosave(!autosave)}
+            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition`}
+            style={{
+              background: autosave ? 'rgba(74,232,154,0.15)' : 'var(--A-panel-2)',
+              color: autosave ? '#4AE89A' : 'var(--A-text-dim)',
+              border: `1px solid ${autosave ? 'rgba(74,232,154,0.4)' : 'var(--A-line)'}`,
+            }}>
+            {autosave ? 'On' : 'Off'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2691,8 +3317,10 @@ function StaffTab({ career, updateCareer }) {
 // RECRUIT SCREEN — Trade / Draft / Youth / Local
 // ============================================================================
 function RecruitScreen({ career, club, updateCareer, tab, setTab }) {
-  const t = tab || "trade";
+  const offerCount = (career.pendingTradeOffers || []).filter(o => o.status === 'pending').length;
+  const t = tab || (offerCount > 0 ? "offers" : "trade");
   const tabs = [
+    { key: "offers", label: `Offers${offerCount ? ` (${offerCount})` : ''}`, icon: Newspaper },
     { key: "trade", label: "Trades", icon: Repeat },
     { key: "draft", label: "Draft", icon: Award },
     { key: "youth", label: "Youth Academy", icon: GraduationCap },
@@ -2701,10 +3329,100 @@ function RecruitScreen({ career, club, updateCareer, tab, setTab }) {
   return (
     <div className="anim-in">
       <TabNav tabs={tabs} active={t} onChange={setTab} />
+      {t === "offers" && <OffersTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "trade" && <TradeTab career={career} updateCareer={updateCareer} />}
-      {t === "draft" && <DraftTab career={career} updateCareer={updateCareer} />}
+      {t === "draft" && <DraftTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "youth" && <YouthTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "local" && <LocalTab career={career} club={club} updateCareer={updateCareer} />}
+    </div>
+  );
+}
+
+function OffersTab({ career, club, updateCareer }) {
+  const offers = (career.pendingTradeOffers || []).filter(o => o.status === 'pending');
+  const finance = career.finance;
+
+  const acceptOffer = (offer) => {
+    const targetPlayer = career.squad.find(p => p.id === offer.targetPlayerId);
+    if (!targetPlayer) return;
+    const incomingPlayer = offer.offerPlayerSnapshot
+      ? { ...offer.offerPlayerSnapshot, id: `incoming_${Date.now()}`, fitness: 90, form: 70, contract: 2, attrs: targetPlayer.attrs, potential: offer.offerPlayerSnapshot.overall + 4, trueRating: offer.offerPlayerSnapshot.overall, goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0, suspended: 0, morale: 75 }
+      : null;
+    const newSquad = career.squad.filter(p => p.id !== offer.targetPlayerId);
+    if (incomingPlayer) newSquad.push(incomingPlayer);
+    // Remove swap player from AI squad (if any)
+    const newAiSquads = { ...(career.aiSquads || {}) };
+    if (offer.offerPlayerId && newAiSquads[offer.fromClubId]) {
+      newAiSquads[offer.fromClubId] = newAiSquads[offer.fromClubId].filter(p => p.id !== offer.offerPlayerId);
+      // Add the player we sold to their squad
+      newAiSquads[offer.fromClubId] = [...newAiSquads[offer.fromClubId], targetPlayer];
+    }
+    updateCareer({
+      squad: newSquad,
+      lineup: career.lineup.filter(id => id !== offer.targetPlayerId),
+      aiSquads: newAiSquads,
+      finance: { ...finance, cash: finance.cash + offer.offerCash, transferBudget: finance.transferBudget + Math.round(offer.offerCash * 0.4) },
+      pendingTradeOffers: (career.pendingTradeOffers || []).map(o => o.id === offer.id ? { ...o, status: 'accepted' } : o),
+      news: [{
+        week: career.week,
+        type: 'info',
+        text: `🤝 Trade complete: ${targetPlayer.firstName} ${targetPlayer.lastName} → ${offer.fromClubName} for ${fmtK(offer.offerCash)}${incomingPlayer ? ` + ${incomingPlayer.firstName} ${incomingPlayer.lastName}` : ''}`,
+      }, ...(career.news || [])].slice(0, 20),
+    });
+  };
+
+  const rejectOffer = (offer) => {
+    updateCareer({
+      pendingTradeOffers: (career.pendingTradeOffers || []).map(o => o.id === offer.id ? { ...o, status: 'rejected' } : o),
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className={`${css.h1} text-3xl`}>TRADE OFFERS</div>
+          <div className="text-xs text-atext-dim">Rival clubs are circling. Accept, reject — or let the window close.</div>
+        </div>
+        <Stat label="Pending" value={offers.length} accent="var(--A-accent-2)" />
+      </div>
+
+      {offers.length === 0 ? (
+        <div className={`${css.panel} p-12 text-center text-sm text-atext-dim`}>
+          <Repeat className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          No active offers right now. Wait for the trade window or check back after key events.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {offers.map(offer => {
+            const player = career.squad.find(p => p.id === offer.targetPlayerId);
+            if (!player) return null;
+            return (
+              <div key={offer.id} className={`${css.panel} p-5`}>
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-aaccent">{offer.fromClubName} offers</div>
+                    <div className="font-display text-2xl text-atext mt-1">{fmtK(offer.offerCash)}{offer.offerPlayerSnapshot ? ` + ${offer.offerPlayerSnapshot.firstName} ${offer.offerPlayerSnapshot.lastName}` : ''}</div>
+                    {offer.offerPlayerSnapshot && (
+                      <div className="text-xs text-atext-dim mt-1">{offer.offerPlayerSnapshot.position} · {offer.offerPlayerSnapshot.overall} OVR · age {offer.offerPlayerSnapshot.age}</div>
+                    )}
+                  </div>
+                  <ArrowRight className="w-6 h-6 text-aaccent" />
+                  <div className="text-right">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-dim">For</div>
+                    <div className="font-display text-2xl text-atext mt-1">{player.firstName} {player.lastName}</div>
+                    <div className="text-xs text-atext-dim mt-1">{player.position} · {player.overall} OVR · age {player.age} · {fmtK(player.wage)}/yr</div>
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => rejectOffer(offer)} className="px-4 py-2 rounded-lg text-xs font-bold bg-apanel-2 text-atext-dim hover:bg-aline">Reject</button>
+                  <button onClick={() => acceptOffer(offer)} className={`${css.btnPrimary} text-xs px-4 py-2`}>Accept Trade</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -2861,33 +3579,116 @@ function TradeTab({ career, updateCareer }) {
   );
 }
 
-function DraftTab({ career, updateCareer }) {
-  const [drafted, setDrafted] = useState([]);
+function DraftTab({ career, club, updateCareer }) {
+  const draftOrder = career.draftOrder || [];
+  const myPickIndex = draftOrder.findIndex(d => d.clubId === career.clubId && !d.used);
+  const myNextPick = myPickIndex >= 0 ? draftOrder[myPickIndex] : null;
+  const isMyTurn = myPickIndex !== -1 && myPickIndex === draftOrder.findIndex(d => !d.used);
   const pool = (career.draftPool || []).slice().sort((a,b) => b.overall - a.overall);
-  const draftPlayer = (p, idx) => {
+
+  const aiPickFromPool = (clubId, currentPool) => {
+    const top3 = currentPool.slice(0, 3);
+    if (top3.length === 0) return null;
+    return top3[Math.floor(Math.random() * top3.length)];
+  };
+
+  const draftPlayer = (p) => {
+    if (!isMyTurn) {
+      // Sim AI picks until our slot
+      let order = [...draftOrder];
+      let currentPool = [...career.draftPool];
+      let currentAiSquads = { ...(career.aiSquads || {}) };
+      const newsItems = [];
+      while (true) {
+        const next = order.findIndex(d => !d.used);
+        if (next === -1) break;
+        const pickEntry = order[next];
+        if (pickEntry.clubId === career.clubId) break;
+        const aiPick = aiPickFromPool(pickEntry.clubId, currentPool);
+        if (!aiPick) break;
+        currentPool = currentPool.filter(x => x.id !== aiPick.id);
+        currentAiSquads[pickEntry.clubId] = currentAiSquads[pickEntry.clubId] || [];
+        currentAiSquads[pickEntry.clubId] = [...currentAiSquads[pickEntry.clubId], { ...aiPick, age: rand(17, 19) }];
+        order = order.map((d, i) => i === next ? { ...d, used: true, prospectName: `${aiPick.firstName} ${aiPick.lastName}`, prospectOverall: aiPick.overall, prospectPos: aiPick.position } : d);
+        const oppClub = findClub(pickEntry.clubId);
+        newsItems.push({ week: career.week, type: 'info', text: `📋 #${pickEntry.pick}: ${oppClub?.short || pickEntry.clubId} → ${aiPick.firstName} ${aiPick.lastName} (${aiPick.overall})` });
+      }
+      updateCareer({
+        draftPool: currentPool,
+        draftOrder: order,
+        aiSquads: currentAiSquads,
+        news: [...newsItems.slice(-5), ...(career.news || [])].slice(0, 20),
+      });
+      return;
+    }
     if (career.squad.length >= 40) return;
     const rookieWage = Math.max(60000, Math.round(p.overall * 1500));
-    const rookie = { ...p, id: Date.now() + Math.random(), wage: rookieWage, contract: 2, age: rand(17, 19) };
-    const newDraftPool = career.draftPool.filter((_, i) => career.draftPool.indexOf(p) !== i);
-    setDrafted(d => [...d, p.id]);
+    const rookie = { ...p, id: `r_${Date.now()}_${Math.random()}`, wage: rookieWage, contract: 2, age: rand(17, 19), rookie: true };
+    let order = draftOrder.map((d, i) => i === myPickIndex ? { ...d, used: true, prospectName: `${p.firstName} ${p.lastName}`, prospectOverall: p.overall, prospectPos: p.position } : d);
+    let currentPool = career.draftPool.filter(x => x.id !== p.id);
+    let currentAiSquads = { ...(career.aiSquads || {}) };
+    const newsItems = [{ week: career.week, type: 'win', text: `🎯 #${myNextPick.pick}: ${club.short} draft ${p.firstName} ${p.lastName} (${p.overall} OVR)` }];
+    // Auto-run AI picks until next player turn
+    while (true) {
+      const nextIdx = order.findIndex(d => !d.used);
+      if (nextIdx === -1) break;
+      const pickEntry = order[nextIdx];
+      if (pickEntry.clubId === career.clubId) break;
+      const aiPick = aiPickFromPool(pickEntry.clubId, currentPool);
+      if (!aiPick) break;
+      currentPool = currentPool.filter(x => x.id !== aiPick.id);
+      currentAiSquads[pickEntry.clubId] = currentAiSquads[pickEntry.clubId] || [];
+      currentAiSquads[pickEntry.clubId] = [...currentAiSquads[pickEntry.clubId], { ...aiPick, age: rand(17, 19) }];
+      order = order.map((d, i) => i === nextIdx ? { ...d, used: true, prospectName: `${aiPick.firstName} ${aiPick.lastName}`, prospectOverall: aiPick.overall, prospectPos: aiPick.position } : d);
+      const oppClub = findClub(pickEntry.clubId);
+      newsItems.push({ week: career.week, type: 'info', text: `📋 #${pickEntry.pick}: ${oppClub?.short || pickEntry.clubId} → ${aiPick.firstName} ${aiPick.lastName}` });
+    }
     updateCareer({
       squad: [...career.squad, rookie],
-      draftPool: career.draftPool.filter(x => x.id !== p.id),
-      news: [{ week: career.week, type: "win", text: `🎯 Drafted ${p.firstName} ${p.lastName} (${p.position}, ${p.overall} OVR)` }, ...career.news].slice(0,15),
+      draftPool: currentPool,
+      draftOrder: order,
+      aiSquads: currentAiSquads,
+      news: [...newsItems.slice(0, 6), ...(career.news || [])].slice(0, 20),
     });
   };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>NATIONAL DRAFT</div>
-          <div className="text-xs text-atext-dim">Pick from the next generation. Sorted by best available — secret wraps may exist.</div>
+          <div className="text-xs text-atext-dim">{draftOrder.length === 0 ? 'Draft order is set after each season ends.' : isMyTurn ? `On the clock: pick #${myNextPick.pick}.` : myNextPick ? `Your next pick: #${myNextPick.pick}` : 'You have no remaining picks.'}</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Draft Pool" value={pool.length} accent="#4AE89A" />
+          <Stat label="Pool" value={pool.length} accent="#4AE89A" />
           <Stat label="Squad" value={`${career.squad.length}/40`} accent="var(--A-accent)" />
         </div>
       </div>
+
+      {draftOrder.length > 0 && (
+        <div className={`${css.panel} p-4`}>
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute mb-2">Pick Order — next 12</div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {draftOrder.slice(0, 12).map(d => {
+              const c = findClub(d.clubId);
+              const isMe = d.clubId === career.clubId;
+              const onClock = !d.used && d.clubId === draftOrder.find(x => !x.used)?.clubId;
+              return (
+                <div key={d.pick} className={`flex-shrink-0 px-3 py-2 rounded-lg text-xs ${d.used ? 'opacity-40' : ''}`}
+                  style={{
+                    background: isMe ? 'rgba(0,224,255,0.12)' : 'var(--A-panel-2)',
+                    border: `1px solid ${onClock ? 'var(--A-accent)' : 'var(--A-line)'}`,
+                    minWidth: 96,
+                  }}>
+                  <div className="font-mono text-[9px] text-atext-mute">#{d.pick}</div>
+                  <div className={`font-display text-sm ${isMe ? 'text-aaccent' : 'text-atext'}`}>{c?.short || d.clubId}</div>
+                  {d.used && d.prospectName && <div className="text-[9px] text-atext-dim truncate mt-0.5">{d.prospectName} ({d.prospectOverall})</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
         <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
@@ -2914,7 +3715,7 @@ function DraftTab({ career, updateCareer }) {
                 </div>
                 <div className="col-span-2 text-right text-sm font-mono">${(rookieWage/1000).toFixed(0)}k</div>
                 <div className="col-span-1 flex justify-end">
-                  <button onClick={()=>draftPlayer(p, i)} className={`${css.btnPrimary} text-xs px-3 py-1.5`}>Draft</button>
+                  <button onClick={()=>draftPlayer(p)} className={`${css.btnPrimary} text-xs px-3 py-1.5`}>{isMyTurn ? 'Draft' : 'Sim →'}</button>
                 </div>
               </div>
             );
@@ -2922,7 +3723,7 @@ function DraftTab({ career, updateCareer }) {
         </div>
       </div>
       <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
-        <span className="text-aaccent font-bold">TIP:</span> Young draftees enter on a 2-year rookie contract at minimum wage. Higher potential = bigger growth ceiling but slower start. Develop them through training and game time.
+        <span className="text-aaccent font-bold">TIP:</span> Bottom-of-ladder clubs pick first. Hit "Sim →" to fast-forward AI selections to your slot. Higher potential = bigger growth ceiling but slower start.
       </div>
     </div>
   );
@@ -2931,10 +3732,45 @@ function DraftTab({ career, updateCareer }) {
 function YouthTab({ career, club, updateCareer }) {
   const youth = career.youth;
   const [generated, setGenerated] = useState(youth.recruits || []);
+
+  // Map scout focus to position bias + attribute bias
+  const FOCUS_BIAS = {
+    'All-rounders':    { positions: null,                    attrBoost: {} },
+    'Key Forwards':    { positions: ['KF', 'HF'],            attrBoost: { marking: 4, strength: 3, kicking: 2 } },
+    'Midfielders':     { positions: ['C', 'R', 'WG'],        attrBoost: { decision: 3, endurance: 4, handball: 3 } },
+    'Key Defenders':   { positions: ['KB', 'HB'],            attrBoost: { marking: 4, tackling: 3, strength: 3 } },
+    'Ruckmen':         { positions: ['RU'],                  attrBoost: { strength: 5, marking: 3 } },
+    'Small Forwards':  { positions: ['HF', 'UT'],            attrBoost: { speed: 4, kicking: 2, decision: 2 } },
+  };
+
   const generateRecruits = () => {
     seedRng(Date.now() % 99999);
     const count = 4 + youth.programLevel * 2;
-    const recruits = Array.from({length: count}, (_, i) => generatePlayer(2 + Math.floor(youth.programLevel/3), 12000 + i + Date.now() % 1000));
+    const bias = FOCUS_BIAS[youth.scoutFocus] || FOCUS_BIAS['All-rounders'];
+    const recruits = [];
+    let i = 0;
+    while (recruits.length < count) {
+      const p = generatePlayer(2 + Math.floor(youth.programLevel / 3), 12000 + i + Date.now() % 1000);
+      i++;
+      // Reroll up to 3 times if position doesn't match the focus
+      let attempts = 0;
+      let cand = p;
+      while (bias.positions && !bias.positions.includes(cand.position) && attempts < 3) {
+        cand = generatePlayer(2 + Math.floor(youth.programLevel / 3), 12000 + i + Date.now() % 1000);
+        i++;
+        attempts++;
+      }
+      // Apply attribute bias
+      if (bias.attrBoost && Object.keys(bias.attrBoost).length) {
+        const newAttrs = { ...cand.attrs };
+        Object.entries(bias.attrBoost).forEach(([attr, boost]) => {
+          if (attr in newAttrs) newAttrs[attr] = Math.min(99, newAttrs[attr] + boost);
+        });
+        const overall = Math.round(Object.values(newAttrs).reduce((a, b) => a + b, 0) / Object.keys(newAttrs).length);
+        cand = { ...cand, attrs: newAttrs, overall };
+      }
+      recruits.push(cand);
+    }
     setGenerated(recruits);
     updateCareer({ youth: { ...youth, recruits } });
   };

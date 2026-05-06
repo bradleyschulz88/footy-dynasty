@@ -133,6 +133,25 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
 }
 
 /* ── Direction B scope ─────────────────────────────────────── */
+/* Remap shared --A-* CSS variables to the B palette so any utility
+   class authored against --A-* automatically picks up the B theme. */
+.dirB {
+  --A-bg:        var(--B-bg);
+  --A-bg-2:      var(--B-bg-2);
+  --A-panel:     var(--B-panel);
+  --A-panel-2:   var(--B-panel-2);
+  --A-line:      var(--B-line);
+  --A-line-2:    var(--B-line-2);
+  --A-text:      var(--B-text);
+  --A-text-dim:  var(--B-text-dim);
+  --A-text-mute: var(--B-text-mute);
+  --A-accent:    var(--B-accent);
+  --A-accent-2:  var(--B-accent-2);
+  --A-pos:       var(--B-pos);
+  --A-neg:       var(--B-neg);
+  --A-club:      var(--B-club);
+  --A-club-2:    var(--B-club-2);
+}
 .dirB {
   background: var(--B-bg);
   color: var(--B-text);
@@ -261,6 +280,7 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   0%, 100% { transform: scaleY(1); opacity: 1 }
   50% { transform: scaleY(1.05); opacity: 0.85 }
 }
+.momentum-bar { animation: momentumPulse 2s ease-in-out infinite; transform-origin: center; }
 @keyframes feedSlide {
   from { opacity: 0; transform: translateX(-12px); }
   to   { opacity: 1; transform: translateX(0); }
