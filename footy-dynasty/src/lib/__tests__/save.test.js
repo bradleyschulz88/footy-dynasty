@@ -23,16 +23,28 @@ describe('migrate', () => {
     expect(migrate(null)).toBe(null);
   });
 
-  it('upgrades a v1 save to v2 with safe defaults', () => {
+  it('upgrades a v1 save through v2 to v3 with safe defaults', () => {
     const v1 = { managerName: 'X', season: 2026, saveVersion: 1 };
     const m = migrate(v1);
-    expect(m.saveVersion).toBe(2);
+    expect(m.saveVersion).toBe(SAVE_VERSION);
+    // v1 -> v2 fields
     expect(m.aiSquads).toEqual({});
     expect(m.draftOrder).toEqual([]);
     expect(m.history).toEqual([]);
     expect(m.brownlow).toEqual({});
     expect(m.themeMode).toBe('A');
     expect(m.options).toEqual({ autosave: true });
+    // v2 -> v3 fields (Gameplay Systems Spec)
+    expect(m.difficulty).toBe('contender');
+    expect(m.committee).toEqual([]);
+    expect(m.tutorialComplete).toBe(true); // existing saves skip tutorial
+    expect(m.coachReputation).toBe(30);
+    expect(m.coachTier).toBe('Journeyman');
+    expect(m.coachStats).toBeTruthy();
+    expect(m.previousClubs).toEqual([]);
+    expect(m.groundCondition).toBe(85);
+    expect(m.weeklyWeather).toEqual({});
+    expect(m.facilities.stadium).toBe(1);
   });
 
   it('does not clobber an existing themeMode', () => {
@@ -40,10 +52,11 @@ describe('migrate', () => {
     expect(m.themeMode).toBe('B');
   });
 
-  it('treats missing saveVersion as v1', () => {
+  it('treats missing saveVersion as v1 and migrates to current version', () => {
     const m = migrate({ managerName: 'X' });
-    expect(m.saveVersion).toBe(2);
+    expect(m.saveVersion).toBe(SAVE_VERSION);
     expect(m.history).toEqual([]);
+    expect(m.difficulty).toBe('contender');
   });
 });
 
@@ -107,7 +120,7 @@ describe('migrateLegacy', () => {
     localStorage.setItem(LEGACY_KEY, JSON.stringify({ managerName: 'L', season: 2025, saveVersion: 1 }));
     const m = migrateLegacy();
     expect(m).not.toBe(null);
-    expect(m.saveVersion).toBe(2);
+    expect(m.saveVersion).toBe(SAVE_VERSION);
     expect(getActiveSlot()).toBe('A');
     expect(readSlot('A').managerName).toBe('L');
     expect(localStorage.getItem(LEGACY_KEY)).toBe(null);

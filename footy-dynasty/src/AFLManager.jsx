@@ -21,6 +21,22 @@ import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, 
 import { css, Bar, RatingDot, Pill, Stat, Jersey, GlobalStyle } from './components/primitives.jsx';
 import TabNav from './components/TabNav.jsx';
 import GameOverScreen from './screens/GameOverScreen.jsx';
+import PostMatchSummary from './screens/PostMatchSummary.jsx';
+import SackingSequence from './screens/SackingSequence.jsx';
+import TutorialOverlay, { TUTORIAL_STEPS, TutorialCompleteCard } from './components/TutorialOverlay.jsx';
+// --- Gameplay systems spec (Sections 1-3) ---
+import { DIFFICULTY_IDS, DIFFICULTY_META, getDifficultyConfig, shouldShowTutorial } from './lib/difficulty.js';
+import {
+  generateCommittee, getCommitteeMember, bumpCommitteeMood, committeeMoodAverage,
+  committeeMessage, FOOTY_TRIP_OPTIONS, applyFootyTrip, postMatchFundraiser,
+  ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
+  groundConditionBand, stadiumDescription, generateJournalist, journalistMatchLine,
+  rollPlayerTrait,
+} from './lib/community.js';
+import {
+  COACH_TIERS, coachTierFromScore, applyEndOfSeasonReputation,
+  applySackingReputation, generateJobMarket, takeSeasonOff,
+} from './lib/coachReputation.js';
 
 // ============================================================================
 // ERROR BOUNDARY
@@ -67,6 +83,7 @@ function AFLManagerInner() {
   const [activeSlot, setActiveSlotState] = useState(() => getActiveSlot());
   const [showSlotPicker, setShowSlotPicker] = useState(false);
   const [slotMetaTick, setSlotMetaTick] = useState(0);
+  const [showPostMatch, setShowPostMatch] = useState(false);
   const [career, setCareer] = useState(() => {
     const slot = getActiveSlot();
     if (slot) {
@@ -129,6 +146,101 @@ function AFLManagerInner() {
       setCareer(null);
     }
     setSlotMetaTick(t => t + 1);
+  }
+
+  // ============== JOB MARKET — accept a new job at a different club ==============
+  function acceptNewJob(offer) {
+    const newLeague = PYRAMID[offer.leagueKey];
+    if (!newLeague) return;
+    const newClub = newLeague.clubs.find(c => c.id === offer.clubId);
+    if (!newClub) return;
+    seedRng(Date.now() % 100000);
+    const cfg = getDifficultyConfig(career.difficulty);
+    const newSquad = generateSquad(newClub.id, newLeague.tier).map(p => ({
+      ...p,
+      // Spec 3F: legacy follows you — premiership winners boost morale, relegation history sows doubt
+      morale: clamp((p.morale ?? 70)
+        + ((career.coachStats?.premierships || 0) > 0 ? 5 : 0)
+        + ((career.coachStats?.relegations  || 0) > 0 && Math.random() < 0.05 ? -8 : 0),
+        cfg.moraleFloor, 100),
+      traits: rollPlayerTrait() ? [rollPlayerTrait()] : [],
+    }));
+    const newLineup = newSquad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p => p.id);
+    const newFixtures = generateFixtures(newLeague.clubs);
+    const SEASON = career.season + 1;
+    const eventQueue = generateSeasonCalendar(SEASON, newLeague.clubs, newFixtures, newClub.id);
+    const baseFinance = defaultFinance(newLeague.tier);
+    const startingBoard = (career.coachReputation ?? 30) >= 60 ? 65 : 55;
+
+    setCareer({
+      ...career,
+      // Persist coach stats / reputation / previous clubs
+      coachStats: {
+        ...career.coachStats,
+        clubsManaged: (career.coachStats?.clubsManaged || 1) + 1,
+      },
+      previousClubs: [
+        ...(career.previousClubs || []),
+        {
+          clubId: career.clubId, leagueKey: career.leagueKey,
+          seasons: career.coachStats?.seasonsManaged || 1,
+          wins: career.coachStats?.totalWins || 0,
+          losses: career.coachStats?.totalLosses || 0,
+          premierships: career.coachStats?.premierships || 0,
+          finalSeason: career.season,
+          tier: league.tier,
+        },
+      ],
+      // New club state
+      clubId:    newClub.id,
+      leagueKey: offer.leagueKey,
+      season:    SEASON,
+      week:      0,
+      currentDate: `${SEASON - 1}-12-01`,
+      phase:     'preseason',
+      eventQueue,
+      squad:     newSquad,
+      lineup:    newLineup,
+      kits:      defaultKits(newClub.colors),
+      ladder:    blankLadder(newLeague.clubs),
+      fixtures:  newFixtures,
+      finance:   { ...baseFinance, cash: Math.round(baseFinance.cash * cfg.cashMultiplier), transferBudget: Math.round(baseFinance.transferBudget * cfg.transferBudgetMultiplier), boardConfidence: startingBoard },
+      sponsors:  generateSponsors(newLeague.tier).map(s => ({ ...s, annualValue: Math.round((s.annualValue ?? 0) * cfg.sponsorMultiplier) })),
+      staff:     generateStaff(newLeague.tier),
+      facilities: { ...DEFAULT_FACILITIES(), stadium: 1 },
+      training:  DEFAULT_TRAINING(),
+      // Reset round/match state
+      isSacked:  false,
+      jobMarketOpen: false,
+      sackingStep: null,
+      gameOver:  null,
+      jobOffers: [],
+      boardWarning: 0,
+      aiSquads:  {},
+      brownlow:  {},
+      pendingTradeOffers: [],
+      retiredThisSeason: [],
+      lastEvent: null,
+      lastMatchSummary: null,
+      currentMatchResult: null,
+      inMatchDay: false,
+      // Community state for the new tier
+      committee: generateCommittee(newLeague.tier),
+      footyTripAvailable: false,
+      footyTripUsed: false,
+      groundCondition: 85,
+      groundName: `${newClub.short} Oval`,
+      weeklyWeather: {},
+      // Fresh journalist at the new club
+      journalist: career.coachReputation >= 60
+        ? { ...generateJournalist(), satisfaction: 65 }
+        : generateJournalist(),
+      news: [
+        { week: 0, type: 'win', text: `✍️ Welcome to ${newClub.name}, ${career.managerName}. ${offer.chairmanLine.replace(/&ldquo;|&rdquo;|&quot;|"/g, '').trim()}` },
+      ],
+    });
+    setScreen('hub');
+    setTab(null);
   }
 
   // ============== CAREER SETUP ==============
@@ -265,6 +377,14 @@ function AFLManagerInner() {
         }
       }
       if (ev.name === 'Transfer Window Closes') {
+        // Spec 3B: Social Coordinator proposes the annual footy trip (Tier 2/3 only)
+        if (!c.footyTripUsed && league.tier <= 3 && (c.committee || []).length > 0) {
+          c.footyTripAvailable = true;
+          const social = (c.committee || []).find(m => m.role === 'Social Coordinator');
+          const tripMsg = committeeMessage(c, 'Social Coordinator', 'propose_trip');
+          if (tripMsg) extraNews.push({ week: c.week, ...tripMsg });
+          else if (social) extraNews.push({ week: c.week, type: 'committee', text: `🚌 ${social.name} is proposing the annual footy trip. Approve a destination in the Club tab.` });
+        }
         c.tradePool = generateTradePool(c.leagueKey, c.season + ev.date.slice(0, 4) * 0);
         // Auto-reject any pending offers
         const stale = (c.pendingTradeOffers || []).filter(o => o.status === 'pending');
@@ -350,11 +470,18 @@ function AFLManagerInner() {
           const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
           // Pick a tactic for the AI based on their squad strength vs ours
           const oppTactic = oppRating > myRating + 4 ? 'attack' : oppRating < myRating - 4 ? 'defensive' : 'balanced';
+          // Spec 3D: ground-condition modifiers when player is at home
+          let groundScoringMod = 1.0, groundAccuracyMod = 1.0;
+          if (isHome) {
+            const band = groundConditionBand(c.groundCondition ?? 85);
+            groundScoringMod  = band.scoringMod;
+            groundAccuracyMod = band.accuracyMod;
+          }
           const result = simMatchWithQuarters(
             { rating: isHome ? myRating : oppRating },
             { rating: isHome ? oppRating : myRating },
             isHome, myRating,
-            { tactic: c.tacticChoice || 'balanced', playerLineup, oppLineup, oppTactic }
+            { tactic: c.tacticChoice || 'balanced', playerLineup, oppLineup, oppTactic, groundScoringMod, groundAccuracyMod }
           );
           const myTotal  = isHome ? result.homeTotal : result.awayTotal;
           const oppTotal = isHome ? result.awayTotal : result.homeTotal;
@@ -450,31 +577,76 @@ function AFLManagerInner() {
       c.weeklyHistory = (c.weeklyHistory || []).slice(-15);
       c.weeklyHistory.push({ week: ev.round, profit: ticketRev + sponsorAccrual - wageWeekly - facilityCosts, cash: c.finance.cash });
 
+      const cfg = getDifficultyConfig(c.difficulty);
+      // Difficulty-driven board confidence delta
+      const winBump  =  Math.max(2, Math.abs(cfg.boardLossConfidence) - 1);
+      const lossDrop =  cfg.boardLossConfidence;          // already negative
+      const drawDelta = 0;
+      const prevBoard = c.finance.boardConfidence;
+      let boardDelta;
       if (myResult) {
-        c.finance.fanHappiness = clamp(c.finance.fanHappiness + (myResult.won ? 3 : myResult.drew ? 0 : -2), 10, 100);
-        c.finance.boardConfidence = clamp(c.finance.boardConfidence + (myResult.won ? 2 : myResult.drew ? 0 : -1), 10, 100);
+        boardDelta = myResult.won ? winBump : myResult.drew ? drawDelta : lossDrop;
+        c.finance.fanHappiness    = clamp(c.finance.fanHappiness + (myResult.won ? 3 : myResult.drew ? 0 : -2), 10, 100);
+        c.finance.boardConfidence = clamp(c.finance.boardConfidence + boardDelta, 0, 100);
+        c.lastBoardConfidenceDelta = c.finance.boardConfidence - prevBoard;
         c.news = [{ week: ev.round, type: myResult.won ? 'win' : myResult.drew ? 'draw' : 'loss',
           text: `Rd ${ev.round}: ${myResult.isHome ? 'vs' : '@'} ${myResult.opp?.short} ${myResult.myTotal}–${myResult.oppTotal} (${myResult.won ? 'W' : myResult.drew ? 'D' : 'L'})` },
           ...(c.news || [])].slice(0, 12);
+
+        // Journalist satisfaction shifts gently with results
+        if (c.journalist) {
+          c.journalist = { ...c.journalist, satisfaction: clamp((c.journalist.satisfaction ?? 50) + (myResult.won ? 2 : myResult.drew ? 0 : -3), 0, 100) };
+        }
+
+        // Committee mood: small win/loss bumps for President + Treasurer
+        c.committee = bumpCommitteeMood(c.committee, 'President', myResult.won ? 3 : myResult.drew ? 0 : -2);
+        if (myResult.won) {
+          const presMsg = committeeMessage(c, 'President', 'win');
+          if (presMsg) c.news = [{ week: ev.round, ...presMsg }, ...(c.news || [])].slice(0, 20);
+        }
+
+        // 3C — Meat tray / fundraiser at home games
+        if (myResult.isHome) {
+          const fundraiser = postMatchFundraiser(c, league.tier, true);
+          if (fundraiser) {
+            c.finance.cash += fundraiser.income;
+            c.news = [{ week: ev.round, ...fundraiser.news }, ...(c.news || [])].slice(0, 20);
+            if (fundraiser.moralePlayerId) {
+              c.squad = c.squad.map(p => p.id === fundraiser.moralePlayerId
+                ? { ...p, morale: clamp((p.morale ?? 70) + fundraiser.moraleDelta, cfg.moraleFloor, 100) } : p);
+            }
+          }
+        }
       }
 
-      // Board sacking: two consecutive rounds at <=10 confidence triggers game over
-      if (c.finance.boardConfidence <= 10) {
+      // 3D — Ground conditions degrade after the round if it was at the player's home
+      if (myResult && myResult.isHome) {
+        const weather = ensureWeatherForWeek(c, ev.round);
+        c.groundCondition = applyGroundDegradation(c.groundCondition ?? 85, weather, c.facilities?.stadium ?? 1);
+      }
+
+      // Board sacking: trigger immediately if confidence hits 0 (legend) or after 2 warnings (others)
+      const sackPatience = cfg.boardPatienceSeasons === 1 ? 1 : 2;
+      if (c.finance.boardConfidence <= 0) {
+        c.boardWarning = sackPatience; // immediate sack
+      } else if (c.finance.boardConfidence <= 10) {
         c.boardWarning = (c.boardWarning || 0) + 1;
-        if (c.boardWarning >= 2) {
-          c.gameOver = {
-            reason: 'sacked',
-            club: club.name,
-            season: c.season,
-            week: ev.round,
-            premiership: c.premiership || null,
-          };
-          c.news = [{ week: ev.round, type: 'loss', text: `💼 The board has terminated your contract at ${club.name}.` }, ...(c.news || [])].slice(0, 20);
-        } else {
-          c.news = [{ week: ev.round, type: 'loss', text: `⚠️ Final warning from the board — turn it around or you're gone.` }, ...(c.news || [])].slice(0, 20);
-        }
+      }
+      if ((c.boardWarning || 0) >= sackPatience && !c.isSacked) {
+        // Trigger the multi-step sacking sequence (Section 3F)
+        c.isSacked = true;
+        c.sackingStep = 0;
+        c.gameOver = {
+          reason: 'sacked', club: club.name, season: c.season, week: ev.round,
+          premiership: c.premiership || null,
+        };
+        c.coachReputation = applySackingReputation(c.coachReputation);
+        c.coachTier = coachTierFromScore(c.coachReputation);
+        c.news = [{ week: ev.round, type: 'loss', text: `💼 The board has terminated your contract at ${club.name}.` }, ...(c.news || [])].slice(0, 20);
       } else if (c.finance.boardConfidence > 30) {
         c.boardWarning = 0;
+      } else if (c.finance.boardConfidence <= 20) {
+        c.news = [{ week: ev.round, type: 'loss', text: `⚠️ Board confidence is critical — your job is on the line.` }, ...(c.news || [])].slice(0, 20);
       }
 
       c.week = ev.round;
@@ -493,12 +665,73 @@ function AFLManagerInner() {
         c.currentMatchResult = { ...myResult.result, isHome: myResult.isHome, opp: myResult.opp,
           myTotal: myResult.myTotal, oppTotal: myResult.oppTotal, won: myResult.won, drew: myResult.drew,
           isPreseason: false, label: `Round ${ev.round}`, isAFL: league.tier === 1 };
+        // Build the post-match summary payload (Section 3E)
+        c.lastMatchSummary = buildPostMatchSummary(c, league, club, myResult, ev.round);
       }
       setCareer(c);
       return;
     }
 
     setCareer(c);
+  }
+
+  // Build the data payload consumed by PostMatchSummary overlay (Spec Section 3E)
+  function buildPostMatchSummary(c, league, club, myResult, round) {
+    const myLineup = (c.lineup || []).map(id => c.squad.find(p => p.id === id)).filter(Boolean);
+    const attribution = myResult.result?.goalAttribution || {};
+    let topScorerId = null, topGoals = -1;
+    Object.entries(attribution).forEach(([pid, v]) => {
+      if ((v.goals || 0) > topGoals) { topScorerId = pid; topGoals = v.goals || 0; }
+    });
+    const topScorer = topScorerId ? c.squad.find(p => p.id === topScorerId) : null;
+    // Best on ground heuristic = highest votesScore among player-side contributors
+    let bogId = null, bogScore = -1;
+    Object.entries(attribution).forEach(([pid, v]) => {
+      if ((v.votesScore || 0) > bogScore) { bogId = pid; bogScore = v.votesScore || 0; }
+    });
+    const bog = bogId ? c.squad.find(p => p.id === bogId) : (myLineup[0] || null);
+
+    const margin = Math.abs((myResult.myTotal ?? 0) - (myResult.oppTotal ?? 0));
+    const conf   = c.finance.boardConfidence;
+    const boardReaction = (() => {
+      if (myResult.won && margin >= 30)        return { emoji: '🔥', text: 'Outstanding. The board is fully behind you.' };
+      if (!myResult.won && !myResult.drew && margin >= 40) return { emoji: '🚨', text: 'The board has called an urgent review. Expect a difficult conversation.' };
+      if (myResult.won)  return conf >= 60 ? { emoji: '👍', text: 'The board is pleased. Keep it up.' }
+                                            : { emoji: '🤝', text: 'A welcome result. The board is watching closely but encouraged.' };
+      if (myResult.drew) return { emoji: '😐', text: 'Acceptable. The board expected better but a draw will do.' };
+      if (conf >= 60)    return { emoji: '😬', text: 'Disappointed but not panicking. One bad result.' };
+      if (conf >= 30)    return { emoji: '⚠️', text: 'The board is concerned. Results need to improve.' };
+      return                  { emoji: '💀', text: 'The board is not happy. This cannot continue.' };
+    })();
+    const journoLine = journalistMatchLine(c, myResult, club, myResult.opp);
+    let committeeReaction = null;
+    if (Array.isArray(c.committee) && c.committee.length) {
+      const sorted = [...c.committee].sort((a, b) => Math.abs(b.mood - 50) - Math.abs(a.mood - 50));
+      const m = sorted[0];
+      committeeReaction = `${m.name} (${m.role}): ${
+        m.mood >= 70 ? 'Loved that.' : m.mood >= 40 ? 'Reasonable showing.' : 'Not good enough.'
+      }`;
+    }
+    // Crowd attendance — synthesize from tier + result
+    const baseCrowd = league.tier === 1 ? 35000 : league.tier === 2 ? 4500 : 800;
+    const crowd = Math.round(baseCrowd * (0.6 + 0.5 * Math.random()));
+    return {
+      label:       `Round ${round}`,
+      myScore:     `${myResult.result?.homeGoals ?? 0}.${myResult.result?.homeBehinds ?? 0} (${myResult.myTotal})`,
+      oppScore:    `${myResult.result?.awayGoals ?? 0}.${myResult.result?.awayBehinds ?? 0} (${myResult.oppTotal})`,
+      myShortName: club.short, oppShortName: myResult.opp?.short || 'OPP',
+      myColor:     club.colors?.[0] || 'var(--A-accent)',
+      oppColor:    myResult.opp?.colors?.[0] || '#64748B',
+      result:      myResult.won ? 'WIN' : myResult.drew ? 'DRAW' : 'LOSS',
+      resultColor: myResult.won ? '#4AE89A' : myResult.drew ? 'var(--A-accent)' : '#E84A6F',
+      margin,
+      crowd,
+      bog,
+      topScorer, topGoals,
+      boardReaction,
+      journalistLine: journoLine,
+      committeeReaction,
+    };
   }
 
   function startFinals(c) {
@@ -740,6 +973,34 @@ function AFLManagerInner() {
     c.brownlow = {};
     c.boardWarning = 0;
 
+    // ── Spec Section 3F: end-of-season reputation update + coach stats ──
+    const games = (myRow.W || 0) + (myRow.L || 0) + (myRow.D || 0);
+    const winRate = games > 0 ? (myRow.W || 0) / games : 0;
+    c.coachReputation = applyEndOfSeasonReputation(c.coachReputation, {
+      premiership: champion,
+      finals: myPos <= 4,
+      promoted, relegated, winRate,
+    });
+    c.coachTier = coachTierFromScore(c.coachReputation);
+    c.coachStats = {
+      ...c.coachStats,
+      totalWins:    (c.coachStats?.totalWins   || 0) + (myRow.W || 0),
+      totalLosses:  (c.coachStats?.totalLosses || 0) + (myRow.L || 0),
+      totalDraws:   (c.coachStats?.totalDraws  || 0) + (myRow.D || 0),
+      premierships: (c.coachStats?.premierships|| 0) + (champion ? 1 : 0),
+      promotions:   (c.coachStats?.promotions  || 0) + (promoted ? 1 : 0),
+      relegations:  (c.coachStats?.relegations || 0) + (relegated ? 1 : 0),
+      seasonsManaged: (c.coachStats?.seasonsManaged || 1) + 1,
+    };
+
+    // ── Spec Section 3D: grounds get rested + re-grassed in pre-season ──
+    c.groundCondition = recoverGroundPreseason(c.groundCondition ?? 85);
+    c.weeklyWeather   = {}; // fresh weather rolls next season
+
+    // ── Spec Section 3B: reset footy trip availability for next season ──
+    c.footyTripUsed = false;
+    c.footyTripAvailable = false;
+
     // Retirement news
     retiredThisYear.slice(0, 4).forEach(r => {
       c.news = [{ week: 0, type: 'info', text: `🏁 ${r.name} ${r.reason === 'retired' ? `retires at ${r.age}` : `released after contract expired`} (${r.career.gamesPlayed} games, ${r.career.goals} goals)` }, ...(c.news || [])].slice(0, 20);
@@ -777,7 +1038,40 @@ function AFLManagerInner() {
   const globalStyle = <GlobalStyle />;
 
   // ============== GAME OVER (sacking) ==============
-  if (career.gameOver) {
+  // Sacking sequence (Spec Section 3F) — runs whenever isSacked is true.
+  // Drives the 5-step narrative, then a Job Market screen for the new club.
+  if (career.isSacked) {
+    return (
+      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+        {globalStyle}
+        <SackingSequence
+          career={career}
+          club={club}
+          onAdvanceStep={(nextStep) => {
+            const update = { sackingStep: nextStep };
+            // When entering Job Market step, generate offers
+            if (nextStep === 4 && (!career.jobOffers || career.jobOffers.length === 0)) {
+              update.jobOffers = generateJobMarket(career);
+            }
+            updateCareer(update);
+          }}
+          onAcceptJob={(offer) => acceptNewJob(offer)}
+          onTakeSeasonOff={() => {
+            const result = takeSeasonOff(career);
+            // Re-roll offers for next pass; bump rep slightly
+            updateCareer({
+              ...result,
+              jobOffers: generateJobMarket({ ...career, ...result }),
+              news: [{ week: 0, type: 'info', text: `🪞 Took the season off. Reputation +5. The phone might ring louder next year.` }, ...(career.news || [])].slice(0, 20),
+            });
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Legacy game-over (kept as a no-op fallback so older saves with gameOver but no isSacked don't crash)
+  if (career.gameOver && !career.isSacked) {
     return (
       <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
         {globalStyle}
@@ -791,49 +1085,7 @@ function AFLManagerInner() {
             setScreen('hub');
             setTab(null);
           }}
-          onTakeNewJob={() => {
-            // Drop the player back a tier (or stay in tier 3) at a random club
-            const currentTier = league.tier;
-            const targetTier = Math.min(3, currentTier + 1);
-            const candidates = Object.entries(PYRAMID).filter(([k, l]) => l.tier === targetTier && l.clubs.length > 0);
-            if (!candidates.length) {
-              // fallback — keep tier
-              setCareer({ ...career, gameOver: null, finance: { ...career.finance, boardConfidence: 55 }, boardWarning: 0 });
-              return;
-            }
-            const [newKey, newLeague] = candidates[Math.floor(Math.random() * candidates.length)];
-            const newClub = newLeague.clubs[Math.floor(Math.random() * newLeague.clubs.length)];
-            seedRng(Date.now() % 100000);
-            const newSquad = generateSquad(newClub.id, newLeague.tier);
-            const newLineup = newSquad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p => p.id);
-            const newFixtures = generateFixtures(newLeague.clubs);
-            const SEASON = career.season;
-            const eventQueue = generateSeasonCalendar(SEASON, newLeague.clubs, newFixtures, newClub.id);
-            setCareer({
-              ...career,
-              gameOver: null,
-              clubId: newClub.id,
-              leagueKey: newKey,
-              week: 0,
-              currentDate: `${SEASON - 1}-12-01`,
-              phase: 'preseason',
-              eventQueue,
-              squad: newSquad,
-              lineup: newLineup,
-              kits: defaultKits(newClub.colors),
-              ladder: blankLadder(newLeague.clubs),
-              fixtures: newFixtures,
-              finance: { ...defaultFinance(newLeague.tier), boardConfidence: 55 },
-              sponsors: generateSponsors(newLeague.tier),
-              boardWarning: 0,
-              aiSquads: {},
-              brownlow: {},
-              news: [
-                { week: 0, type: 'win', text: `🪄 Fresh start: ${career.managerName} appointed at ${newClub.name}.` },
-                ...(career.news || []),
-              ].slice(0, 20),
-            });
-          }}
+          onTakeNewJob={() => updateCareer({ gameOver: null, finance: { ...career.finance, boardConfidence: 55 }, boardWarning: 0 })}
         />
       </div>
     );
@@ -862,8 +1114,27 @@ function AFLManagerInner() {
           league={league}
           career={career}
           club={club}
-          onContinue={() => updateCareer({ inMatchDay: false, currentMatchResult: null })}
+          onContinue={() => {
+            // Show post-match summary first if we have one (regular-season player matches)
+            if (career.lastMatchSummary && !career.currentMatchResult.isPreseason) {
+              setShowPostMatch(true);
+            } else {
+              updateCareer({ inMatchDay: false, currentMatchResult: null, lastMatchSummary: null });
+            }
+          }}
         />
+        {showPostMatch && career.lastMatchSummary && (
+          <PostMatchSummary
+            summary={career.lastMatchSummary}
+            career={career}
+            club={club}
+            onReview={() => setShowPostMatch(false)}
+            onContinue={() => {
+              setShowPostMatch(false);
+              updateCareer({ inMatchDay: false, currentMatchResult: null, lastMatchSummary: null });
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -893,6 +1164,21 @@ function AFLManagerInner() {
           {screen === "compete"  && <CompetitionScreen career={career} club={club} league={league} tab={tab} setTab={setTab} />}
         </div>
       </main>
+      {/* Tutorial Overlay (Spec Section 1) */}
+      {!career.tutorialComplete && (career.tutorialStep ?? 0) < TUTORIAL_STEPS.length && (
+        <TutorialOverlay
+          step={career.tutorialStep ?? 0}
+          onNext={() => {
+            const next = (career.tutorialStep ?? 0) + 1;
+            const isDone = next >= TUTORIAL_STEPS.length;
+            updateCareer({ tutorialStep: next, tutorialComplete: isDone });
+            // Auto-jump to the next step's recommended screen for guided flow
+            const target = TUTORIAL_STEPS[next];
+            if (target?.targetScreen) setScreen(target.targetScreen);
+          }}
+          onSkip={() => updateCareer({ tutorialStep: TUTORIAL_STEPS.length, tutorialComplete: true })}
+        />
+      )}
     </div>
   );
 }
@@ -916,15 +1202,17 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
   const [leagueKey, _setLeagueKey] = useState(saved.leagueKey ?? null);
   const [clubId, _setClubId] = useState(saved.clubId ?? null);
   const [managerName, setManagerName] = useState(saved.managerName ?? "");
+  const [difficulty, _setDifficulty] = useState(saved.difficulty ?? 'contender');
   const [loading, setLoading] = useState(false);
   const [startError, setStartError] = useState(null);
   const slotsWithSaves = SLOT_IDS.filter(s => existingSlots && existingSlots[s]);
 
-  const setStep      = (v) => { saveSetup({ step: v });      _setStep(v); };
-  const setSelState  = (v) => { saveSetup({ state: v });     _setSelState(v); };
-  const setTier      = (v) => { saveSetup({ tier: v });      _setTier(v); };
-  const setLeagueKey = (v) => { saveSetup({ leagueKey: v }); _setLeagueKey(v); };
-  const setClubId    = (v) => { saveSetup({ clubId: v });    _setClubId(v); };
+  const setStep       = (v) => { saveSetup({ step: v });       _setStep(v); };
+  const setSelState   = (v) => { saveSetup({ state: v });      _setSelState(v); };
+  const setTier       = (v) => { saveSetup({ tier: v });       _setTier(v); };
+  const setLeagueKey  = (v) => { saveSetup({ leagueKey: v });  _setLeagueKey(v); };
+  const setClubId     = (v) => { saveSetup({ clubId: v });     _setClubId(v); };
+  const setDifficulty = (v) => { saveSetup({ difficulty: v }); _setDifficulty(v); };
 
   const availableLeagues = state ? LEAGUES_BY_STATE(state).filter(l => tier ? l.tier === tier : true) : [];
   const availableClubs = leagueKey ? PYRAMID[leagueKey].clubs : [];
@@ -942,10 +1230,24 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     if (!league) throw new Error(`League not found: ${leagueKey}`);
     const SEASON = 2026;
     seedRng(clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7) + 1);
-    const squad = generateSquad(clubId, league.tier);
+    const cfg = getDifficultyConfig(difficulty);
+    const baseFinance = defaultFinance(league.tier);
+    const tunedFinance = {
+      ...baseFinance,
+      cash:           Math.round(baseFinance.cash           * cfg.cashMultiplier),
+      transferBudget: Math.round(baseFinance.transferBudget * cfg.transferBudgetMultiplier),
+      boardConfidence: 55,
+    };
+    const baseSponsors = generateSponsors(league.tier).map(s => ({
+      ...s,
+      annualValue: Math.round((s.annualValue ?? 0) * cfg.sponsorMultiplier),
+    }));
+    const squad = generateSquad(clubId, league.tier).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
     const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
     const fixtures = generateFixtures(league.clubs);
     const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
+    const facilities = { ...DEFAULT_FACILITIES(), stadium: 1 };
+    const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
     sessionStorage.removeItem(SETUP_SS_KEY);
     onStart({
       managerName: managerName || "Coach",
@@ -962,9 +1264,9 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       squad,
       lineup,
       training: DEFAULT_TRAINING(),
-      facilities: DEFAULT_FACILITIES(),
-      finance: defaultFinance(league.tier),
-      sponsors: generateSponsors(league.tier),
+      facilities,
+      finance: tunedFinance,
+      sponsors: baseSponsors,
       staff: generateStaff(league.tier),
       kits: defaultKits(club.colors),
       ladder: blankLadder(league.clubs),
@@ -993,6 +1295,32 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       options: { autosave: true },
       pendingTradeOffers: [],
       retiredThisSeason: [],
+      // v3 additions — Gameplay Systems Spec
+      difficulty,
+      tutorialStep: isFirstCareer && cfg.tutorialPolicy !== 'never' ? 0 : 6,
+      tutorialComplete: !(isFirstCareer && cfg.tutorialPolicy !== 'never'),
+      isFirstCareer,
+      committee: generateCommittee(league.tier),
+      footyTripAvailable: false,
+      footyTripUsed: false,
+      groundCondition: 85,
+      groundName: `${club.short} Oval`,
+      weeklyWeather: {},
+      coachReputation: 30,
+      coachTier: 'Journeyman',
+      coachStats: {
+        totalWins: 0, totalLosses: 0, totalDraws: 0,
+        premierships: 0, promotions: 0, relegations: 0,
+        clubsManaged: 1, seasonsManaged: 1,
+      },
+      previousClubs: [],
+      isSacked: false,
+      jobMarketOpen: false,
+      sackingStep: null,
+      jobOffers: [],
+      journalist: generateJournalist(),
+      lastBoardConfidenceDelta: 0,
+      lastMatchSummary: null,
     });
     } catch (err) {
       setLoading(false);
@@ -1161,9 +1489,10 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
         )}
 
         {step === 4 && clubId && leagueKey && findClub(clubId) && (
-          <div className="fade-up max-w-xl">
+          <div className="fade-up max-w-3xl">
             <button type="button" onClick={()=>{ setClubId(null); setStep(3); }} disabled={loading} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>YOUR DETAILS</h2>
+
             <div className={`${css.panel} p-6 mb-4`}>
               {(() => { const c = findClub(clubId); return (
               <div className="flex items-center gap-4 mb-6">
@@ -1185,6 +1514,39 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                 disabled={loading}
               />
             </div>
+
+            {/* Difficulty selector — Spec Section 2.6 */}
+            <div className={`${css.panel} p-6 mb-4`}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`${css.h1} text-2xl`}>DIFFICULTY</h3>
+                <span className="text-[10px] text-atext-mute uppercase tracking-widest font-mono">Can change in Settings later</span>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {DIFFICULTY_IDS.map(id => {
+                  const meta = DIFFICULTY_META[id];
+                  const active = difficulty === id;
+                  return (
+                    <button key={id} type="button" onClick={() => setDifficulty(id)} disabled={loading}
+                      className={`text-left p-4 rounded-xl border transition-all ${active ? 'ring-2' : 'hover:border-aaccent/40'}`}
+                      style={{
+                        background: active ? `${meta.color}15` : 'var(--A-panel-2)',
+                        borderColor: active ? meta.color : 'var(--A-line)',
+                        ringColor: meta.color,
+                      }}>
+                      <div className="font-display text-2xl mb-1" style={{ color: meta.color }}>{meta.label.toUpperCase()}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-atext-mute mb-2 font-mono">{meta.audience}</div>
+                      <div className="text-xs text-atext-dim mb-3 leading-snug">{meta.summary}</div>
+                      <ul className="space-y-1">
+                        {meta.bullets.map((b, i) => (
+                          <li key={i} className="text-[11px] text-atext flex gap-1.5"><span style={{ color: meta.color }}>•</span><span>{b}</span></li>
+                        ))}
+                      </ul>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {startError && (
               <div className="mb-3 p-3 rounded-xl text-sm text-aneg bg-aneg/10 border border-aneg/30">
                 ⚠️ {startError}
@@ -1422,6 +1784,91 @@ function TopBar({ career, club, league, myLadderPos, onAdvance }) {
 // ============================================================================
 // HUB SCREEN
 // ============================================================================
+// ---------------------------------------------------------------------------
+// Hub strip showing ground conditions + footy trip prompt + committee mood.
+// Spec Sections 3A, 3B, 3D.
+// ---------------------------------------------------------------------------
+function HubGroundStrip({ career, club, league, setScreen }) {
+  const cfg = getDifficultyConfig(career.difficulty);
+  const showCommunity = league.tier <= 3 && Array.isArray(career.committee) && career.committee.length > 0;
+  const band = groundConditionBand(career.groundCondition ?? 85);
+  const stadiumLevel = career.facilities?.stadium ?? 1;
+  return (
+    <div className="grid sm:grid-cols-2 gap-3">
+      {/* Ground conditions */}
+      <div className={`${css.panel} p-4`}>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <div className={css.label}>Home Ground</div>
+            <div className="font-bold text-sm text-atext leading-tight">{career.groundName || `${club.short} Oval`}</div>
+          </div>
+          <Pill color={band.color}>{band.label}</Pill>
+        </div>
+        <div className="text-[11px] text-atext-dim mb-2 leading-snug">{stadiumDescription(stadiumLevel)}</div>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+            <div className="h-full rounded-full" style={{ width: `${career.groundCondition ?? 85}%`, background: `linear-gradient(90deg, ${band.color}88, ${band.color})` }} />
+          </div>
+          <span className="font-display text-lg w-10 text-right" style={{ color: band.color }}>{career.groundCondition ?? 85}</span>
+        </div>
+        <div className="text-[10px] text-atext-mute mt-1.5 italic">{band.desc}</div>
+      </div>
+
+      {/* Footy trip prompt or committee summary */}
+      <div className={`${css.panel} p-4`}>
+        {career.footyTripAvailable && !career.footyTripUsed ? (
+          <FootyTripPromoCard career={career} setScreen={setScreen} />
+        ) : showCommunity ? (
+          <CommitteeMiniSummary career={career} setScreen={setScreen} />
+        ) : (
+          <DifficultyMiniSummary career={career} cfg={cfg} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FootyTripPromoCard({ career, setScreen }) {
+  const social = (career.committee || []).find(m => m.role === 'Social Coordinator');
+  return (
+    <div>
+      <div className={css.label}>Footy Trip</div>
+      <div className="font-bold text-sm text-atext leading-tight mb-1">{social ? social.name : 'The Social Coordinator'} has a proposal</div>
+      <div className="text-[11px] text-atext-dim mb-3 leading-snug">An annual footy trip is on the table. Approve a destination in the Club tab.</div>
+      <button onClick={() => setScreen('club')} className={`${css.btnPrimary} text-[10px] py-2 px-3`}>OPEN CLUB →</button>
+    </div>
+  );
+}
+
+function CommitteeMiniSummary({ career, setScreen }) {
+  const avg = committeeMoodAverage(career.committee);
+  const accent = avg >= 70 ? '#4AE89A' : avg >= 40 ? 'var(--A-accent-2)' : '#E84A6F';
+  return (
+    <div>
+      <div className={css.label}>Committee Mood</div>
+      <div className="font-display text-3xl" style={{ color: accent }}>{avg}</div>
+      <div className="text-[11px] text-atext-dim mb-2">{
+        avg >= 70 ? 'The volunteers are happy. Things are humming.'
+        : avg >= 40 ? 'The committee is supportive but watching closely.'
+        : 'Committee tensions are surfacing — keep an eye on them.'
+      }</div>
+      <button onClick={() => setScreen('club')} className={`${css.btnGhost} text-[10px] py-1.5 px-2.5`}>VIEW COMMITTEE →</button>
+    </div>
+  );
+}
+
+function DifficultyMiniSummary({ career, cfg }) {
+  const meta = DIFFICULTY_META[career.difficulty] || DIFFICULTY_META.contender;
+  return (
+    <div>
+      <div className={css.label}>Difficulty</div>
+      <div className="font-display text-2xl" style={{ color: meta.color }}>{meta.label.toUpperCase()}</div>
+      <div className="text-[11px] text-atext-dim mb-2 leading-snug">{meta.summary}</div>
+      <div className="text-[10px] text-atext-mute">{cfg.boardPatienceSeasons} season{cfg.boardPatienceSeasons === 1 ? '' : 's'} of board patience · {cfg.injuryMultiplier}× injuries</div>
+    </div>
+  );
+}
+
 function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) {
   const sorted = sortedLadder(career.ladder);
   const top5 = sorted.slice(0, 5);
@@ -1470,6 +1917,9 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
           </div>
         </div>
       </div>
+
+      {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
+      <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} />
 
       {/* Last Event Result Card */}
       {lastEv && (
@@ -2703,12 +3153,18 @@ function TrainingTab({ career, updateCareer }) {
 // ============================================================================
 function ClubScreen({ career, club, updateCareer, tab, setTab }) {
   const t = tab || "finances";
+  const leagueTier = (() => {
+    const lg = findLeagueOf(career.clubId);
+    return lg ? lg.tier : 1;
+  })();
+  const showCommittee = leagueTier <= 3 && Array.isArray(career.committee) && career.committee.length > 0;
   const tabs = [
     { key: "finances", label: "Finances", icon: DollarSign },
     { key: "sponsors", label: "Sponsors", icon: Handshake },
     { key: "kits", label: "Kits", icon: Shirt },
     { key: "facilities", label: "Facilities", icon: Building2 },
     { key: "staff", label: "Staff", icon: UserCog },
+    ...(showCommittee ? [{ key: "committee", label: "Committee", icon: Users }] : []),
     { key: "honours", label: "Honours", icon: Award },
     { key: "rookies", label: "Rookie List", icon: Sprout },
     { key: "settings", label: "Settings", icon: Settings },
@@ -2721,9 +3177,131 @@ function ClubScreen({ career, club, updateCareer, tab, setTab }) {
       {t === "kits"       && <KitsTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "facilities" && <FacilitiesTab career={career} updateCareer={updateCareer} />}
       {t === "staff"      && <StaffTab career={career} updateCareer={updateCareer} />}
+      {t === "committee"  && <CommitteeTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "honours"    && <HonoursTab career={career} club={club} />}
       {t === "rookies"    && <RookieListTab career={career} updateCareer={updateCareer} />}
       {t === "settings"   && <SettingsTab career={career} updateCareer={updateCareer} />}
+    </div>
+  );
+}
+
+function CommitteeTab({ career, club, updateCareer }) {
+  const committee = career.committee || [];
+  if (committee.length === 0) {
+    return (
+      <div className={`${css.panel} p-12 text-center`}>
+        <Users className="w-12 h-12 mx-auto mb-3 opacity-30 text-atext-mute" />
+        <div className="text-sm text-atext-dim">{club.name} runs with a professional board, not a volunteer committee.</div>
+      </div>
+    );
+  }
+  const avg = committeeMoodAverage(committee);
+  const accent = avg >= 70 ? '#4AE89A' : avg >= 40 ? 'var(--A-accent-2)' : '#E84A6F';
+  const tripUsed = career.footyTripUsed;
+  const tripAvailable = career.footyTripAvailable && !tripUsed;
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className={`${css.h1} text-3xl`}>VOLUNTEER COMMITTEE</div>
+          <div className="text-xs text-atext-dim">Five locals who keep the club running. They have opinions — and they&apos;ll tell you about them.</div>
+        </div>
+        <Stat label="Avg Mood" value={avg} accent={accent} icon={Users} />
+      </div>
+
+      {tripAvailable && (
+        <FootyTripCard career={career} updateCareer={updateCareer} />
+      )}
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {committee.map(m => {
+          const trait = COMMITTEE_TRAIT_INFO[m.trait] || {};
+          const moodColor = m.mood >= 70 ? '#4AE89A' : m.mood >= 40 ? 'var(--A-accent-2)' : '#E84A6F';
+          return (
+            <div key={m.role} className={`${css.panel} p-4`}>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <div className={css.label}>{m.role}</div>
+                  <div className="font-bold text-atext leading-tight">{m.name}</div>
+                </div>
+                <div className="font-display text-2xl" style={{ color: moodColor }}>{m.mood}</div>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+                <div className="h-full" style={{ width: `${m.mood}%`, background: `linear-gradient(90deg, ${moodColor}88, ${moodColor})` }} />
+              </div>
+              <div className="text-[10px] text-atext-mute uppercase tracking-widest mb-1 font-mono">Loves</div>
+              <div className="text-[11px] text-atext-dim mb-2 leading-snug">{trait.loves || ''}</div>
+              <div className="text-[10px] text-atext-mute uppercase tracking-widest mb-1 font-mono">Hates</div>
+              <div className="text-[11px] text-atext-dim leading-snug">{trait.hates || ''}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+const COMMITTEE_TRAIT_INFO = {
+  old_school: { loves: 'Hard-nosed defenders, loyalty, tradition',                 hates: 'Spending money on unknowns, dropping veterans' },
+  cautious:   { loves: 'Sponsor deals, budget discipline, cost control',           hates: 'Overspending, expensive facilities, footy trips' },
+  community:  { loves: 'Footy trips, post-match functions, community events',      hates: 'Being ignored, low crowd games' },
+  loyal:      { loves: 'Players staying healthy, fitness drills, being consulted', hates: 'Medical-facility upgrades that make him feel replaced' },
+  connected:  { loves: 'Local signings, youth development, community ties',        hates: 'Signing players from outside the zone, ignored tips' },
+};
+
+function FootyTripCard({ career, updateCareer }) {
+  const social = (career.committee || []).find(m => m.role === 'Social Coordinator');
+  const acceptTrip = (optionId) => {
+    const result = applyFootyTrip(career, optionId);
+    if (!result) return;
+    const option = FOOTY_TRIP_OPTIONS.find(o => o.id === optionId);
+    const news = [
+      { week: career.week, type: 'committee', text: `🚌 Footy trip approved: ${option.label}. Cash -$${option.cost.toLocaleString()}, morale +${option.moraleGain}.` },
+      ...result.news.map(n => ({ week: career.week, ...n })),
+      ...(career.news || []),
+    ].slice(0, 25);
+    updateCareer({
+      squad: result.squad,
+      committee: result.committee,
+      finance: { ...career.finance, cash: career.finance.cash - option.cost },
+      footyTripUsed: true,
+      footyTripAvailable: false,
+      news,
+    });
+  };
+  const declineTrip = () => {
+    const committee = bumpCommitteeMood(career.committee, 'Social Coordinator', -8);
+    updateCareer({
+      committee,
+      footyTripUsed: true,
+      footyTripAvailable: false,
+      news: [{ week: career.week, type: 'committee', text: `🚫 Footy trip cancelled this year due to budget constraints. ${social ? social.name + ' is disappointed.' : 'The players are disappointed.'}` }, ...(career.news || [])].slice(0, 25),
+    });
+  };
+  return (
+    <div className={`${css.panel} p-4`} style={{ borderColor: 'var(--A-accent)' }}>
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <div>
+          <div className={css.label}>Footy Trip Proposal</div>
+          <div className="font-bold text-atext leading-tight">{social ? social.name : 'The Social Coordinator'} is proposing this year&apos;s footy trip.</div>
+        </div>
+        <button onClick={declineTrip} className={`${css.btnGhost} text-[10px] py-1.5 px-3`}>DECLINE</button>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-2 mt-3">
+        {FOOTY_TRIP_OPTIONS.map(opt => (
+          <button key={opt.id} onClick={() => acceptTrip(opt.id)}
+            className="text-left p-3 rounded-xl transition hover:border-aaccent"
+            style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+            <div className="font-display text-lg text-aaccent">{opt.label.toUpperCase()}</div>
+            <div className="text-[11px] text-atext-dim mb-2 leading-snug">{opt.blurb}</div>
+            <div className="grid grid-cols-2 gap-1 text-[10px]">
+              <div className="text-atext-mute">Cost</div><div className="text-aneg font-mono text-right">${opt.cost.toLocaleString()}</div>
+              <div className="text-atext-mute">Morale</div><div className="text-[#4AE89A] font-mono text-right">+{opt.moraleGain}</div>
+              <div className="text-atext-mute">Treasurer</div><div className="text-aneg font-mono text-right">{opt.treasurerHit}</div>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
