@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Footy Dynasty — Direction A · Polished</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Oswald:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="tokens.css" />
+  <style>
+    html, body { height: 100%; }
+    body {
+      background: #f0eee9;
+      font-family: "Inter", system-ui, sans-serif;
+      color: #2a251f;
+    }
+    /* Tweak overrides applied via CSS vars on :root */
+    :root[data-club-color] .dirA .accent { color: var(--A-accent) !important; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="data.js"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="primitives.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="direction-a-1.jsx"></script>
+  <script type="text/babel" src="direction-a-2.jsx"></script>
+  <script type="text/babel" src="direction-a-polish-match.jsx"></script>
+  <script type="text/babel" src="direction-a-polish-1.jsx"></script>
+  <script type="text/babel" src="direction-a-polish-2.jsx"></script>
+  <script type="text/babel" src="direction-b-1.jsx"></script>
+  <script type="text/babel" src="direction-b-2.jsx"></script>
+
+  <script type="text/babel">
+    const { DesignCanvas, DCSection, DCArtboard,
+      TweaksPanel, useTweaks, TweakSection, TweakRadio, TweakSelect, TweakColor, TweakToggle } = window;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "theme": "dark",
+      "clubColor": "#00E0FF",
+      "density": "regular",
+      "typography": "bebas",
+      "feedStyle": "text",
+      "texture": "clean"
+    }/*EDITMODE-END*/;
+
+    function applyTweaksToRoot(t) {
+      const root = document.documentElement;
+      // Theme
+      if (t.theme === "light") {
+        root.style.setProperty("--A-bg", "#F4F1EB");
+        root.style.setProperty("--A-bg-2", "#EAE5DB");
+        root.style.setProperty("--A-panel", "#FFFFFF");
+        root.style.setProperty("--A-panel-2", "#F4F1EB");
+        root.style.setProperty("--A-line", "rgba(20, 30, 50, 0.10)");
+        root.style.setProperty("--A-line-2", "rgba(20, 30, 50, 0.18)");
+        root.style.setProperty("--A-text", "#0F1A2E");
+        root.style.setProperty("--A-text-dim", "#465A75");
+        root.style.setProperty("--A-text-mute", "#90A0B5");
+      } else {
+        root.style.removeProperty("--A-bg");
+        root.style.removeProperty("--A-bg-2");
+        root.style.removeProperty("--A-panel");
+        root.style.removeProperty("--A-panel-2");
+        root.style.removeProperty("--A-line");
+        root.style.removeProperty("--A-line-2");
+        root.style.removeProperty("--A-text");
+        root.style.removeProperty("--A-text-dim");
+        root.style.removeProperty("--A-text-mute");
+      }
+      // Club color (replaces cyan accent)
+      root.style.setProperty("--A-accent", t.clubColor);
+      // Density (multiplier)
+      root.style.setProperty("--density", t.density === "compact" ? "0.85" : t.density === "comfy" ? "1.15" : "1");
+      // Typography
+      const display = t.typography === "system" ? "Inter, system-ui, sans-serif" : "Bebas Neue, sans-serif";
+      document.querySelectorAll(".display").forEach(el => el.style.fontFamily = display);
+      // Texture
+      if (t.texture === "stadium") {
+        root.setAttribute("data-texture", "stadium");
+      } else {
+        root.removeAttribute("data-texture");
+      }
+    }
+
+    function App() {
+      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      React.useEffect(() => { applyTweaksToRoot(t); }, [t]);
+
+      // Use polished screens
+      const POL = window.FDA_POLISH || {};
+      const HubA = POL.HubA || window.FDA.HubA;
+      const SquadA = POL.SquadA || window.FDA.SquadA;
+      const MatchA = POL.MatchA || window.FDA2.MatchA;
+      const ClubA = POL.ClubA || window.FDA2.ClubA;
+      const RecruitA = POL.RecruitA || window.FDA2.RecruitA;
+      const CompeteA = POL.CompeteA || window.FDA2.CompeteA;
+      const KitDesignerA = POL.KitDesignerA;
+
+      const W = 1440, H = 900;
+      const wrap = (Cmp) => (
+        <div style={{ width: W, height: H, overflow: "hidden" }}>
+          <Cmp />
+        </div>
+      );
+
+      const screens = [
+        { id: "hub",     title: "01 · Hub",         subtitle: "Hero season-narrative · trajectory chart · next match preview · news wire", A: HubA },
+        { id: "squad",   title: "02 · Squad",       subtitle: "Roster + radar chart, captain detail, contract panel",                       A: SquadA },
+        { id: "match",   title: "03 · Match Day",   subtitle: "Cinematic scoreboard · animated momentum · key-moments timeline · live feed", A: MatchA },
+        { id: "club",    title: "04 · Club",        subtitle: "Cash-flow chart · revenue breakdown · sponsors · facilities · staff",        A: ClubA },
+        { id: "recruit", title: "05 · Recruit",     subtitle: "Draft board · scout report · radar · player comp · risk · open trades",     A: RecruitA },
+        { id: "compete", title: "06 · Competition", subtitle: "Ladder · pyramid · fixtures with promotion / relegation cuts",               A: CompeteA },
+        { id: "kit",     title: "07 · Kit Designer", subtitle: "New screen — pattern picker, palette library, sponsor patch preview",      A: KitDesignerA },
+      ];
+
+      return (
+        <>
+          <DesignCanvas>
+            {/* Intro section */}
+            <DCSection id="intro" title="Footy Dynasty — Direction A · Polished" subtitle="Broadcast-cinematic redesign. 7 screens at 1440×900 · charts · radar · animated momentum · kit designer.">
+              <DCArtboard id="brief" label="Brief" width={520} height={460}>
+                <div className="dirA" style={{
+                  width: "100%", height: "100%", padding: 32,
+                  display: "flex", flexDirection: "column", gap: 16,
+                }}>
+                  <div className="row aic gap-2">
+                    <div style={{
+                      width: 28, height: 28,
+                      background: "var(--A-accent)",
+                      clipPath: "polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%)",
+                    }} />
+                    <div>
+                      <div className="display" style={{ fontSize: 22, lineHeight: 1, letterSpacing: "0.06em" }}>DYNASTY</div>
+                      <div className="label" style={{ fontSize: 8, marginTop: 2 }}>FOOTY MGR · S2</div>
+                    </div>
+                  </div>
+                  <div className="display glow-text" style={{ fontSize: 44, lineHeight: 0.9 }}>
+                    DIRECTION&nbsp;A<br/>POLISHED
+                  </div>
+                  <hr/>
+                  <div className="label">WHAT'S NEW IN THIS PASS</div>
+                  <div className="col gap-2" style={{ fontSize: 12, color: "var(--A-text-dim)" }}>
+                    <div>▸ <span style={{ color: "var(--A-text)" }}>Match Day</span> — animated momentum bar, live needle, key-moments timeline, counting score</div>
+                    <div>▸ <span style={{ color: "var(--A-text)" }}>Hub</span> — hero season narrative ("on for promotion"), dual-line trajectory chart</div>
+                    <div>▸ <span style={{ color: "var(--A-text)" }}>Squad</span> — radar chart, contract detail, form trend</div>
+                    <div>▸ <span style={{ color: "var(--A-text)" }}>Recruit</span> — full scout report, comparable, risk, radar, interested clubs</div>
+                    <div>▸ <span style={{ color: "var(--A-text)" }}>Club</span> — cash-flow chart, revenue breakdown bars</div>
+                    <div>▸ <span style={{ color: "var(--A-text)" }}>Kit Designer</span> — new screen with pattern + palette pickers</div>
+                    <div>▸ <span style={{ color: "var(--A-text)" }}>Tweaks</span> — theme, club color, density, type, texture</div>
+                    <div>▸ <span style={{ color: "var(--A-text)" }}>Mobile</span> — responsive layouts in companion file</div>
+                  </div>
+                  <div style={{ flex: 1 }} />
+                  <a href="Footy Dynasty Mobile.html" style={{
+                    fontFamily: "JetBrains Mono", fontSize: 11, color: "var(--A-accent)",
+                    letterSpacing: "0.18em", textTransform: "uppercase", textDecoration: "none",
+                    border: "1px solid var(--A-line-2)", padding: "10px 12px", borderRadius: 4,
+                    textAlign: "center",
+                  }}>VIEW MOBILE LAYOUTS →</a>
+                </div>
+              </DCArtboard>
+            </DCSection>
+
+            {screens.map(s => (
+              <DCSection key={s.id} id={s.id} title={s.title} subtitle={s.subtitle}>
+                <DCArtboard id={`${s.id}-A`} label="Direction A · Broadcast Cinematic" width={W} height={H}>
+                  {wrap(s.A)}
+                </DCArtboard>
+              </DCSection>
+            ))}
+          </DesignCanvas>
+
+          <TweaksPanel title="Tweaks">
+            <TweakSection label="Theme" />
+            <TweakRadio label="Mode" value={t.theme} options={["dark", "light"]}
+              onChange={v => setTweak("theme", v)} />
+            <TweakColor label="Club color" value={t.clubColor}
+              onChange={v => setTweak("clubColor", v)} />
+            <TweakSection label="Density" />
+            <TweakRadio label="Spacing" value={t.density} options={["compact", "regular", "comfy"]}
+              onChange={v => setTweak("density", v)} />
+            <TweakSection label="Typography" />
+            <TweakRadio label="Display" value={t.typography} options={["bebas", "system"]}
+              onChange={v => setTweak("typography", v)} />
+            <TweakSection label="Match feed" />
+            <TweakRadio label="Style" value={t.feedStyle} options={["text", "visual"]}
+              onChange={v => setTweak("feedStyle", v)} />
+            <TweakSection label="Background" />
+            <TweakRadio label="Texture" value={t.texture} options={["clean", "stadium"]}
+              onChange={v => setTweak("texture", v)} />
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
