@@ -708,51 +708,52 @@ function CareerSetup({ onStart }) {
     setStartError(null);
     setLoading(true);
     try {
-      const club = findClub(clubId);
-      const league = PYRAMID[leagueKey];
-      if (!club) throw new Error(`Club not found: ${clubId}`);
-      if (!league) throw new Error(`League not found: ${leagueKey}`);
-      const SEASON = 2026;
-      seedRng(clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7) + 1);
-      const squad = generateSquad(clubId, league.tier);
-      const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
-      const fixtures = generateFixtures(league.clubs);
-      const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
-      onStart({
-        managerName: managerName || "Coach",
-        clubId,
-        leagueKey,
-        season: SEASON,
-        week: 0,
-        currentDate: `${SEASON - 1}-12-01`,
-        phase: 'preseason',
-        eventQueue,
-        lastEvent: null,
-        inMatchDay: false,
-        currentMatchResult: null,
-        squad,
-        lineup,
-        training: DEFAULT_TRAINING(),
-        facilities: DEFAULT_FACILITIES(),
-        finance: defaultFinance(league.tier),
-        sponsors: generateSponsors(league.tier),
-        staff: generateStaff(league.tier),
-        kits: defaultKits(club.colors),
-        ladder: blankLadder(league.clubs),
-        fixtures,
-        tradePool: (() => { seedRng(7777); return Array.from({ length: 25 }, (_, i) => { const p = generatePlayer(rand(1,3), 5000+i); return { ...p, fromClub: pick(ALL_CLUBS).short }; }); })(),
-        draftPool: Array.from({ length: 60 }, (_, i) => generatePlayer(2, 9000 + i)),
-        youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
-        news: [{ week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` }],
-        weeklyHistory: [],
-        inFinals: false,
-        finalsRound: 0,
-        finalsFixtures: [],
-        finalsResults: [],
-        premiership: null,
-        tacticChoice: "balanced",
-        seasonHistory: [],
-      });
+    const club = findClub(clubId);
+    const league = PYRAMID[leagueKey];
+    if (!club) throw new Error(`Club not found: ${clubId}`);
+    if (!league) throw new Error(`League not found: ${leagueKey}`);
+    const SEASON = 2026;
+    seedRng(clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7) + 1);
+    const squad = generateSquad(clubId, league.tier);
+    const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
+    const fixtures = generateFixtures(league.clubs);
+    const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
+    sessionStorage.removeItem(SETUP_SS_KEY);
+    onStart({
+      managerName: managerName || "Coach",
+      clubId,
+      leagueKey,
+      season: SEASON,
+      week: 0,
+      currentDate: `${SEASON - 1}-12-01`,
+      phase: 'preseason',
+      eventQueue,
+      lastEvent: null,
+      inMatchDay: false,
+      currentMatchResult: null,
+      squad,
+      lineup,
+      training: DEFAULT_TRAINING(),
+      facilities: DEFAULT_FACILITIES(),
+      finance: defaultFinance(league.tier),
+      sponsors: generateSponsors(league.tier),
+      staff: generateStaff(league.tier),
+      kits: defaultKits(club.colors),
+      ladder: blankLadder(league.clubs),
+      fixtures,
+      tradePool: (() => { seedRng(7777); return Array.from({ length: 25 }, (_, i) => { const p = generatePlayer(rand(1,3), 5000+i); return { ...p, fromClub: pick(ALL_CLUBS).short }; }); })(),
+      draftPool: Array.from({ length: 60 }, (_, i) => generatePlayer(2, 9000 + i)),
+      youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
+      news: [{ week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` }],
+      weeklyHistory: [],
+      inFinals: false,
+      finalsRound: 0,
+      finalsFixtures: [],
+      finalsResults: [],
+      premiership: null,
+      tacticChoice: "balanced",
+      seasonHistory: [],
+    });
     } catch (err) {
       setLoading(false);
       setStartError(err.message);
