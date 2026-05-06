@@ -18,25 +18,25 @@ import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO, formatDate, formatDateLong, formatMonth, addDays, daysInMonth, startOfMonth, getDayOfWeek, isSameMonth, prevMonth, nextMonth } from './lib/calendar.js';
 
 const css = {
-  panel: "bg-white rounded-2xl border border-[#E2E8F0] shadow-sm",
-  panelHover: "bg-white rounded-2xl border border-[#E2E8F0] shadow-sm hover:shadow-md hover:border-[#CBD5E1] transition-all cursor-pointer",
-  inset: "bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl",
-  btn: "px-4 py-2.5 rounded-xl font-semibold transition-all tracking-wide",
-  btnPrimary: "px-5 py-2.5 rounded-xl font-bold tracking-wide bg-[#E89A4A] hover:bg-[#F0A558] active:bg-[#D08838] text-white transition-all shadow-md shadow-[#E89A4A]/30",
-  btnGhost: "px-5 py-2.5 rounded-xl font-semibold tracking-wide border border-[#E2E8F0] hover:border-[#CBD5E1] text-[#475569] hover:bg-[#F8FAFC] transition-all",
-  btnDanger: "px-5 py-2.5 rounded-xl font-semibold tracking-wide bg-[#FEF2F2] border border-[#FECACA] hover:bg-[#FEE2E2] text-[#DC2626] transition-all",
-  label: "text-[10px] uppercase tracking-[0.2em] text-[#94A3B8] font-bold",
-  h1: "font-['Bebas_Neue'] tracking-wider text-[#0F172A]",
-  num: "font-['Bebas_Neue'] tracking-wide",
-  divider: "border-t border-[#E2E8F0]",
-  tableHead: "px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-[#94A3B8] font-bold border-b border-[#E2E8F0] bg-[#F8FAFC]",
-  tableRow: "border-b border-[#F1F5F9] hover:bg-[#F8FAFC] transition-colors",
+  panel: "panel",
+  panelHover: "panel card-hover cursor-pointer",
+  inset: "panel-flat",
+  btn: "px-4 py-2.5 rounded-md font-semibold transition-all font-mono text-[10px] uppercase tracking-[0.18em]",
+  btnPrimary: "btn-primary text-[11px] px-5 py-2.5 font-mono font-bold uppercase tracking-[0.2em]",
+  btnGhost: "btn-ghost px-5 py-2.5",
+  btnDanger: "px-5 py-2.5 rounded-md font-semibold border border-aneg/40 text-aneg hover:bg-aneg/10 transition-all",
+  label: "label",
+  h1: "display tracking-wider text-atext",
+  num: "font-display tracking-wide text-atext",
+  divider: "border-t border-aline",
+  tableHead: "px-4 py-3 font-mono text-[10px] uppercase tracking-[0.15em] text-atext-mute font-bold border-b border-aline bg-apanel/40",
+  tableRow: "border-b border-aline/80 hover:bg-aaccent/5 transition-colors",
 };
 
 // Progress bar with optional label
-const Bar = ({ value, color = "#E89A4A", small = false, showVal = false }) => (
+const Bar = ({ value, color = "var(--A-accent)", small = false, showVal = false }) => (
   <div className="flex items-center gap-2 w-full">
-    <div className={`flex-1 ${small ? "h-1.5" : "h-2.5"} bg-[#FFFFFF] rounded-full overflow-hidden`} style={{border:"1px solid #E2E8F0"}}>
+    <div className={`flex-1 ${small ? "h-1.5" : "h-2.5"} bg-apanel-2 rounded-full overflow-hidden`} style={{border:"1px solid var(--A-line)"}}>
       <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.max(2,value)}%`, background: `linear-gradient(90deg, ${color}CC, ${color})` }} />
     </div>
     {showVal && <span className="text-[11px] font-bold w-7 text-right" style={{color}}>{value}</span>}
@@ -44,7 +44,7 @@ const Bar = ({ value, color = "#E89A4A", small = false, showVal = false }) => (
 );
 
 const RatingDot = ({ value, size = "md" }) => {
-  const c = value >= 85 ? "#4AE89A" : value >= 75 ? "#4ADBE8" : value >= 65 ? "#E89A4A" : value >= 55 ? "#E8D44A" : "#E84A6F";
+  const c = value >= 85 ? "#4AE89A" : value >= 75 ? "#4ADBE8" : value >= 65 ? "var(--A-accent)" : value >= 55 ? "#E8D44A" : "#E84A6F";
   const sz = size === "lg" ? "w-12 h-12 text-base" : size === "sm" ? "w-7 h-7 text-[10px]" : "w-10 h-10 text-[13px]";
   return (
     <span className={`inline-flex items-center justify-center font-black ${sz} rounded-xl flex-shrink-0`}
@@ -61,19 +61,19 @@ const Pill = ({ children, color = "#64748B" }) => (
   </span>
 );
 
-const Stat = ({ label, value, sub, accent = "#E89A4A", icon: Icon }) => (
+const Stat = ({ label, value, sub, accent = "var(--A-accent)", icon: Icon }) => (
   <div className={`${css.panel} p-5 relative overflow-hidden`}>
     <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{background: accent}} />
     {Icon && <Icon className="w-5 h-5 mb-2 opacity-60" style={{color: accent}} />}
     <div className={css.label}>{label}</div>
     <div className={`${css.num} text-4xl mt-1.5 leading-none`} style={{ color: accent }}>{value}</div>
-    {sub && <div className="text-xs text-[#64748B] mt-1.5 font-medium">{sub}</div>}
+    {sub && <div className="text-xs text-atext-dim mt-1.5 font-medium">{sub}</div>}
   </div>
 );
 
 // JerseyIcon: simple inline SVG kit preview
 const Jersey = ({ kit, size = 64 }) => {
-  const k = kit || { primary: "#E89A4A", secondary: "#FFFFFF", accent: "#E89A4A", pattern: "solid", numberColor: "#FFFFFF" };
+  const k = kit || { primary: "var(--A-accent)", secondary: "#FFFFFF", accent: "var(--A-accent)", pattern: "solid", numberColor: "#FFFFFF" };
   return (
     <svg viewBox="0 0 100 100" width={size} height={size}>
       <defs>
@@ -116,11 +116,11 @@ class ErrorBoundary extends React.Component {
         <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-8">
           <div className="max-w-lg w-full rounded-2xl p-6" style={{background:'#1E293B', border:'1px solid #E84A6F44'}}>
             <div className="text-3xl mb-3">💥</div>
-            <div className="font-['Bebas_Neue'] text-2xl text-[#E84A6F] mb-2">Something went wrong</div>
-            <pre className="text-xs text-[#94A3B8] bg-[#0F172A] rounded-lg p-3 overflow-auto max-h-48 mb-4">{this.state.error?.message}{'\n'}{this.state.error?.stack}</pre>
+            <div className="font-display text-2xl text-[#E84A6F] mb-2">Something went wrong</div>
+            <pre className="text-xs text-atext-mute bg-[#0F172A] rounded-lg p-3 overflow-auto max-h-48 mb-4">{this.state.error?.message}{'\n'}{this.state.error?.stack}</pre>
             <div className="flex gap-2">
               <button onClick={() => this.setState({ error: null })}
-                className="px-4 py-2 rounded-lg text-sm font-bold bg-[#E89A4A] text-white hover:bg-[#D07A2A]">
+                className="px-4 py-2 rounded-lg text-sm font-bold bg-aaccent text-white hover:bg-[#D07A2A]">
                 Try again
               </button>
               <button onClick={() => { sessionStorage.removeItem('footy-dynasty-setup'); localStorage.removeItem('footy-dynasty-career'); this.setState({ error: null }); }}
@@ -605,18 +605,17 @@ function AFLManagerInner() {
   // ============== RENDER ==============
   const globalStyle = (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sora:wght@300;400;500;600;700;800&display=swap');
-      body, html { background:#F1F5F9; margin:0; }
+      body, html { background:var(--A-bg); margin:0; color:var(--A-text); }
       ::-webkit-scrollbar { width:5px; height:5px; }
-      ::-webkit-scrollbar-track { background:#F1F5F9; }
-      ::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
-      ::-webkit-scrollbar-thumb:hover { background:#94A3B8; }
-      @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(232,154,74,0.3);}50%{box-shadow:0 0 14px 3px rgba(232,154,74,0.18);} }
+      ::-webkit-scrollbar-track { background:var(--A-bg); }
+      ::-webkit-scrollbar-thumb { background:rgba(124,161,207,0.25); border-radius:4px; }
+      ::-webkit-scrollbar-thumb:hover { background:rgba(0,224,255,0.35); }
+      @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(0,224,255,0.25);}50%{box-shadow:0 0 14px 3px rgba(0,224,255,0.15);} }
       .glow { animation: pulseGlow 2.5s ease-in-out infinite; }
       @keyframes slideIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
       .anim-in { animation: slideIn 0.2s ease-out; }
-      select option { background:#FFF; color:#0F172A; }
-      select { color:#0F172A; background:#FFF; }
+      .dirA select option { background:var(--A-panel); color:var(--A-text); }
+      .dirA select { color:var(--A-text); background:var(--A-panel); border:1px solid var(--A-line); border-radius:8px; }
       input[type=color] { padding:2px; cursor:pointer; border-radius:6px; }
       button:disabled { opacity:0.4; cursor:not-allowed; }
       * { box-sizing:border-box; }
@@ -625,7 +624,7 @@ function AFLManagerInner() {
 
   if (career.showSeasonSummary && career.seasonSummary) {
     return (
-      <div className="font-['Sora',sans-serif]">
+      <div className="dirA font-sans min-h-screen">
         {globalStyle}
         <SeasonSummaryScreen
           summary={career.seasonSummary}
@@ -638,7 +637,7 @@ function AFLManagerInner() {
 
   if (career.inMatchDay && career.currentMatchResult) {
     return (
-      <div className="font-['Sora',sans-serif]">
+      <div className="dirA font-sans min-h-screen">
         {globalStyle}
         <MatchDayScreen
           result={career.currentMatchResult}
@@ -652,7 +651,7 @@ function AFLManagerInner() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] text-[#0F172A] font-['Sora',sans-serif] flex">
+    <div className="dirA min-h-screen font-sans text-atext flex w-full">
       {globalStyle}
       <Sidebar screen={screen} setScreen={(s)=>{setScreen(s);setTab(null);}} club={club} league={league} career={career} myLadderPos={myLadderPos} onNewGame={handleNewGame} />
       <main className="flex-1 overflow-y-auto">
@@ -762,22 +761,21 @@ function CareerSetup({ onStart }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] text-[#0F172A] font-['Sora',sans-serif] flex flex-col">
+    <div className="dirA min-h-screen font-sans text-atext flex flex-col">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Sora:wght@300;400;500;600;700;800&display=swap');
         @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         .fade-up { animation: fadeUp 0.4s ease-out; }
       `}</style>
       {/* Hero */}
-      <div className="relative overflow-hidden border-b border-[#E2E8F0]" style={{ background: "radial-gradient(circle at 30% 20%, #EEF2F6 0%, #F8FAFC 60%)" }}>
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, #E89A4A 1px, transparent 0)", backgroundSize: "32px 32px" }} />
+      <div className="relative overflow-hidden border-b border-aline" style={{ background: "radial-gradient(circle at 30% 20%, rgba(0, 224, 255, 0.10) 0%, transparent 65%)" }}>
+        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, var(--A-accent) 1px, transparent 0)", backgroundSize: "32px 32px" }} />
         <div className="max-w-5xl mx-auto px-8 py-12 relative">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-[#E89A4A] flex items-center justify-center"><Trophy className="w-6 h-6 text-[#F8FAFC]" /></div>
-            <span className="text-[12px] uppercase tracking-[0.3em] text-[#E89A4A] font-bold">Manager 2026</span>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:"linear-gradient(135deg, var(--A-accent), #0098b0)"}}><Trophy className="w-6 h-6 text-[#001520]" /></div>
+            <span className="text-[12px] uppercase tracking-[0.3em] text-aaccent font-mono font-bold">Manager 2026</span>
           </div>
-          <h1 className="font-['Bebas_Neue'] text-7xl tracking-wider leading-none">FOOTY <span className="text-[#E89A4A]">DYNASTY</span></h1>
-          <p className="text-[#64748B] mt-3 text-lg max-w-2xl">Take a community side from the suburban grounds to the MCG. Real Australian rules football management — 7 states, full pyramid, every system you'd expect.</p>
+          <h1 className="font-display text-7xl tracking-wider leading-none">FOOTY <span className="text-aaccent">DYNASTY</span></h1>
+          <p className="text-atext-dim mt-3 text-lg max-w-2xl">Take a community side from the suburban grounds to the MCG. Real Australian rules football management — 7 states, full pyramid, every system you'd expect.</p>
         </div>
       </div>
       {/* Stepper */}
@@ -785,9 +783,9 @@ function CareerSetup({ onStart }) {
         <div className="flex items-center gap-2 mb-8">
           {["State", "Tier", "League", "Club", "You"].map((s, i) => (
             <div key={s} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition ${step === i ? "bg-[#E89A4A] text-[#F8FAFC]" : i < step ? "bg-[#F1F5F9] text-[#E89A4A] border border-[#E89A4A]/40" : "bg-[#121826] text-[#64748B] border border-[#E2E8F0]"}`}>{i+1}</div>
-              <span className={`text-sm font-semibold ${step === i ? "text-[#0F172A]" : "text-[#64748B]"}`}>{s}</span>
-              {i < 4 && <ChevronRight className="w-4 h-4 text-[#E2E8F0] mx-1" />}
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition ${step === i ? "bg-aaccent text-[#001520]" : i < step ? "bg-aaccent/15 text-aaccent border border-aaccent/40" : "bg-apanel text-atext-mute border border-aline"}`}>{i+1}</div>
+              <span className={`text-sm font-semibold ${step === i ? "text-atext" : "text-atext-mute"}`}>{s}</span>
+              {i < 4 && <ChevronRight className="w-4 h-4 text-atext-mute mx-1" />}
             </div>
           ))}
         </div>
@@ -795,7 +793,7 @@ function CareerSetup({ onStart }) {
         {step === 0 && (
           <div className="fade-up">
             <h2 className={`${css.h1} text-4xl mb-4`}>PICK A STATE</h2>
-            <p className="text-[#64748B] mb-8">Where will your story begin? Each state has its own football culture and pyramid.</p>
+            <p className="text-atext-dim mb-8">Where will your story begin? Each state has its own football culture and pyramid.</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {STATES.map(s => {
                 const flag = { VIC: "🏉", SA: "🦘", WA: "🌅", TAS: "🍎", NT: "🐊", QLD: "🌴", NSW: "🌉", ACT: "🏛️" };
@@ -804,8 +802,8 @@ function CareerSetup({ onStart }) {
                   <button key={s} onClick={()=>{setSelState(s); setStep(1);}} className={`${css.panelHover} p-6 text-left group`}>
                     <div className="text-4xl mb-2">{flag[s]}</div>
                     <div className={`${css.h1} text-3xl`}>{s}</div>
-                    <div className="text-[12px] text-[#64748B] mt-1">{desc[s]}</div>
-                    <div className="text-[10px] text-[#E89A4A] mt-3 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition">Choose →</div>
+                    <div className="text-[12px] text-atext-dim mt-1">{desc[s]}</div>
+                    <div className="text-[10px] text-aaccent mt-3 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition">Choose →</div>
                   </button>
                 );
               })}
@@ -815,34 +813,34 @@ function CareerSetup({ onStart }) {
 
         {step === 1 && (
           <div className="fade-up">
-            <button onClick={()=>setStep(0)} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
+            <button onClick={()=>setStep(0)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>CHOOSE YOUR DIFFICULTY</h2>
-            <p className="text-[#64748B] mb-8">Start at the top, the middle, or the bottom of the pyramid. Showing tiers available in <strong>{state}</strong>.</p>
+            <p className="text-atext-dim mb-8">Start at the top, the middle, or the bottom of the pyramid. Showing tiers available in <strong>{state}</strong>.</p>
             <div className={`grid gap-4 ${tiersForState.length === 1 ? 'md:grid-cols-1 max-w-sm' : tiersForState.length === 2 ? 'md:grid-cols-2 max-w-2xl' : 'md:grid-cols-3'}`}>
               {tiersForState.includes(3) && (
                 <button onClick={()=>{setTier(3); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
                   <Pill color="#4ADBE8">Underdog</Pill>
                   <div className={`${css.h1} text-4xl mt-3`}>TIER 3</div>
-                  <div className="text-sm text-[#0F172A] font-semibold mt-1">Community / Local</div>
-                  <div className="text-[12px] text-[#64748B] mt-3">Suburban grounds. Tiny budgets. Long road. Most rewarding climb.</div>
+                  <div className="text-sm text-atext font-semibold mt-1">Community / Local</div>
+                  <div className="text-[12px] text-atext-dim mt-3">Suburban grounds. Tiny budgets. Long road. Most rewarding climb.</div>
                   <div className="text-[#4ADBE8] text-xs mt-4 font-bold uppercase tracking-widest">3 Promotions to AFL</div>
                 </button>
               )}
               {tiersForState.includes(2) && (
                 <button onClick={()=>{setTier(2); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
-                  <Pill color="#E89A4A">Established</Pill>
+                  <Pill color="var(--A-accent)">Established</Pill>
                   <div className={`${css.h1} text-4xl mt-3`}>TIER 2</div>
-                  <div className="text-sm text-[#0F172A] font-semibold mt-1">State League</div>
-                  <div className="text-[12px] text-[#64748B] mt-3">VFL, SANFL, WAFL etc. Real budgets. One step from the big show.</div>
-                  <div className="text-[#E89A4A] text-xs mt-4 font-bold uppercase tracking-widest">1 Promotion to AFL</div>
+                  <div className="text-sm text-atext font-semibold mt-1">State League</div>
+                  <div className="text-[12px] text-atext-dim mt-3">VFL, SANFL, WAFL etc. Real budgets. One step from the big show.</div>
+                  <div className="text-aaccent text-xs mt-4 font-bold uppercase tracking-widest">1 Promotion to AFL</div>
                 </button>
               )}
               {tiersForState.includes(1) && (
                 <button onClick={()=>{setTier(1); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
                   <Pill color="#E84A6F">Big Time</Pill>
                   <div className={`${css.h1} text-4xl mt-3`}>TIER 1</div>
-                  <div className="text-sm text-[#0F172A] font-semibold mt-1">AFL</div>
-                  <div className="text-[12px] text-[#64748B] mt-3">Premiership pressure. Salary caps. Trade weeks. Every game on TV.</div>
+                  <div className="text-sm text-atext font-semibold mt-1">AFL</div>
+                  <div className="text-[12px] text-atext-dim mt-3">Premiership pressure. Salary caps. Trade weeks. Every game on TV.</div>
                   <div className="text-[#E84A6F] text-xs mt-4 font-bold uppercase tracking-widest">Win the Cup</div>
                 </button>
               )}
@@ -852,22 +850,22 @@ function CareerSetup({ onStart }) {
 
         {step === 2 && (
           <div className="fade-up">
-            <button onClick={()=>setStep(1)} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
+            <button onClick={()=>setStep(1)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>PICK A LEAGUE</h2>
-            <p className="text-[#64748B] mb-8">{state} • Tier {tier}</p>
+            <p className="text-atext-dim mb-8">{state} • Tier {tier}</p>
             {availableLeagues.length === 0 ? (
-              <div className={`${css.panel} p-8 text-center text-[#64748B]`}>No leagues at this tier in {state}. <button className="text-[#E89A4A] underline" onClick={()=>setStep(1)}>Pick a different tier</button>.</div>
+              <div className={`${css.panel} p-8 text-center text-atext-dim`}>No leagues at this tier in {state}. <button className="text-aaccent underline" onClick={()=>setStep(1)}>Pick a different tier</button>.</div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {availableLeagues.map(l => (
                   <button key={l.key} onClick={()=>{setLeagueKey(l.key); setClubId(null); setStep(3);}} className={`${css.panelHover} p-5 text-left flex items-center justify-between`}>
                     <div>
-                      <div className="text-xs text-[#64748B] uppercase tracking-widest">Tier {l.tier}</div>
+                      <div className="text-xs text-atext-dim uppercase tracking-widest">Tier {l.tier}</div>
                       <div className={`${css.h1} text-2xl mt-1`}>{l.short}</div>
-                      <div className="text-sm text-[#0F172A]">{l.name}</div>
-                      <div className="text-[12px] text-[#64748B] mt-1">{l.clubs.length} clubs</div>
+                      <div className="text-sm text-atext">{l.name}</div>
+                      <div className="text-[12px] text-atext-dim mt-1">{l.clubs.length} clubs</div>
                     </div>
-                    <ChevronRight className="w-6 h-6 text-[#E89A4A]" />
+                    <ChevronRight className="w-6 h-6 text-aaccent" />
                   </button>
                 ))}
               </div>
@@ -877,17 +875,17 @@ function CareerSetup({ onStart }) {
 
         {step === 3 && (
           <div className="fade-up">
-            <button onClick={()=>setStep(2)} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
+            <button onClick={()=>setStep(2)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>CHOOSE YOUR CLUB</h2>
-            <p className="text-[#64748B] mb-8">{PYRAMID[leagueKey].name}</p>
+            <p className="text-atext-dim mb-8">{PYRAMID[leagueKey].name}</p>
             <div className="grid md:grid-cols-3 gap-4">
               {availableClubs.map(c => (
                 <button key={c.id} onClick={()=>{setClubId(c.id); setStep(4);}} className={`${css.panelHover} p-5 text-left`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center font-['Bebas_Neue'] text-xl" style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})`, color: c.colors[2] }}>{c.short}</div>
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center font-display text-xl" style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})`, color: c.colors[2] }}>{c.short}</div>
                     <div>
-                      <div className="font-bold text-[#0F172A]">{c.name}</div>
-                      <div className="text-[11px] text-[#64748B]">{c.state}</div>
+                      <div className="font-bold text-atext">{c.name}</div>
+                      <div className="text-[11px] text-atext-dim">{c.state}</div>
                     </div>
                   </div>
                 </button>
@@ -898,16 +896,16 @@ function CareerSetup({ onStart }) {
 
         {step === 4 && clubId && leagueKey && findClub(clubId) && (
           <div className="fade-up max-w-xl">
-            <button type="button" onClick={()=>{ setClubId(null); setStep(3); }} disabled={loading} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
+            <button type="button" onClick={()=>{ setClubId(null); setStep(3); }} disabled={loading} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>YOUR DETAILS</h2>
             <div className={`${css.panel} p-6 mb-4`}>
               {(() => { const c = findClub(clubId); return (
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-xl flex items-center justify-center font-['Bebas_Neue'] text-2xl" style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})`, color: c.colors[2] }}>{c.short}</div>
+                <div className="w-16 h-16 rounded-xl flex items-center justify-center font-display text-2xl" style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})`, color: c.colors[2] }}>{c.short}</div>
                 <div>
-                  <div className="text-[10px] uppercase tracking-widest text-[#64748B]">Appointed at</div>
+                  <div className="text-[10px] uppercase tracking-widest text-atext-dim">Appointed at</div>
                   <div className="font-bold text-xl">{c.name}</div>
-                  <div className="text-[12px] text-[#64748B]">{PYRAMID[leagueKey].name}</div>
+                  <div className="text-[12px] text-atext-dim">{PYRAMID[leagueKey].name}</div>
                 </div>
               </div>
               ); })()}
@@ -917,12 +915,12 @@ function CareerSetup({ onStart }) {
                 onChange={(e) => setManagerName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') start(e); }}
                 placeholder="Bluey McGee"
-                className="w-full mt-2 bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#E89A4A] outline-none rounded-lg px-4 py-3 text-[#0F172A]"
+                className="w-full mt-2 bg-apanel border border-aline focus:border-aaccent outline-none rounded-lg px-4 py-3 text-atext"
                 disabled={loading}
               />
             </div>
             {startError && (
-              <div className="mb-3 p-3 rounded-xl text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA]">
+              <div className="mb-3 p-3 rounded-xl text-sm text-aneg bg-aneg/10 border border-aneg/30">
                 ⚠️ {startError}
               </div>
             )}
@@ -932,7 +930,7 @@ function CareerSetup({ onStart }) {
           </div>
         )}
       </div>
-      <div className="border-t border-[#E2E8F0] p-4 text-center text-[10px] text-[#64748B] uppercase tracking-widest">A Football Manager-style game for Australian rules</div>
+      <div className="border-t border-aline p-4 text-center text-[10px] text-atext-mute uppercase tracking-widest font-mono">A Football Manager-style game for Australian rules</div>
     </div>
   );
 }
@@ -954,40 +952,40 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGa
     { key: "compete",  label: "Competition", icon: Trophy,    desc: "Ladder & Fixtures" },
   ];
   return (
-    <aside className="w-64 flex flex-col sticky top-0 h-screen shrink-0" style={{background:"#1E293B", borderRight:"1px solid #293548"}}>
+    <aside className="w-64 flex flex-col sticky top-0 h-screen shrink-0 bg-apanel border-r border-aline">
       {/* Brand */}
-      <div className="px-5 py-4" style={{borderBottom:"1px solid #293548"}}>
+      <div className="px-5 py-4 border-b border-aline">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:"linear-gradient(135deg,#E89A4A,#D07A2A)", boxShadow:"0 4px 12px #E89A4A33"}}>
-            <Trophy className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{background:"linear-gradient(135deg, var(--A-accent), #0098b0)", boxShadow:"0 4px 12px rgba(0,224,255,0.25)"}}>
+            <Trophy className="w-5 h-5 text-[#001520]" />
           </div>
           <div>
-            <div className="font-['Bebas_Neue'] text-[26px] tracking-[0.1em] leading-none text-white">DYNASTY</div>
-            <div className="text-[9px] text-[#64748B] uppercase tracking-[0.25em] mt-0.5 text-slate-400">Footy Manager</div>
+            <div className="font-display text-[26px] tracking-[0.1em] leading-none text-atext">DYNASTY</div>
+            <div className="text-[9px] text-atext-mute uppercase tracking-[0.25em] mt-0.5">Footy Manager</div>
           </div>
         </div>
       </div>
 
       {/* Club identity card */}
-      <div className="px-4 py-3" style={{borderBottom:"1px solid #293548"}}>
-        <div className="rounded-2xl overflow-hidden" style={{background:"linear-gradient(135deg,#FFFFFF,#F1F5F9)"}}>
+      <div className="px-4 py-3 border-b border-aline">
+        <div className="panel rounded-xl overflow-hidden">
           <div className="h-1.5 w-full" style={{background:`linear-gradient(90deg, ${club.colors[0]}, ${club.colors[1]})`}} />
           <div className="p-3">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-['Bebas_Neue'] text-xl flex-shrink-0"
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center font-display text-xl flex-shrink-0"
                 style={{background:`linear-gradient(135deg,${club.colors[0]},${club.colors[1]})`, color:club.colors[2], boxShadow:`0 4px 12px ${club.colors[0]}44`}}>
                 {club.short}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-bold text-sm truncate text-white leading-tight">{club.name}</div>
-                <div className="text-[10px] mt-0.5" style={{color: club.colors[0] === '#FFFFFF' ? '#E89A4A' : club.colors[0]}}>{league.short}</div>
+                <div className="font-bold text-sm truncate text-atext leading-tight">{club.name}</div>
+                <div className={`text-[10px] mt-0.5 font-mono ${club.colors[0] === '#FFFFFF' ? 'text-aaccent' : ''}`} style={club.colors[0] === '#FFFFFF' ? undefined : { color: club.colors[0] }}>{league.short}</div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-1 text-center">
               {[["SEASON", season], [phase === 'preseason' ? "PHASE" : "ROUND", phase === 'preseason' ? "PRE" : week], ["POS", myLadderPos||"—"]].map(([l,v])=>(
-                <div key={l} className="rounded-lg py-1.5" style={{background:"#F1F5F9"}}>
-                  <div className="text-[8px] text-[#64748B] uppercase tracking-widest font-bold">{l}</div>
-                  <div className="font-['Bebas_Neue'] text-xl text-[#E89A4A] leading-tight">{v}</div>
+                <div key={l} className="rounded-lg py-1.5 bg-apanel/60 border border-aline/80">
+                  <div className="text-[8px] text-atext-mute uppercase tracking-widest font-bold font-mono">{l}</div>
+                  <div className="font-display text-xl text-aaccent leading-tight">{v}</div>
                 </div>
               ))}
             </div>
@@ -1002,28 +1000,24 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGa
           const active = screen === it.key;
           return (
             <button key={it.key} onClick={()=>setScreen(it.key)}
-              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group`}
-              style={active
-                ? {background:"linear-gradient(135deg,#E89A4A22,#E89A4A08)", border:"1px solid #E89A4A50", color:"#E89A4A"}
-                : {border:"1px solid transparent", color:"#7C93AB"}}>
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all`}
-                style={active ? {background:"#E89A4A22", color:"#E89A4A"} : {}}>
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group border ${active ? "bg-aaccent/10 border-aaccent/40 text-aaccent" : "border-transparent text-atext-dim hover:bg-aaccent/5 hover:text-atext"}`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${active ? "bg-aaccent/15 text-aaccent" : "text-atext-mute"}`}>
                 <Icon className="w-4 h-4" />
               </div>
               <div className="text-left min-w-0">
-                <div className={`text-sm font-bold leading-tight ${active ? "text-[#E89A4A]" : "text-[#334155] group-hover:text-white"}`}>{it.label}</div>
-                <div className="text-[9px] truncate" style={{color: active ? "#E89A4A88" : "#94A3B8"}}>{it.desc}</div>
+                <div className={`text-sm font-bold leading-tight ${active ? "text-aaccent" : "text-atext-dim group-hover:text-atext"}`}>{it.label}</div>
+                <div className={`text-[9px] truncate ${active ? "text-aaccent/80" : "text-atext-mute"}`}>{it.desc}</div>
               </div>
-              {active && <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0 text-[#E89A4A]" />}
+              {active && <ChevronRight className="w-3.5 h-3.5 ml-auto flex-shrink-0 text-aaccent" />}
             </button>
           );
         })}
       </nav>
-      <div className="px-4 py-3 space-y-2" style={{borderTop:"1px solid #293548"}}>
-        <button onClick={onNewGame} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[#94A3B8] hover:text-[#E84A6F] hover:bg-[#E84A6F10] transition text-xs font-bold uppercase tracking-widest">
+      <div className="px-4 py-3 space-y-2 border-t border-aline">
+        <button onClick={onNewGame} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-atext-mute hover:text-aneg hover:bg-aneg/10 transition text-xs font-bold uppercase tracking-widest font-mono">
           <RefreshCw className="w-3.5 h-3.5" /> New Career
         </button>
-        <div className="text-[9px] text-[#475569] text-center uppercase tracking-widest">Footy Dynasty v2.0</div>
+        <div className="text-[9px] text-atext-mute text-center uppercase tracking-widest font-mono">Footy Dynasty v2.0</div>
       </div>
     </aside>
   );
@@ -1031,7 +1025,7 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGa
 
 function TopBar({ career, club, league, myLadderPos, onAdvance }) {
   const nextEv = (career.eventQueue || []).find(e => !e.completed);
-  const phaseColors = { preseason: '#4ADBE8', season: '#E89A4A', finals: '#E84A6F', offseason: '#A78BFA' };
+  const phaseColors = { preseason: 'var(--A-accent)', season: 'var(--A-accent-2)', finals: 'var(--A-neg)', offseason: '#A78BFA' };
   const phaseLabel  = { preseason: 'Pre-Season', season: 'Season', finals: 'Finals', offseason: 'Off-Season' };
   const phase = career.phase || 'preseason';
 
@@ -1066,33 +1060,33 @@ function TopBar({ career, club, league, myLadderPos, onAdvance }) {
   }
 
   return (
-    <header className="sticky top-0 z-20 px-6 py-0" style={{background:"rgba(255,255,255,0.97)", backdropFilter:"blur(12px)", borderBottom:"1px solid #E2E8F0", boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
+    <header className="sticky top-0 z-20 px-6 py-0 bg-apanel/90 backdrop-blur-md border-b border-aline shadow-[0_1px_0_rgba(0,224,255,0.06)]">
       <div className="flex items-center justify-between max-w-[1400px] mx-auto h-16">
         {/* Left: date + phase + finance stats */}
         <div className="flex items-center gap-0">
           {/* Date + phase */}
-          <div className="pr-4 mr-2" style={{borderRight:"1px solid #F1F5F9"}}>
-            <div className="text-[10px] font-bold uppercase tracking-widest" style={{color: phaseColors[phase]}}>{phaseLabel[phase]}</div>
-            <div className="font-['Bebas_Neue'] text-lg leading-tight text-[#0F172A]">{career.currentDate ? formatDate(career.currentDate) : '—'}</div>
+          <div className="pr-4 mr-2 border-r border-aline">
+            <div className="text-[10px] font-mono font-bold uppercase tracking-widest" style={{color: phaseColors[phase]}}>{phaseLabel[phase]}</div>
+            <div className="font-display text-lg leading-tight text-atext">{career.currentDate ? formatDate(career.currentDate) : '—'}</div>
           </div>
           {[
-            { label: "Cash",     value: fmtK(career.finance.cash),           color: "#4AE89A" },
-            { label: "Transfer", value: fmtK(career.finance.transferBudget), color: "#4ADBE8" },
-            { label: "Board",    value: career.finance.boardConfidence,       color: "#E89A4A", bar: true },
+            { label: "Cash",     value: fmtK(career.finance.cash),           color: "var(--A-pos)" },
+            { label: "Transfer", value: fmtK(career.finance.transferBudget), color: "var(--A-accent)" },
+            { label: "Board",    value: career.finance.boardConfidence,       color: "var(--A-accent-2)", bar: true },
             { label: "Fans",     value: career.finance.fanHappiness,          color: "#A78BFA", bar: true },
           ].map(({ label, value, color, bar }) => (
-            <div key={label} className="flex items-center px-4 h-full" style={{borderRight:"1px solid #F1F5F9"}}>
+            <div key={label} className="flex items-center px-4 h-full border-r border-aline last:border-r-0">
               <div>
-                <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-[#64748B]">{label}</div>
+                <div className="text-[9px] font-mono font-bold uppercase tracking-[0.18em] text-atext-mute">{label}</div>
                 {bar ? (
                   <div className="flex items-center gap-2 mt-0.5">
-                    <div className="w-16 h-1.5 rounded-full overflow-hidden" style={{background:"#F1F5F9", border:"1px solid #E2E8F0"}}>
+                    <div className="w-16 h-1.5 rounded-full overflow-hidden bg-apanel border border-aline">
                       <div className="h-full rounded-full" style={{width:`${value}%`, background:`linear-gradient(90deg,${color}88,${color})`}} />
                     </div>
-                    <span className="font-['Bebas_Neue'] text-lg leading-none" style={{color}}>{value}</span>
+                    <span className="font-display text-lg leading-none" style={{color}}>{value}</span>
                   </div>
                 ) : (
-                  <div className="font-['Bebas_Neue'] text-xl leading-tight" style={{color}}>{value}</div>
+                  <div className="font-display text-xl leading-tight" style={{color}}>{value}</div>
                 )}
               </div>
             </div>
@@ -1102,10 +1096,10 @@ function TopBar({ career, club, league, myLadderPos, onAdvance }) {
         {/* Right: next event + advance button */}
         <div className="flex items-center gap-3">
           <div className="text-right hidden md:block">
-            <div className="text-[9px] font-bold uppercase tracking-widest text-[#94A3B8]">Next Event</div>
-            <div className="text-sm font-semibold text-[#0F172A]">{nextIcon} {nextLabel}</div>
+            <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-atext-mute">Next Event</div>
+            <div className="text-sm font-semibold text-atext">{nextIcon} {nextLabel}</div>
           </div>
-          <button onClick={onAdvance} className={`${css.btnPrimary} flex items-center gap-2 text-sm glow`}>
+          <button onClick={onAdvance} className={`${css.btnPrimary} flex items-center gap-2 glow`}>
             <Play className="w-4 h-4" /> ADVANCE
           </button>
         </div>
@@ -1125,7 +1119,7 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
   const wagesAnnual = career.squad.reduce((a, p) => a + p.wage, 0) + career.staff.reduce((a, s) => a + s.wage, 0);
   const sponsorsAnnual = career.sponsors.reduce((a, s) => a + s.annualValue, 0);
   const squadAvg = career.squad.length ? Math.round(career.squad.reduce((a, p) => a + p.overall, 0) / career.squad.length) : 0;
-  const posColor = myLadderPos <= 2 ? "#4AE89A" : myLadderPos <= 5 ? "#E89A4A" : "#E84A6F";
+  const posColor = myLadderPos <= 2 ? "var(--A-pos)" : myLadderPos <= 5 ? "var(--A-accent)" : "var(--A-neg)";
 
   // Next 7 upcoming events
   const upcoming7 = (career.eventQueue || []).filter(e => !e.completed).slice(0, 7);
@@ -1136,17 +1130,18 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
   return (
     <div className="anim-in space-y-5">
       {/* Hero Banner */}
-      <div className="rounded-2xl overflow-hidden relative" style={{minHeight:160, background:`linear-gradient(135deg, ${club.colors[0]}55 0%, #F1F5F9 60%)`, border:"1px solid #E2E8F0"}}>
-        <div className="absolute inset-0" style={{background:`radial-gradient(ellipse at 80% 50%, ${club.colors[1]}18, transparent 65%)`}} />
-        <div className="absolute right-6 top-0 bottom-0 flex items-center opacity-25">
+      <div className="panel rounded-2xl overflow-hidden relative min-h-[160px] border border-aline">
+        <div className="absolute inset-0 opacity-40" style={{background:`linear-gradient(135deg, ${club.colors[0]}33 0%, transparent 55%)`}} />
+        <div className="absolute inset-0" style={{background:`radial-gradient(ellipse at 80% 50%, ${club.colors[1]}22, transparent 65%)`}} />
+        <div className="absolute right-6 top-0 bottom-0 flex items-center opacity-20">
           <Jersey kit={career.kits.home} size={200} />
         </div>
         <div className="relative z-10 p-6 flex items-end justify-between">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#64748B] mb-1">{league.name} · Season {career.season}</div>
-            <h1 className="font-['Bebas_Neue'] text-5xl tracking-wide text-white leading-none">{club.name.toUpperCase()}</h1>
+            <div className="label mb-1 dim">{league.name} · Season {career.season}</div>
+            <h1 className="display text-5xl tracking-wide text-atext leading-none">{club.name.toUpperCase()}</h1>
             <div className="flex items-center gap-2 mt-3 flex-wrap">
-              <Pill color="#E89A4A">Tier {league.tier}</Pill>
+              <Pill color="var(--A-accent)">Tier {league.tier}</Pill>
               {career.phase === 'preseason'
                 ? <Pill color="#4ADBE8">Pre-Season {career.season}</Pill>
                 : career.inFinals
@@ -1157,10 +1152,10 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
             </div>
           </div>
           <div className="hidden md:flex flex-col items-end gap-1">
-            <div className="font-['Bebas_Neue'] text-7xl leading-none" style={{color: posColor}}>
+            <div className="font-display text-7xl leading-none" style={{color: posColor}}>
               {myRow?.pts || 0}
             </div>
-            <div className="text-[10px] text-[#64748B] uppercase tracking-widest">Points</div>
+            <div className="text-[10px] text-atext-dim uppercase tracking-widest">Points</div>
           </div>
         </div>
       </div>
@@ -1175,8 +1170,8 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
               </div>
               <div className="flex-1">
                 <div className={css.label}>Last Session</div>
-                <div className="font-bold text-[#0F172A]">{lastEv.name} <span className="text-[#64748B] font-normal text-sm">· {formatDate(lastEv.date)}</span></div>
-                <div className="text-xs text-[#64748B] mt-1">Led by {lastEv.staffName} (Rating: {lastEv.staffRating}) · Gains:&nbsp;
+                <div className="font-bold text-atext">{lastEv.name} <span className="text-atext-dim font-normal text-sm">· {formatDate(lastEv.date)}</span></div>
+                <div className="text-xs text-atext-dim mt-1">Led by {lastEv.staffName} (Rating: {lastEv.staffRating}) · Gains:&nbsp;
                   {Object.entries(lastEv.gains || {}).map(([k, v]) => `${k} +${v}`).join(', ') || '—'}
                 </div>
                 {lastEv.devNotes && lastEv.devNotes.length > 0 && (
@@ -1192,8 +1187,8 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
               <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'#EFF6FF', border:'1px solid #BFDBFE'}}>📅</div>
               <div className="flex-1">
                 <div className={css.label}>Event</div>
-                <div className="font-bold text-[#0F172A]">{lastEv.name}</div>
-                <div className="text-xs text-[#64748B] mt-1">{lastEv.description}</div>
+                <div className="font-bold text-atext">{lastEv.name}</div>
+                <div className="text-xs text-atext-dim mt-1">{lastEv.description}</div>
               </div>
               {lastEv.action && (
                 <button onClick={() => setScreen(lastEv.action)} className={css.btnPrimary + ' text-xs'}>Go →</button>
@@ -1208,13 +1203,13 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
               </div>
               <div className="flex-1">
                 <div className={css.label}>{lastEv.type === 'preseason_match' ? lastEv.label : `Round ${lastEv.round}`}</div>
-                <div className="font-bold text-[#0F172A]">
+                <div className="font-bold text-atext">
                   {lastEv.isHome ? 'vs' : '@'} {lastEv.opp?.name}
-                  <span className="ml-3 font-['Bebas_Neue'] text-xl" style={{color: lastEv.won ? '#4AE89A' : lastEv.drew ? '#E89A4A' : '#E84A6F'}}>
+                  <span className="ml-3 font-display text-xl" style={{color: lastEv.won ? '#4AE89A' : lastEv.drew ? 'var(--A-accent)' : '#E84A6F'}}>
                     {lastEv.myTotal} – {lastEv.oppTotal}
                   </span>
                 </div>
-                <div className="text-xs text-[#64748B] mt-1">{formatDate(lastEv.date)} · {lastEv.won ? 'Win' : lastEv.drew ? 'Draw' : 'Loss'}</div>
+                <div className="text-xs text-atext-dim mt-1">{formatDate(lastEv.date)} · {lastEv.won ? 'Win' : lastEv.drew ? 'Draw' : 'Loss'}</div>
               </div>
             </div>
           )}
@@ -1225,8 +1220,8 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
       {upcoming7.length > 0 && (
         <div className={css.panel}>
           <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-            <h3 className="font-['Bebas_Neue'] text-lg text-[#0F172A] tracking-wide">UPCOMING</h3>
-            <button onClick={() => setScreen('schedule')} className="text-[11px] font-bold text-[#E89A4A] uppercase tracking-wider hover:text-[#F0A558]">Full calendar →</button>
+            <h3 className="font-display text-lg text-atext tracking-wide">UPCOMING</h3>
+            <button onClick={() => setScreen('schedule')} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-[#F0A558]">Full calendar →</button>
           </div>
           <div className="flex gap-2 px-4 pb-4 overflow-x-auto">
             {upcoming7.map((ev, i) => {
@@ -1234,7 +1229,7 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
               const isTraining = ev.type === 'training';
               const isKey = ev.type === 'key_event';
               const info = isTraining ? TRAINING_INFO[ev.subtype] : null;
-              const color = isMatch ? '#E89A4A' : isKey ? '#4ADBE8' : (info?.color || '#94A3B8');
+              const color = isMatch ? 'var(--A-accent)' : isKey ? '#4ADBE8' : (info?.color || '#94A3B8');
               let evLabel = '';
               if (isMatch && ev.type === 'round') {
                 const m = (ev.matches || []).find(m2 => m2.home === career.clubId || m2.away === career.clubId);
@@ -1252,13 +1247,13 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
                 <div key={ev.id} className="flex-shrink-0 rounded-xl p-3 text-center min-w-[88px]" style={{background:`${color}10`, border:`1px solid ${color}30`}}>
                   <div className="text-[9px] font-bold uppercase tracking-wider" style={{color}}>{formatDate(ev.date).split(' ').slice(0,-1).join(' ')}</div>
                   <div className="text-lg mt-1">{isTraining ? (info?.icon || '🏋️') : isKey ? '📅' : '🏉'}</div>
-                  <div className="text-[10px] font-semibold text-[#0F172A] mt-1 leading-tight">{evLabel}</div>
+                  <div className="text-[10px] font-semibold text-atext mt-1 leading-tight">{evLabel}</div>
                 </div>
               );
             })}
             <div className="flex-shrink-0 flex items-center justify-center min-w-[60px]">
               <button onClick={onAdvance} className="rounded-xl px-3 py-2 text-[11px] font-bold text-white flex flex-col items-center gap-1"
-                style={{background:'linear-gradient(135deg,#E89A4A,#D07A2A)'}}>
+                style={{background:'linear-gradient(135deg,var(--A-accent),#D07A2A)'}}>
                 <Play className="w-4 h-4" />
                 <span>Next</span>
               </button>
@@ -1269,34 +1264,34 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
 
       {/* Finals Banner */}
       {career.inFinals && (
-        <div className="rounded-2xl p-4 flex items-center justify-between" style={{background:"linear-gradient(135deg,#E89A4A22,#FCD34D11)", border:"2px solid #E89A4A55"}}>
+        <div className="rounded-2xl p-4 flex items-center justify-between" style={{background:"linear-gradient(135deg, rgba(0, 224, 255, 0.12), rgba(252, 211, 77, 0.06))", border:"2px solid rgba(0, 224, 255, 0.35)"}}>
           <div className="flex items-center gap-3">
             <span className="text-3xl">🏆</span>
             <div>
-              <div className="font-['Bebas_Neue'] text-2xl text-[#E89A4A]">FINALS MODE</div>
-              <div className="text-sm text-[#64748B]">{(career.finalsAlive||[]).length} clubs remain · {finalsLabel(career.finalsRound||0, career.finalsTotalRounds||3)}</div>
+              <div className="font-display text-2xl text-aaccent">FINALS MODE</div>
+              <div className="text-sm text-atext-dim">{(career.finalsAlive||[]).length} clubs remain · {finalsLabel(career.finalsRound||0, career.finalsTotalRounds||3)}</div>
             </div>
           </div>
           <div className="text-right">
-            <div className="font-['Bebas_Neue'] text-xl text-[#E89A4A]">{(career.finalsAlive||[]).includes(career.clubId) ? "STILL ALIVE" : "SEASON OVER"}</div>
+            <div className="font-display text-xl text-aaccent">{(career.finalsAlive||[]).includes(career.clubId) ? "STILL ALIVE" : "SEASON OVER"}</div>
           </div>
         </div>
       )}
 
       {/* Premiership Banner */}
       {career.premiership === career.season - 1 && (
-        <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"linear-gradient(135deg,#FCD34D22,#E89A4A11)", border:"2px solid #FCD34D55"}}>
+        <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"linear-gradient(135deg, rgba(252, 211, 77, 0.12), rgba(0, 224, 255, 0.06))", border:"2px solid rgba(252, 211, 77, 0.35)"}}>
           <span className="text-3xl">🎉</span>
           <div>
-            <div className="font-['Bebas_Neue'] text-2xl text-[#E89A4A]">BACK-TO-BACK PREMIERS!</div>
-            <div className="text-sm text-[#64748B]">Can you go three in a row this season?</div>
+            <div className="font-display text-2xl text-aaccent">BACK-TO-BACK PREMIERS!</div>
+            <div className="text-sm text-atext-dim">Can you go three in a row this season?</div>
           </div>
         </div>
       )}
 
       {/* Stat Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="#E89A4A" icon={Users} />
+        <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users} />
         <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="#4AE89A" icon={DollarSign} />
         <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${career.sponsors.length} active deals`} accent="#4ADBE8" icon={Handshake} />
         <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.w||0}W / ${myRow?.l||0}L`} accent={posColor} icon={Trophy} />
@@ -1306,8 +1301,8 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
         {/* Ladder */}
         <div className={`${css.panel} md:col-span-3`}>
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
-            <h3 className="font-['Bebas_Neue'] text-xl tracking-wide text-white">LADDER</h3>
-            <button onClick={()=>setScreen("compete")} className="text-[11px] font-bold text-[#E89A4A] uppercase tracking-wider hover:text-[#F0A558]">Full table →</button>
+            <h3 className="font-display text-xl tracking-wide text-atext">LADDER</h3>
+            <button onClick={()=>setScreen("compete")} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-[#F0A558]">Full table →</button>
           </div>
           <div>
             {top5.map((row, i) => {
@@ -1316,41 +1311,41 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
               const isMe = row.id === career.clubId;
               const rankColor = i === 0 ? "#FFD700" : i === 1 ? "#C0C0C0" : i === 2 ? "#CD7F32" : "#94A3B8";
               return (
-                <div key={row.id} className={`flex items-center gap-4 px-5 py-3 transition-colors ${isMe ? "" : "hover:bg-[#F8FAFC]/50"}`}
-                  style={isMe ? {background:"linear-gradient(90deg,#E89A4A10,transparent)", borderLeft:"3px solid #E89A4A"} : {borderLeft:"3px solid transparent"}}>
-                  <div className="font-['Bebas_Neue'] text-2xl w-6 text-center flex-shrink-0" style={{color: rankColor}}>{i+1}</div>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center font-['Bebas_Neue'] text-sm flex-shrink-0"
+                <div key={row.id} className={`flex items-center gap-4 px-5 py-3 transition-colors ${isMe ? "" : "hover:bg-aaccent/5"}`}
+                  style={isMe ? {background:"linear-gradient(90deg, rgba(0, 224, 255, 0.06), transparent)", borderLeft:"3px solid var(--A-accent)"} : {borderLeft:"3px solid transparent"}}>
+                  <div className="font-display text-2xl w-6 text-center flex-shrink-0" style={{color: rankColor}}>{i+1}</div>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm flex-shrink-0"
                     style={{background:`linear-gradient(135deg,${c.colors[0]},${c.colors[1]})`, color:c.colors[2]}}>
                     {c.short}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className={`font-bold text-sm truncate ${isMe ? "text-[#E89A4A]" : "text-white"}`}>{c.name}</div>
-                    <div className="text-[10px] text-[#64748B]">{row.W}W {row.L}L {row.D}D</div>
+                    <div className={`font-bold text-sm truncate ${isMe ? "text-aaccent" : "text-atext"}`}>{c.name}</div>
+                    <div className="text-[10px] text-atext-dim">{row.W}W {row.L}L {row.D}D</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-['Bebas_Neue'] text-2xl text-[#E89A4A]">{row.pts}</div>
-                    <div className="text-[10px] text-[#64748B]">pts</div>
+                    <div className="font-display text-2xl text-aaccent">{row.pts}</div>
+                    <div className="text-[10px] text-atext-dim">pts</div>
                   </div>
                 </div>
               );
             })}
             {myLadderPos > 5 && myRow && (
               <>
-                <div className="px-5 py-1 text-[#94A3B8] text-xs">· · ·</div>
+                <div className="px-5 py-1 text-atext-mute text-xs">· · ·</div>
                 <div className="flex items-center gap-4 px-5 py-3"
-                  style={{background:"linear-gradient(90deg,#E89A4A10,transparent)", borderLeft:"3px solid #E89A4A"}}>
-                  <div className="font-['Bebas_Neue'] text-2xl w-6 text-center text-[#E89A4A]">{myLadderPos}</div>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center font-['Bebas_Neue'] text-sm"
+                  style={{background:"linear-gradient(90deg, rgba(0, 224, 255, 0.06), transparent)", borderLeft:"3px solid var(--A-accent)"}}>
+                  <div className="font-display text-2xl w-6 text-center text-aaccent">{myLadderPos}</div>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm"
                     style={{background:`linear-gradient(135deg,${club.colors[0]},${club.colors[1]})`, color:club.colors[2]}}>
                     {club.short}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-[#E89A4A]">{club.name}</div>
-                    <div className="text-[10px] text-[#64748B]">{myRow.W}W {myRow.L}L {myRow.D}D</div>
+                    <div className="font-bold text-sm text-aaccent">{club.name}</div>
+                    <div className="text-[10px] text-atext-dim">{myRow.W}W {myRow.L}L {myRow.D}D</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-['Bebas_Neue'] text-2xl text-[#E89A4A]">{myRow.pts}</div>
-                    <div className="text-[10px] text-[#64748B]">pts</div>
+                    <div className="font-display text-2xl text-aaccent">{myRow.pts}</div>
+                    <div className="text-[10px] text-atext-dim">pts</div>
                   </div>
                 </div>
               </>
@@ -1361,19 +1356,19 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
         {/* News */}
         <div className={`${css.panel} p-5 md:col-span-2`}>
           <div className="flex items-center gap-2 mb-4">
-            <Newspaper className="w-4 h-4 text-[#E89A4A]" />
-            <h3 className="font-['Bebas_Neue'] text-xl tracking-wide text-white">NEWS</h3>
+            <Newspaper className="w-4 h-4 text-aaccent" />
+            <h3 className="font-display text-xl tracking-wide text-atext">NEWS</h3>
           </div>
           <div className="space-y-2">
-            {recentNews.length === 0 && <div className="text-sm text-[#64748B] py-4 text-center">No news yet.</div>}
+            {recentNews.length === 0 && <div className="text-sm text-atext-dim py-4 text-center">No news yet.</div>}
             {recentNews.map((n, i) => {
               const c = n.type === "win" ? "#4AE89A" : n.type === "loss" ? "#E84A6F" : n.type === "info" ? "#4ADBE8" : "#64748B";
               return (
-                <div key={i} className="flex gap-3 p-3 rounded-xl" style={{background:"#F1F5F9", border:"1px solid #E2E8F0"}}>
+                <div key={i} className="flex gap-3 p-3 rounded-xl" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)"}}>
                   <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{background: c, boxShadow:`0 0 6px ${c}`}} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-white leading-snug">{n.text}</div>
-                    <div className="text-[9px] text-[#94A3B8] uppercase tracking-widest mt-0.5 font-bold">{n.week === 0 ? 'Pre-Season' : `Round ${n.week}`}</div>
+                    <div className="text-sm text-atext leading-snug">{n.text}</div>
+                    <div className="text-[9px] text-atext-mute uppercase tracking-widest mt-0.5 font-bold">{n.week === 0 ? 'Pre-Season' : `Round ${n.week}`}</div>
                   </div>
                 </div>
               );
@@ -1414,7 +1409,7 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
       {/* Quick links */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { icon: Users,    label: "Manage Squad",  sub: "Players & lineup", screen: "squad", color: "#E89A4A" },
+          { icon: Users,    label: "Manage Squad",  sub: "Players & lineup", screen: "squad", color: "var(--A-accent)" },
           { icon: Dumbbell, label: "Set Training",  sub: "Intensity & focus", screen: "squad", color: "#4ADBE8" },
           { icon: Building2,label: "Upgrade Club",  sub: "Facilities & staff", screen: "club",  color: "#4AE89A" },
           { icon: Repeat,   label: "Trade & Draft", sub: "Signings & youth",   screen: "recruit",color: "#E84A6F" },
@@ -1423,18 +1418,18 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
           return (
             <button key={q.label} onClick={()=>setScreen(q.screen)}
               className="rounded-2xl p-4 text-left flex items-center gap-4 transition-all group"
-              style={{background:"#FFFFFF", border:"1px solid #E2E8F0"}}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor=q.color+"66"; e.currentTarget.style.background="#F8FAFC";}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor="#E2E8F0"; e.currentTarget.style.background="#FFFFFF";}}>
+              style={{background:"var(--A-panel)", border:"1px solid var(--A-line)"}}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=q.color+"66"; e.currentTarget.style.background="rgba(0,224,255,0.05)";}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--A-line)"; e.currentTarget.style.background="var(--A-panel)";}}>
               <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
                 style={{background:`${q.color}18`, color:q.color}}>
                 <Icon className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm text-white truncate">{q.label}</div>
-                <div className="text-[10px] text-[#64748B]">{q.sub}</div>
+                <div className="font-bold text-sm text-atext truncate">{q.label}</div>
+                <div className="text-[10px] text-atext-dim">{q.sub}</div>
               </div>
-              <ChevronRight className="w-4 h-4 text-[#94A3B8] flex-shrink-0" />
+              <ChevronRight className="w-4 h-4 text-atext-mute flex-shrink-0" />
             </button>
           );
         })}
@@ -1482,7 +1477,7 @@ function ScheduleScreen({ career, club, league }) {
     if (ev.type === 'round') {
       const m = (ev.matches || []).find(m2 => m2.home === career.clubId || m2.away === career.clubId);
       const opp = m ? findClub(m.home === career.clubId ? m.away : m.home) : null;
-      return { color: '#E89A4A', icon: '🏉', label: opp ? `Rd ${ev.round} vs ${opp.short}` : `Rd ${ev.round}` };
+      return { color: 'var(--A-accent)', icon: '🏉', label: opp ? `Rd ${ev.round} vs ${opp.short}` : `Rd ${ev.round}` };
     }
     return { color: '#94A3B8', icon: '●', label: 'Event' };
   }
@@ -1493,7 +1488,7 @@ function ScheduleScreen({ career, club, league }) {
         <h1 className={`${css.h1} text-3xl`}>SEASON CALENDAR</h1>
         <div className="flex items-center gap-2">
           <button onClick={() => setViewDate(prevMonth(viewDate))} className={css.btnGhost + ' px-3 py-2'}><ChevronLeft className="w-4 h-4" /></button>
-          <span className="font-['Bebas_Neue'] text-xl tracking-wide text-[#0F172A] min-w-[180px] text-center">{formatMonth(viewDate)}</span>
+          <span className="font-display text-xl tracking-wide text-atext min-w-[180px] text-center">{formatMonth(viewDate)}</span>
           <button onClick={() => setViewDate(nextMonth(viewDate))} className={css.btnGhost + ' px-3 py-2'}><ChevronRight className="w-4 h-4" /></button>
         </div>
       </div>
@@ -1503,7 +1498,7 @@ function ScheduleScreen({ career, club, league }) {
         <div className={`${css.panel} lg:col-span-2 p-4`}>
           <div className="grid grid-cols-7 mb-2">
             {dayNames.map(d => (
-              <div key={d} className="text-center text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] py-1">{d}</div>
+              <div key={d} className="text-center text-[10px] font-bold uppercase tracking-widest text-atext-mute py-1">{d}</div>
             ))}
           </div>
           <div className="grid grid-cols-7 gap-1">
@@ -1514,9 +1509,9 @@ function ScheduleScreen({ career, club, league }) {
               const isPast  = dateStr < today;
               return (
                 <div key={dateStr}
-                  className={`rounded-lg p-1.5 min-h-[64px] transition-all ${isToday ? 'ring-2 ring-[#E89A4A]' : ''}`}
-                  style={{background: isToday ? '#FFF7ED' : isPast && dayEvs.length ? '#F8FAFC' : '#FFFFFF', border: '1px solid #F1F5F9'}}>
-                  <div className={`text-[11px] font-bold mb-1 ${isToday ? 'text-[#E89A4A]' : isPast ? 'text-[#CBD5E1]' : 'text-[#475569]'}`}>
+                  className={`rounded-lg p-1.5 min-h-[64px] transition-all ${isToday ? 'ring-2 ring-[var(--A-accent)]' : ''}`}
+                  style={{background: isToday ? 'rgba(0,224,255,0.10)' : isPast && dayEvs.length ? 'var(--A-panel)' : 'var(--A-panel-2)', border: '1px solid var(--A-line)'}}>
+                  <div className={`text-[11px] font-bold mb-1 ${isToday ? 'text-aaccent' : isPast ? 'text-atext-mute' : 'text-atext-mute'}`}>
                     {dateStr.slice(8)}
                   </div>
                   <div className="flex flex-col gap-0.5">
@@ -1530,7 +1525,7 @@ function ScheduleScreen({ career, club, league }) {
                       );
                     })}
                     {dayEvs.length > 3 && (
-                      <div className="text-[8px] text-[#94A3B8] px-1">+{dayEvs.length - 3} more</div>
+                      <div className="text-[8px] text-atext-mute px-1">+{dayEvs.length - 3} more</div>
                     )}
                   </div>
                 </div>
@@ -1539,19 +1534,19 @@ function ScheduleScreen({ career, club, league }) {
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap gap-3 mt-4 pt-3" style={{borderTop:'1px solid #F1F5F9'}}>
+          <div className="flex flex-wrap gap-3 mt-4 pt-3" style={{borderTop:'1px solid var(--A-line)'}}>
             {[
               { color: '#4ADE80', label: 'Ball Skills' },
               { color: '#60A5FA', label: 'Running' },
               { color: '#A78BFA', label: 'Tactics' },
               { color: '#F97316', label: 'Gym' },
-              { color: '#E89A4A', label: 'Match Day' },
+              { color: 'var(--A-accent)', label: 'Match Day' },
               { color: '#E84A6F', label: 'Pre-Season Match' },
               { color: '#4ADBE8', label: 'Key Event' },
             ].map(({ color, label }) => (
               <div key={label} className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full" style={{background: color}} />
-                <span className="text-[10px] text-[#64748B]">{label}</span>
+                <span className="text-[10px] text-atext-dim">{label}</span>
               </div>
             ))}
           </div>
@@ -1559,19 +1554,19 @@ function ScheduleScreen({ career, club, league }) {
 
         {/* Upcoming events list */}
         <div className={`${css.panel} p-4`}>
-          <h3 className="font-['Bebas_Neue'] text-lg text-[#0F172A] tracking-wide mb-3">UPCOMING EVENTS</h3>
+          <h3 className="font-display text-lg text-atext tracking-wide mb-3">UPCOMING EVENTS</h3>
           <div className="space-y-2">
-            {upcoming.length === 0 && <div className="text-sm text-[#64748B] py-4 text-center">No more events this season.</div>}
+            {upcoming.length === 0 && <div className="text-sm text-atext-dim py-4 text-center">No more events this season.</div>}
             {upcoming.map(ev => {
               const dot = evDot(ev);
               return (
-                <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl" style={{background:'#F8FAFC', border:'1px solid #F1F5F9'}}>
+                <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl" style={{background:'var(--A-panel)', border:'1px solid var(--A-line)'}}>
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0" style={{background:`${dot.color}18`}}>
                     {dot.icon}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-[10px] font-bold uppercase tracking-widest" style={{color: dot.color}}>{formatDate(ev.date)}</div>
-                    <div className="text-sm font-semibold text-[#0F172A] leading-tight truncate">{dot.label}</div>
+                    <div className="text-sm font-semibold text-atext leading-tight truncate">{dot.label}</div>
                   </div>
                 </div>
               );
@@ -1588,9 +1583,9 @@ function ScheduleScreen({ career, club, league }) {
 // SEASON SUMMARY SCREEN
 // ============================================================================
 function SeasonSummaryScreen({ summary, club, onContinue }) {
-  const posColor   = summary.position <= 1 ? '#FFD700' : summary.position <= 4 ? '#4AE89A' : summary.position <= summary.totalTeams / 2 ? '#E89A4A' : '#E84A6F';
-  const tierColors = { 1: '#E84A6F', 2: '#E89A4A', 3: '#4ADBE8' };
-  const tierColor  = tierColors[summary.leagueTier] || '#E89A4A';
+  const posColor   = summary.position <= 1 ? '#FFD700' : summary.position <= 4 ? '#4AE89A' : summary.position <= summary.totalTeams / 2 ? 'var(--A-accent)' : '#E84A6F';
+  const tierColors = { 1: '#E84A6F', 2: 'var(--A-accent)', 3: '#4ADBE8' };
+  const tierColor  = tierColors[summary.leagueTier] || 'var(--A-accent)';
 
   let outcomeText  = `Finished ${summary.position}${summary.position===1?'st':summary.position===2?'nd':summary.position===3?'rd':'th'} of ${summary.totalTeams}`;
   let outcomeIcon  = summary.champion ? '🏆' : summary.promoted ? '⬆️' : summary.relegated ? '⬇️' : summary.position <= 4 ? '✅' : '📊';
@@ -1608,7 +1603,7 @@ function SeasonSummaryScreen({ summary, club, onContinue }) {
       <div className="flex-1 min-w-0">
         <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">{label}</div>
         <div className="font-bold text-white truncate">{name || '—'}</div>
-        <div className="text-sm font-['Bebas_Neue'] text-[#E89A4A]">{stat}</div>
+        <div className="text-sm font-display text-aaccent">{stat}</div>
       </div>
       {sub && <div className="text-[10px] text-slate-500 text-right leading-tight">{sub}</div>}
     </div>
@@ -1620,7 +1615,7 @@ function SeasonSummaryScreen({ summary, club, onContinue }) {
       <div className="text-center px-6 py-10" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
         <div className="text-5xl mb-4">{outcomeIcon}</div>
         <div className="text-[11px] font-bold uppercase tracking-[0.3em] mb-2" style={{color: tierColor}}>{summary.leagueName} · Season {summary.season}</div>
-        <div className="font-['Bebas_Neue'] text-6xl leading-none text-white mb-2">{summary.leagueShort} {summary.season}</div>
+        <div className="font-display text-6xl leading-none text-white mb-2">{summary.leagueShort} {summary.season}</div>
         <div className="font-bold text-xl" style={{color: posColor}}>{outcomeSub}</div>
 
         {/* Season record strip */}
@@ -1629,12 +1624,12 @@ function SeasonSummaryScreen({ summary, club, onContinue }) {
             { label: 'Position', value: `#${summary.position}`, color: posColor },
             { label: 'Wins',     value: summary.W,  color: '#4AE89A' },
             { label: 'Losses',   value: summary.L,  color: '#E84A6F' },
-            { label: 'Draws',    value: summary.D,  color: '#E89A4A' },
+            { label: 'Draws',    value: summary.D,  color: 'var(--A-accent)' },
             { label: 'Points',   value: summary.pts, color: '#A78BFA' },
             { label: 'Pct',      value: `${summary.pct}%`, color: '#4ADBE8' },
           ].map(({ label, value, color }) => (
             <div key={label} className="text-center">
-              <div className="font-['Bebas_Neue'] text-4xl leading-none" style={{color}}>{value}</div>
+              <div className="font-display text-4xl leading-none" style={{color}}>{value}</div>
               <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">{label}</div>
             </div>
           ))}
@@ -1648,7 +1643,7 @@ function SeasonSummaryScreen({ summary, club, onContinue }) {
         {summary.champion && (
           <div className="rounded-2xl p-4 text-center mb-4" style={{background:'linear-gradient(135deg,rgba(255,215,0,0.15),rgba(232,154,74,0.1))', border:'2px solid rgba(255,215,0,0.4)'}}>
             <div className="text-4xl mb-2">🏆</div>
-            <div className="font-['Bebas_Neue'] text-3xl text-[#FFD700]">PREMIERS!</div>
+            <div className="font-display text-3xl text-[#FFD700]">PREMIERS!</div>
             <div className="text-sm text-slate-300 mt-1">{club.name} are the {summary.season} {summary.leagueShort} Champions</div>
           </div>
         )}
@@ -1687,8 +1682,8 @@ function SeasonSummaryScreen({ summary, club, onContinue }) {
       <div className="px-6 py-6" style={{borderTop:'1px solid rgba(255,255,255,0.08)'}}>
         <div className="max-w-2xl mx-auto">
           <button onClick={onContinue}
-            className="w-full py-4 rounded-2xl font-['Bebas_Neue'] text-xl tracking-widest text-white transition-all"
-            style={{background:'linear-gradient(135deg,#E89A4A,#D07A2A)', boxShadow:'0 4px 20px rgba(232,154,74,0.4)'}}>
+            className="w-full py-4 rounded-2xl font-display text-xl tracking-widest text-white transition-all"
+            style={{background:'linear-gradient(135deg,var(--A-accent),#D07A2A)', boxShadow:'0 4px 20px rgba(232,154,74,0.4)'}}>
             START SEASON {summary.season + 1} →
           </button>
         </div>
@@ -1719,13 +1714,13 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
 
   const homeClub = result.isHome ? club : result.opp;
   const awayClub = result.isHome ? result.opp : club;
-  const myColor  = club.colors[0] || '#E89A4A';
+  const myColor  = club.colors[0] || 'var(--A-accent)';
   const oppColor = result.opp?.colors?.[0] || '#64748B';
 
   const won  = result.won;
   const drew = result.drew;
   const resultLabel = won ? 'WIN' : drew ? 'DRAW' : 'LOSS';
-  const resultColor = won ? '#4AE89A' : drew ? '#E89A4A' : '#E84A6F';
+  const resultColor = won ? '#4AE89A' : drew ? 'var(--A-accent)' : '#E84A6F';
 
   // AFL-tier commentary lines
   const commentary = result.isAFL ? [
@@ -1739,7 +1734,7 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
     <div className="min-h-screen flex flex-col" style={{background:'linear-gradient(160deg, #0F172A 0%, #1E293B 100%)'}}>
       {/* Header */}
       <div className="px-6 py-5 text-center" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-        <div className="text-[11px] font-bold uppercase tracking-[0.3em] mb-1" style={{color: result.isPreseason ? '#4ADBE8' : '#E89A4A'}}>
+        <div className="text-[11px] font-bold uppercase tracking-[0.3em] mb-1" style={{color: result.isPreseason ? '#4ADBE8' : 'var(--A-accent)'}}>
           {result.label} · {career.currentDate ? formatDate(career.currentDate) : ''}
           {result.isPreseason && ' · Pre-Season'}
         </div>
@@ -1748,8 +1743,8 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
         <div className="flex items-center justify-center gap-6 mt-4">
           {/* Home */}
           <div className="text-center flex-1">
-            <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center font-['Bebas_Neue'] text-2xl mb-2"
-              style={{background:`linear-gradient(135deg,${homeClub?.colors?.[0]||'#E89A4A'},${homeClub?.colors?.[1]||'#D07A2A'})`,color:homeClub?.colors?.[2]||'#FFF'}}>
+            <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center font-display text-2xl mb-2"
+              style={{background:`linear-gradient(135deg,${homeClub?.colors?.[0]||'var(--A-accent)'},${homeClub?.colors?.[1]||'#D07A2A'})`,color:homeClub?.colors?.[2]||'#FFF'}}>
               {homeClub?.short}
             </div>
             <div className="text-white font-bold text-sm">{homeClub?.name}</div>
@@ -1758,7 +1753,7 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
 
           {/* Score */}
           <div className="text-center px-6">
-            <div className="font-['Bebas_Neue'] text-6xl leading-none" style={{color: resultColor}}>
+            <div className="font-display text-6xl leading-none" style={{color: resultColor}}>
               {result.homeTotal} – {result.awayTotal}
             </div>
             <div className="text-[11px] font-bold uppercase tracking-widest mt-1" style={{color: resultColor}}>{resultLabel}</div>
@@ -1766,7 +1761,7 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
 
           {/* Away */}
           <div className="text-center flex-1">
-            <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center font-['Bebas_Neue'] text-2xl mb-2"
+            <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center font-display text-2xl mb-2"
               style={{background:`linear-gradient(135deg,${awayClub?.colors?.[0]||'#64748B'},${awayClub?.colors?.[1]||'#475569'})`,color:awayClub?.colors?.[2]||'#FFF'}}>
               {awayClub?.short}
             </div>
@@ -1803,7 +1798,7 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
                   {isShowing && (
                     <div className="flex items-center gap-4 mt-2">
                       <div className="text-right flex-1">
-                        <span className="font-['Bebas_Neue'] text-3xl" style={{color: result.isHome ? myColor : oppColor}}>{hCum.total}</span>
+                        <span className="font-display text-3xl" style={{color: result.isHome ? myColor : oppColor}}>{hCum.total}</span>
                         <div className="text-[10px] text-slate-400">{hCum.g}.{hCum.b}</div>
                       </div>
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
@@ -1811,7 +1806,7 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
                         {qWinner === 'draw' ? '=' : qWinner === (result.isHome ? 'home' : 'away') ? '▲' : '▼'}
                       </div>
                       <div className="text-left flex-1">
-                        <span className="font-['Bebas_Neue'] text-3xl" style={{color: result.isHome ? oppColor : myColor}}>{aCum.total}</span>
+                        <span className="font-display text-3xl" style={{color: result.isHome ? oppColor : myColor}}>{aCum.total}</span>
                         <div className="text-[10px] text-slate-400">{aCum.g}.{aCum.b}</div>
                       </div>
                     </div>
@@ -1825,7 +1820,7 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
           {quarters.length > 0 && revealed < quarters.length && (
             <button onClick={() => setRevealed(r => Math.min(r + 1, quarters.length))}
               className="mt-4 w-full rounded-xl py-3 text-sm font-bold uppercase tracking-widest transition-all"
-              style={{background:'rgba(232,154,74,0.15)', color:'#E89A4A', border:'1px solid rgba(232,154,74,0.3)'}}>
+              style={{background:'rgba(232,154,74,0.15)', color:'var(--A-accent)', border:'1px solid rgba(232,154,74,0.3)'}}>
               Show {qLabels[revealed]} →
             </button>
           )}
@@ -1838,7 +1833,7 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
             <div className="space-y-2">
               {commentary.map((line, i) => (
                 <div key={i} className="flex gap-2 text-sm text-slate-300">
-                  <span className="text-[#E89A4A] flex-shrink-0">›</span>
+                  <span className="text-aaccent flex-shrink-0">›</span>
                   <span>{line}</span>
                 </div>
               ))}
@@ -1874,7 +1869,7 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
 // ============================================================================
 function TabNav({ tabs, active, onChange }) {
   return (
-    <div className="flex gap-1 p-1 rounded-xl mb-5" style={{background:"#F1F5F9", border:"1px solid #E2E8F0"}}>
+    <div className="flex gap-1 p-1 rounded-xl mb-5" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)"}}>
       {tabs.map(tb => {
         const Icon = tb.icon;
         const isActive = active === tb.key;
@@ -1882,8 +1877,8 @@ function TabNav({ tabs, active, onChange }) {
           <button key={tb.key} onClick={()=>onChange(tb.key)}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all flex-1 justify-center"
             style={isActive
-              ? {background:"linear-gradient(135deg,#E89A4A,#D07A2A)", color:"white", boxShadow:"0 2px 8px #E89A4A33"}
-              : {color:"#64748B"}}>
+              ? {background:"linear-gradient(135deg, var(--A-accent), #0099b0)", color:"#001520", boxShadow:"0 2px 8px rgba(0, 224, 255, 0.25)"}
+              : {color:"var(--A-text-dim)"}}>
             <Icon className="w-4 h-4" /><span>{tb.label}</span>
           </button>
         );
@@ -1934,7 +1929,7 @@ function PlayersTab({ career, updateCareer }) {
           {["ALL", ...POSITIONS].map(pos => (
             <button key={pos} onClick={()=>setFilterPos(pos)}
               className="text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all"
-              style={filterPos===pos ? {background:"#E89A4A", color:"white"} : {background:"#F8FAFC", color:"#64748B", border:"1px solid #E2E8F0"}}>
+              style={filterPos===pos ? {background:"var(--A-accent)", color:"#001520"} : {background:"var(--A-panel)", color:"var(--A-text-dim)", border:"1px solid var(--A-line)"}}>
               {pos}
             </button>
           ))}
@@ -1942,7 +1937,7 @@ function PlayersTab({ career, updateCareer }) {
             <span className={css.label}>Sort by</span>
             <select value={sort} onChange={e=>setSort(e.target.value)}
               className="text-sm font-semibold rounded-lg px-3 py-1.5"
-              style={{background:"#FFFFFF", border:"1px solid #E2E8F0", color:"#334155"}}>
+              style={{background:"var(--A-panel)", border:"1px solid var(--A-line)", color:"var(--A-text)"}}>
               <option value="overall">Rating</option>
               <option value="age">Age</option>
               <option value="form">Form</option>
@@ -1953,61 +1948,61 @@ function PlayersTab({ career, updateCareer }) {
         </div>
 
         {/* Table */}
-        <div className="rounded-2xl overflow-hidden" style={{border:"1px solid #E2E8F0"}}>
-          <div className="grid px-4 py-3" style={{gridTemplateColumns:"2rem 1fr 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"#F1F5F9", borderBottom:"1px solid #E2E8F0"}}>
+        <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)"}}>
+          <div className="grid px-4 py-3" style={{gridTemplateColumns:"2rem 1fr 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
             {["#","Player","Pos","Age","OVR","Form","Fitness","Wage","Status"].map((h,i)=>(
-              <div key={h} className={`text-[10px] font-black uppercase tracking-[0.15em] text-[#94A3B8] ${i>1?"text-center":""} ${i===7?"text-right":""}`}>{h}</div>
+              <div key={h} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${i>1?"text-center":""} ${i===7?"text-right":""}`}>{h}</div>
             ))}
           </div>
-          <div className="max-h-[65vh] overflow-y-auto" style={{background:"#FFFFFF"}}>
+          <div className="max-h-[65vh] overflow-y-auto" style={{background:"var(--A-panel)"}}>
             {players.map((p, i) => {
               const inLineup = career.lineup.includes(p.id);
               const isSelected = selected?.id === p.id;
-              const formColor = p.form >= 75 ? "#4AE89A" : p.form >= 55 ? "#E89A4A" : "#E84A6F";
-              const fitColor  = p.fitness >= 80 ? "#4AE89A" : p.fitness >= 60 ? "#E89A4A" : "#E84A6F";
+              const formColor = p.form >= 75 ? "#4AE89A" : p.form >= 55 ? "var(--A-accent)" : "#E84A6F";
+              const fitColor  = p.fitness >= 80 ? "#4AE89A" : p.fitness >= 60 ? "var(--A-accent)" : "#E84A6F";
               return (
                 <button key={p.id} onClick={()=>setSelected(isSelected ? null : p)}
                   className="w-full grid px-4 py-3 transition-all"
                   style={{
                     gridTemplateColumns:"2rem 1fr 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem",
-                    borderBottom:"1px solid #E2E8F0",
-                    background: isSelected ? "#E89A4A12" : "transparent",
-                    borderLeft: isSelected ? "3px solid #E89A4A" : "3px solid transparent",
+                    borderBottom:"1px solid var(--A-line)",
+                    background: isSelected ? "rgba(0, 224, 255, 0.08)" : "transparent",
+                    borderLeft: isSelected ? "3px solid var(--A-accent)" : "3px solid transparent",
                   }}
-                  onMouseEnter={e=>{if(!isSelected) e.currentTarget.style.background="#F8FAFC";}}
+                  onMouseEnter={e=>{if(!isSelected) e.currentTarget.style.background="rgba(0,224,255,0.05)";}}
                   onMouseLeave={e=>{if(!isSelected) e.currentTarget.style.background="transparent";}}>
-                  <div className="text-[#94A3B8] text-sm font-bold text-left">{i+1}</div>
+                  <div className="text-atext-mute text-sm font-bold text-left">{i+1}</div>
                   <div className="flex items-center gap-2 min-w-0 text-left">
                     {p.injured > 0 && <Heart className="w-3 h-3 flex-shrink-0 text-[#E84A6F]" />}
                     {inLineup && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:"#4AE89A", boxShadow:"0 0 4px #4AE89A"}} />}
-                    <span className="truncate text-sm font-semibold text-white">{pName(p)}</span>
+                    <span className="truncate text-sm font-semibold text-atext">{pName(p)}</span>
                     {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"#4ADBE822",color:"#4ADBE8"}}>R</span>}
                   </div>
                   <div className="text-center"><Pill color="#4ADBE8">{p.position}</Pill></div>
                   <div className="text-center text-sm text-[#8A9AB8]">{p.age}</div>
                   <div className="text-center flex justify-center"><RatingDot value={p.overall} size="sm" /></div>
                   <div className="flex items-center gap-1">
-                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"#E2E8F0"}}>
+                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
                       <div className="h-full rounded-full" style={{width:`${p.form}%`, background:formColor}} />
                     </div>
                     <span className="text-[10px] font-bold w-6 text-right" style={{color:formColor}}>{p.form}</span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"#E2E8F0"}}>
+                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
                       <div className="h-full rounded-full" style={{width:`${p.fitness}%`, background:fitColor}} />
                     </div>
                     <span className="text-[10px] font-bold w-6 text-right" style={{color:fitColor}}>{p.fitness}</span>
                   </div>
-                  <div className="text-right text-xs font-mono text-[#64748B]">{fmtK(p.wage)}</div>
+                  <div className="text-right text-xs font-mono text-atext-dim">{fmtK(p.wage)}</div>
                   <div className="text-center">
-                    {p.injured > 0 ? <Pill color="#E84A6F">{p.injured}w</Pill> : inLineup ? <Pill color="#4AE89A">XI</Pill> : <span className="text-[#94A3B8] text-xs">—</span>}
+                    {p.injured > 0 ? <Pill color="#E84A6F">{p.injured}w</Pill> : inLineup ? <Pill color="#4AE89A">XI</Pill> : <span className="text-atext-mute text-xs">—</span>}
                   </div>
                 </button>
               );
             })}
           </div>
         </div>
-        <div className="mt-2 text-[10px] text-[#94A3B8]">{players.length} players · {career.lineup.length}/22 in XXII · {career.squad.length} total squad</div>
+        <div className="mt-2 text-[10px] text-atext-mute">{players.length} players · {career.lineup.length}/22 in XXII · {career.squad.length} total squad</div>
       </div>
 
       {/* Right: player detail */}
@@ -2015,9 +2010,9 @@ function PlayersTab({ career, updateCareer }) {
         {selected ? (
           <PlayerDetail player={selected} career={career} updateCareer={updateCareer} onClose={()=>setSelected(null)} />
         ) : (
-          <div className="rounded-2xl p-8 text-center" style={{background:"#F1F5F9", border:"1px solid #E2E8F0"}}>
-            <Users className="w-10 h-10 mx-auto mb-3 text-[#E2E8F0]" />
-            <div className="text-sm text-[#94A3B8] font-medium">Click a player to view their profile</div>
+          <div className="rounded-2xl p-8 text-center" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)"}}>
+            <Users className="w-10 h-10 mx-auto mb-3 text-aline-2" />
+            <div className="text-sm text-atext-mute font-medium">Click a player to view their profile</div>
           </div>
         )}
       </div>
@@ -2040,22 +2035,22 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
     updateCareer({ squad: career.squad.filter(p => p.id !== player.id), lineup: career.lineup.filter(id => id !== player.id) });
     onClose();
   };
-  const ATTR_COLORS = { kicking:"#4ADBE8", marking:"#4AE89A", handball:"#A78BFA", tackling:"#E84A6F", speed:"#E89A4A", endurance:"#4AE89A", strength:"#E84A6F", decision:"#4ADBE8" };
+  const ATTR_COLORS = { kicking:"#4ADBE8", marking:"#4AE89A", handball:"#A78BFA", tackling:"#E84A6F", speed:"var(--A-accent)", endurance:"#4AE89A", strength:"#E84A6F", decision:"#4ADBE8" };
 
   return (
-    <div className="rounded-2xl overflow-hidden sticky top-20" style={{background:"#F1F5F9", border:"1px solid #E2E8F0"}}>
+    <div className="rounded-2xl overflow-hidden sticky top-20" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)"}}>
       {/* Header */}
-      <div className="p-4" style={{background:`linear-gradient(135deg, #FFFFFF, #F1F5F9)`}}>
+      <div className="p-4" style={{background:`linear-gradient(135deg, var(--A-panel), var(--A-panel-2))`}}>
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#64748B] mb-0.5">{POSITION_NAMES[player.position]}</div>
-            <h3 className="font-['Bebas_Neue'] text-2xl text-white leading-tight truncate">{pName.toUpperCase()}</h3>
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-dim mb-0.5">{POSITION_NAMES[player.position]}</div>
+            <h3 className="font-display text-2xl text-atext leading-tight truncate">{pName.toUpperCase()}</h3>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="text-[11px] text-[#64748B]">Age {player.age}</span>
-              <span className="text-[#E2E8F0]">·</span>
-              <span className="text-[11px] text-[#64748B]">{player.contract}yr</span>
-              <span className="text-[#E2E8F0]">·</span>
-              <span className="text-[11px] text-[#64748B]">{fmtK(player.wage)}/yr</span>
+              <span className="text-[11px] text-atext-dim">Age {player.age}</span>
+              <span className="text-aline-2">·</span>
+              <span className="text-[11px] text-atext-dim">{player.contract}yr</span>
+              <span className="text-aline-2">·</span>
+              <span className="text-[11px] text-atext-dim">{fmtK(player.wage)}/yr</span>
             </div>
           </div>
           <div className="flex flex-col items-center gap-1.5">
@@ -2069,13 +2064,13 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
         </div>
         {/* Form / Fitness / Morale row */}
         <div className="grid grid-cols-3 gap-2">
-          {[["Form", player.form, player.form>=75?"#4AE89A":player.form>=55?"#E89A4A":"#E84A6F"],
-            ["Fitness", player.fitness, player.fitness>=80?"#4AE89A":player.fitness>=60?"#E89A4A":"#E84A6F"],
-            ["Morale", player.morale, player.morale>=75?"#4AE89A":"#E89A4A"]].map(([l,v,c])=>(
-            <div key={l} className="rounded-xl p-2.5 text-center" style={{background:"#F1F5F9"}}>
-              <div className="text-[8px] font-black uppercase tracking-widest text-[#94A3B8]">{l}</div>
-              <div className="font-['Bebas_Neue'] text-2xl leading-tight" style={{color:c}}>{v}</div>
-              <div className="h-1 rounded-full mt-1 overflow-hidden" style={{background:"#E2E8F0"}}>
+          {[["Form", player.form, player.form>=75?"#4AE89A":player.form>=55?"var(--A-accent)":"#E84A6F"],
+            ["Fitness", player.fitness, player.fitness>=80?"#4AE89A":player.fitness>=60?"var(--A-accent)":"#E84A6F"],
+            ["Morale", player.morale, player.morale>=75?"#4AE89A":"var(--A-accent)"]].map(([l,v,c])=>(
+            <div key={l} className="rounded-xl p-2.5 text-center" style={{background:"var(--A-panel-2)"}}>
+              <div className="text-[8px] font-black uppercase tracking-widest text-atext-mute">{l}</div>
+              <div className="font-display text-2xl leading-tight" style={{color:c}}>{v}</div>
+              <div className="h-1 rounded-full mt-1 overflow-hidden" style={{background:"var(--A-line)"}}>
                 <div className="h-full rounded-full" style={{width:`${v}%`,background:c}} />
               </div>
             </div>
@@ -2084,15 +2079,15 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
       </div>
 
       {/* Attributes */}
-      <div className="p-4" style={{borderTop:"1px solid #E2E8F0"}}>
-        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#94A3B8] mb-3">Attributes</div>
+      <div className="p-4" style={{borderTop:"1px solid var(--A-line)"}}>
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute mb-3">Attributes</div>
         <div className="space-y-2.5">
           {Object.entries(player.attrs).map(([k, v]) => {
-            const color = ATTR_COLORS[k] || "#E89A4A";
+            const color = ATTR_COLORS[k] || "var(--A-accent)";
             return (
               <div key={k} className="flex items-center gap-2">
                 <div className="text-[11px] capitalize font-semibold text-[#8A9AB8] w-20 flex-shrink-0">{k}</div>
-                <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"#E2E8F0"}}>
+                <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
                   <div className="h-full rounded-full transition-all" style={{width:`${v}%`, background:`linear-gradient(90deg,${color}88,${color})`}} />
                 </div>
                 <div className="text-[12px] font-black w-7 text-right" style={{color}}>{v}</div>
@@ -2103,20 +2098,20 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
       </div>
 
       {/* Season Stats */}
-      <div className="px-4 pb-4" style={{borderTop:"1px solid #E2E8F0", paddingTop:"1rem"}}>
-        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#94A3B8] mb-3">Season Stats</div>
+      <div className="px-4 pb-4" style={{borderTop:"1px solid var(--A-line)", paddingTop:"1rem"}}>
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute mb-3">Season Stats</div>
         <div className="grid grid-cols-4 gap-2">
-          {[["G", player.goals,"#4AE89A"],["B",player.behinds,"#E89A4A"],["DSP",player.disposals,"#4ADBE8"],["M",player.marks,"#A78BFA"]].map(([l,v,c])=>(
-            <div key={l} className="rounded-xl p-2.5 text-center" style={{background:"#F1F5F9", border:"1px solid #E2E8F0"}}>
+          {[["G", player.goals,"#4AE89A"],["B",player.behinds,"var(--A-accent)"],["DSP",player.disposals,"#4ADBE8"],["M",player.marks,"#A78BFA"]].map(([l,v,c])=>(
+            <div key={l} className="rounded-xl p-2.5 text-center" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)"}}>
               <div className="text-[9px] font-black uppercase tracking-widest" style={{color:c}}>{l}</div>
-              <div className="font-['Bebas_Neue'] text-2xl leading-tight text-white">{v}</div>
+              <div className="font-display text-2xl leading-tight text-atext">{v}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Actions */}
-      <div className="p-4 space-y-2" style={{borderTop:"1px solid #E2E8F0"}}>
+      <div className="p-4 space-y-2" style={{borderTop:"1px solid var(--A-line)"}}>
         <button onClick={toggleLineup} className={`w-full text-sm font-bold py-2.5 rounded-xl transition-all ${inLineup ? css.btnDanger : css.btnPrimary}`}>
           {inLineup ? "Remove from XXII" : career.lineup.length >= 22 ? "XXII Full" : "Add to XXII"}
         </button>
@@ -2137,7 +2132,7 @@ function TacticsTab({ career, updateCareer }) {
     <div className="grid md:grid-cols-2 gap-4">
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>FORMATION (XXII)</h3>
-        <div className="text-[11px] text-[#64748B] mb-4">{lineup.length}/22 selected. AFL teams field 18 + 4 interchange.</div>
+        <div className="text-[11px] text-atext-dim mb-4">{lineup.length}/22 selected. AFL teams field 18 + 4 interchange.</div>
         {/* SVG oval */}
         <div className="relative aspect-[5/4] rounded-2xl overflow-hidden" style={{ background: "radial-gradient(ellipse at center, #1B5E3F 0%, #0F4029 70%, #08251A 100%)" }}>
           <svg viewBox="0 0 500 400" className="absolute inset-0">
@@ -2175,22 +2170,22 @@ function TacticsTab({ career, updateCareer }) {
         <div className="grid grid-cols-3 gap-2 mt-4">
           {POSITIONS.map(p => (
             <div key={p} className={`${css.inset} p-2 text-center`}>
-              <div className="text-[9px] text-[#64748B] uppercase">{p}</div>
-              <div className="font-['Bebas_Neue'] text-2xl text-[#E89A4A]">{byPos[p]?.length || 0}</div>
+              <div className="text-[9px] text-atext-dim uppercase">{p}</div>
+              <div className="font-display text-2xl text-aaccent">{byPos[p]?.length || 0}</div>
             </div>
           ))}
         </div>
       </div>
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>SELECTED XXII</h3>
-        <div className="text-[11px] text-[#64748B] mb-4">Tap to remove. Add players from the Players tab.</div>
+        <div className="text-[11px] text-atext-dim mb-4">Tap to remove. Add players from the Players tab.</div>
         <div className="space-y-1.5 max-h-[60vh] overflow-y-auto">
-          {lineup.length === 0 && <div className="text-sm text-[#64748B] text-center py-12">No players selected.</div>}
+          {lineup.length === 0 && <div className="text-sm text-atext-dim text-center py-12">No players selected.</div>}
           {lineup.sort((a,b)=>b.overall-a.overall).map(p => (
-            <button key={p.id} onClick={()=>updateCareer({ lineup: career.lineup.filter(id => id !== p.id) })} className="w-full flex items-center gap-2 p-2 rounded-lg bg-[#F8FAFC] hover:bg-[#F1F5F9] transition group">
-              <span className="text-[10px] px-1.5 py-0.5 bg-[#E2E8F0] rounded font-bold w-9 text-center">{p.position}</span>
+            <button key={p.id} onClick={()=>updateCareer({ lineup: career.lineup.filter(id => id !== p.id) })} className="w-full flex items-center gap-2 p-2 rounded-lg bg-apanel hover:bg-apanel-2 transition group">
+              <span className="text-[10px] px-1.5 py-0.5 bg-aline rounded font-bold w-9 text-center">{p.position}</span>
               <span className="text-sm flex-1 text-left truncate">{p.firstName ? p.firstName + " " + p.lastName : p.name}</span>
-              <span className="text-xs text-[#64748B]">{p.age}</span>
+              <span className="text-xs text-atext-dim">{p.age}</span>
               <RatingDot value={p.overall} />
               <X className="w-4 h-4 text-[#E84A6F] opacity-0 group-hover:opacity-100" />
             </button>
@@ -2216,31 +2211,31 @@ function TrainingTab({ career, updateCareer }) {
     <div className="grid md:grid-cols-2 gap-4">
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>TRAINING INTENSITY</h3>
-        <p className="text-xs text-[#64748B] mb-4">Higher intensity boosts development but increases fatigue and injury risk.</p>
+        <p className="text-xs text-atext-dim mb-4">Higher intensity boosts development but increases fatigue and injury risk.</p>
         <div className="flex items-center gap-3 mb-2">
-          <div className={`${css.h1} text-5xl text-[#E89A4A] w-20 text-center`}>{t.intensity}</div>
+          <div className={`${css.h1} text-5xl text-aaccent w-20 text-center`}>{t.intensity}</div>
           <div className="flex-1">
-            <input type="range" min="20" max="100" value={t.intensity} onChange={(e)=>setIntensity(+e.target.value)} className="w-full accent-[#E89A4A]" />
-            <div className="flex justify-between text-[10px] text-[#64748B] mt-1 uppercase tracking-widest"><span>Easy</span><span>Hard</span></div>
+            <input type="range" min="20" max="100" value={t.intensity} onChange={(e)=>setIntensity(+e.target.value)} className="w-full accent-[var(--A-accent)]" />
+            <div className="flex justify-between text-[10px] text-atext-dim mt-1 uppercase tracking-widest"><span>Easy</span><span>Hard</span></div>
           </div>
         </div>
         <div className={`${css.inset} p-3 mt-4`}>
           <div className="flex items-center gap-2 text-xs">
-            <AlertCircle className="w-4 h-4 text-[#E89A4A]" />
+            <AlertCircle className="w-4 h-4 text-aaccent" />
             <span>{t.intensity > 80 ? "High injury risk" : t.intensity > 60 ? "Balanced" : "Conservative — slow growth"}</span>
           </div>
         </div>
       </div>
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>TRAINING FOCUS</h3>
-        <p className="text-xs text-[#64748B] mb-4">Distribution must total 100. Adjusting one re-balances the others.</p>
+        <p className="text-xs text-atext-dim mb-4">Distribution must total 100. Adjusting one re-balances the others.</p>
         {Object.entries(t.focus).map(([k, v]) => {
-          const colors = { skills: "#E89A4A", fitness: "#4ADBE8", tactics: "#E84A6F", recovery: "#4AE89A" };
+          const colors = { skills: "var(--A-accent)", fitness: "#4ADBE8", tactics: "#E84A6F", recovery: "#4AE89A" };
           return (
             <div key={k} className="mb-3">
               <div className="flex justify-between mb-1">
                 <span className="text-sm capitalize font-semibold" style={{ color: colors[k] }}>{k}</span>
-                <span className="font-['Bebas_Neue'] text-lg">{v}%</span>
+                <span className="font-display text-lg">{v}%</span>
               </div>
               <input type="range" min="5" max="80" value={v} onChange={(e)=>setFocus(k, +e.target.value)} className="w-full" style={{ accentColor: colors[k] }} />
             </div>
@@ -2286,13 +2281,13 @@ function FinancesTab({ career }) {
   const annualNet = (gateRev + broadcastRev + sponsors) - (wages + staffWages + facilityCosts);
   const wageCap = career.finance.wageBudget || 0;
   const wagePct = wageCap > 0 ? Math.min(100, Math.round((wages / wageCap) * 100)) : 0;
-  const wageCapColor = wagePct >= 95 ? "#E84A6F" : wagePct >= 80 ? "#E89A4A" : "#4AE89A";
+  const wageCapColor = wagePct >= 95 ? "#E84A6F" : wagePct >= 80 ? "var(--A-accent)" : "#4AE89A";
   return (
     <div className="space-y-4">
       <div className="grid md:grid-cols-4 gap-4">
         <Stat label="Cash" value={fmtK(career.finance.cash)} accent="#4AE89A" />
         <Stat label="Annual Net (proj)" value={fmtK(annualNet)} accent={annualNet > 0 ? "#4AE89A" : "#E84A6F"} />
-        <Stat label="Wage Bill" value={fmtK(wages + staffWages)} sub="players + staff" accent="#E89A4A" />
+        <Stat label="Wage Bill" value={fmtK(wages + staffWages)} sub="players + staff" accent="var(--A-accent)" />
         <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="#4ADBE8" />
       </div>
 
@@ -2303,14 +2298,14 @@ function FinancesTab({ career }) {
             <h3 className={`${css.h1} text-2xl`}>SALARY CAP</h3>
             <span className="text-xs font-bold" style={{color: wageCapColor}}>{wagePct}% used</span>
           </div>
-          <div className="flex justify-between text-xs text-[#64748B] mb-2">
-            <span>Player wages: <span className="font-bold text-[#0F172A]">{fmtK(wages)}</span></span>
-            <span>Cap: <span className="font-bold text-[#0F172A]">{fmtK(wageCap)}</span></span>
+          <div className="flex justify-between text-xs text-atext-dim mb-2">
+            <span>Player wages: <span className="font-bold text-atext">{fmtK(wages)}</span></span>
+            <span>Cap: <span className="font-bold text-atext">{fmtK(wageCap)}</span></span>
           </div>
-          <div className="h-4 rounded-full overflow-hidden" style={{background:"#F1F5F9"}}>
+          <div className="h-4 rounded-full overflow-hidden" style={{background:"var(--A-panel-2)"}}>
             <div className="h-full rounded-full transition-all" style={{width:`${wagePct}%`, background: wageCapColor}} />
           </div>
-          <div className="text-xs text-[#64748B] mt-2">
+          <div className="text-xs text-atext-dim mt-2">
             {fmtK(wageCap - wages)} remaining · {wagePct >= 95 ? '⚠️ Near cap — limited signing ability' : wagePct >= 80 ? 'Cap tightening — plan ahead' : 'Healthy cap space available'}
           </div>
         </div>
@@ -2319,14 +2314,14 @@ function FinancesTab({ career }) {
         <div className={`${css.panel} p-5`}>
           <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (ANNUAL)</h3>
           {[
-            { label: "Broadcast / TV Rights", value: broadcastRev, color: "#E89A4A" },
+            { label: "Broadcast / TV Rights", value: broadcastRev, color: "var(--A-accent)" },
             { label: "Gate & Membership", value: gateRev, color: "#4ADBE8" },
             { label: "Sponsorship", value: sponsors, color: "#4AE89A" },
           ].map(r => {
             const total = broadcastRev + gateRev + sponsors;
             return (
               <div key={r.label} className="mb-3">
-                <div className="flex justify-between text-sm mb-1"><span className="text-[#0F172A]">{r.label}</span><span className="font-['Bebas_Neue'] text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span></div>
+                <div className="flex justify-between text-sm mb-1"><span className="text-atext">{r.label}</span><span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span></div>
                 <Bar value={(r.value / total) * 100} color={r.color} />
               </div>
             );
@@ -2336,13 +2331,13 @@ function FinancesTab({ career }) {
           <h3 className={`${css.h1} text-2xl mb-3`}>EXPENSES (ANNUAL)</h3>
           {[
             { label: "Player Wages", value: wages, color: "#E84A6F" },
-            { label: "Staff Wages", value: staffWages, color: "#E89A4A" },
+            { label: "Staff Wages", value: staffWages, color: "var(--A-accent)" },
             { label: "Facilities Upkeep", value: facilityCosts, color: "#4ADBE8" },
           ].map(r => {
             const total = wages + staffWages + facilityCosts;
             return (
               <div key={r.label} className="mb-3">
-                <div className="flex justify-between text-sm mb-1"><span className="text-[#0F172A]">{r.label}</span><span className="font-['Bebas_Neue'] text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span></div>
+                <div className="flex justify-between text-sm mb-1"><span className="text-atext">{r.label}</span><span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span></div>
                 <Bar value={(r.value / total) * 100} color={r.color} />
               </div>
             );
@@ -2352,7 +2347,7 @@ function FinancesTab({ career }) {
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>WEEKLY CASH FLOW</h3>
         {career.weeklyHistory.length === 0 ? (
-          <div className="text-sm text-[#64748B] py-8 text-center">No matches played yet — advance a week to see cash flow.</div>
+          <div className="text-sm text-atext-dim py-8 text-center">No matches played yet — advance a week to see cash flow.</div>
         ) : (
           <div className="flex items-end gap-1 h-40">
             {career.weeklyHistory.map((w, i) => {
@@ -2361,7 +2356,7 @@ function FinancesTab({ career }) {
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1">
                   <div className="w-full rounded-t" style={{ height: `${h}%`, background: w.profit >= 0 ? "#4AE89A" : "#E84A6F", opacity: 0.85 }} />
-                  <div className="text-[9px] text-[#64748B]">R{w.week}</div>
+                  <div className="text-[9px] text-atext-dim">R{w.week}</div>
                 </div>
               );
             })}
@@ -2388,7 +2383,7 @@ function SponsorsTab({ career, updateCareer }) {
     <div className="space-y-4">
       <div className="grid md:grid-cols-3 gap-4">
         <Stat label="Total Annual Sponsorship" value={fmtK(totalAnnual)} accent="#4AE89A" />
-        <Stat label="Active Deals" value={career.sponsors.length} accent="#E89A4A" />
+        <Stat label="Active Deals" value={career.sponsors.length} accent="var(--A-accent)" />
         <Stat label="Avg Deal" value={career.sponsors.length ? fmtK(Math.round(totalAnnual/career.sponsors.length)) : "—"} accent="#4ADBE8" />
       </div>
       <div className={`${css.panel} p-5`}>
@@ -2401,15 +2396,15 @@ function SponsorsTab({ career, updateCareer }) {
             <div key={s.id} className={`${css.inset} p-4`}>
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div className="font-['Bebas_Neue'] text-2xl">{s.name}</div>
-                  <div className="text-[10px] text-[#64748B] uppercase tracking-widest">{s.category} • {s.type}</div>
+                  <div className="font-display text-2xl">{s.name}</div>
+                  <div className="text-[10px] text-atext-dim uppercase tracking-widest">{s.category} • {s.type}</div>
                 </div>
-                <Pill color="#E89A4A">{s.yearsLeft}y left</Pill>
+                <Pill color="var(--A-accent)">{s.yearsLeft}y left</Pill>
               </div>
               <div className="flex items-end justify-between mt-3">
                 <div>
-                  <div className="text-[10px] text-[#64748B] uppercase tracking-widest">Annual Value</div>
-                  <div className="font-['Bebas_Neue'] text-3xl text-[#4AE89A]">{fmtK(s.annualValue)}</div>
+                  <div className="text-[10px] text-atext-dim uppercase tracking-widest">Annual Value</div>
+                  <div className="font-display text-3xl text-[#4AE89A]">{fmtK(s.annualValue)}</div>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={()=>renew(s)} className={`${css.btnGhost} text-xs`}>Renew +2y</button>
@@ -2449,11 +2444,11 @@ function KitsTab({ career, club, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>KIT DESIGNER</div>
-          <div className="text-xs text-[#64748B]">Customise your club's three jerseys. Live preview updates as you tweak.</div>
+          <div className="text-xs text-atext-dim">Customise your club's three jerseys. Live preview updates as you tweak.</div>
         </div>
         <div className="flex gap-2">
           {["home","away","clash"].map(k => (
-            <button key={k} onClick={()=>setEditing(k)} className={`px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider ${editing===k ? "bg-[#E89A4A] text-[#F8FAFC]" : "bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A]"}`}>{k}</button>
+            <button key={k} onClick={()=>setEditing(k)} className={`px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider ${editing===k ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{k}</button>
           ))}
         </div>
       </div>
@@ -2462,10 +2457,10 @@ function KitsTab({ career, club, updateCareer }) {
         {/* PREVIEW */}
         <div className={`${css.panel} p-6 flex flex-col items-center justify-center lg:col-span-1`}>
           <div className={css.label}>Preview · {editing}</div>
-          <div className="my-4 p-4 bg-gradient-to-br from-[#F1F5F9] to-[#F8FAFC] rounded-2xl">
+          <div className="my-4 p-4 bg-gradient-to-br from-apanel-2 to-apanel rounded-2xl">
             <Jersey kit={kit} size={220} />
           </div>
-          <div className="flex gap-2 text-[10px] uppercase tracking-wider text-[#64748B]">
+          <div className="flex gap-2 text-[10px] uppercase tracking-wider text-atext-dim">
             <span>{kit.pattern}</span>·
             <span style={{color: kit.primary}}>●</span>
             <span style={{color: kit.secondary}}>●</span>
@@ -2480,7 +2475,7 @@ function KitsTab({ career, club, updateCareer }) {
             <div className={css.label}>Pattern</div>
             <div className="flex flex-wrap gap-2 mt-2">
               {PATTERNS.map(p => (
-                <button key={p.key} onClick={()=>updateKit("pattern", p.key)} className={`px-4 py-2 rounded-lg text-sm font-semibold ${kit.pattern===p.key ? "bg-[#E89A4A] text-[#F8FAFC]" : "bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A]"}`}>{p.label}</button>
+                <button key={p.key} onClick={()=>updateKit("pattern", p.key)} className={`px-4 py-2 rounded-lg text-sm font-semibold ${kit.pattern===p.key ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{p.label}</button>
               ))}
             </div>
           </div>
@@ -2495,8 +2490,8 @@ function KitsTab({ career, club, updateCareer }) {
               <div key={c.field}>
                 <div className={css.label}>{c.label}</div>
                 <div className="flex items-center gap-3 mt-2">
-                  <input type="color" value={kit[c.field]} onChange={e=>updateKit(c.field, e.target.value)} className="w-14 h-14 rounded-lg border border-[#E2E8F0] bg-transparent cursor-pointer" />
-                  <input type="text" value={kit[c.field]} onChange={e=>updateKit(c.field, e.target.value)} className="flex-1 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm font-mono" />
+                  <input type="color" value={kit[c.field]} onChange={e=>updateKit(c.field, e.target.value)} className="w-14 h-14 rounded-lg border border-aline bg-transparent cursor-pointer" />
+                  <input type="text" value={kit[c.field]} onChange={e=>updateKit(c.field, e.target.value)} className="flex-1 bg-apanel border border-aline rounded-lg px-3 py-2 text-sm font-mono text-atext" />
                 </div>
               </div>
             ))}
@@ -2511,11 +2506,11 @@ function KitsTab({ career, club, updateCareer }) {
                 ["#000000","#FFD200","#FF0000"],
                 ["#003F87","#FFFFFF","#E21937"],
                 ["#4D2004","#FBBF15","#FFFFFF"],
-                ["#2A0D54","#FFFFFF","#E89A4A"],
+                ["#2A0D54","#FFFFFF","var(--A-accent)"],
                 ["#008AAB","#000000","#FFFFFF"],
                 ["#0F1131","#CC2031","#FFFFFF"],
               ].map((pal,i) => (
-                <button key={i} onClick={()=>updateCareer({kits:{...career.kits,[editing]:{...career.kits[editing], primary:pal[0], secondary:pal[1], accent:pal[2]}}})} className="h-10 rounded-lg overflow-hidden flex border border-[#E2E8F0] hover:border-[#E89A4A] transition">
+                <button key={i} onClick={()=>updateCareer({kits:{...career.kits,[editing]:{...career.kits[editing], primary:pal[0], secondary:pal[1], accent:pal[2]}}})} className="h-10 rounded-lg overflow-hidden flex border border-aline hover:border-[var(--A-accent)] transition">
                   <div style={{background:pal[0]}} className="flex-1" />
                   <div style={{background:pal[1]}} className="flex-1" />
                   <div style={{background:pal[2]}} className="flex-1" />
@@ -2531,9 +2526,9 @@ function KitsTab({ career, club, updateCareer }) {
         <div className={css.label}>Full kit set</div>
         <div className="grid grid-cols-3 gap-4 mt-3">
           {["home","away","clash"].map(k => (
-            <div key={k} className={`${css.inset} p-4 flex flex-col items-center cursor-pointer hover:border-[#E89A4A] transition`} onClick={()=>setEditing(k)}>
+            <div key={k} className={`${css.inset} p-4 flex flex-col items-center cursor-pointer hover:border-[var(--A-accent)] transition`} onClick={()=>setEditing(k)}>
               <Jersey kit={career.kits[k]} size={120} />
-              <div className="mt-2 text-xs uppercase tracking-wider text-[#64748B]">{k}</div>
+              <div className="mt-2 text-xs uppercase tracking-wider text-atext-dim">{k}</div>
             </div>
           ))}
         </div>
@@ -2548,7 +2543,7 @@ function KitsTab({ career, club, updateCareer }) {
 function FacilitiesTab({ career, updateCareer }) {
   const FAC_INFO = {
     trainingGround: { name: "Training Ground", icon: Activity, desc: "Improves training effectiveness and skill development", color: "#4ADBE8" },
-    gym: { name: "Strength & Conditioning", icon: Dumbbell, desc: "Boosts player strength, speed and endurance gains", color: "#E89A4A" },
+    gym: { name: "Strength & Conditioning", icon: Dumbbell, desc: "Boosts player strength, speed and endurance gains", color: "var(--A-accent)" },
     medical: { name: "Medical Centre", icon: Heart, desc: "Reduces injury rate, faster recovery from knocks", color: "#E84A6F" },
     academy: { name: "Youth Academy", icon: GraduationCap, desc: "Better youth recruits and development progression", color: "#4AE89A" },
     stadium: { name: "Stadium", icon: Building2, desc: "Higher capacity = bigger gate revenue & sponsor pull", color: "#FFD200" },
@@ -2572,11 +2567,11 @@ function FacilitiesTab({ career, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>FACILITIES</div>
-          <div className="text-xs text-[#64748B]">Long-term investment. Effects compound across the season.</div>
+          <div className="text-xs text-atext-dim">Long-term investment. Effects compound across the season.</div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Overall Rating" value={`${totalLevel}/${maxTotal}`} accent="#4ADBE8" />
-          <Stat label="Cash" value={fmtK(career.finance.cash)} accent="#E89A4A" />
+          <Stat label="Cash" value={fmtK(career.finance.cash)} accent="var(--A-accent)" />
         </div>
       </div>
 
@@ -2596,19 +2591,19 @@ function FacilitiesTab({ career, updateCareer }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-bold tracking-wide">{info.name}</div>
-                    <div className={`${css.num} text-2xl`} style={{color: info.color}}>{f.level}<span className="text-sm text-[#64748B]">/{f.max}</span></div>
+                    <div className={`${css.num} text-2xl`} style={{color: info.color}}>{f.level}<span className="text-sm text-atext-dim">/{f.max}</span></div>
                   </div>
-                  <div className="text-[11px] text-[#64748B] mt-1">{info.desc}</div>
+                  <div className="text-[11px] text-atext-dim mt-1">{info.desc}</div>
                   <div className="flex gap-1 mt-3">
                     {Array.from({length: f.max}).map((_,i) => (
-                      <div key={i} className="flex-1 h-2 rounded-full" style={{ background: i < f.level ? info.color : "#E2E8F0" }} />
+                      <div key={i} className="flex-1 h-2 rounded-full" style={{ background: i < f.level ? info.color : "var(--A-line)" }} />
                     ))}
                   </div>
                   <div className="flex items-center justify-between mt-3">
-                    <div className="text-xs text-[#64748B]">
-                      {maxed ? <span className="text-[#4AE89A]">⭐ Max level</span> : <>Upgrade: <span className={canAfford ? "text-[#0F172A] font-bold" : "text-[#E84A6F] font-bold"}>${(cost/1000).toFixed(0)}k</span></>}
+                    <div className="text-xs text-atext-dim">
+                      {maxed ? <span className="text-[#4AE89A]">⭐ Max level</span> : <>Upgrade: <span className={canAfford ? "text-atext font-bold" : "text-[#E84A6F] font-bold"}>${(cost/1000).toFixed(0)}k</span></>}
                     </div>
-                    <button onClick={()=>upgrade(key)} disabled={maxed||!canAfford} className={maxed||!canAfford ? "px-3 py-1.5 rounded-lg text-xs font-bold bg-[#F1F5F9] text-[#CBD5E1]" : `${css.btnPrimary} text-xs px-3 py-1.5`}>
+                    <button onClick={()=>upgrade(key)} disabled={maxed||!canAfford} className={maxed||!canAfford ? "px-3 py-1.5 rounded-lg text-xs font-bold bg-apanel-2 text-atext-mute" : `${css.btnPrimary} text-xs px-3 py-1.5`}>
                       {maxed ? "Maxed" : "Upgrade"}
                     </button>
                   </div>
@@ -2651,16 +2646,16 @@ function StaffTab({ career, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>STAFF</div>
-          <div className="text-xs text-[#64748B]">Your support team shapes training outcomes, recruitment quality and player development.</div>
+          <div className="text-xs text-atext-dim">Your support team shapes training outcomes, recruitment quality and player development.</div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Avg Rating" value={avgRating} accent="#4AE89A" />
-          <Stat label="Annual Wages" value={fmtK(totalWage)} accent="#E89A4A" />
+          <Stat label="Annual Wages" value={fmtK(totalWage)} accent="var(--A-accent)" />
         </div>
       </div>
 
-      <div className="rounded-2xl overflow-hidden" style={{border:"1px solid #E2E8F0", background:"#FFFFFF"}}>
-        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-[#94A3B8] font-black border-b" style={{borderColor:"#E2E8F0",background:"#F1F5F9"}}>
+      <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
+        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
           <div className="col-span-3">Name</div>
           <div className="col-span-3">Role</div>
           <div className="col-span-2">Rating</div>
@@ -2669,9 +2664,9 @@ function StaffTab({ career, updateCareer }) {
           <div className="col-span-1"></div>
         </div>
         {career.staff.map((s, idx) => (
-          <div key={idx} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid #E2E8F0"}} onMouseEnter={e=>e.currentTarget.style.background="#F8FAFC"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+          <div key={idx} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
             <div className="col-span-3 font-semibold text-sm">{s.name}</div>
-            <div className="col-span-3 text-sm text-[#64748B]">{s.role}</div>
+            <div className="col-span-3 text-sm text-atext-dim">{s.role}</div>
             <div className="col-span-2 flex items-center gap-2">
               <RatingDot value={s.rating} />
               <Bar value={s.rating} small />
@@ -2679,14 +2674,14 @@ function StaffTab({ career, updateCareer }) {
             <div className="col-span-1 text-center text-sm">{s.contract}y</div>
             <div className="col-span-2 text-right text-sm font-mono">${(s.wage/1000).toFixed(0)}k</div>
             <div className="col-span-1 flex justify-end">
-              <button onClick={()=>replaceStaff(idx)} className="text-xs px-3 py-1.5 rounded-lg border border-[#E2E8F0] hover:border-[#E89A4A] hover:text-[#E89A4A] transition">Replace</button>
+              <button onClick={()=>replaceStaff(idx)} className="text-xs px-3 py-1.5 rounded-lg border border-aline hover:border-[var(--A-accent)] hover:text-aaccent transition">Replace</button>
             </div>
           </div>
         ))}
       </div>
 
-      <div className={`${css.inset} p-4 text-xs text-[#64748B]`}>
-        <span className="text-[#E89A4A] font-bold">TIP:</span> Replacing a staff member rolls a new candidate. Higher overall ratings = better training outcomes, lower injury rates, sharper recruitment, and stronger youth pipeline. Wages scale with rating.
+      <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
+        <span className="text-aaccent font-bold">TIP:</span> Replacing a staff member rolls a new candidate. Higher overall ratings = better training outcomes, lower injury rates, sharper recruitment, and stronger youth pipeline. Wages scale with rating.
       </div>
     </div>
   );
@@ -2762,29 +2757,29 @@ function TradeTab({ career, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>TRADE MARKET</div>
-          <div className="text-xs text-[#64748B]">Players currently available across the league pyramid.</div>
+          <div className="text-xs text-atext-dim">Players currently available across the league pyramid.</div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="#4ADBE8" />
-          <Stat label="Squad Size" value={`${career.squad.length}/40`} accent="#E89A4A" />
+          <Stat label="Squad Size" value={`${career.squad.length}/40`} accent="var(--A-accent)" />
         </div>
       </div>
 
       <div className="flex gap-2 items-center flex-wrap">
-        <span className="text-xs text-[#64748B] uppercase tracking-wider">Position:</span>
+        <span className="text-xs text-atext-dim uppercase tracking-wider">Position:</span>
         {["ALL", ...POSITIONS].map(pos => (
-          <button key={pos} onClick={()=>setFilter(pos)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${filter===pos ? "bg-[#E89A4A] text-[#F8FAFC]" : "bg-[#F1F5F9] text-[#64748B] hover:text-[#0F172A]"}`}>{pos}</button>
+          <button key={pos} onClick={()=>setFilter(pos)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${filter===pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
         ))}
-        <span className="ml-4 text-xs text-[#64748B] uppercase tracking-wider">Sort:</span>
-        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} className="bg-[#F1F5F9] border border-[#E2E8F0] rounded-lg px-3 py-1.5 text-xs">
+        <span className="ml-4 text-xs text-atext-dim uppercase tracking-wider">Sort:</span>
+        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} className="bg-apanel-2 border border-aline rounded-lg px-3 py-1.5 text-xs text-atext">
           <option value="overall">Overall</option>
           <option value="value">Value</option>
           <option value="age">Age</option>
         </select>
       </div>
 
-      <div className="rounded-2xl overflow-hidden" style={{border:"1px solid #E2E8F0", background:"#FFFFFF"}}>
-        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-[#94A3B8] font-black border-b" style={{borderColor:"#E2E8F0",background:"#F1F5F9"}}>
+      <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
+        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
           <div className="col-span-3">Player</div>
           <div className="col-span-1">Pos</div>
           <div className="col-span-1">Age</div>
@@ -2802,21 +2797,21 @@ function TradeTab({ career, updateCareer }) {
             const capBlock = negotiating && isNeg && (currentWages + negotiating.wage > wageCap);
             return (
               <div key={p.id}>
-                <div className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom: isNeg ? "none" : "1px solid #E2E8F0"}} onMouseEnter={e=>e.currentTarget.style.background="#F8FAFC"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <div className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom: isNeg ? "none" : "1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   <div className="col-span-3">
                     <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
-                    <div className="text-[10px] text-[#64748B]">Listed wage: {fmtK(p.wage)}/yr</div>
+                    <div className="text-[10px] text-atext-dim">Listed wage: {fmtK(p.wage)}/yr</div>
                   </div>
                   <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
                   <div className="col-span-1 text-sm">{p.age}</div>
                   <div className="col-span-1"><RatingDot value={p.overall} /></div>
                   <div className="col-span-1 text-sm text-[#4AE89A]">{p.potential}</div>
-                  <div className="col-span-2 text-xs text-[#64748B]">{p.fromClub}</div>
+                  <div className="col-span-2 text-xs text-atext-dim">{p.fromClub}</div>
                   <div className="col-span-2 text-right text-sm font-mono font-bold" style={{color: canAfford ? "#4AE89A" : "#E84A6F"}}>{fmtK(p.value)}</div>
                   <div className="col-span-1 flex justify-end">
                     {isNeg
-                      ? <button onClick={()=>setNegotiating(null)} className="text-xs text-[#94A3B8] hover:text-[#64748B] px-2 py-1">✕</button>
-                      : <button onClick={()=>canAfford ? openNegotiation(p) : null} disabled={!canAfford} className={canAfford ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-[#F1F5F9] text-[#CBD5E1]"}>{canAfford ? "Negotiate" : "Too dear"}</button>
+                      ? <button onClick={()=>setNegotiating(null)} className="text-xs text-atext-mute hover:text-atext-dim px-2 py-1">✕</button>
+                      : <button onClick={()=>canAfford ? openNegotiation(p) : null} disabled={!canAfford} className={canAfford ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>{canAfford ? "Negotiate" : "Too dear"}</button>
                     }
                   </div>
                 </div>
@@ -2825,32 +2820,32 @@ function TradeTab({ career, updateCareer }) {
                     <div className="text-xs font-bold text-[#166534] mb-2">📋 {p.firstName} {p.lastName}'s demands</div>
                     <div className="flex gap-6 mb-3">
                       <div>
-                        <div className="text-[10px] text-[#64748B] uppercase tracking-wider">Wage demand</div>
-                        <div className="font-['Bebas_Neue'] text-xl text-[#0F172A]">{fmtK(negotiating.wage)}<span className="text-sm font-sans">/yr</span></div>
+                        <div className="text-[10px] text-atext-dim uppercase tracking-wider">Wage demand</div>
+                        <div className="font-display text-xl text-atext">{fmtK(negotiating.wage)}<span className="text-sm font-sans">/yr</span></div>
                       </div>
                       <div>
-                        <div className="text-[10px] text-[#64748B] uppercase tracking-wider">Contract length</div>
-                        <div className="font-['Bebas_Neue'] text-xl text-[#0F172A]">{negotiating.years}<span className="text-sm font-sans"> yr</span></div>
+                        <div className="text-[10px] text-atext-dim uppercase tracking-wider">Contract length</div>
+                        <div className="font-display text-xl text-atext">{negotiating.years}<span className="text-sm font-sans"> yr</span></div>
                       </div>
                       <div>
-                        <div className="text-[10px] text-[#64748B] uppercase tracking-wider">Cap room after</div>
-                        <div className={`font-['Bebas_Neue'] text-xl ${capBlock ? 'text-[#E84A6F]' : 'text-[#4AE89A]'}`}>{fmtK(capRoom - negotiating.wage)}</div>
+                        <div className="text-[10px] text-atext-dim uppercase tracking-wider">Cap room after</div>
+                        <div className={`font-display text-xl ${capBlock ? 'text-[#E84A6F]' : 'text-[#4AE89A]'}`}>{fmtK(capRoom - negotiating.wage)}</div>
                       </div>
                     </div>
                     {capBlock && <div className="text-xs text-[#E84A6F] mb-2">⚠️ Signing this player would exceed your salary cap.</div>}
                     <div className="flex gap-2">
-                      <button onClick={()=>acceptDeal(p)} disabled={capBlock} className={capBlock ? "px-4 py-2 rounded-lg text-xs bg-[#F1F5F9] text-[#CBD5E1]" : `${css.btnPrimary} text-xs px-4 py-2`}>
+                      <button onClick={()=>acceptDeal(p)} disabled={capBlock} className={capBlock ? "px-4 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute" : `${css.btnPrimary} text-xs px-4 py-2`}>
                         ✅ Accept deal
                       </button>
                       {!negotiating.counterUsed && (
-                        <button onClick={()=>counterOffer(p)} className="px-4 py-2 rounded-lg text-xs font-bold bg-[#FFF7ED] text-[#D97706] border border-[#FDE68A] hover:bg-[#FEF3C7]">
+                        <button onClick={()=>counterOffer(p)} className="px-4 py-2 rounded-lg text-xs font-bold border" style={{background:"rgba(255,179,71,0.10)", color:"var(--A-accent-2)", borderColor:"rgba(255,179,71,0.30)"}}>
                           🔄 Counter (−12%)
                         </button>
                       )}
                       {negotiating.counterUsed && (
-                        <span className="px-4 py-2 text-xs text-[#94A3B8]">Counter used — accept or walk away</span>
+                        <span className="px-4 py-2 text-xs text-atext-mute">Counter used — accept or walk away</span>
                       )}
-                      <button onClick={()=>setNegotiating(null)} className="px-4 py-2 rounded-lg text-xs font-bold bg-[#F1F5F9] text-[#64748B] hover:bg-[#E2E8F0]">
+                      <button onClick={()=>setNegotiating(null)} className="px-4 py-2 rounded-lg text-xs font-bold bg-apanel-2 text-atext-dim hover:bg-aline">
                         Walk away
                       </button>
                     </div>
@@ -2859,7 +2854,7 @@ function TradeTab({ career, updateCareer }) {
               </div>
             );
           })}
-          {sorted.length === 0 && <div className="p-8 text-center text-sm text-[#64748B]">No players match the filter. Try widening your search.</div>}
+          {sorted.length === 0 && <div className="p-8 text-center text-sm text-atext-dim">No players match the filter. Try widening your search.</div>}
         </div>
       </div>
     </div>
@@ -2886,16 +2881,16 @@ function DraftTab({ career, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>NATIONAL DRAFT</div>
-          <div className="text-xs text-[#64748B]">Pick from the next generation. Sorted by best available — secret wraps may exist.</div>
+          <div className="text-xs text-atext-dim">Pick from the next generation. Sorted by best available — secret wraps may exist.</div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Draft Pool" value={pool.length} accent="#4AE89A" />
-          <Stat label="Squad" value={`${career.squad.length}/40`} accent="#E89A4A" />
+          <Stat label="Squad" value={`${career.squad.length}/40`} accent="var(--A-accent)" />
         </div>
       </div>
 
-      <div className="rounded-2xl overflow-hidden" style={{border:"1px solid #E2E8F0", background:"#FFFFFF"}}>
-        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-[#94A3B8] font-black border-b" style={{borderColor:"#E2E8F0",background:"#F1F5F9"}}>
+      <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
+        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
           <div className="col-span-1">#</div>
           <div className="col-span-4">Prospect</div>
           <div className="col-span-1">Pos</div>
@@ -2908,9 +2903,9 @@ function DraftTab({ career, updateCareer }) {
           {pool.slice(0, 30).map((p, i) => {
             const rookieWage = Math.max(60000, Math.round(p.overall * 1500));
             return (
-              <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid #E2E8F0"}} onMouseEnter={e=>e.currentTarget.style.background="#F8FAFC"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                <div className="col-span-1 font-bold text-[#E89A4A]">#{i+1}</div>
-                <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-[#64748B] ml-1">(age {rand(17,19)})</span></div>
+              <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <div className="col-span-1 font-bold text-aaccent">#{i+1}</div>
+                <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">(age {rand(17,19)})</span></div>
                 <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
                 <div className="col-span-1"><RatingDot value={p.overall} /></div>
                 <div className="col-span-2 flex items-center gap-2">
@@ -2926,8 +2921,8 @@ function DraftTab({ career, updateCareer }) {
           })}
         </div>
       </div>
-      <div className={`${css.inset} p-4 text-xs text-[#64748B]`}>
-        <span className="text-[#E89A4A] font-bold">TIP:</span> Young draftees enter on a 2-year rookie contract at minimum wage. Higher potential = bigger growth ceiling but slower start. Develop them through training and game time.
+      <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
+        <span className="text-aaccent font-bold">TIP:</span> Young draftees enter on a 2-year rookie contract at minimum wage. Higher potential = bigger growth ceiling but slower start. Develop them through training and game time.
       </div>
     </div>
   );
@@ -2969,7 +2964,7 @@ function YouthTab({ career, club, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>YOUTH ACADEMY</div>
-          <div className="text-xs text-[#64748B]">Develop talent from the {club.state} zone. Build the next generation.</div>
+          <div className="text-xs text-atext-dim">Develop talent from the {club.state} zone. Build the next generation.</div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Program Level" value={`${youth.programLevel}/5`} accent="#4AE89A" />
@@ -2982,20 +2977,20 @@ function YouthTab({ career, club, updateCareer }) {
           <div className="flex items-center gap-2"><GraduationCap className="w-5 h-5 text-[#4AE89A]" /><div className="font-bold tracking-wide">Academy Settings</div></div>
           <div>
             <div className={css.label}>Recruitment Zone</div>
-            <select value={youth.zone} onChange={e=>updateCareer({ youth: { ...youth, zone: e.target.value }})} className="w-full mt-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm">
+            <select value={youth.zone} onChange={e=>updateCareer({ youth: { ...youth, zone: e.target.value }})} className="w-full mt-2 bg-apanel border border-aline rounded-lg px-3 py-2 text-sm text-atext">
               {STATES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
             <div className={css.label}>Scout Focus</div>
-            <select value={youth.scoutFocus} onChange={e=>updateCareer({ youth: { ...youth, scoutFocus: e.target.value }})} className="w-full mt-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm">
+            <select value={youth.scoutFocus} onChange={e=>updateCareer({ youth: { ...youth, scoutFocus: e.target.value }})} className="w-full mt-2 bg-apanel border border-aline rounded-lg px-3 py-2 text-sm text-atext">
               {focusOptions.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
           </div>
           <div>
             <div className={css.label}>Program Level</div>
             <div className="flex gap-1 mt-2">
-              {Array.from({length:5}).map((_,i) => <div key={i} className="flex-1 h-3 rounded-full" style={{background: i < youth.programLevel ? "#4AE89A" : "#E2E8F0"}} />)}
+              {Array.from({length:5}).map((_,i) => <div key={i} className="flex-1 h-3 rounded-full" style={{background: i < youth.programLevel ? "var(--A-pos)" : "var(--A-line)"}} />)}
             </div>
             <button onClick={upgradeProgram} disabled={youth.programLevel>=5||career.finance.cash<youth.programLevel*80000} className={`${css.btnPrimary} mt-3 text-xs w-full`}>
               {youth.programLevel >= 5 ? "Maxed" : `Upgrade Program · $${(youth.programLevel*80).toFixed(0)}k`}
@@ -3007,22 +3002,22 @@ function YouthTab({ career, club, updateCareer }) {
         <div className={`${css.panel} p-5 lg:col-span-2`}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2"><Sprout className="w-5 h-5 text-[#4AE89A]" /><div className="font-bold tracking-wide">Current Intake</div></div>
-            <div className="text-xs text-[#64748B]">{generated.length} recruit{generated.length !== 1 ? "s" : ""}</div>
+            <div className="text-xs text-atext-dim">{generated.length} recruit{generated.length !== 1 ? "s" : ""}</div>
           </div>
           {generated.length === 0 ? (
-            <div className="text-center py-12 text-sm text-[#64748B]">No recruits yet. Click "Scout New Intake" to find prospects from {youth.zone}.</div>
+            <div className="text-center py-12 text-sm text-atext-dim">No recruits yet. Click "Scout New Intake" to find prospects from {youth.zone}.</div>
           ) : (
             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
               {generated.map(p => (
                 <div key={p.id} className={`${css.inset} p-3 grid grid-cols-12 gap-2 items-center`}>
                   <div className="col-span-4">
                     <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
-                    <div className="text-[10px] text-[#64748B]">Age {rand(16,18)} · From {youth.zone}</div>
+                    <div className="text-[10px] text-atext-dim">Age {rand(16,18)} · From {youth.zone}</div>
                   </div>
                   <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
                   <div className="col-span-2"><RatingDot value={p.overall} /></div>
                   <div className="col-span-2">
-                    <div className="text-[10px] text-[#64748B]">Potential</div>
+                    <div className="text-[10px] text-atext-dim">Potential</div>
                     <div className="flex items-center gap-1"><span className="text-xs font-bold text-[#4AE89A]">{p.potential}</span><Bar value={p.potential} color="#4AE89A" small /></div>
                   </div>
                   <div className="col-span-3 flex justify-end">
@@ -3073,30 +3068,30 @@ function LocalTab({ career, club, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>LOCAL FOOTBALL</div>
-          <div className="text-xs text-[#64748B]">Scout grassroots and lower-tier {club.state} leagues for hidden gems.</div>
+          <div className="text-xs text-atext-dim">Scout grassroots and lower-tier {club.state} leagues for hidden gems.</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Scout Cost" value="$30k" sub="per signing" accent="#E89A4A" />
+          <Stat label="Scout Cost" value="$30k" sub="per signing" accent="var(--A-accent)" />
         </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className={`${css.panel} p-5 lg:col-span-1`}>
-          <div className="flex items-center gap-2 mb-3"><Map className="w-5 h-5 text-[#E89A4A]" /><div className="font-bold tracking-wide">Lower {club.state} Leagues</div></div>
+          <div className="flex items-center gap-2 mb-3"><Map className="w-5 h-5 text-aaccent" /><div className="font-bold tracking-wide">Lower {club.state} Leagues</div></div>
           {localLeagues.length === 0 ? (
-            <div className="text-sm text-[#64748B] py-4">No lower-tier leagues available in {club.state} from your current level.</div>
+            <div className="text-sm text-atext-dim py-4">No lower-tier leagues available in {club.state} from your current level.</div>
           ) : (
             <div className="space-y-2">
               {localLeagues.map(l => (
-                <button key={l.key} onClick={()=>scout(l.key)} className={`w-full text-left p-3 rounded-lg border transition ${scoutingLeague===l.key ? "border-[#E89A4A] bg-[#E89A4A]/10" : "border-[#E2E8F0] hover:border-[#CBD5E1] bg-[#F8FAFC]"}`}>
+                <button key={l.key} onClick={()=>scout(l.key)} className={`w-full text-left p-3 rounded-lg border transition ${scoutingLeague===l.key ? "border-aaccent bg-aaccent/10" : "border-aline hover:border-aline-2 bg-apanel"}`}>
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-bold text-sm">{l.short}</div>
-                      <div className="text-[10px] text-[#64748B]">{l.name}</div>
+                      <div className="text-[10px] text-atext-dim">{l.name}</div>
                     </div>
                     <Pill color="#4ADBE8">T{l.tier}</Pill>
                   </div>
-                  <div className="text-[10px] text-[#64748B] mt-1">{l.clubs.length} clubs · Scout for hidden talent</div>
+                  <div className="text-[10px] text-atext-dim mt-1">{l.clubs.length} clubs · Scout for hidden talent</div>
                 </button>
               ))}
             </div>
@@ -3105,27 +3100,27 @@ function LocalTab({ career, club, updateCareer }) {
 
         <div className={`${css.panel} p-5 lg:col-span-2`}>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2"><Target className="w-5 h-5 text-[#E89A4A]" /><div className="font-bold tracking-wide">Scouting Reports</div></div>
-            {scoutingLeague && <div className="text-xs text-[#64748B]">{PYRAMID[scoutingLeague].short}</div>}
+            <div className="flex items-center gap-2"><Target className="w-5 h-5 text-aaccent" /><div className="font-bold tracking-wide">Scouting Reports</div></div>
+            {scoutingLeague && <div className="text-xs text-atext-dim">{PYRAMID[scoutingLeague].short}</div>}
           </div>
           {scoutedPlayers.length === 0 ? (
-            <div className="text-center py-12 text-sm text-[#64748B]">Pick a league to dispatch your scouts.</div>
+            <div className="text-center py-12 text-sm text-atext-dim">Pick a league to dispatch your scouts.</div>
           ) : (
             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
               {scoutedPlayers.map(p => (
                 <div key={p.id} className={`${css.inset} p-3 grid grid-cols-12 gap-2 items-center`}>
                   <div className="col-span-4">
                     <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
-                    <div className="text-[10px] text-[#64748B]">From {p.fromLocal} · Age {p.age}</div>
+                    <div className="text-[10px] text-atext-dim">From {p.fromLocal} · Age {p.age}</div>
                   </div>
                   <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
                   <div className="col-span-2"><RatingDot value={p.overall} /></div>
                   <div className="col-span-2">
-                    <div className="text-[10px] text-[#64748B]">Potential</div>
+                    <div className="text-[10px] text-atext-dim">Potential</div>
                     <div className="flex items-center gap-1"><span className="text-xs font-bold text-[#4AE89A]">{p.potential}</span><Bar value={p.potential} color="#4AE89A" small /></div>
                   </div>
                   <div className="col-span-3 flex justify-end">
-                    <button onClick={()=>sign(p)} disabled={career.finance.cash<30000} className={career.finance.cash>=30000 ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-[#F1F5F9] text-[#CBD5E1]"}>Sign · $30k</button>
+                    <button onClick={()=>sign(p)} disabled={career.finance.cash<30000} className={career.finance.cash>=30000 ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>Sign · $30k</button>
                   </div>
                 </div>
               ))}
@@ -3133,8 +3128,8 @@ function LocalTab({ career, club, updateCareer }) {
           )}
         </div>
       </div>
-      <div className={`${css.inset} p-4 text-xs text-[#64748B]`}>
-        <span className="text-[#E89A4A] font-bold">TIP:</span> Local scouting often unearths late bloomers and gritty depth players. They sign at modest wages but can develop dramatically with the right training program and game time.
+      <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
+        <span className="text-aaccent font-bold">TIP:</span> Local scouting often unearths late bloomers and gritty depth players. They sign at modest wages but can develop dramatically with the right training program and game time.
       </div>
     </div>
   );
@@ -3169,7 +3164,7 @@ function LadderTab({ career, club, league }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>{league.short} LADDER</div>
-          <div className="text-xs text-[#64748B]">Round {career.week} of {career.fixtures.length} · {league.name}</div>
+          <div className="text-xs text-atext-dim">Round {career.week} of {career.fixtures.length} · {league.name}</div>
         </div>
         <div className="flex items-center gap-3">
           <Pill color="#4AE89A">{league.tier === 1 ? "Top 8 = Finals" : "Top 1 = Promoted"}</Pill>
@@ -3177,8 +3172,8 @@ function LadderTab({ career, club, league }) {
         </div>
       </div>
 
-      <div className="rounded-2xl overflow-hidden" style={{border:"1px solid #E2E8F0", background:"#FFFFFF"}}>
-        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-[#94A3B8] font-black border-b" style={{borderColor:"#E2E8F0",background:"#F1F5F9"}}>
+      <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
+        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
           <div className="col-span-1">#</div>
           <div className="col-span-4">Club</div>
           <div className="col-span-1 text-center">P</div>
@@ -3196,23 +3191,23 @@ function LadderTab({ career, club, league }) {
           const inPromo = pos <= promoCutoff;
           const inReleg = pos === relegCutoff && league.tier > 1;
           return (
-            <div key={row.id} className={`grid grid-cols-12 gap-2 px-4 py-2.5 items-center border-b border-[#EEF2F6] ${isMe ? "bg-[#E89A4A]/10" : "hover:bg-[#F1F5F9]/50"} transition`}>
+            <div key={row.id} className={`grid grid-cols-12 gap-2 px-4 py-2.5 items-center border-b border-aline ${isMe ? "bg-aaccent/10" : "hover:bg-aaccent/5"} transition`}>
               <div className="col-span-1 flex items-center gap-1">
-                <span className={`font-bold ${inPromo ? "text-[#4AE89A]" : inReleg ? "text-[#E84A6F]" : "text-[#64748B]"}`}>{pos}</span>
+                <span className={`font-bold ${inPromo ? "text-[#4AE89A]" : inReleg ? "text-[#E84A6F]" : "text-atext-dim"}`}>{pos}</span>
                 {inPromo && <ArrowUp className="w-3 h-3 text-[#4AE89A]" />}
                 {inReleg && <ArrowDown className="w-3 h-3 text-[#E84A6F]" />}
               </div>
               <div className="col-span-4 flex items-center gap-2">
-                <div className="w-2 h-6 rounded-sm" style={{background: c?.colors[0] || "#E2E8F0"}} />
-                <span className={isMe ? "font-bold text-[#E89A4A]" : "font-semibold"}>{c?.name || row.id}</span>
-                {isMe && <Crown className="w-3 h-3 text-[#E89A4A]" />}
+                <div className="w-2 h-6 rounded-sm" style={{background: c?.colors[0] || "var(--A-line)"}} />
+                <span className={isMe ? "font-bold text-aaccent" : "font-semibold"}>{c?.name || row.id}</span>
+                {isMe && <Crown className="w-3 h-3 text-aaccent" />}
               </div>
               <div className="col-span-1 text-center text-sm">{row.p}</div>
               <div className="col-span-1 text-center text-sm font-bold text-[#4AE89A]">{row.W}</div>
               <div className="col-span-1 text-center text-sm text-[#E84A6F]">{row.L}</div>
-              <div className="col-span-1 text-center text-sm text-[#64748B]">{row.D}</div>
+              <div className="col-span-1 text-center text-sm text-atext-dim">{row.D}</div>
               <div className="col-span-1 text-right text-sm font-mono">{row.f}</div>
-              <div className="col-span-1 text-right text-sm font-mono text-[#64748B]">{row.a}</div>
+              <div className="col-span-1 text-right text-sm font-mono text-atext-dim">{row.a}</div>
               <div className="col-span-1 text-right text-sm font-mono font-bold">{row.a > 0 ? ((row.f/row.a)*100).toFixed(1) : "—"}</div>
             </div>
           );
@@ -3227,18 +3222,18 @@ function FixturesTab({ career, club, league }) {
     <div className="space-y-4">
       <div>
         <div className={`${css.h1} text-3xl`}>FIXTURES</div>
-        <div className="text-xs text-[#64748B]">Full season schedule · {career.fixtures.length} rounds</div>
+        <div className="text-xs text-atext-dim">Full season schedule · {career.fixtures.length} rounds</div>
       </div>
       <div className="grid md:grid-cols-2 gap-3">
         {career.fixtures.map((round, ri) => {
           const isPlayed = ri < career.week;
           const isCurrent = ri === career.week;
           return (
-            <div key={ri} className={`${css.panel} p-4 ${isCurrent ? "ring-2 ring-[#E89A4A]" : ""}`}>
+            <div key={ri} className={`${css.panel} p-4 ${isCurrent ? "ring-2 ring-[var(--A-accent)]" : ""}`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="font-bold tracking-wide">Round {ri+1}</div>
                 {isPlayed && <Pill color="#64748B">Played</Pill>}
-                {isCurrent && <Pill color="#E89A4A">Up Next</Pill>}
+                {isCurrent && <Pill color="var(--A-accent)">Up Next</Pill>}
               </div>
               <div className="space-y-1.5">
                 {round.map((m, mi) => {
@@ -3247,19 +3242,19 @@ function FixturesTab({ career, club, league }) {
                   const myMatch = m.home === career.clubId || m.away === career.clubId;
                   const result = isPlayed && m.result;
                   return (
-                    <div key={mi} className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${myMatch ? "bg-[#E89A4A]/10 border border-[#E89A4A]/30" : "bg-[#F8FAFC]"}`}>
+                    <div key={mi} className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${myMatch ? "bg-aaccent/10 border border-aaccent/30" : "bg-apanel"}`}>
                       <div className="flex items-center gap-2 flex-1">
-                        <div className="w-1.5 h-4 rounded-sm" style={{background: home?.colors[0] || "#E2E8F0"}} />
+                        <div className="w-1.5 h-4 rounded-sm" style={{background: home?.colors[0] || "var(--A-line)"}} />
                         <span className={myMatch && m.home === career.clubId ? "font-bold" : ""}>{home?.short || m.home}</span>
                       </div>
                       {result ? (
                         <div className="font-mono font-bold text-xs px-2">{result.hScore}–{result.aScore}</div>
                       ) : (
-                        <div className="text-[10px] text-[#64748B] px-2">vs</div>
+                        <div className="text-[10px] text-atext-dim px-2">vs</div>
                       )}
                       <div className="flex items-center gap-2 flex-1 justify-end">
                         <span className={myMatch && m.away === career.clubId ? "font-bold" : ""}>{away?.short || m.away}</span>
-                        <div className="w-1.5 h-4 rounded-sm" style={{background: away?.colors[0] || "#E2E8F0"}} />
+                        <div className="w-1.5 h-4 rounded-sm" style={{background: away?.colors[0] || "var(--A-line)"}} />
                       </div>
                     </div>
                   );
@@ -3286,7 +3281,7 @@ function PyramidTab({ career, club, league }) {
     <div className="space-y-4">
       <div>
         <div className={`${css.h1} text-3xl`}>{myState} FOOTBALL PYRAMID</div>
-        <div className="text-xs text-[#64748B]">Climb from grassroots to the AFL. You're currently in <span className="text-[#E89A4A] font-bold">{league.short} (Tier {league.tier})</span>.</div>
+        <div className="text-xs text-atext-dim">Climb from grassroots to the AFL. You're currently in <span className="text-aaccent font-bold">{league.short} (Tier {league.tier})</span>.</div>
       </div>
 
       <div className="space-y-4">
@@ -3297,17 +3292,17 @@ function PyramidTab({ career, club, league }) {
             <Pill color="#FFD200">Premier Competition</Pill>
           </div>
           {byTier[1].map(([key, l]) => (
-            <div key={key} className={`p-4 rounded-xl ${career.leagueKey===key ? "bg-[#E89A4A]/15 border-2 border-[#E89A4A]" : "bg-gradient-to-r from-[#FFD200]/10 to-transparent border border-[#FFD200]/30"}`}>
+            <div key={key} className={`p-4 rounded-xl ${career.leagueKey===key ? "bg-aaccent/15 border-2 border-[var(--A-accent)]" : "bg-gradient-to-r from-[#FFD200]/10 to-transparent border border-[#FFD200]/30"}`}>
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <div className="font-bold text-lg">{l.name}</div>
-                  <div className="text-xs text-[#64748B]">{l.clubs.length} clubs · Australia-wide</div>
+                  <div className="text-xs text-atext-dim">{l.clubs.length} clubs · Australia-wide</div>
                 </div>
-                {career.leagueKey===key && <Pill color="#E89A4A">YOU ARE HERE</Pill>}
+                {career.leagueKey===key && <Pill color="var(--A-accent)">YOU ARE HERE</Pill>}
               </div>
               <div className="flex flex-wrap gap-1 mt-2">
                 {l.clubs.map(c => (
-                  <div key={c.id} className={`px-2 py-1 rounded text-[10px] font-bold ${c.id === career.clubId ? "bg-[#E89A4A] text-[#F8FAFC]" : ""}`} style={c.id !== career.clubId ? {background: `${c.colors[0]}33`, color: c.colors[1] === "#FFFFFF" ? "#0F172A" : c.colors[1], border: `1px solid ${c.colors[0]}66`} : {}}>{c.short}</div>
+                  <div key={c.id} className={`px-2 py-1 rounded text-[10px] font-bold ${c.id === career.clubId ? "bg-aaccent text-[#001520]" : ""}`} style={c.id !== career.clubId ? {background: `${c.colors[0]}33`, color: c.colors[1] === "#FFFFFF" ? "var(--A-text)" : c.colors[1], border: `1px solid ${c.colors[0]}66`} : {}}>{c.short}</div>
                 ))}
               </div>
             </div>
@@ -3325,13 +3320,13 @@ function PyramidTab({ career, club, league }) {
               const myStateLeague = isMyState(l);
               const isCurrent = career.leagueKey === key;
               return (
-                <div key={key} className={`p-3 rounded-xl ${isCurrent ? "bg-[#E89A4A]/15 border-2 border-[#E89A4A]" : myStateLeague ? "bg-[#4ADBE8]/10 border border-[#4ADBE8]/40" : "bg-[#F8FAFC] border border-[#E2E8F0] opacity-60"}`}>
+                <div key={key} className={`p-3 rounded-xl ${isCurrent ? "bg-aaccent/15 border-2 border-aaccent" : myStateLeague ? "bg-aaccent-2/10 border border-aaccent-2/40" : "bg-apanel border border-aline opacity-60"}`}>
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-bold text-sm">{l.short}</div>
-                      <div className="text-[10px] text-[#64748B]">{l.state} · {l.clubs.length} clubs</div>
+                      <div className="text-[10px] text-atext-dim">{l.state} · {l.clubs.length} clubs</div>
                     </div>
-                    {isCurrent && <Pill color="#E89A4A">HERE</Pill>}
+                    {isCurrent && <Pill color="var(--A-accent)">HERE</Pill>}
                   </div>
                 </div>
               );
@@ -3346,17 +3341,17 @@ function PyramidTab({ career, club, league }) {
             <Pill color="#4AE89A">Grassroots</Pill>
           </div>
           {byTier[3].length === 0 ? (
-            <div className="text-sm text-[#64748B] py-4">No tier 3 leagues currently in this build.</div>
+            <div className="text-sm text-atext-dim py-4">No tier 3 leagues currently in this build.</div>
           ) : (
             <div className="grid md:grid-cols-3 gap-2">
               {byTier[3].map(([key, l]) => {
                 const myStateLeague = isMyState(l);
                 const isCurrent = career.leagueKey === key;
                 return (
-                  <div key={key} className={`p-3 rounded-lg ${isCurrent ? "bg-[#E89A4A]/15 border-2 border-[#E89A4A]" : myStateLeague ? "bg-[#4AE89A]/10 border border-[#4AE89A]/30" : "bg-[#F8FAFC] border border-[#E2E8F0] opacity-60"}`}>
+                  <div key={key} className={`p-3 rounded-lg ${isCurrent ? "bg-aaccent/15 border-2 border-aaccent" : myStateLeague ? "bg-apos/10 border border-apos/30" : "bg-apanel border border-aline opacity-60"}`}>
                     <div className="font-bold text-xs">{l.short}</div>
-                    <div className="text-[10px] text-[#64748B]">{l.clubs.length} clubs</div>
-                    {isCurrent && <div className="mt-1"><Pill color="#E89A4A">HERE</Pill></div>}
+                    <div className="text-[10px] text-atext-dim">{l.clubs.length} clubs</div>
+                    {isCurrent && <div className="mt-1"><Pill color="var(--A-accent)">HERE</Pill></div>}
                   </div>
                 );
               })}
@@ -3365,8 +3360,8 @@ function PyramidTab({ career, club, league }) {
         </div>
       </div>
 
-      <div className={`${css.inset} p-4 text-xs text-[#64748B]`}>
-        <span className="text-[#E89A4A] font-bold">PROMOTION:</span> Win your league to climb a tier. The AFL is the summit — once there, chase the flag. The game tracks your full journey, season-by-season, from grassroots to glory.
+      <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
+        <span className="text-aaccent font-bold">PROMOTION:</span> Win your league to climb a tier. The AFL is the summit — once there, chase the flag. The game tracks your full journey, season-by-season, from grassroots to glory.
       </div>
     </div>
   );

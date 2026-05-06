@@ -1,8 +1,11 @@
+@import "../tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
   margin: 0;
-  background: #F1F5F9;
+  background: var(--A-bg);
+  color: var(--A-text);
 }
