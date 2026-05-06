@@ -3,9 +3,15 @@
 // ---------------------------------------------------------------------------
 
 export function addDays(dateStr, n) {
-  const d = new Date(dateStr + 'T00:00:00');
+  const y = parseInt(dateStr.slice(0, 4), 10);
+  const mo = parseInt(dateStr.slice(5, 7), 10) - 1;
+  const day = parseInt(dateStr.slice(8, 10), 10);
+  const d = new Date(y, mo, day);
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  const y2 = d.getFullYear();
+  const m2 = String(d.getMonth() + 1).padStart(2, '0');
+  const d2 = String(d.getDate()).padStart(2, '0');
+  return `${y2}-${m2}-${d2}`;
 }
 
 export function formatDate(dateStr) {

@@ -1,5 +1,3 @@
-import { PYRAMID } from '../data/pyramid.js';
-
 export function generateFixtures(leagueClubs) {
   const ids = leagueClubs.map(c => c.id);
   const rounds = [];
