@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Footy Dynasty — Redesign Exploration</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Oswald:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="tokens.css" />
+  <style>
+    html, body { height: 100%; }
+    body {
+      background: #f0eee9;
+      font-family: "Inter", system-ui, sans-serif;
+      color: #2a251f;
+    }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="data.js"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="primitives.jsx"></script>
+  <script type="text/babel" src="direction-a-1.jsx"></script>
+  <script type="text/babel" src="direction-a-2.jsx"></script>
+  <script type="text/babel" src="direction-b-1.jsx"></script>
+  <script type="text/babel" src="direction-b-2.jsx"></script>
+
+  <script type="text/babel">
+    const { DesignCanvas, DCSection, DCArtboard } = window;
+
+    function App() {
+      const { HubA, SquadA } = window.FDA;
+      const { MatchA, ClubA, RecruitA, CompeteA } = window.FDA2;
+      const { HubB, SquadB, MatchB } = window.FDB;
+      const { ClubB, RecruitB, CompeteB } = window.FDB2;
+
+      const W = 1440, H = 900;
+      const wrap = (Cmp) => (
+        <div style={{ width: W, height: H, overflow: "hidden" }}>
+          <Cmp />
+        </div>
+      );
+
+      const screens = [
+        { id: "hub",     title: "01 · Hub",         subtitle: "Club home — at-a-glance dashboard, ladder, fixtures, news",  A: HubA,     B: HubB },
+        { id: "squad",   title: "02 · Squad",       subtitle: "Roster table, attribute deep-dives, captain detail",         A: SquadA,   B: SquadB },
+        { id: "match",   title: "03 · Match Day",   subtitle: "Live scoreboard, quarter-by-quarter feed, momentum, stats",  A: MatchA,   B: MatchB },
+        { id: "club",    title: "04 · Club",        subtitle: "Finances, sponsors, kits, facilities, staff",                 A: ClubA,    B: ClubB },
+        { id: "recruit", title: "05 · Recruit",     subtitle: "Trades, draft, youth academy, scouting",                      A: RecruitA, B: RecruitB },
+        { id: "compete", title: "06 · Competition", subtitle: "Full league ladder, fixtures, pyramid, finals",               A: CompeteA, B: CompeteB },
+      ];
+
+      return (
+        <DesignCanvas>
+          {/* Intro section */}
+          <DCSection id="intro" title="Footy Dynasty — Visual Redesign" subtitle="Two directions, six screens each. Premium broadcast aesthetic, dark mode, data-rich.">
+            <DCArtboard id="brief" label="Brief" width={520} height={420}>
+              <div style={{
+                width: "100%", height: "100%", padding: 40,
+                background: "#0C1828",
+                color: "#EAF2FB",
+                fontFamily: "Inter, system-ui, sans-serif",
+                display: "flex", flexDirection: "column", gap: 18,
+              }}>
+                <div style={{ fontFamily: "Bebas Neue", fontSize: 44, lineHeight: 0.95, letterSpacing: "0.02em" }}>
+                  REDESIGN<br/><span style={{ color: "#00E0FF" }}>FOOTY DYNASTY</span>
+                </div>
+                <div style={{ height: 1, background: "rgba(124,161,207,0.2)" }} />
+                <div style={{ fontFamily: "JetBrains Mono", fontSize: 11, letterSpacing: "0.18em", color: "#8AA3C2", textTransform: "uppercase" }}>Brief</div>
+                <div style={{ fontSize: 14, lineHeight: 1.55 }}>
+                  AFL-pyramid management sim. Player is a community-league battler. Two cinematic
+                  dark-mode directions, all 6 screens visualised at 1440×900. Same data shape, same
+                  IA — diverging on type, color, panel geometry, density.
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 4 }}>
+                  <div>
+                    <div style={{ fontFamily: "Bebas Neue", fontSize: 18, color: "#00E0FF", letterSpacing: "0.04em" }}>A · BROADCAST CINEMATIC</div>
+                    <div style={{ fontSize: 12, color: "#8AA3C2", marginTop: 4, lineHeight: 1.5 }}>Deep navy + cyan, soft gradients, rounded panels, telemetry tone.</div>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: "Bebas Neue", fontSize: 18, color: "#FF5A1F", letterSpacing: "0.04em" }}>B · STADIUM CARBON</div>
+                    <div style={{ fontSize: 12, color: "#8AA3C2", marginTop: 4, lineHeight: 1.5 }}>Pure black + bold orange, brutalist scoreboard, oversized Bebas display.</div>
+                  </div>
+                </div>
+                <div style={{ flex: 1 }} />
+                <div style={{ fontFamily: "JetBrains Mono", fontSize: 10, color: "#4F6789", letterSpacing: "0.15em", textTransform: "uppercase" }}>
+                  Drag artboards to rearrange · click ⛶ to focus a screen
+                </div>
+              </div>
+            </DCArtboard>
+          </DCSection>
+
+          {screens.map(s => (
+            <DCSection key={s.id} id={s.id} title={s.title} subtitle={s.subtitle}>
+              <DCArtboard id={`${s.id}-A`} label="A · Broadcast Cinematic" width={W} height={H}>
+                {wrap(s.A)}
+              </DCArtboard>
+              <DCArtboard id={`${s.id}-B`} label="B · Stadium Carbon" width={W} height={H}>
+                {wrap(s.B)}
+              </DCArtboard>
+            </DCSection>
+          ))}
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
