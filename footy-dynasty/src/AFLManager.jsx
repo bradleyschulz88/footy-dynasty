@@ -718,7 +718,6 @@ function CareerSetup({ onStart }) {
     const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
     const fixtures = generateFixtures(league.clubs);
     const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
-    sessionStorage.removeItem(SETUP_SS_KEY);
     onStart({
       managerName: managerName || "Coach",
       clubId,
