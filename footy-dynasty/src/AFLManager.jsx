@@ -690,6 +690,7 @@ function CareerSetup({ onStart }) {
   const [clubId, _setClubId] = useState(saved.clubId ?? null);
   const [managerName, setManagerName] = useState(saved.managerName ?? "");
   const [loading, setLoading] = useState(false);
+  const [startError, setStartError] = useState(null);
 
   const setStep      = (v) => { saveSetup({ step: v });      _setStep(v); };
   const setSelState  = (v) => { saveSetup({ state: v });     _setSelState(v); };
@@ -701,8 +702,10 @@ function CareerSetup({ onStart }) {
   const availableClubs = leagueKey ? PYRAMID[leagueKey].clubs : [];
   const tiersForState = state ? [1, 2, 3].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t)) : [1, 2, 3];
 
-  function start() {
+  function start(e) {
+    if (e) e.preventDefault();
     if (!clubId || !leagueKey || loading) return;
+    setStartError(null);
     setLoading(true);
     try {
     const club = findClub(clubId);
@@ -753,7 +756,7 @@ function CareerSetup({ onStart }) {
     });
     } catch (err) {
       setLoading(false);
-      alert(`Failed to start career: ${err.message}\n\nCheck browser console for details.`);
+      setStartError(err.message);
       console.error('[start] career init error:', err);
     }
   }
@@ -895,7 +898,7 @@ function CareerSetup({ onStart }) {
 
         {step === 4 && clubId && leagueKey && findClub(clubId) && (
           <div className="fade-up max-w-xl">
-            <button onClick={()=>{ setClubId(null); setStep(3); }} disabled={loading} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
+            <button type="button" onClick={()=>{ setClubId(null); setStep(3); }} disabled={loading} className="text-[#64748B] text-sm mb-4 hover:text-[#0F172A] flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>YOUR DETAILS</h2>
             <div className={`${css.panel} p-6 mb-4`}>
               {(() => { const c = findClub(clubId); return (
@@ -909,9 +912,21 @@ function CareerSetup({ onStart }) {
               </div>
               ); })()}
               <label className={css.label}>Manager Name</label>
-              <input value={managerName} onChange={(e)=>setManagerName(e.target.value)} placeholder="Bluey McGee" className="w-full mt-2 bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#E89A4A] outline-none rounded-lg px-4 py-3 text-[#0F172A]" disabled={loading} />
+              <input
+                value={managerName}
+                onChange={(e) => setManagerName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') start(e); }}
+                placeholder="Bluey McGee"
+                className="w-full mt-2 bg-[#F8FAFC] border border-[#E2E8F0] focus:border-[#E89A4A] outline-none rounded-lg px-4 py-3 text-[#0F172A]"
+                disabled={loading}
+              />
             </div>
-            <button onClick={start} disabled={loading} className={`${css.btnPrimary} w-full text-lg py-4 ${loading ? 'opacity-70' : 'glow'}`}>
+            {startError && (
+              <div className="mb-3 p-3 rounded-xl text-sm text-[#DC2626] bg-[#FEF2F2] border border-[#FECACA]">
+                ⚠️ {startError}
+              </div>
+            )}
+            <button type="button" onClick={start} disabled={loading} className={`${css.btnPrimary} w-full text-lg py-4 ${loading ? 'opacity-70' : 'glow'}`}>
               {loading ? '⏳ Starting career…' : 'START CAREER →'}
             </button>
           </div>
