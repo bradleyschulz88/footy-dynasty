@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 import { generateSquad, generatePlayer } from './playerGen.js';
 import { rand, rng, seedRng, TIER_SCALE } from './rng.js';
+import { selectBalancedLineup } from './lineupBalance.js';
 
 const SQUAD_SIZE = 32;
 
@@ -86,10 +87,7 @@ export function ageAiSquads(aiSquads, newLeagueTier) {
   return out;
 }
 
-// AI clubs rotate their lineup of 22 each round (top 22 by overall, prioritising fit/uninjured)
+// AI clubs rotate their lineup of 22 each round (balanced primary lines, then rating)
 export function selectAiLineup(squad) {
-  const eligible = squad.filter(p => (p.injured ?? 0) === 0 && (p.fitness ?? 90) > 50);
-  const ranked = [...(eligible.length >= 22 ? eligible : squad)]
-    .sort((a, b) => (b.trueRating || b.overall) - (a.trueRating || a.overall));
-  return ranked.slice(0, 22);
+  return selectBalancedLineup(squad, 22);
 }

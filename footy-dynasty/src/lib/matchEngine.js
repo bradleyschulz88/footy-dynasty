@@ -1,6 +1,7 @@
 import { rand, randNorm, rng, pick } from './rng.js';
 import { findClub } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred } from './playerGen.js';
+import { lineupStructureModifier } from './lineupBalance.js';
 
 export const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
@@ -9,6 +10,7 @@ export function teamRating(squad, lineup, training, facilitiesAvg, staffAvg) {
     ? lineup.map(id => squad.find(p => p.id === id)).filter(Boolean)
     : squad.slice().sort((a, b) => b.overall - a.overall).slice(0, 22);
   if (top22.length === 0) return 50;
+  const lineupIds = top22.map((p) => p.id);
   const avgOverall  = top22.reduce((a, b) => a + (b.trueRating || b.overall), 0) / top22.length;
   const avgForm     = top22.reduce((a, b) => a + b.form, 0) / top22.length;
   const avgFitness  = top22.reduce((a, b) => a + b.fitness, 0) / top22.length;
@@ -18,7 +20,8 @@ export function teamRating(squad, lineup, training, facilitiesAvg, staffAvg) {
     + (avgFitness - 90) * 0.1
     + trainingBoost
     + (facilitiesAvg - 1) * 1.2
-    + (staffAvg - 60) * 0.15;
+    + (staffAvg - 60) * 0.15
+    + lineupStructureModifier(squad, lineupIds);
 }
 
 // Tactic adjustments (defense, balance, attack)
