@@ -2,7 +2,10 @@
 // Save versioning, slots, autosave
 // ---------------------------------------------------------------------------
 
-export const SAVE_VERSION = 6;
+import { PYRAMID, findClub } from '../data/pyramid.js';
+import { getClubGround } from '../data/grounds.js';
+
+export const SAVE_VERSION = 7;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
@@ -150,6 +153,18 @@ export function migrate(save) {
           : squad;
       }
       s.aiSquads = next;
+    }
+  }
+
+  if (v < 7) {
+    s.saveVersion = 7;
+    s.homeWinStreak = s.homeWinStreak ?? 0;
+    s.winStreak = s.winStreak ?? 0;
+    if (!s.clubGround && s.clubId) {
+      const cl = findClub(s.clubId);
+      const st = s.facilities?.stadium?.level ?? 1;
+      const tier = (s.leagueKey && PYRAMID[s.leagueKey]?.tier) ?? 2;
+      s.clubGround = getClubGround(cl, st, tier);
     }
   }
 

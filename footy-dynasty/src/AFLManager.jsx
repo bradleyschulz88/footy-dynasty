@@ -71,6 +71,8 @@ import { getAdvanceContext } from './lib/advanceContext.js';
 import {
   TIER_FINANCE, INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, TICKET_PRICE, BASE_ATTENDANCE,
 } from './lib/finance/constants.js';
+import { getClubGround } from './data/grounds.js';
+import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './lib/homeAdvantage.js';
 
 // ============================================================================
 // ERROR BOUNDARY
@@ -112,6 +114,23 @@ export default function AFLManager() {
 }
 
 const SETUP_SS_KEY = 'footy-dynasty-setup';
+
+/** Home / form streaks for dynamic home-ground advantage (community.js). */
+function applyMatchStreaks(c, won, drew, isHome) {
+  if (won) {
+    c.winStreak = (c.winStreak >= 0 ? c.winStreak : 0) + 1;
+  } else if (!drew) {
+    c.winStreak = (c.winStreak <= 0 ? c.winStreak : 0) - 1;
+  } else {
+    const w = c.winStreak ?? 0;
+    if (w > 0) c.winStreak = w - 1;
+    else if (w < 0) c.winStreak = w + 1;
+  }
+  if (isHome) {
+    if (won) c.homeWinStreak = (c.homeWinStreak ?? 0) + 1;
+    else if (!drew) c.homeWinStreak = 0;
+  }
+}
 
 function AFLManagerInner() {
   const [activeSlot, setActiveSlotState] = useState(() => getActiveSlot());
@@ -220,6 +239,8 @@ function AFLManagerInner() {
       ladder: newLadder,
       coachReputation: career.coachReputation ?? 30,
     });
+    const newFacilities = DEFAULT_FACILITIES();
+    const newClubGround = getClubGround(newClub, newFacilities.stadium.level, newLeague.tier);
 
     setCareer({
       ...career,
@@ -245,6 +266,8 @@ function AFLManagerInner() {
       leagueKey: offer.leagueKey,
       season:    SEASON,
       week:      0,
+      winStreak: 0,
+      homeWinStreak: 0,
       currentDate: `${SEASON - 1}-12-01`,
       phase:     'preseason',
       eventQueue,
@@ -256,7 +279,7 @@ function AFLManagerInner() {
       finance:   newFinance,
       sponsors:  [],
       staff:     generateStaff(newLeague.tier),
-      facilities: DEFAULT_FACILITIES(),
+      facilities: newFacilities,
       training:  DEFAULT_TRAINING(),
       // Reset round/match state
       isSacked:  false,
@@ -278,7 +301,8 @@ function AFLManagerInner() {
       footyTripAvailable: false,
       footyTripUsed: false,
       groundCondition: 85,
-      groundName: `${newClub.short} Oval`,
+      clubGround: newClubGround,
+      groundName: newClubGround.shortName,
       weeklyWeather: {},
       // v4 finance state — fresh ledger at the new club
       weeklyHistory: [],
@@ -590,10 +614,12 @@ function AFLManagerInner() {
       const oppRating = oppSquad?.length
         ? teamRating(oppSquad, oppLineup.map(p => p.id), { intensity: 60, focus: {} }, 1, 60)
         : aiClubRating(oppId, league.tier);
+      const playerClub = findClub(c.clubId);
       const result = simMatchWithQuarters(
         { rating: isHome ? myRating : oppRating },
         { rating: isHome ? oppRating : myRating },
-        isHome, myRating
+        isHome, myRating,
+        { homeFixtureAdvantage: resolveHomeAdvantageForFixture(c, league, isHome, playerClub, opp) },
       );
       const myTotal  = isHome ? result.homeTotal : result.awayTotal;
       const oppTotal = isHome ? result.awayTotal : result.homeTotal;
@@ -662,6 +688,9 @@ function AFLManagerInner() {
               tactic: c.tacticChoice || 'balanced', playerLineup, oppLineup, oppTactic, groundScoringMod, groundAccuracyMod,
               getPlayerStrengthForQuarter,
               ...(getOppStrengthForQuarter ? { getOppStrengthForQuarter } : {}),
+              homeFixtureAdvantage: resolveHomeAdvantageForFixture(
+                c, league, isHome, findClub(c.clubId), opp,
+              ),
             }
           );
           const myTotal  = isHome ? result.homeTotal : result.awayTotal;
@@ -725,7 +754,14 @@ function AFLManagerInner() {
           // AI-vs-AI macro sim using persistent squads
           const r1 = ratingFor(m.home);
           const r2 = ratingFor(m.away);
-          const result = simMatch({ rating: r1 }, { rating: r2 }, false, r2);
+          const weatherTag = typeof c.weeklyWeather?.[ev.round] === 'string' ? c.weeklyWeather[ev.round] : 'fine';
+          const homeAdvAi = homeAdvantageAiHome(
+            league,
+            getClubGround(findClub(m.home), 3, league.tier),
+            !!c.inFinals,
+            weatherTag,
+          );
+          const result = simMatch({ rating: r1 }, { rating: r2 }, false, r2, homeAdvAi);
           c.ladder = applyResultToLadder(c.ladder, m.home, m.away, result.homeTotal, result.awayTotal);
           m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
         }
@@ -776,6 +812,7 @@ function AFLManagerInner() {
       const prevBoard = c.finance.boardConfidence;
       let boardDelta;
       if (myResult) {
+        applyMatchStreaks(c, myResult.won, myResult.drew, myResult.isHome);
         boardDelta = myResult.won ? winBump : myResult.drew ? drawDelta : lossDrop;
         c.finance.fanHappiness    = clamp(c.finance.fanHappiness + (myResult.won ? 3 : myResult.drew ? 0 : -2), 10, 100);
         c.finance.boardConfidence = clamp(c.finance.boardConfidence + boardDelta, 0, 100);
@@ -976,9 +1013,56 @@ function AFLManagerInner() {
       const isHome = m.home === c.clubId;
       const homeR = m.home === c.clubId ? myRating : aiClubRating(m.home, league.tier);
       const awayR = m.away === c.clubId ? myRating : aiClubRating(m.away, league.tier);
-      const result = isPlayerMatch
-        ? simMatchWithQuarters({ rating: homeR }, { rating: awayR }, isHome, myRating)
-        : simMatch({ rating: homeR }, { rating: awayR }, false, awayR);
+      let result;
+      if (isPlayerMatch) {
+        c.aiSquads = ensureSquadsForLeague(c, league);
+        const oppId = isHome ? m.away : m.home;
+        const oppClub = findClub(oppId);
+        const oppSquad = c.aiSquads?.[oppId];
+        const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
+        const oppLineupIds = oppLineup.map(p => p.id);
+        const neutralTraining = { intensity: 60, focus: {} };
+        const oppRatingForTactics = oppSquad?.length
+          ? teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60)
+          : aiClubRating(oppId, league.tier);
+        const oppTactic = oppRatingForTactics > myRating + 4 ? 'attack' : oppRatingForTactics < myRating - 4 ? 'defensive' : 'balanced';
+        const playerLineup = c.lineup.map(id => c.squad.find(p => p.id === id)).filter(Boolean);
+        let groundScoringMod = 1.0;
+        let groundAccuracyMod = 1.0;
+        if (isHome) {
+          const band = groundConditionBand(c.groundCondition ?? 85);
+          groundScoringMod = band.scoringMod;
+          groundAccuracyMod = band.accuracyMod;
+        }
+        const getPlayerStrengthForQuarter = (qi) =>
+          teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi);
+        const getOppStrengthForQuarter = oppSquad?.length
+          ? (qi) => teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
+          : null;
+        result = simMatchWithQuarters(
+          { rating: homeR }, { rating: awayR }, isHome, myRating,
+          {
+            tactic: c.tacticChoice || 'balanced',
+            playerLineup,
+            oppLineup,
+            oppTactic,
+            groundScoringMod,
+            groundAccuracyMod,
+            getPlayerStrengthForQuarter,
+            ...(getOppStrengthForQuarter ? { getOppStrengthForQuarter } : {}),
+            homeFixtureAdvantage: resolveHomeAdvantageForFixture(c, league, isHome, findClub(c.clubId), oppClub),
+          },
+        );
+      } else {
+        const weatherTag = typeof c.weeklyWeather?.[c.week] === 'string' ? c.weeklyWeather[c.week] : 'fine';
+        const homeAdvAi = homeAdvantageAiHome(
+          league,
+          getClubGround(findClub(m.home), 3, league.tier),
+          true,
+          weatherTag,
+        );
+        result = simMatch({ rating: homeR }, { rating: awayR }, false, awayR, homeAdvAi);
+      }
       const winnerId = result.winner === "home" ? m.home : result.winner === "away" ? m.away : m.home;
       newAlive.push(winnerId);
       m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
@@ -987,6 +1071,8 @@ function AFLManagerInner() {
         const playerWon = (isHome && result.winner === "home") || (!isHome && result.winner === "away");
         const myScore  = isHome ? result.homeTotal : result.awayTotal;
         const oppScore = isHome ? result.awayTotal  : result.homeTotal;
+        const drewFinal = myScore === oppScore;
+        applyMatchStreaks(c, playerWon, drewFinal, isHome);
         const opp = findClub(isHome ? m.away : m.home);
         c.news = [{ week: c.week, type: playerWon ? "win" : "loss",
           text: playerWon
@@ -998,11 +1084,11 @@ function AFLManagerInner() {
           ...result,
           isHome, opp,
           myTotal: myScore, oppTotal: oppScore,
-          won: playerWon, drew: myScore === oppScore,
+          won: playerWon, drew: drewFinal,
           isPreseason: false, label: roundLabel, isAFL: league.tier === 1,
         };
         c.lastEvent = { type: 'round', round: roundLabel, date: c.currentDate || '', isHome, opp,
-          result, myTotal: myScore, oppTotal: oppScore, won: playerWon, drew: myScore === oppScore };
+          result, myTotal: myScore, oppTotal: oppScore, won: playerWon, drew: drewFinal };
       }
       c.finalsResults.push({ round: c.finalsRound, label: roundLabel, ...m });
     }
@@ -1290,6 +1376,10 @@ function AFLManagerInner() {
     }
     // Regenerate event queue for the new season
     const nextLeague = PYRAMID[c.leagueKey];
+    const seasonClub = findClub(c.clubId);
+    const regGround    = getClubGround(seasonClub, c.facilities?.stadium?.level ?? 1, nextLeague.tier);
+    c.clubGround       = regGround;
+    c.groundName        = regGround.shortName;
     c.eventQueue = generateSeasonCalendar(c.season, nextLeague.clubs, c.fixtures, c.clubId);
     c.currentDate = `${c.season - 1}-12-01`;
     c.phase = 'preseason';
@@ -1525,6 +1615,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     const fixtures = generateFixtures(league.clubs);
     const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
     const facilities = DEFAULT_FACILITIES();
+    const clubGround = getClubGround(club, facilities.stadium.level, league.tier);
     const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
     const startOffers = buildInitialSponsorOffers({
       leagueTier: league.tier,
@@ -1592,8 +1683,11 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       footyTripAvailable: false,
       footyTripUsed: false,
       groundCondition: 85,
-      groundName: `${club.short} Oval`,
+      clubGround,
+      groundName: clubGround.shortName,
       weeklyWeather: {},
+      winStreak: 0,
+      homeWinStreak: 0,
       coachReputation: 30,
       coachTier: 'Journeyman',
       coachStats: {

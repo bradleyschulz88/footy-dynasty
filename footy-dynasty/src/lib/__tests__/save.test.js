@@ -77,6 +77,19 @@ describe('migrate', () => {
     expect(m.aiSquads.xyz[0].secondaryPosition).toBe(null);
   });
 
+  it('v6 -> v7 adds clubGround snapshot, streak fields', () => {
+    const m = migrate({
+      saveVersion: 6,
+      clubId: 'mel',
+      leagueKey: 'AFL',
+      facilities: { stadium: { level: 1, cost: 350_000, max: 5 } },
+    });
+    expect(m.saveVersion).toBe(SAVE_VERSION);
+    expect(m.homeWinStreak).toBe(0);
+    expect(m.winStreak).toBe(0);
+    expect(m.clubGround?.shortName).toBe('MCG');
+  });
+
   it('repairs a broken stadium schema where it was stamped as the integer 1', () => {
     const broken = {
       saveVersion: 3,
