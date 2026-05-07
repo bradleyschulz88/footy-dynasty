@@ -2,7 +2,7 @@
 // Save versioning, slots, autosave
 // ---------------------------------------------------------------------------
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
@@ -112,6 +112,26 @@ export function migrate(save) {
 
     // Last EOS finance summary (rendered in SeasonSummaryScreen)
     s.lastEosFinance = s.lastEosFinance || null;
+  }
+
+  if (v < 5) {
+    s.saveVersion = 5;
+    s.postSeasonPhase = s.postSeasonPhase ?? 'none';
+    s.inTradePeriod = s.inTradePeriod ?? false;
+    s.tradePeriodDay = s.tradePeriodDay ?? 0;
+    s.freeAgencyOpen = s.freeAgencyOpen ?? false;
+    s.postSeasonDraftCountdown = s.postSeasonDraftCountdown ?? null;
+    s.freeAgentBalance = s.freeAgentBalance ?? { gained: 0, lost: 0 };
+    s.tradeHistory = s.tradeHistory ?? [];
+    s.draftPickBank = s.draftPickBank ?? null;
+    s.offSeasonFreeAgents = s.offSeasonFreeAgents ?? [];
+    if (Array.isArray(s.squad)) {
+      s.squad = s.squad.map((p) => ({
+        ...p,
+        receivedInTrade: p.receivedInTrade ?? null,
+        seasonsAtClub: p.seasonsAtClub ?? 0,
+      }));
+    }
   }
 
   return s;

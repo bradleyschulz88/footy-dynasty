@@ -6,7 +6,7 @@ import {
   Star, Zap, Heart, Target, Activity, Flame, Sparkles, Crown,
   TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
   Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
-  Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw
+  Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus
 } from "lucide-react";
 import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf } from './data/pyramid.js';
@@ -19,6 +19,15 @@ import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO, formatDate, formatDateLong, formatMonth, addDays, daysInMonth, startOfMonth, getDayOfWeek, isSameMonth, prevMonth, nextMonth } from './lib/calendar.js';
 import { ensureSquadsForLeague, aiClubRatingFromSquad, tickAiSquads, ageAiSquads, selectAiLineup } from './lib/aiSquads.js';
 import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from './lib/save.js';
+import {
+  beginPostSeasonTradePeriod,
+  advanceTradePeriodDay,
+  advanceDraftCountdown,
+  clearPostSeasonTransient,
+  playerBlockedFromTrade,
+  TRADE_PERIOD_DAYS,
+  POST_TRADE_DRAFT_COUNTDOWN_DAYS,
+} from './lib/tradePeriod.js';
 import { css, Bar, RatingDot, Pill, Stat, Jersey, GlobalStyle } from './components/primitives.jsx';
 import TabNav from './components/TabNav.jsx';
 import GameOverScreen from './screens/GameOverScreen.jsx';
@@ -284,6 +293,15 @@ function AFLManagerInner() {
       fundraisersUsed:            {},
       communityGrantUsed:         false,
       lastEosFinance:             null,
+      postSeasonPhase:            'none',
+      inTradePeriod:              false,
+      tradePeriodDay:             0,
+      freeAgencyOpen:             false,
+      postSeasonDraftCountdown:   null,
+      freeAgentBalance:           { gained: 0, lost: 0 },
+      tradeHistory:               [],
+      draftPickBank:              null,
+      offSeasonFreeAgents:        [],
       // Fresh journalist at the new club
       journalist: career.coachReputation >= 60
         ? { ...generateJournalist(), satisfaction: 65 }
@@ -329,6 +347,18 @@ function AFLManagerInner() {
       return;
     }
 
+    if (c.postSeasonPhase === 'trade_period' && c.inTradePeriod) {
+      advanceTradePeriodDay(c, league, c.leagueKey);
+      setCareer(c);
+      return;
+    }
+    if (c.postSeasonPhase === 'draft_waiting') {
+      const next = advanceDraftCountdown(c);
+      if (next === 'finish_season') finishSeason(c);
+      setCareer(c);
+      return;
+    }
+
     // Check for end-of-season (all rounds done, not in finals yet)
     const anyIncomplete = (c.eventQueue || []).find(e => !e.completed);
     if (!anyIncomplete) {
@@ -336,7 +366,7 @@ function AFLManagerInner() {
       if (finalists.length >= 2) {
         startFinals(c);
       } else {
-        finishSeason(c);
+        beginPostSeasonTradePeriod(c, league, c.leagueKey);
       }
       setCareer(c);
       return;
@@ -483,7 +513,7 @@ function AFLManagerInner() {
         });
 
         // Generate 2-4 AI trade offers for our players
-        const tradableSquad = c.squad.filter(p => p.contract > 0 && p.overall >= 65 && !c.lineup.slice(0, 5).includes(p.id));
+        const tradableSquad = c.squad.filter(p => p.contract > 0 && p.overall >= 65 && !c.lineup.slice(0, 5).includes(p.id) && !playerBlockedFromTrade(p, c.season));
         const offerCount = Math.min(tradableSquad.length, rand(2, 4));
         const offerClubs = (league.clubs || []).filter(cl => cl.id !== c.clubId);
         const offers = [];
@@ -805,7 +835,7 @@ function AFLManagerInner() {
       if (!hasMoreRounds) {
         const finalists = getFinalsTeams(c.ladder, league.tier);
         if (finalists.length >= 2) startFinals(c);
-        else finishSeason(c);
+        else beginPostSeasonTradePeriod(c, league, c.leagueKey);
       }
 
       if (myResult) {
@@ -913,7 +943,8 @@ function AFLManagerInner() {
         text: isMeChamp ? `🏆🎉 PREMIERS! ${winnerClub?.name} are the ${c.season} champions!`
                         : `${winnerClub?.name} win the ${c.season} premiership.` }, ...c.news].slice(0,15);
       c.inFinals = false;
-      return finishSeason(c);
+      beginPostSeasonTradePeriod(c, league, c.leagueKey);
+      return c;
     }
 
     // Pair alive clubs (seeded by original ladder position)
@@ -1083,7 +1114,7 @@ function AFLManagerInner() {
       return { ...p, age: newAge, overall: newOverall, trueRating: newTrue, tier: newLeagueTier,
                contract: Math.max(0, p.contract - 1), form: rand(50, 80), fitness: rand(85, 100),
                goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0,
-               suspended: 0 };
+               suspended: 0, seasonsAtClub: (p.seasonsAtClub || 0) + 1 };
     });
     // Capture retirees/leavers — players walk if they're: too old, contract expired AND not preserved by an upcoming renewal,
     // or marked _walking by a rejected renewal proposal.
@@ -1252,6 +1283,7 @@ function AFLManagerInner() {
     c.lastEvent = null;
     c.inMatchDay = false;
     c.currentMatchResult = null;
+    clearPostSeasonTransient(c);
     return c;
   }
 
@@ -1387,7 +1419,7 @@ function AFLManagerInner() {
       <main className="flex-1 overflow-y-auto min-w-0">
         <TopBar career={career} club={club} league={league} myLadderPos={myLadderPos} onAdvance={advanceToNextEvent} />
         <div className="p-3 md:p-6 max-w-[1400px] mx-auto">
-          {screen === "hub"      && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={setScreen} onAdvance={advanceToNextEvent} />}
+          {screen === "hub"      && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={setScreen} setTab={setTab} onAdvance={advanceToNextEvent} />}
           {screen === "squad"    && <SquadScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
           {screen === "schedule" && <ScheduleScreen career={career} club={club} league={league} />}
           {screen === "club"     && <ClubScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
@@ -1574,6 +1606,15 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       fundraisersUsed:            {},
       communityGrantUsed:         false,
       lastEosFinance:             null,
+      postSeasonPhase:            'none',
+      inTradePeriod:              false,
+      tradePeriodDay:             0,
+      freeAgencyOpen:             false,
+      postSeasonDraftCountdown:   null,
+      freeAgentBalance:           { gained: 0, lost: 0 },
+      tradeHistory:               [],
+      draftPickBank:              null,
+      offSeasonFreeAgents:        [],
     });
     } catch (err) {
       setLoading(false);
@@ -2122,7 +2163,7 @@ function DifficultyMiniSummary({ career, cfg }) {
   );
 }
 
-function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) {
+function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdvance }) {
   const sorted = sortedLadder(career.ladder);
   const top5 = sorted.slice(0, 5);
   const myRow = sorted.find(r => r.id === career.clubId);
@@ -2289,6 +2330,41 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
           <div className="text-right">
             <div className="font-display text-xl text-aaccent">{(career.finalsAlive||[]).includes(career.clubId) ? "STILL ALIVE" : "SEASON OVER"}</div>
           </div>
+        </div>
+      )}
+
+      {career.postSeasonPhase === 'trade_period' && career.inTradePeriod && (
+        <div className="rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3" style={{background:"linear-gradient(135deg, rgba(74, 232, 154, 0.12), rgba(0, 224, 255, 0.08))", border:"2px solid rgba(74, 232, 154, 0.4)"}}>
+          <div className="flex items-center gap-3 min-w-[200px]">
+            <span className="text-3xl">🔀</span>
+            <div>
+              <div className="font-display text-xl text-aaccent">TRADE PERIOD</div>
+              <div className="text-xs text-atext-dim">
+                {(career.tradePeriodDay || 0) === 0
+                  ? 'Advance time (Next) to begin day 1'
+                  : `Day ${career.tradePeriodDay} of ${TRADE_PERIOD_DAYS}`}
+                {career.freeAgencyOpen ? ' · Free agency open (through Day 7)' : ' · Trades only'}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 items-center">
+            <button type="button" onClick={() => { setScreen('recruit'); setTab('freeagents'); }} className={`${css.btnPrimary} text-xs px-3 py-2`}>Free agents</button>
+            <button type="button" onClick={() => setScreen('recruit')} className={`${css.btnGhost} text-xs px-3 py-2`}>Recruit hub</button>
+            <div className="text-[10px] text-atext-dim max-w-[220px]">Advance time with <strong>Next</strong> in the bar above — each step is one Trade Period day.</div>
+          </div>
+        </div>
+      )}
+
+      {career.postSeasonPhase === 'draft_waiting' && (
+        <div className="rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3" style={{background:"linear-gradient(135deg, rgba(255, 179, 71, 0.12), rgba(0, 224, 255, 0.06))", border:"2px solid rgba(255, 179, 71, 0.35)"}}>
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">📋</span>
+            <div>
+              <div className="font-display text-xl text-aaccent">NATIONAL DRAFT COUNTDOWN</div>
+              <div className="text-xs text-atext-dim">{career.postSeasonDraftCountdown ?? POST_TRADE_DRAFT_COUNTDOWN_DAYS} step{(career.postSeasonDraftCountdown ?? POST_TRADE_DRAFT_COUNTDOWN_DAYS) === 1 ? '' : 's'} until list reset &amp; new pre-season</div>
+            </div>
+          </div>
+          <div className="text-[10px] text-atext-dim">Keep using <strong>Next</strong> — when this hits zero, the off-season rolls (contracts, draft pool, new calendar).</div>
         </div>
       )}
 
@@ -4396,17 +4472,22 @@ function FacilitiesTab({ career, updateCareer }) {
 // STAFF TAB
 // ============================================================================
 function StaffTab({ career, updateCareer }) {
+  const leagueTier = PYRAMID[career.leagueKey]?.tier || 1;
   const replaceStaff = (idx) => {
     const old = career.staff[idx];
     seedRng(Date.now() % 100000 + idx);
     const newRating = clamp(old.rating + rand(-8, 14), 35, 95);
-    const newWage = Math.round((newRating / 75) * 80000);
+    let newWage;
+    if (old.volunteer) newWage = 0;
+    else if (leagueTier === 3 && old.id === 's1') newWage = Math.round((newRating / 75) * 35000);
+    else newWage = Math.round((newRating / 75) * 80000);
     const newStaff = [...career.staff];
     newStaff[idx] = {
       ...old,
       name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`,
       rating: newRating,
       wage: newWage,
+      volunteer: !!old.volunteer,
       contract: rand(1, 3),
     };
     updateCareer({
@@ -4447,7 +4528,7 @@ function StaffTab({ career, updateCareer }) {
               <Bar value={s.rating} small />
             </div>
             <div className="col-span-1 text-center text-sm">{s.contract}y</div>
-            <div className="col-span-2 text-right text-sm font-mono">${(s.wage/1000).toFixed(0)}k</div>
+            <div className="col-span-2 text-right text-sm font-mono">{s.volunteer ? <span className="text-[#4AE89A]">Volunteer</span> : `$${(s.wage/1000).toFixed(0)}k`}</div>
             <div className="col-span-1 flex justify-end">
               <button onClick={()=>replaceStaff(idx)} className="text-xs px-3 py-1.5 rounded-lg border border-aline hover:border-[var(--A-accent)] hover:text-aaccent transition">Replace</button>
             </div>
@@ -4456,7 +4537,7 @@ function StaffTab({ career, updateCareer }) {
       </div>
 
       <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
-        <span className="text-aaccent font-bold">TIP:</span> Replacing a staff member rolls a new candidate. Higher overall ratings = better training outcomes, lower injury rates, sharper recruitment, and stronger youth pipeline. Wages scale with rating.
+        <span className="text-aaccent font-bold">TIP:</span> Replacing a staff member rolls a new candidate. Volunteers at local level are unpaid; senior coach is usually a small part-time stipend. Higher ratings still improve training.
       </div>
     </div>
   );
@@ -4467,10 +4548,14 @@ function StaffTab({ career, updateCareer }) {
 // ============================================================================
 function RecruitScreen({ career, club, updateCareer, tab, setTab }) {
   const offerCount = (career.pendingTradeOffers || []).filter(o => o.status === 'pending').length;
+  const inTradePeriod = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
+  const showPicks = !!career.draftPickBank;
   const t = tab || (offerCount > 0 ? "offers" : "trade");
   const tabs = [
     { key: "offers", label: `Offers${offerCount ? ` (${offerCount})` : ''}`, icon: Newspaper },
-    { key: "trade", label: "Trades", icon: Repeat },
+    ...(inTradePeriod ? [{ key: "freeagents", label: career.freeAgencyOpen ? "Free agents" : "Free agents (closed)", icon: UserPlus }] : []),
+    ...(showPicks ? [{ key: "picks", label: "Draft picks", icon: FileText }] : []),
+    { key: "trade", label: inTradePeriod ? "Player market" : "Trades", icon: Repeat },
     { key: "draft", label: "Draft", icon: Award },
     { key: "youth", label: "Youth Academy", icon: GraduationCap },
     { key: "local", label: "Local Football", icon: Map },
@@ -4479,10 +4564,147 @@ function RecruitScreen({ career, club, updateCareer, tab, setTab }) {
     <div className="anim-in">
       <TabNav tabs={tabs} active={t} onChange={setTab} />
       {t === "offers" && <OffersTab career={career} club={club} updateCareer={updateCareer} />}
+      {t === "freeagents" && (inTradePeriod ? <FreeAgentsTab career={career} club={club} updateCareer={updateCareer} /> : (
+        <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Free agency runs during the post-season Trade Period (after the grand final).</div>
+      ))}
+      {t === "picks" && (showPicks ? <DraftPickBankTab career={career} /> : (
+        <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Draft capital is prepared when the Trade Period opens.</div>
+      ))}
       {t === "trade" && <TradeTab career={career} updateCareer={updateCareer} />}
       {t === "draft" && <DraftTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "youth" && <YouthTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "local" && <LocalTab career={career} club={club} updateCareer={updateCareer} />}
+    </div>
+  );
+}
+
+function DraftPickBankTab({ career }) {
+  const bank = career.draftPickBank || {};
+  const years = Object.keys(bank).sort();
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className={`${css.h1} text-3xl`}>DRAFT CAPITAL</div>
+        <div className="text-xs text-atext-dim">Selections tied to your club for the next three national drafts. Compensation picks are not tradeable.</div>
+      </div>
+      {years.length === 0 ? (
+        <div className={`${css.panel} p-8 text-sm text-atext-dim`}>No pick bank loaded.</div>
+      ) : (
+        years.map((y) => (
+          <div key={y} className={`${css.panel} p-4`}>
+            <div className="font-display text-lg text-aaccent mb-2">Season {y}</div>
+            <div className="space-y-2">
+              {(bank[y] || []).map((p) => (
+                <div key={p.id} className="flex flex-wrap justify-between gap-2 text-sm border-b border-aline pb-2 last:border-0">
+                  <span>Round {p.round} · pick #{p.selection}</span>
+                  <span className="text-atext-dim">{p.type === 'compensation' ? 'Compensation (NT)' : 'Tradeable'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function FreeAgentsTab({ career, updateCareer }) {
+  const pool = career.offSeasonFreeAgents || [];
+  const wageCap = effectiveWageCap(career);
+  const sign = (fa) => {
+    if (!career.freeAgencyOpen) return;
+    if (career.squad.length >= 40) return;
+    if (career.finance.transferBudget < fa.value * 0.35) {
+      updateCareer({ news: [{ week: career.week, type: 'loss', text: `⛔ Not enough transfer budget to sign ${fa.firstName} ${fa.lastName}.` }, ...(career.news || [])].slice(0, 15) });
+      return;
+    }
+    if (!canAffordSigning(career, fa.wageAsk)) {
+      updateCareer({ news: [{ week: career.week, type: 'loss', text: `⛔ Cap won’t fit ${fa.firstName} ${fa.lastName} at ${fmtK(fa.wageAsk)}/yr.` }, ...(career.news || [])].slice(0, 15) });
+      return;
+    }
+    const fee = Math.round(fa.value * 0.35);
+    const signingBonus = Math.round(fa.value * 0.05);
+    const newPlayer = {
+      id: `fa_sign_${Date.now()}_${Math.random()}`,
+      firstName: fa.firstName,
+      lastName: fa.lastName,
+      position: fa.position,
+      age: fa.age,
+      overall: fa.overall,
+      potential: fa.potential ?? fa.overall + 5,
+      value: fa.value,
+      wage: fa.wageAsk,
+      contract: fa.contractYearsAsk,
+      attrs: fa.attrs,
+      trueRating: fa.trueRating ?? fa.overall,
+      tier: fa.tier ?? leagueTierOf(career),
+      fitness: 92,
+      form: 72,
+      goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0, suspended: 0, morale: 78,
+      receivedInTrade: null,
+      seasonsAtClub: 0,
+    };
+    const bal = { ...(career.freeAgentBalance || { gained: 0, lost: 0 }), gained: (career.freeAgentBalance?.gained || 0) + 1 };
+    updateCareer({
+      squad: [...career.squad, newPlayer],
+      offSeasonFreeAgents: pool.filter((x) => x.id !== fa.id),
+      finance: {
+        ...career.finance,
+        transferBudget: career.finance.transferBudget - fee,
+        cash: career.finance.cash - signingBonus,
+      },
+      freeAgentBalance: bal,
+      news: [{ week: career.week, type: 'win', text: `✍️ Free agency: signed ${fa.firstName} ${fa.lastName} — ${fa.contractYearsAsk}yr @ ${fmtK(fa.wageAsk)}/yr` }, ...(career.news || [])].slice(0, 20),
+    });
+  };
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap justify-between gap-3">
+        <div>
+          <div className={`${css.h1} text-3xl`}>FREE AGENTS</div>
+          <div className="text-xs text-atext-dim">Out-of-contract players movement through Day 7 of the Trade Period.</div>
+        </div>
+        {!career.freeAgencyOpen && (
+          <Pill color="#64748B">Window closed — list-only trades until Day 14</Pill>
+        )}
+      </div>
+      <div className={`${css.panel} p-4 text-xs text-atext-dim`}>
+        Cap room: {wageCap > 0 ? fmtK(Math.max(0, wageCap - currentPlayerWageBill(career))) : '—'} · Transfer budget {fmtK(career.finance.transferBudget)}
+      </div>
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--A-line)', background: 'var(--A-panel)' }}>
+        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{ borderColor: 'var(--A-line)', background: 'var(--A-panel-2)' }}>
+          <div className="col-span-4">Player</div>
+          <div className="col-span-2">Pos</div>
+          <div className="col-span-2">OVR</div>
+          <div className="col-span-2 text-right">Ask</div>
+          <div className="col-span-2 text-right"></div>
+        </div>
+        {pool.length === 0 ? (
+          <div className="p-8 text-center text-sm text-atext-dim">No listings left this off-season.</div>
+        ) : (
+          pool.map((fa) => (
+            <div key={fa.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm" style={{ borderBottom: '1px solid var(--A-line)' }}>
+              <div className="col-span-4">
+                <div className="font-semibold">{fa.firstName} {fa.lastName}</div>
+                <div className="text-[10px] text-atext-dim">{fa.freeAgentType || 'UFA'} · age {fa.age}</div>
+              </div>
+              <div className="col-span-2"><Pill color="#4ADBE8">{fa.position}</Pill></div>
+              <div className="col-span-2"><RatingDot value={fa.overall} /></div>
+              <div className="col-span-2 text-right font-mono text-xs">{fmtK(fa.wageAsk)}/yr · {fa.contractYearsAsk}y</div>
+              <div className="col-span-2 text-right">
+                <button
+                  type="button"
+                  disabled={!career.freeAgencyOpen}
+                  onClick={() => sign(fa)}
+                  className={career.freeAgencyOpen ? `${css.btnPrimary} text-xs px-3 py-1.5` : 'px-3 py-1.5 rounded-lg text-xs bg-apanel-2 text-atext-mute'}
+                >
+                  Sign
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -4494,8 +4716,13 @@ function OffersTab({ career, club, updateCareer }) {
   const acceptOffer = (offer) => {
     const targetPlayer = career.squad.find(p => p.id === offer.targetPlayerId);
     if (!targetPlayer) return;
+    if (playerBlockedFromTrade(targetPlayer, career.season)) {
+      updateCareer({ news: [{ week: career.week, type: 'loss', text: `⛔ ${targetPlayer.firstName} ${targetPlayer.lastName} can't be traded until next season (recently arrived).` }, ...(career.news || [])].slice(0, 20) });
+      return;
+    }
     const incomingPlayer = offer.offerPlayerSnapshot
-      ? { ...offer.offerPlayerSnapshot, id: `incoming_${Date.now()}`, fitness: 90, form: 70, contract: 2, attrs: targetPlayer.attrs, potential: offer.offerPlayerSnapshot.overall + 4, trueRating: offer.offerPlayerSnapshot.overall, goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0, suspended: 0, morale: 75 }
+      ? { ...offer.offerPlayerSnapshot, id: `incoming_${Date.now()}`, fitness: 90, form: 70, contract: 2, attrs: targetPlayer.attrs, potential: offer.offerPlayerSnapshot.overall + 4, trueRating: offer.offerPlayerSnapshot.overall, goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0, suspended: 0, morale: 75,
+          receivedInTrade: career.season, seasonsAtClub: 0 }
       : null;
     // Cap check: if a swap player is incoming, ensure their wage fits after target leaves
     if (incomingPlayer) {
@@ -4618,7 +4845,7 @@ function TradeTab({ career, updateCareer }) {
     if (career.finance.transferBudget < p.value) return;
     if (career.squad.length >= 40) return;
     if (!canAffordSigning(career, negotiating.wage)) return;
-    const signedPlayer = { ...p, id: Date.now() + Math.random(), wage: negotiating.wage, contract: negotiating.years };
+    const signedPlayer = { ...p, id: Date.now() + Math.random(), wage: negotiating.wage, contract: negotiating.years, receivedInTrade: null, seasonsAtClub: 0 };
     // Spec Phase 2: trades come out of the transfer budget only; signing-on bonus = 5% of value from cash.
     const signingBonus = Math.round(p.value * 0.05);
     updateCareer({

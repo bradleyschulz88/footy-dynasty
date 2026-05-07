@@ -99,18 +99,35 @@ export function generateStaff(tier) {
   return ids.map((id) => {
     const b = byId[id];
     let role = b.role;
+    let volunteer = false;
     if (tier === 3) {
       if (id === "s1") role = "Senior Coach (part-time)";
-      if (id === "s2") role = "Assistant / Forwards (volunteer)";
-      if (id === "s4") role = "Midfield / game-day coach";
-      if (id === "s5") role = "Runner / fitness (volunteer)";
+      if (id === "s2") {
+        role = "Assistant / Forwards (volunteer)";
+        volunteer = true;
+      }
+      if (id === "s4") {
+        role = "Midfield / game-day (volunteer)";
+        volunteer = true;
+      }
+      if (id === "s5") {
+        role = "Runner / fitness (volunteer)";
+        volunteer = true;
+      }
+    }
+    let wage = Math.round(b.wage * mult);
+    if (volunteer) wage = 0;
+    else if (tier === 3 && id === "s1") {
+      // Small part-time honorarium — not a full professional wage
+      wage = Math.max(8000, Math.round(b.wage * 0.07));
     }
     return {
       id: b.id,
       role,
       name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`,
       rating: rand(b.rating[0], b.rating[1]),
-      wage: Math.round(b.wage * mult),
+      wage,
+      volunteer,
       contract: rand(1, 3),
     };
   });
