@@ -4517,6 +4517,7 @@ function TradeTab({ career, updateCareer }) {
   const sorted = [...filtered].sort((a,b) => sortBy === "overall" ? b.overall - a.overall : sortBy === "value" ? b.value - a.value : a.age - b.age);
 
   const wageCap = effectiveWageCap(career);
+  const currentWages = currentPlayerWageBill(career);
 
   const openNegotiation = (p) => {
     const demandedWage  = Math.round(p.wage * (1.05 + Math.random() * 0.2));
