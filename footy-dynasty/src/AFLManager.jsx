@@ -33,6 +33,7 @@ import TabNav from './components/TabNav.jsx';
 import GameOverScreen from './screens/GameOverScreen.jsx';
 import PostMatchSummary from './screens/PostMatchSummary.jsx';
 import SackingSequence from './screens/SackingSequence.jsx';
+import TutorialOverlay, { TUTORIAL_STEPS } from './components/TutorialOverlay.jsx';
 import SeasonStrip from './components/SeasonStrip.jsx';
 import MatchPreviewPanel from './components/MatchPreviewPanel.jsx';
 
