@@ -75,6 +75,30 @@ describe('teamRating', () => {
     const rHigh = teamRating(squad, ids, defaultTraining(), 1, 85);
     expect(rHigh).toBeGreaterThan(rLow);
   });
+
+  it('better per-player form increases rating vs cold form (same averages)', () => {
+    const hot = makeSquad(22, 70).map((p, i) => ({ ...p, id: `h${i}`, form: 88 }));
+    const cold = makeSquad(22, 70).map((p, i) => ({ ...p, id: `c${i}`, form: 52 }));
+    const rHot = teamRating(hot, hot.map(p => p.id), defaultTraining(), 1, 60);
+    const rCold = teamRating(cold, cold.map(p => p.id), defaultTraining(), 1, 60);
+    expect(rHot).toBeGreaterThan(rCold);
+  });
+
+  it('Q4 rating is below Q1 when fitness is low (fatigue)', () => {
+    const tired = makeSquad(22, 70).map((p, i) => ({ ...p, id: `t${i}`, fitness: 58, form: 70 }));
+    const ids = tired.map(p => p.id);
+    const r1 = teamRating(tired, ids, defaultTraining(), 1, 60, 1);
+    const r4 = teamRating(tired, ids, defaultTraining(), 1, 60, 4);
+    expect(r4).toBeLessThan(r1);
+  });
+
+  it('quarter parameter omitted does not apply Q3–Q4 fatigue', () => {
+    const tired = makeSquad(22, 70).map((p, i) => ({ ...p, id: `t${i}`, fitness: 58 }));
+    const ids = tired.map(p => p.id);
+    const rBase = teamRating(tired, ids, defaultTraining(), 1, 60);
+    const rBase2 = teamRating(tired, ids, defaultTraining(), 1, 60, undefined);
+    expect(rBase).toBeCloseTo(rBase2, 5);
+  });
 });
 
 // ---------------------------------------------------------------------------

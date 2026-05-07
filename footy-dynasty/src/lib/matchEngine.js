@@ -5,19 +5,37 @@ import { lineupStructureModifier } from './lineupBalance.js';
 
 export const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
-export function teamRating(squad, lineup, training, facilitiesAvg, staffAvg) {
+/** Effective playing rating for one player (form, fitness, optional quarter fatigue). */
+export function playerEffectiveMatchRating(player, quarter = null) {
+  if (!player) return 0;
+  const base = player.trueRating || player.overall || 0;
+  const form = player.form ?? 70;
+  const fitness = player.fitness ?? 90;
+  // Calibrated to be gentle at league-average form/fitness so teamRating stays comparable to the old formula.
+  const formMult = clamp(1 + (form - 70) * 0.0035, 0.92, 1.1);
+  const fitnessMult = clamp(0.88 + (fitness - 70) * 0.004, 0.78, 1.06);
+  let fatigue = 1;
+  if (quarter != null && Number.isFinite(quarter) && quarter >= 3) {
+    const q = Math.min(4, Math.max(1, quarter));
+    const u = q - 2; // Q3 -> 1, Q4 -> 2
+    fatigue = 1 - u * (1 - fitnessMult) * 0.35;
+    fatigue = clamp(fatigue, 0.72, 1);
+  }
+  return base * formMult * fitnessMult * fatigue;
+}
+
+/**
+ * @param {number|null|undefined} quarter  AFL quarter 1–4; if set, applies in-game fatigue in Q3–Q4 (fitness-dependent).
+ */
+export function teamRating(squad, lineup, training, facilitiesAvg, staffAvg, quarter = null) {
   const top22 = lineup && lineup.length
     ? lineup.map(id => squad.find(p => p.id === id)).filter(Boolean)
     : squad.slice().sort((a, b) => b.overall - a.overall).slice(0, 22);
   if (top22.length === 0) return 50;
   const lineupIds = top22.map((p) => p.id);
-  const avgOverall  = top22.reduce((a, b) => a + (b.trueRating || b.overall), 0) / top22.length;
-  const avgForm     = top22.reduce((a, b) => a + b.form, 0) / top22.length;
-  const avgFitness  = top22.reduce((a, b) => a + b.fitness, 0) / top22.length;
   const trainingBoost = (training.intensity - 50) * 0.04;
-  return avgOverall
-    + (avgForm - 70) * 0.15
-    + (avgFitness - 90) * 0.1
+  const avgEff = top22.reduce((a, p) => a + playerEffectiveMatchRating(p, quarter), 0) / top22.length;
+  return avgEff
     + trainingBoost
     + (facilitiesAvg - 1) * 1.2
     + (staffAvg - 60) * 0.15
@@ -133,8 +151,6 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
   const groundAccuracy = clamp(opts.groundAccuracyMod ?? 1.0, 0.5, 1.1);
 
   const hAdv = 4;
-  const hStr = isPlayerHome ? playerStrength + hAdv : home.rating + hAdv;
-  const aStr = !isPlayerHome ? playerStrength : away.rating;
 
   // Apply tactic mods to whichever side is the player
   const playerSideMod = profile.goalRateMod;
@@ -151,6 +167,23 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
   const reportedPlayerIds = [];
 
   for (let q = 0; q < 4; q++) {
+    const quarterNum = q + 1;
+    const playerStrNow = typeof opts.getPlayerStrengthForQuarter === 'function'
+      ? opts.getPlayerStrengthForQuarter(quarterNum)
+      : playerStrength;
+    const oppStrNow = typeof opts.getOppStrengthForQuarter === 'function'
+      ? opts.getOppStrengthForQuarter(quarterNum)
+      : null;
+
+    let hStr;
+    let aStr;
+    if (isPlayerHome) {
+      hStr = playerStrNow + hAdv;
+      aStr = oppStrNow != null ? oppStrNow : away.rating;
+    } else {
+      hStr = (oppStrNow != null ? oppStrNow : home.rating) + hAdv;
+      aStr = playerStrNow;
+    }
     const diff = (hStr - aStr) + momentum * 8; // momentum tilts up to ~8 rating
     const rates = shotRates(diff);
 

@@ -634,8 +634,10 @@ function AFLManagerInner() {
           const myRating  = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
           const oppSquad = c.aiSquads?.[opp.id];
           const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
+          const oppLineupIds = oppLineup.map(p => p.id);
+          const neutralTraining = { intensity: 60, focus: {} };
           const oppRating = oppSquad?.length
-            ? teamRating(oppSquad, oppLineup.map(p => p.id), { intensity: 60, focus: {} }, 1, 60)
+            ? teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60)
             : aiClubRating(opp.id, league.tier);
           const playerLineup = c.lineup.map(id => c.squad.find(p => p.id === id)).filter(Boolean);
           // Pick a tactic for the AI based on their squad strength vs ours
@@ -647,11 +649,20 @@ function AFLManagerInner() {
             groundScoringMod  = band.scoringMod;
             groundAccuracyMod = band.accuracyMod;
           }
+          const getPlayerStrengthForQuarter = (qi) =>
+            teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi);
+          const getOppStrengthForQuarter = oppSquad?.length
+            ? (qi) => teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
+            : null;
           const result = simMatchWithQuarters(
             { rating: isHome ? myRating : oppRating },
             { rating: isHome ? oppRating : myRating },
             isHome, myRating,
-            { tactic: c.tacticChoice || 'balanced', playerLineup, oppLineup, oppTactic, groundScoringMod, groundAccuracyMod }
+            {
+              tactic: c.tacticChoice || 'balanced', playerLineup, oppLineup, oppTactic, groundScoringMod, groundAccuracyMod,
+              getPlayerStrengthForQuarter,
+              ...(getOppStrengthForQuarter ? { getOppStrengthForQuarter } : {}),
+            }
           );
           const myTotal  = isHome ? result.homeTotal : result.awayTotal;
           const oppTotal = isHome ? result.awayTotal : result.homeTotal;
