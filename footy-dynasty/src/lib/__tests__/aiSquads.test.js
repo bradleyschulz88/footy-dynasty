@@ -126,15 +126,18 @@ describe('ageAiSquads', () => {
 });
 
 describe('selectAiLineup', () => {
-  it('returns up to 22 players sorted by trueRating desc', () => {
+  it('returns 22 players and usually includes a ruck when the squad has one', () => {
     const squad = Array.from({ length: 30 }, (_, i) => ({
-      id: `p${i}`, overall: 50 + i, trueRating: 50 + i, fitness: 90, injured: 0,
+      id: `p${i}`,
+      overall: 50 + i,
+      trueRating: 50 + i,
+      fitness: 90,
+      injured: 0,
+      position: i === 0 ? 'RU' : 'C',
     }));
     const lineup = selectAiLineup(squad);
     expect(lineup.length).toBe(22);
-    for (let i = 1; i < lineup.length; i++) {
-      expect(lineup[i - 1].trueRating).toBeGreaterThanOrEqual(lineup[i].trueRating);
-    }
+    expect(lineup.some((p) => p.position === 'RU')).toBe(true);
   });
 
   it('prefers fit, uninjured players when at least 22 are available', () => {

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, lazy, Suspense } from "react";
 import {
   Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
   UserCog, Repeat, Sprout, BarChart3, Calendar, ChevronRight, ChevronLeft,
@@ -16,8 +16,8 @@ import { teamRating, simMatch, simMatchWithQuarters, aiClubRating } from './lib/
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague } from './lib/leagueEngine.js';
 import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
-import { generateSeasonCalendar, applyTraining, TRAINING_INFO, formatDate, formatDateLong, formatMonth, addDays, daysInMonth, startOfMonth, getDayOfWeek, isSameMonth, prevMonth, nextMonth } from './lib/calendar.js';
-import { ensureSquadsForLeague, aiClubRatingFromSquad, tickAiSquads, ageAiSquads, selectAiLineup } from './lib/aiSquads.js';
+import { generateSeasonCalendar, applyTraining, TRAINING_INFO, formatDate } from './lib/calendar.js';
+import { ensureSquadsForLeague, tickAiSquads, ageAiSquads, selectAiLineup } from './lib/aiSquads.js';
 import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from './lib/save.js';
 import {
   beginPostSeasonTradePeriod,
@@ -33,7 +33,11 @@ import TabNav from './components/TabNav.jsx';
 import GameOverScreen from './screens/GameOverScreen.jsx';
 import PostMatchSummary from './screens/PostMatchSummary.jsx';
 import SackingSequence from './screens/SackingSequence.jsx';
-import TutorialOverlay, { TUTORIAL_STEPS, TutorialCompleteCard } from './components/TutorialOverlay.jsx';
+import SeasonStrip from './components/SeasonStrip.jsx';
+import MatchPreviewPanel from './components/MatchPreviewPanel.jsx';
+
+const ScheduleScreenLazy = lazy(() => import('./screens/ScheduleScreen.jsx'));
+
 // --- Gameplay systems spec (Sections 1-3) ---
 import { DIFFICULTY_IDS, DIFFICULTY_META, getDifficultyConfig, shouldShowTutorial } from './lib/difficulty.js';
 import {
@@ -62,10 +66,7 @@ import {
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
   buildInitialSponsorOffers,
 } from './lib/finance/sponsors.js';
-import {
-  proposeRenewal, buildRenewalQueue, applyRenewal, applyRenewalRejection,
-  canAffordRenewal,
-} from './lib/finance/contracts.js';
+import { getAdvanceContext } from './lib/advanceContext.js';
 import {
   TIER_FINANCE, INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, TICKET_PRICE, BASE_ATTENDANCE,
 } from './lib/finance/constants.js';
@@ -581,8 +582,13 @@ function AFLManagerInner() {
       const isHome = ev.homeId === c.clubId;
       const oppId  = isHome ? ev.awayId : ev.homeId;
       const opp    = findClub(oppId);
+      c.aiSquads = ensureSquadsForLeague(c, league);
+      const oppSquad = c.aiSquads?.[oppId];
+      const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
       const myRating  = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
-      const oppRating = aiClubRating(oppId, league.tier);
+      const oppRating = oppSquad?.length
+        ? teamRating(oppSquad, oppLineup.map(p => p.id), { intensity: 60, focus: {} }, 1, 60)
+        : aiClubRating(oppId, league.tier);
       const result = simMatchWithQuarters(
         { rating: isHome ? myRating : oppRating },
         { rating: isHome ? oppRating : myRating },
@@ -620,22 +626,17 @@ function AFLManagerInner() {
       // Lazily ensure AI squads exist for opponents
       c.aiSquads = ensureSquadsForLeague(c, league);
 
-      const ratingFor = (clubId) => {
-        if (clubId === c.clubId) return null;
-        const sq = c.aiSquads?.[clubId];
-        const live = aiClubRatingFromSquad(sq);
-        return live ?? aiClubRating(clubId, league.tier);
-      };
-
       round.forEach(m => {
         if (m.home === c.clubId || m.away === c.clubId) {
           const isHome = m.home === c.clubId;
           const opp    = findClub(isHome ? m.away : m.home);
           const myRating  = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
-          const oppRating = ratingFor(opp.id);
-          const playerLineup = c.lineup.map(id => c.squad.find(p => p.id === id)).filter(Boolean);
           const oppSquad = c.aiSquads?.[opp.id];
           const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
+          const oppRating = oppSquad?.length
+            ? teamRating(oppSquad, oppLineup.map(p => p.id), { intensity: 60, focus: {} }, 1, 60)
+            : aiClubRating(opp.id, league.tier);
+          const playerLineup = c.lineup.map(id => c.squad.find(p => p.id === id)).filter(Boolean);
           // Pick a tactic for the AI based on their squad strength vs ours
           const oppTactic = oppRating > myRating + 4 ? 'attack' : oppRating < myRating - 4 ? 'defensive' : 'balanced';
           // Spec 3D: ground-condition modifiers when player is at home
@@ -1421,7 +1422,11 @@ function AFLManagerInner() {
         <div className="p-3 md:p-6 max-w-[1400px] mx-auto">
           {screen === "hub"      && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={setScreen} setTab={setTab} onAdvance={advanceToNextEvent} />}
           {screen === "squad"    && <SquadScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
-          {screen === "schedule" && <ScheduleScreen career={career} club={club} league={league} />}
+          {screen === "schedule" && (
+            <Suspense fallback={<div className="anim-in py-16 text-center text-atext-dim font-mono text-sm">Loading calendar…</div>}>
+              <ScheduleScreenLazy career={career} club={club} league={league} />
+            </Suspense>
+          )}
           {screen === "club"     && <ClubScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
           {screen === "recruit"  && <RecruitScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
           {screen === "compete"  && <CompetitionScreen career={career} club={club} league={league} tab={tab} setTab={setTab} />}
@@ -1988,6 +1993,7 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGa
 }
 
 function TopBar({ career, club, league, myLadderPos, onAdvance }) {
+  const ctx = getAdvanceContext(career, league);
   const nextEv = (career.eventQueue || []).find(e => !e.completed);
   const phaseColors = { preseason: 'var(--A-accent)', season: 'var(--A-accent-2)', finals: 'var(--A-neg)', offseason: '#A78BFA' };
   const phaseLabel  = { preseason: 'Pre-Season', season: 'Season', finals: 'Finals', offseason: 'Off-Season' };
@@ -2023,14 +2029,18 @@ function TopBar({ career, club, league, myLadderPos, onAdvance }) {
     }
   }
 
+  const showRichNext = ctx.mode === 'calendar' && nextEv;
+  const headerNextLabel = showRichNext ? `${nextIcon ? nextIcon + ' ' : ''}${nextLabel}` : `${ctx.nextEventShort}${ctx.mode === 'finals' ? ' 🏆' : ''}`;
+
   return (
-    <header className="sticky top-0 z-20 px-3 md:px-6 py-0 bg-apanel/90 backdrop-blur-md border-b border-aline shadow-[0_1px_0_rgba(0,224,255,0.06)]">
+    <header className="sticky top-0 z-20 bg-apanel/90 backdrop-blur-md border-b border-aline shadow-[0_1px_0_rgba(0,224,255,0.06)]">
+      <div className="px-3 md:px-6 py-0">
       <div className="flex items-center justify-between gap-2 max-w-[1400px] mx-auto h-16">
         {/* Left: date + phase + finance stats */}
         <div className="flex items-center gap-0 min-w-0 overflow-hidden">
           {/* Date + phase */}
           <div className="pr-3 mr-2 md:pr-4 md:mr-2 border-r border-aline flex-shrink-0">
-            <div className="text-[10px] font-mono font-bold uppercase tracking-widest" style={{color: phaseColors[phase]}}>{phaseLabel[phase]}</div>
+            <div className="text-[11px] font-mono font-bold uppercase tracking-widest" style={{color: phaseColors[phase]}}>{phaseLabel[phase]}</div>
             <div className="font-display text-base md:text-lg leading-tight text-atext">{career.currentDate ? formatDate(career.currentDate) : '—'}</div>
           </div>
           {[
@@ -2043,7 +2053,7 @@ function TopBar({ career, club, league, myLadderPos, onAdvance }) {
             return (
               <div key={label} className={`${cls} items-center px-3 md:px-4 h-full border-r border-aline last:border-r-0 flex-shrink-0`}>
                 <div>
-                  <div className="text-[9px] font-mono font-bold uppercase tracking-[0.18em] text-atext-mute">{label}</div>
+                  <div className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-atext-mute">{label}</div>
                   {bar ? (
                     <div className="flex items-center gap-2 mt-0.5">
                       <div className="w-12 lg:w-16 h-1.5 rounded-full overflow-hidden bg-apanel border border-aline">
@@ -2062,15 +2072,17 @@ function TopBar({ career, club, league, myLadderPos, onAdvance }) {
 
         {/* Right: next event + advance button */}
         <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-          <div className="text-right hidden lg:block">
-            <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-atext-mute">Next Event</div>
-            <div className="text-sm font-semibold text-atext">{nextIcon} {nextLabel}</div>
+          <div className="text-right hidden lg:block max-w-[min(280px,40vw)]">
+            <div className="text-[11px] font-mono font-bold uppercase tracking-widest text-atext-mute">Next</div>
+            <div className="text-sm font-semibold text-atext truncate" title={ctx.detail}>{headerNextLabel}</div>
           </div>
-          <button onClick={onAdvance} className={`${css.btnPrimary} flex items-center gap-1.5 md:gap-2 glow text-[10px] md:text-[11px] px-3 md:px-5`}>
-            <Play className="w-4 h-4" /> ADVANCE
+          <button type="button" onClick={onAdvance} className={`${css.btnPrimary} flex items-center gap-1.5 md:gap-2 glow text-[11px] md:text-xs px-3 md:px-5`}>
+            <Play className="w-4 h-4" /> {ctx.buttonLabel.toUpperCase()}
           </button>
         </div>
       </div>
+      </div>
+      <SeasonStrip career={career} league={league} club={club} />
     </header>
   );
 }
@@ -2164,6 +2176,7 @@ function DifficultyMiniSummary({ career, cfg }) {
 }
 
 function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdvance }) {
+  const advanceCtx = getAdvanceContext(career, league);
   const sorted = sortedLadder(career.ladder);
   const top5 = sorted.slice(0, 5);
   const myRow = sorted.find(r => r.id === career.clubId);
@@ -2214,6 +2227,8 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
 
       {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
       <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} />
+
+      <MatchPreviewPanel career={career} league={league} />
 
       {/* Last Event Result Card */}
       {lastEv && (
@@ -2307,10 +2322,10 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
               );
             })}
             <div className="flex-shrink-0 flex items-center justify-center min-w-[60px]">
-              <button onClick={onAdvance} className="rounded-xl px-3 py-2 text-[11px] font-bold text-white flex flex-col items-center gap-1"
+              <button type="button" onClick={onAdvance} className="rounded-xl px-3 py-2 text-[11px] font-bold text-white flex flex-col items-center gap-1"
                 style={{background:'linear-gradient(135deg,var(--A-accent),#D07A2A)'}}>
                 <Play className="w-4 h-4" />
-                <span>Next</span>
+                <span>{advanceCtx.buttonLabel}</span>
               </button>
             </div>
           </div>
@@ -2523,155 +2538,6 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
             </button>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-
-// ============================================================================
-// SCHEDULE SCREEN — month calendar grid with event dots
-// ============================================================================
-function ScheduleScreen({ career, club, league }) {
-  const startDate = career.currentDate || `${career.season - 1}-12-01`;
-  const [viewDate, setViewDate] = React.useState(startOfMonth(startDate));
-
-  React.useEffect(() => {
-    const anchor = career.currentDate || `${career.season - 1}-12-01`;
-    setViewDate(startOfMonth(anchor));
-  }, [career.season, career.currentDate]);
-
-  const allEvents = career.eventQueue || [];
-  const eventsByDate = {};
-  allEvents.forEach(ev => {
-    if (!eventsByDate[ev.date]) eventsByDate[ev.date] = [];
-    eventsByDate[ev.date].push(ev);
-  });
-
-  const monthStart = startOfMonth(viewDate);
-  const firstDow   = getDayOfWeek(monthStart); // 0=Sun
-  const totalDays  = daysInMonth(viewDate);
-  const cells      = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= totalDays; d++) {
-    const y = viewDate.slice(0, 4);
-    const m = viewDate.slice(5, 7);
-    cells.push(`${y}-${m}-${String(d).padStart(2, '0')}`);
-  }
-
-  const today  = career.currentDate || startDate;
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  // Upcoming events list
-  const upcoming = allEvents.filter(e => !e.completed && e.date >= today).slice(0, 15);
-
-  function evDot(ev) {
-    if (ev.type === 'training')        return { color: TRAINING_INFO[ev.subtype]?.color || '#94A3B8', icon: TRAINING_INFO[ev.subtype]?.icon || '🏋️', label: TRAINING_INFO[ev.subtype]?.name || ev.subtype };
-    if (ev.type === 'key_event')       return { color: '#4ADBE8', icon: '📅', label: ev.name };
-    if (ev.type === 'preseason_match') return { color: '#E84A6F', icon: '⚽', label: ev.label };
-    if (ev.type === 'round') {
-      const m = (ev.matches || []).find(m2 => m2.home === career.clubId || m2.away === career.clubId);
-      const opp = m ? findClub(m.home === career.clubId ? m.away : m.home) : null;
-      return { color: 'var(--A-accent)', icon: '🏉', label: opp ? `Rd ${ev.round} vs ${opp.short}` : `Rd ${ev.round}` };
-    }
-    return { color: '#94A3B8', icon: '●', label: 'Event' };
-  }
-
-  return (
-    <div className="anim-in space-y-5">
-      <div className="flex items-center justify-between">
-        <h1 className={`${css.h1} text-3xl`}>SEASON CALENDAR</h1>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setViewDate(prevMonth(viewDate))} className={css.btnGhost + ' px-3 py-2'}><ChevronLeft className="w-4 h-4" /></button>
-          <span className="font-display text-xl tracking-wide text-atext min-w-[180px] text-center">{formatMonth(viewDate)}</span>
-          <button onClick={() => setViewDate(nextMonth(viewDate))} className={css.btnGhost + ' px-3 py-2'}><ChevronRight className="w-4 h-4" /></button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Calendar grid */}
-        <div className={`${css.panel} lg:col-span-2 p-2 md:p-4 overflow-x-auto`}>
-          <div className="min-w-[420px]">
-          <div className="grid grid-cols-7 mb-2">
-            {dayNames.map(d => (
-              <div key={d} className="text-center text-[10px] font-bold uppercase tracking-widest text-atext-mute py-1">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((dateStr, i) => {
-              if (!dateStr) return <div key={`empty-${i}`} />;
-              const dayEvs  = eventsByDate[dateStr] || [];
-              const isToday = dateStr === today;
-              const isPast  = dateStr < today;
-              return (
-                <div key={dateStr}
-                  className={`rounded-lg p-1.5 min-h-[64px] transition-all ${isToday ? 'ring-2 ring-[var(--A-accent)]' : ''}`}
-                  style={{background: isToday ? 'rgba(0,224,255,0.10)' : isPast && dayEvs.length ? 'var(--A-panel)' : 'var(--A-panel-2)', border: '1px solid var(--A-line)'}}>
-                  <div className={`text-[11px] font-bold mb-1 ${isToday ? 'text-aaccent' : isPast ? 'text-atext-mute' : 'text-atext-mute'}`}>
-                    {dateStr.slice(8)}
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    {dayEvs.slice(0, 3).map((ev, ei) => {
-                      const dot = evDot(ev);
-                      const dk = ev.id ? `${ev.id}-${ei}` : `${dateStr}-${ev.type}-${ei}`;
-                      return (
-                        <div key={dk} className="rounded text-[8px] font-bold px-1 py-0.5 truncate leading-tight"
-                          style={{background: `${dot.color}18`, color: dot.color, opacity: ev.completed ? 0.4 : 1}}>
-                          {dot.icon} {dot.label}
-                        </div>
-                      );
-                    })}
-                    {dayEvs.length > 3 && (
-                      <div className="text-[8px] text-atext-mute px-1">+{dayEvs.length - 3} more</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          </div>
-          {/* Legend */}
-          <div className="flex flex-wrap gap-3 mt-4 pt-3" style={{borderTop:'1px solid var(--A-line)'}}>
-            {[
-              { color: '#4ADE80', label: 'Ball Skills' },
-              { color: '#60A5FA', label: 'Running' },
-              { color: '#A78BFA', label: 'Tactics' },
-              { color: '#F97316', label: 'Gym' },
-              { color: 'var(--A-accent)', label: 'Match Day' },
-              { color: '#E84A6F', label: 'Pre-Season Match' },
-              { color: '#4ADBE8', label: 'Key Event' },
-            ].map(({ color, label }) => (
-              <div key={label} className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full" style={{background: color}} />
-                <span className="text-[10px] text-atext-dim">{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Upcoming events list */}
-        <div className={`${css.panel} p-4`}>
-          <h3 className="font-display text-lg text-atext tracking-wide mb-3">UPCOMING EVENTS</h3>
-          <div className="space-y-2">
-            {upcoming.length === 0 && <div className="text-sm text-atext-dim py-4 text-center">No more events this season.</div>}
-            {upcoming.map(ev => {
-              const dot = evDot(ev);
-              const evKey = ev.id || `${ev.date}-${ev.type}-${ev.round ?? ev.name ?? ''}`;
-              return (
-                <div key={evKey} className="flex items-start gap-3 p-3 rounded-xl" style={{background:'var(--A-panel)', border:'1px solid var(--A-line)'}}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0" style={{background:`${dot.color}18`}}>
-                    {dot.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-bold uppercase tracking-widest" style={{color: dot.color}}>{formatDate(ev.date)}</div>
-                    <div className="text-sm font-semibold text-atext leading-tight truncate">{dot.label}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </div>
   );
