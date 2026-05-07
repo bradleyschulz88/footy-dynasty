@@ -60,6 +60,10 @@ describe('migrate', () => {
     expect(m.fundraisersUsed).toEqual({});
     expect(m.communityGrantUsed).toBe(false);
     expect(m.lastEosFinance).toBe(null);
+    // v4 -> v5: trade period / pick bank scaffolding + player trade tags
+    expect(m.postSeasonPhase).toBe('none');
+    expect(m.inTradePeriod).toBe(false);
+    expect(m.draftPickBank).toBe(null);
   });
 
   it('repairs a broken stadium schema where it was stamped as the integer 1', () => {

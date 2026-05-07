@@ -198,6 +198,17 @@ describe('generateStaff', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
+  it('tier-3 volunteers earn $0; part-time senior coach has a small stipend', () => {
+    const t3 = generateStaff(3);
+    expect(t3.find(s => s.id === 's2').wage).toBe(0);
+    expect(t3.find(s => s.id === 's4').wage).toBe(0);
+    expect(t3.find(s => s.id === 's5').wage).toBe(0);
+    expect(t3.filter(s => s.volunteer).length).toBe(3);
+    const hc = t3.find(s => s.id === 's1');
+    expect(hc.wage).toBeGreaterThan(0);
+    expect(hc.wage).toBeLessThan(80_000);
+  });
+
   it('tier-1 head coach earns more than tier-3 head coach', () => {
     const t1 = generateStaff(1);
     const t3 = generateStaff(3);
