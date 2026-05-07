@@ -70,8 +70,10 @@ export function annualSponsorIncome(career) {
 }
 
 // Income / expense breakdowns for the FinancesTab UI.
+// Always derive the broadcast/commercial slice from the live ladder / fans / stadium model
+// so the screen reflects the new finance system during the season (not only at year-end).
 export function incomeBreakdown(career) {
-  const total = career.finance?.annualIncome ?? recomputeAnnualIncome(career);
+  const total = recomputeAnnualIncome(career);
   return {
     broadcast:   Math.round(total * INCOME_MIX.broadcast),
     gate:        Math.round(total * INCOME_MIX.gate),
@@ -97,8 +99,12 @@ export function annualNetProjection(career) {
 }
 
 // =============================================================================
-// Weekly cashflow tick — runs every event that crosses a calendar week boundary
+// Cashflow accrual — one tick per distinct calendar day on the event timeline
 // =============================================================================
+// Pre-season stacks multiple events (Mon/Wed/Fri training) inside the same ISO week.
+// The old "once per ISO week" tick meant almost no cash movement until the season —
+// the ledger looked broken. We accrue 1/365th of the annual P&L per new day, and roll
+// those slices into ISO-week buckets for the Finances chart.
 
 // ISO week number from a YYYY-MM-DD date string.
 export function isoWeekOf(dateStr) {
@@ -111,41 +117,49 @@ export function isoWeekOf(dateStr) {
   return Math.ceil(((tmp - yearStart) / 86400000 + 1) / 7);
 }
 
-// Compute and apply weekly cashflow if a new ISO week has begun since last tick.
-// Returns the delta in cash (negative for losses).
-// If `careerNew` is mutated in place, returns delta; otherwise returns 0.
+// Apply one day of operating cashflow when the career's calendar moves to a new date.
+// Returns the delta applied to cash. Idempotent if called twice for the same day.
+// Named `tickWeeklyCashflow` for backwards compatibility with imports/tests.
 export function tickWeeklyCashflow(c) {
   if (!c?.currentDate) return 0;
-  const week = `${c.currentDate.slice(0, 4)}-W${isoWeekOf(c.currentDate)}`;
-  if (c.lastFinanceTickWeek === week) return 0;
-  // First-ever tick: just record current week, no charge yet.
-  if (!c.lastFinanceTickWeek) {
-    c.lastFinanceTickWeek = week;
-    return 0;
-  }
+  const day = c.currentDate;
+  if (c.lastFinanceTickDay === day) return 0;
 
-  const annualIncomeFlat = c.finance?.annualIncome ?? recomputeAnnualIncome(c);
+  const annualIncomeFlat = recomputeAnnualIncome(c);
   const annualSponsors   = annualSponsorIncome(c);
   const annualWages      = annualWageBill(c);
   const annualUpkeep     = annualFacilityUpkeep(c);
 
-  // Weekly fractions (52 weeks/year)
-  const weeklyIncome   = Math.round((annualIncomeFlat + annualSponsors) / 52);
-  const weeklyExpenses = Math.round((annualWages + annualUpkeep) / 52);
-  const delta = weeklyIncome - weeklyExpenses;
+  const dayIncome   = Math.round((annualIncomeFlat + annualSponsors) / 365);
+  const dayExpenses = Math.round((annualWages + annualUpkeep) / 365);
+  const delta = dayIncome - dayExpenses;
 
   c.finance.cash += delta;
-  c.lastFinanceTickWeek = week;
+  c.lastFinanceTickDay = day;
 
-  // Track on the weeklyHistory for the chart
-  c.weeklyHistory = (c.weeklyHistory || []).slice(-51);
-  c.weeklyHistory.push({
-    week: c.week ?? 0,
-    profit: delta,
-    cash: c.finance.cash,
-    income: weeklyIncome,
-    expenses: weeklyExpenses,
-  });
+  const isoKey = `${day.slice(0, 4)}-W${isoWeekOf(day)}`;
+  c.lastFinanceTickWeek = isoKey;
+
+  const hist = c.weeklyHistory || [];
+  const last = hist[hist.length - 1];
+  if (last && last.isoKey === isoKey) {
+    last.profit = (last.profit ?? 0) + delta;
+    last.cash = c.finance.cash;
+    last.income = (last.income ?? 0) + dayIncome;
+    last.expenses = (last.expenses ?? 0) + dayExpenses;
+  } else {
+    hist.push({
+      isoKey,
+      week: c.week ?? 0,
+      profit: delta,
+      cash: c.finance.cash,
+      income: dayIncome,
+      expenses: dayExpenses,
+    });
+  }
+  c.weeklyHistory = hist.slice(-52);
+
+  c.finance.annualIncome = annualIncomeFlat;
 
   // Update insolvency tracking
   if (c.finance.cash < 0) {

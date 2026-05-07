@@ -254,6 +254,7 @@ function AFLManagerInner() {
       // v4 finance state — fresh ledger at the new club
       weeklyHistory: [],
       lastFinanceTickWeek:        null,
+      lastFinanceTickDay:         null,
       cashCrisisStartWeek:        null,
       cashCrisisLevel:            0,
       bankLoan:                   null,
@@ -682,9 +683,9 @@ function AFLManagerInner() {
         return { ...p, fitness: clamp(p.fitness + rand(8, 14), 30, 100), injured: Math.max(0, p.injured - 1) };
       });
 
-      // Match-day gate revenue (spec Phase 2 — layered on top of weekly cashflow tick).
-      // Wages, sponsor accrual and facility upkeep are now ticked weekly across the full
-      // calendar in `tickWeeklyCashflow`, so the round handler only adds match-day income.
+      // Match-day gate revenue (Phase 2 — on top of daily operating accrual in `tickWeeklyCashflow`).
+      // Wages, sponsors and facility upkeep accrue per calendar day as you advance events;
+      // home games add ticket revenue on top.
       const isHomeMatch = myMatch && myMatch.home === c.clubId;
       if (isHomeMatch) {
         const stadiumLevel = c.facilities.stadium.level;
@@ -1189,8 +1190,9 @@ function AFLManagerInner() {
     c.pendingRenewals = buildRenewalQueue(c);
     c.renewalsClosed  = false;
 
-    // Reset weekly tick + insolvency tracking for the new season
+    // Reset finance ledger + insolvency tracking for the new season
     c.lastFinanceTickWeek = null;
+    c.lastFinanceTickDay = null;
     c.weeklyHistory = [];
     c.cashCrisisStartWeek = c.finance.cash < 0 ? 0 : null;
     c.cashCrisisLevel = c.finance.cash < 0 ? 1 : 0;
@@ -1527,6 +1529,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       lastMatchSummary: null,
       // v4 additions — Finance system rebuild
       lastFinanceTickWeek:        null,
+      lastFinanceTickDay:         null,
       cashCrisisStartWeek:        null,
       cashCrisisLevel:            0,
       bankLoan:                   null,
@@ -3837,6 +3840,9 @@ function FinancesTab({ career }) {
 
   return (
     <div className="space-y-4">
+      <div className="text-xs text-atext-dim -mt-1">
+        Commercial income (broadcast, memberships, merch) tracks your ladder spot, fan mood, and stadium. Cash ticks on each new calendar day as you advance the schedule.
+      </div>
       {/* Cash crisis banner */}
       {crisis > 0 && (
         <div className={`${css.panel} p-4 flex items-start gap-3`} style={{ borderColor: '#E84A6F', background: 'rgba(232,74,111,0.06)' }}>
@@ -3949,9 +3955,9 @@ function FinancesTab({ career }) {
 
       {/* Weekly cashflow chart */}
       <div className={`${css.panel} p-5`}>
-        <h3 className={`${css.h1} text-2xl mb-3`}>WEEKLY CASH FLOW</h3>
+        <h3 className={`${css.h1} text-2xl mb-3`}>CASH FLOW (BY CALENDAR WEEK)</h3>
         {(career.weeklyHistory || []).length === 0 ? (
-          <div className="text-sm text-atext-dim py-8 text-center">No weeks recorded yet — advance to see cash flow.</div>
+          <div className="text-sm text-atext-dim py-8 text-center">No ledger entries yet — advance the schedule (each new day accrues operating cash).</div>
         ) : (
           <div className="flex items-end gap-1 h-40">
             {career.weeklyHistory.map((w, i) => {
@@ -4511,6 +4517,7 @@ function TradeTab({ career, updateCareer }) {
   const sorted = [...filtered].sort((a,b) => sortBy === "overall" ? b.overall - a.overall : sortBy === "value" ? b.value - a.value : a.age - b.age);
 
   const wageCap = effectiveWageCap(career);
+  const currentWages = currentPlayerWageBill(career);
 
   const openNegotiation = (p) => {
     const demandedWage  = Math.round(p.wage * (1.05 + Math.random() * 0.2));
