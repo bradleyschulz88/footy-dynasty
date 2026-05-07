@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   tickSponsorYears, proposalForRenewal, generateSponsorOffers,
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
+  buildInitialSponsorOffers,
 } from '../finance/sponsors.js';
 import { seedRng } from '../rng.js';
 
@@ -62,6 +63,20 @@ describe('generateSponsorOffers', () => {
     const offers = generateSponsorOffers(career, 1, 3);
     expect(offers.length).toBeGreaterThan(0);
     offers.forEach(o => expect(o.offerKind).toBe('new'));
+  });
+});
+
+describe('buildInitialSponsorOffers', () => {
+  it('returns several new offers for a clean-slate club with no ladder history', () => {
+    const offers = buildInitialSponsorOffers({
+      leagueTier: 2,
+      difficulty: 'contender',
+      clubId: 'sanfl_norwood',
+      ladder: [],
+      coachReputation: 30,
+    });
+    expect(offers.length).toBeGreaterThanOrEqual(3);
+    expect(offers.every(o => o.offerKind === 'new')).toBe(true);
   });
 });
 

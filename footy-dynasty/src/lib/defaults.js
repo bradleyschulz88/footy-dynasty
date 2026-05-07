@@ -69,20 +69,51 @@ export function generateSponsors(tier) {
   });
 }
 
+// Staff IDs must stay stable — training sessions reference s2–s5 by id.
+const STAFF_BLUEPRINT = [
+  { id: "s1",  role: "Senior Coach",                    rating: [60, 88], wage: 450000 },
+  { id: "s2",  role: "Assistant Coach (Forwards)",      rating: [55, 82], wage: 180000 },
+  { id: "s3",  role: "Assistant Coach (Defence)",       rating: [55, 82], wage: 180000 },
+  { id: "s4",  role: "Midfield Coach",                  rating: [55, 82], wage: 170000 },
+  { id: "s5",  role: "Head of Strength & Conditioning", rating: [50, 80], wage: 150000 },
+  { id: "s6",  role: "Head of Medical",                 rating: [55, 85], wage: 180000 },
+  { id: "s7",  role: "Head Recruiter",                  rating: [55, 85], wage: 160000 },
+  { id: "s8",  role: "Senior Scout",                    rating: [50, 80], wage: 110000 },
+  { id: "s9",  role: "Academy Manager",                 rating: [50, 78], wage: 120000 },
+  { id: "s10", role: "Performance Analyst",             rating: [50, 80], wage: 100000 },
+];
+
+// Tier 1 = full AFL department; tier 2 = state league skeleton (~7); tier 3 = volunteer club (~4, still covers training staff ids).
+const STAFF_IDS_BY_TIER = {
+  1: ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"],
+  2: ["s1", "s2", "s4", "s5", "s6", "s7", "s8"],
+  3: ["s1", "s2", "s4", "s5"],
+};
+
 export function generateStaff(tier) {
+  const t = tier === 2 ? 2 : tier === 3 ? 3 : 1;
   const mult = tier === 1 ? 1 : tier === 2 ? 0.25 : 0.05;
-  return [
-    { id: "s1",  role: "Senior Coach",                    name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(60, 88), wage: Math.round(450000 * mult), contract: rand(1, 3) },
-    { id: "s2",  role: "Assistant Coach (Forwards)",      name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(55, 82), wage: Math.round(180000 * mult), contract: rand(1, 3) },
-    { id: "s3",  role: "Assistant Coach (Defence)",       name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(55, 82), wage: Math.round(180000 * mult), contract: rand(1, 3) },
-    { id: "s4",  role: "Midfield Coach",                  name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(55, 82), wage: Math.round(170000 * mult), contract: rand(1, 3) },
-    { id: "s5",  role: "Head of Strength & Conditioning", name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(50, 80), wage: Math.round(150000 * mult), contract: rand(1, 3) },
-    { id: "s6",  role: "Head of Medical",                 name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(55, 85), wage: Math.round(180000 * mult), contract: rand(1, 3) },
-    { id: "s7",  role: "Head Recruiter",                  name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(55, 85), wage: Math.round(160000 * mult), contract: rand(1, 3) },
-    { id: "s8",  role: "Senior Scout",                    name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(50, 80), wage: Math.round(110000 * mult), contract: rand(1, 3) },
-    { id: "s9",  role: "Academy Manager",                 name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(50, 78), wage: Math.round(120000 * mult), contract: rand(1, 3) },
-    { id: "s10", role: "Performance Analyst",             name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, rating: rand(50, 80), wage: Math.round(100000 * mult), contract: rand(1, 3) },
-  ];
+  const ids = STAFF_IDS_BY_TIER[t] || STAFF_IDS_BY_TIER[3];
+  const byId = Object.fromEntries(STAFF_BLUEPRINT.map(b => [b.id, b]));
+  seedRng(SEED + 19);
+  return ids.map((id) => {
+    const b = byId[id];
+    let role = b.role;
+    if (tier === 3) {
+      if (id === "s1") role = "Senior Coach (part-time)";
+      if (id === "s2") role = "Assistant / Forwards (volunteer)";
+      if (id === "s4") role = "Midfield / game-day coach";
+      if (id === "s5") role = "Runner / fitness (volunteer)";
+    }
+    return {
+      id: b.id,
+      role,
+      name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`,
+      rating: rand(b.rating[0], b.rating[1]),
+      wage: Math.round(b.wage * mult),
+      contract: rand(1, 3),
+    };
+  });
 }
 
 export function defaultKits(colors) {

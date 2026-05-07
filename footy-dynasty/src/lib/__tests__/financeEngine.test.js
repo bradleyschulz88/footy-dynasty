@@ -6,6 +6,7 @@ import {
   effectiveInjuryRate, scoutedOverall, moraleClamp, incomeBreakdown,
   expenseBreakdown, annualNetProjection, annualWageBill, annualSponsorIncome,
   annualFacilityUpkeep, leagueTierOf, isoWeekOf,
+  scaledSquadToFitCap, rookieDraftWage,
 } from '../finance/engine.js';
 import { TIER_FINANCE } from '../finance/constants.js';
 import { seedRng } from '../rng.js';
@@ -267,6 +268,36 @@ describe('difficulty hooks', () => {
     const out = scoutedOverall({ overall: 70 }, { difficulty: 'contender' });
     expect(out).toBeGreaterThanOrEqual(40);
     expect(out).toBeLessThanOrEqual(99);
+  });
+});
+
+describe('scaledSquadToFitCap', () => {
+  it('downscales wages when player bill exceeds the cap', () => {
+    const c = baseCareer({
+      squad: [
+        { id: 'a', wage: 800_000 },
+        { id: 'b', wage: 800_000 },
+      ],
+      finance: { ...baseCareer().finance, wageBudget: 1_000_000 },
+      difficulty: 'contender',
+    });
+    const next = scaledSquadToFitCap(c, 0.92);
+    const sum = next.reduce((a, p) => a + p.wage, 0);
+    expect(sum).toBeLessThanOrEqual(Math.floor(effectiveWageCap(c) * 0.92) + 1);
+  });
+
+  it('leaves squad untouched when already under cap', () => {
+    const c = baseCareer();
+    const next = scaledSquadToFitCap(c, 0.92);
+    expect(next.map(p => p.wage)).toEqual(c.squad.map(p => p.wage));
+  });
+});
+
+describe('rookieDraftWage', () => {
+  it('increases with tier and overall', () => {
+    expect(rookieDraftWage(70, 3)).toBeLessThan(rookieDraftWage(70, 2));
+    expect(rookieDraftWage(70, 2)).toBeLessThan(rookieDraftWage(70, 1));
+    expect(rookieDraftWage(60, 1)).toBeLessThan(rookieDraftWage(75, 1));
   });
 });
 

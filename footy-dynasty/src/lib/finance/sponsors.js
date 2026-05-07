@@ -72,6 +72,18 @@ export function generateSponsorOffers(career, leagueTier, count = 3) {
   return offers;
 }
 
+// Startup/offers when the club has no signed sponsors yet (career creation, new job).
+export function buildInitialSponsorOffers(args) {
+  const { leagueTier, difficulty, clubId, ladder, coachReputation = 30 } = args;
+  const stub = {
+    difficulty: difficulty || 'contender',
+    clubId: clubId || '',
+    ladder: ladder || [],
+    coachReputation,
+  };
+  return generateSponsorOffers(stub, leagueTier, 4);
+}
+
 // Auto-accept a renewal proposal — applies the new annualValue + years.
 export function applyRenewalAcceptance(career, proposal) {
   return {

@@ -200,6 +200,27 @@ export function canAffordSigning(career, wageOffer) {
   return currentPlayerWageBill(career) + wageOffer <= cap;
 }
 
+// Scale all player wages down so the squad fits under the effective cap (e.g. new career).
+// Returns a new squad array; leaves `career` immutable.
+export function scaledSquadToFitCap(career, headroom = 0.92) {
+  const squad = career?.squad || [];
+  const cap = effectiveWageCap(career);
+  if (cap <= 0) return squad.map(p => ({ ...p }));
+  const total = currentPlayerWageBill(career);
+  const target = Math.max(1, Math.floor(cap * headroom));
+  if (total <= target) return squad.map(p => ({ ...p }));
+  const scale = target / total;
+  return squad.map(p => ({ ...p, wage: Math.max(1, Math.round((p.wage || 0) * scale)) }));
+}
+
+// Rookie wage offer for national draft by competition tier (matches DraftTab / career logic).
+export function rookieDraftWage(overall, tier) {
+  const o = overall ?? 60;
+  if (tier === 1) return Math.max(80_000, Math.round(o * 1500));
+  if (tier === 2) return Math.max(28_000, Math.round(o * 480));
+  return Math.max(6_000, Math.round(o * 90));
+}
+
 // =============================================================================
 // Transfer budget refill at season start
 // =============================================================================

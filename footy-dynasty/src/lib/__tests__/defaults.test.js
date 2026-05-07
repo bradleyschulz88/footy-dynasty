@@ -173,8 +173,10 @@ describe('generateSponsors', () => {
 describe('generateStaff', () => {
   beforeEach(() => seedRng(42));
 
-  it('returns exactly 10 staff members', () => {
+  it('tier 1 keeps a full department (10), tier 2 slimmer (7), tier 3 volunteer core (4)', () => {
     expect(generateStaff(1)).toHaveLength(10);
+    expect(generateStaff(2)).toHaveLength(7);
+    expect(generateStaff(3)).toHaveLength(4);
   });
 
   it('each staff member has the required shape', () => {
@@ -196,16 +198,16 @@ describe('generateStaff', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('tier-1 staff earn more than tier-3 for the same role index', () => {
+  it('tier-1 head coach earns more than tier-3 head coach', () => {
     const t1 = generateStaff(1);
     const t3 = generateStaff(3);
-    expect(t1[0].wage).toBeGreaterThan(t3[0].wage);
+    expect(t1.find(s => s.id === 's1').wage).toBeGreaterThan(t3.find(s => s.id === 's1').wage);
   });
 
-  it('ratings are within 50-90', () => {
+  it('ratings are within blueprint bounds', () => {
     for (const s of generateStaff(1)) {
       expect(s.rating).toBeGreaterThanOrEqual(50);
-      expect(s.rating).toBeLessThanOrEqual(90);
+      expect(s.rating).toBeLessThanOrEqual(88);
     }
   });
 

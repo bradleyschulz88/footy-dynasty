@@ -10,10 +10,11 @@ import {
 } from "lucide-react";
 import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf } from './data/pyramid.js';
+import { pyramidNoteForLeague } from './data/pyramidMeta.js';
 import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad } from './lib/playerGen.js';
 import { teamRating, simMatch, simMatchWithQuarters, aiClubRating } from './lib/matchEngine.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague } from './lib/leagueEngine.js';
-import { defaultFinance, DEFAULT_FACILITIES, DEFAULT_TRAINING, generateSponsors, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
+import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO, formatDate, formatDateLong, formatMonth, addDays, daysInMonth, startOfMonth, getDayOfWeek, isSameMonth, prevMonth, nextMonth } from './lib/calendar.js';
 import { ensureSquadsForLeague, aiClubRatingFromSquad, tickAiSquads, ageAiSquads, selectAiLineup } from './lib/aiSquads.js';
@@ -45,10 +46,12 @@ import {
   cashCrisisLevel, makeStartingFinance, effectiveInjuryRate, scoutedOverall,
   moraleClamp, incomeBreakdown, expenseBreakdown, annualNetProjection,
   annualWageBill, annualSponsorIncome, annualFacilityUpkeep, leagueTierOf,
+  scaledSquadToFitCap, rookieDraftWage,
 } from './lib/finance/engine.js';
 import {
   tickSponsorYears, proposalForRenewal, generateSponsorOffers,
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
+  buildInitialSponsorOffers,
 } from './lib/finance/sponsors.js';
 import {
   proposeRenewal, buildRenewalQueue, applyRenewal, applyRenewalRejection,
@@ -185,12 +188,27 @@ function AFLManagerInner() {
         cfg.moraleFloor, 100),
       traits: rollPlayerTrait() ? [rollPlayerTrait()] : [],
     }));
-    const newLineup = newSquad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p => p.id);
     const newFixtures = generateFixtures(newLeague.clubs);
     const SEASON = career.season + 1;
     const eventQueue = generateSeasonCalendar(SEASON, newLeague.clubs, newFixtures, newClub.id);
-    const baseFinance = defaultFinance(newLeague.tier);
     const startingBoard = (career.coachReputation ?? 30) >= 60 ? 65 : 55;
+    const newFinance = makeStartingFinance(newLeague.tier, career.difficulty, startingBoard);
+    const newLadder = blankLadder(newLeague.clubs);
+    const squadForCap = scaledSquadToFitCap({
+      clubId: newClub.id,
+      leagueKey: offer.leagueKey,
+      difficulty: career.difficulty,
+      finance: newFinance,
+      squad: newSquad,
+    });
+    const newLineup = squadForCap.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p => p.id);
+    const initialOffers = buildInitialSponsorOffers({
+      leagueTier: newLeague.tier,
+      difficulty: career.difficulty,
+      clubId: newClub.id,
+      ladder: newLadder,
+      coachReputation: career.coachReputation ?? 30,
+    });
 
     setCareer({
       ...career,
@@ -219,13 +237,13 @@ function AFLManagerInner() {
       currentDate: `${SEASON - 1}-12-01`,
       phase:     'preseason',
       eventQueue,
-      squad:     newSquad,
+      squad:     squadForCap,
       lineup:    newLineup,
       kits:      defaultKits(newClub.colors),
-      ladder:    blankLadder(newLeague.clubs),
+      ladder:    newLadder,
       fixtures:  newFixtures,
-      finance:   makeStartingFinance(newLeague.tier, career.difficulty, startingBoard),
-      sponsors:  generateSponsors(newLeague.tier).map(s => ({ ...s, annualValue: Math.round((s.annualValue ?? 0) * cfg.sponsorMultiplier) })),
+      finance:   newFinance,
+      sponsors:  [],
       staff:     generateStaff(newLeague.tier),
       facilities: DEFAULT_FACILITIES(),
       training:  DEFAULT_TRAINING(),
@@ -259,7 +277,7 @@ function AFLManagerInner() {
       cashCrisisLevel:            0,
       bankLoan:                   null,
       sponsorRenewalProposals:    [],
-      sponsorOffers:              [],
+      sponsorOffers:              initialOffers,
       expiredSponsorsLastSeason:  [],
       pendingRenewals:            [],
       renewalsClosed:             false,
@@ -272,6 +290,7 @@ function AFLManagerInner() {
         : generateJournalist(),
       news: [
         { week: 0, type: 'win', text: `✍️ Welcome to ${newClub.name}, ${career.managerName}. ${offer.chairmanLine.replace(/&ldquo;|&rdquo;|&quot;|"/g, '').trim()}` },
+        { week: 0, type: 'info', text: '🤝 No shirt sponsors signed yet — open the Club tab to review incoming offers.' },
       ],
     });
     setScreen('hub');
@@ -1444,16 +1463,27 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     seedRng(clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7) + 1);
     const cfg = getDifficultyConfig(difficulty);
     const tunedFinance = makeStartingFinance(league.tier, difficulty, 55);
-    const baseSponsors = generateSponsors(league.tier).map(s => ({
-      ...s,
-      annualValue: Math.round((s.annualValue ?? 0) * cfg.sponsorMultiplier),
-    }));
-    const squad = generateSquad(clubId, league.tier).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
+    const ladder0 = blankLadder(league.clubs);
+    const squadRaw = generateSquad(clubId, league.tier).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
+    const squad = scaledSquadToFitCap({
+      clubId,
+      leagueKey,
+      difficulty,
+      finance: tunedFinance,
+      squad: squadRaw,
+    });
     const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
     const fixtures = generateFixtures(league.clubs);
     const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
     const facilities = DEFAULT_FACILITIES();
     const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
+    const startOffers = buildInitialSponsorOffers({
+      leagueTier: league.tier,
+      difficulty,
+      clubId,
+      ladder: ladder0,
+      coachReputation: 30,
+    });
     sessionStorage.removeItem(SETUP_SS_KEY);
     onStart({
       managerName: managerName || "Coach",
@@ -1472,15 +1502,18 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       training: DEFAULT_TRAINING(),
       facilities,
       finance: tunedFinance,
-      sponsors: baseSponsors,
+      sponsors: [],
       staff: generateStaff(league.tier),
       kits: defaultKits(club.colors),
-      ladder: blankLadder(league.clubs),
+      ladder: ladder0,
       fixtures,
       tradePool: (() => { seedRng(7777); return Array.from({ length: 25 }, (_, i) => { const p = generatePlayer(rand(1,3), 5000+i); return { ...p, fromClub: pick(ALL_CLUBS).short }; }); })(),
       draftPool: Array.from({ length: 60 }, (_, i) => generatePlayer(2, 9000 + i)),
       youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
-      news: [{ week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` }],
+      news: [
+        { week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` },
+        { week: 0, type: "info", text: "🤝 No sponsors locked in yet — visit Club → Sponsors to choose from incoming offers." },
+      ],
       weeklyHistory: [],
       inFinals: false,
       finalsRound: 0,
@@ -1534,7 +1567,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       cashCrisisLevel:            0,
       bankLoan:                   null,
       sponsorRenewalProposals:    [],
-      sponsorOffers:              [],
+      sponsorOffers:              startOffers,
       expiredSponsorsLastSeason:  [],
       pendingRenewals:            [],
       renewalsClosed:             false,
@@ -2095,7 +2128,7 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
   const myRow = sorted.find(r => r.id === career.clubId);
   const recentNews = (career.news || []).slice(0, 6);
   const wagesAnnual = career.squad.reduce((a, p) => a + p.wage, 0) + career.staff.reduce((a, s) => a + s.wage, 0);
-  const sponsorsAnnual = career.sponsors.reduce((a, s) => a + s.annualValue, 0);
+  const sponsorsAnnual = (career.sponsors || []).reduce((a, s) => a + s.annualValue, 0);
   const squadAvg = career.squad.length ? Math.round(career.squad.reduce((a, p) => a + p.overall, 0) / career.squad.length) : 0;
   const posColor = myLadderPos <= 2 ? "var(--A-pos)" : myLadderPos <= 5 ? "var(--A-accent)" : "var(--A-neg)";
 
@@ -2274,7 +2307,7 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, onAdvance }) 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users} />
         <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="#4AE89A" icon={DollarSign} />
-        <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${career.sponsors.length} active deals`} accent="#4ADBE8" icon={Handshake} />
+        <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="#4ADBE8" icon={Handshake} />
         <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.w||0}W / ${myRow?.l||0}L`} accent={posColor} icon={Trophy} />
       </div>
 
@@ -2427,6 +2460,11 @@ function ScheduleScreen({ career, club, league }) {
   const startDate = career.currentDate || `${career.season - 1}-12-01`;
   const [viewDate, setViewDate] = React.useState(startOfMonth(startDate));
 
+  React.useEffect(() => {
+    const anchor = career.currentDate || `${career.season - 1}-12-01`;
+    setViewDate(startOfMonth(anchor));
+  }, [career.season, career.currentDate]);
+
   const allEvents = career.eventQueue || [];
   const eventsByDate = {};
   allEvents.forEach(ev => {
@@ -2499,8 +2537,9 @@ function ScheduleScreen({ career, club, league }) {
                   <div className="flex flex-col gap-0.5">
                     {dayEvs.slice(0, 3).map((ev, ei) => {
                       const dot = evDot(ev);
+                      const dk = ev.id ? `${ev.id}-${ei}` : `${dateStr}-${ev.type}-${ei}`;
                       return (
-                        <div key={ei} className="rounded text-[8px] font-bold px-1 py-0.5 truncate leading-tight"
+                        <div key={dk} className="rounded text-[8px] font-bold px-1 py-0.5 truncate leading-tight"
                           style={{background: `${dot.color}18`, color: dot.color, opacity: ev.completed ? 0.4 : 1}}>
                           {dot.icon} {dot.label}
                         </div>
@@ -2542,8 +2581,9 @@ function ScheduleScreen({ career, club, league }) {
             {upcoming.length === 0 && <div className="text-sm text-atext-dim py-4 text-center">No more events this season.</div>}
             {upcoming.map(ev => {
               const dot = evDot(ev);
+              const evKey = ev.id || `${ev.date}-${ev.type}-${ev.round ?? ev.name ?? ''}`;
               return (
-                <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl" style={{background:'var(--A-panel)', border:'1px solid var(--A-line)'}}>
+                <div key={evKey} className="flex items-start gap-3 p-3 rounded-xl" style={{background:'var(--A-panel)', border:'1px solid var(--A-line)'}}>
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0" style={{background:`${dot.color}18`}}>
                     {dot.icon}
                   </div>
@@ -3090,14 +3130,27 @@ function RenewalsTab({ career, updateCareer }) {
 function PlayersTab({ career, updateCareer }) {
   const [sort, setSort] = useState("overall");
   const [filterPos, setFilterPos] = useState("ALL");
+  const [filterStatus, setFilterStatus] = useState("ALL");
   const [selected, setSelected] = useState(null);
   const players = useMemo(() => {
     let arr = [...career.squad];
     if (filterPos !== "ALL") arr = arr.filter(p => p.position === filterPos);
+    if (filterStatus === "lineup") arr = arr.filter(p => career.lineup.includes(p.id));
+    if (filterStatus === "bench") arr = arr.filter(p => !career.lineup.includes(p.id));
+    if (filterStatus === "injured") arr = arr.filter(p => (p.injured || 0) > 0 || (p.suspended || 0) > 0);
+    if (filterStatus === "rookies") arr = arr.filter(p => p.rookie);
     const name = p => p.firstName ? p.firstName+" "+p.lastName : (p.name||"");
-    arr.sort((a,b) => sort === "overall" ? b.overall - a.overall : sort === "age" ? a.age - b.age : sort === "form" ? b.form - a.form : sort === "wage" ? b.wage - a.wage : name(a).localeCompare(name(b)));
+    arr.sort((a, b) => {
+      if (sort === "overall") return b.overall - a.overall;
+      if (sort === "age") return a.age - b.age;
+      if (sort === "form") return b.form - a.form;
+      if (sort === "wage") return b.wage - a.wage;
+      if (sort === "contract") return (a.contract ?? 0) - (b.contract ?? 0);
+      if (sort === "potential") return (b.potential || 0) - (a.potential || 0);
+      return name(a).localeCompare(name(b));
+    });
     return arr;
-  }, [career.squad, sort, filterPos]);
+  }, [career.squad, career.lineup, sort, filterPos, filterStatus]);
   const pName = p => p.firstName ? p.firstName+" "+p.lastName : (p.name||"Player");
 
   return (
@@ -3113,15 +3166,31 @@ function PlayersTab({ career, updateCareer }) {
               {pos}
             </button>
           ))}
+          <span className="text-[10px] text-atext-mute uppercase font-bold ml-1">Status</span>
+          {[
+            { key: "ALL", label: "All" },
+            { key: "lineup", label: "Lineup" },
+            { key: "bench", label: "Bench" },
+            { key: "injured", label: "Out" },
+            { key: "rookies", label: "Rookies" },
+          ].map(({ key, label }) => (
+            <button key={key} type="button" onClick={() => setFilterStatus(key)}
+              className="text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all"
+              style={filterStatus === key ? { background: "rgba(74,219,232,0.2)", color: "var(--A-accent)", border: "1px solid var(--A-accent)" } : { background: "var(--A-panel)", color: "var(--A-text-dim)", border: "1px solid var(--A-line)" }}>
+              {label}
+            </button>
+          ))}
           <div className="ml-auto flex items-center gap-2">
-            <span className={css.label}>Sort by</span>
+            <span className={css.label}>Sort</span>
             <select value={sort} onChange={e=>setSort(e.target.value)}
               className="text-sm font-semibold rounded-lg px-3 py-1.5"
               style={{background:"var(--A-panel)", border:"1px solid var(--A-line)", color:"var(--A-text)"}}>
               <option value="overall">Rating</option>
+              <option value="potential">Potential</option>
               <option value="age">Age</option>
               <option value="form">Form</option>
               <option value="wage">Wage</option>
+              <option value="contract">Contract (yrs left)</option>
               <option value="name">Name</option>
             </select>
           </div>
@@ -3978,13 +4047,14 @@ function FinancesTab({ career }) {
 }
 
 function SponsorsTab({ career, updateCareer }) {
-  const totalAnnual = career.sponsors.reduce((a, s) => a + s.annualValue, 0);
+  const sponsorList = career.sponsors || [];
+  const totalAnnual = sponsorList.reduce((a, s) => a + s.annualValue, 0);
   const proposals = career.sponsorRenewalProposals || [];
   const offers    = career.sponsorOffers || [];
   const expiredLastSeason = career.expiredSponsorsLastSeason || [];
   const cfg = getDifficultyConfig(career.difficulty);
 
-  const drop = (sp) => updateCareer({ sponsors: career.sponsors.filter(s => s.id !== sp.id) });
+  const drop = (sp) => updateCareer({ sponsors: sponsorList.filter(s => s.id !== sp.id) });
   const acceptRenewal = (proposal) => {
     const patch = applyRenewalAcceptance(career, proposal);
     updateCareer({
@@ -4017,8 +4087,8 @@ function SponsorsTab({ career, updateCareer }) {
     <div className="space-y-4">
       <div className="grid md:grid-cols-4 gap-4">
         <Stat label="Total Annual" value={fmtK(totalAnnual)} accent="#4AE89A" />
-        <Stat label="Active Deals" value={career.sponsors.length} accent="var(--A-accent)" />
-        <Stat label="Avg Deal" value={career.sponsors.length ? fmtK(Math.round(totalAnnual/career.sponsors.length)) : "—"} accent="#4ADBE8" />
+        <Stat label="Active Deals" value={sponsorList.length} accent="var(--A-accent)" />
+        <Stat label="Avg Deal" value={sponsorList.length ? fmtK(Math.round(totalAnnual/sponsorList.length)) : "—"} accent="#4ADBE8" />
         <Stat label="Sponsor x" value={`${cfg.sponsorMultiplier.toFixed(2)}×`} sub="difficulty" accent="var(--A-accent-2)" />
       </div>
 
@@ -4093,8 +4163,14 @@ function SponsorsTab({ career, updateCareer }) {
           <h3 className={`${css.h1} text-2xl`}>ACTIVE PARTNERS</h3>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
-          {career.sponsors.length === 0 && <div className="text-sm text-atext-dim md:col-span-2 text-center py-6">No active sponsors. Wait for offers at season end.</div>}
-          {career.sponsors.map(s => (
+          {sponsorList.length === 0 && (
+            <div className="text-sm text-atext-dim md:col-span-2 text-center py-6">
+              {offers.length > 0
+                ? 'No signed sponsors yet — see NEW OFFERS below.'
+                : 'No active sponsors. More offers arrive after results and at season end.'}
+            </div>
+          )}
+          {sponsorList.map(s => (
             <div key={s.id} className={`${css.inset} p-4`}>
               <div className="flex items-start justify-between gap-2">
                 <div>
@@ -4511,13 +4587,26 @@ function OffersTab({ career, club, updateCareer }) {
 function TradeTab({ career, updateCareer }) {
   const [filter, setFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("overall");
+  const [capOnly, setCapOnly] = useState(false);
   const [negotiating, setNegotiating] = useState(null); // { playerId, wage, years, counterUsed }
   const pool = career.tradePool || [];
-  const filtered = pool.filter(p => filter === "ALL" || p.position === filter);
-  const sorted = [...filtered].sort((a,b) => sortBy === "overall" ? b.overall - a.overall : sortBy === "value" ? b.value - a.value : a.age - b.age);
-
   const wageCap = effectiveWageCap(career);
   const currentWages = currentPlayerWageBill(career);
+  const headroom = Math.max(0, wageCap - currentWages);
+
+  const filtered = pool.filter(p => {
+    if (filter !== "ALL" && p.position !== filter) return false;
+    if (capOnly && wageCap > 0 && !canAffordSigning(career, p.wage)) return false;
+    return true;
+  });
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === "overall") return b.overall - a.overall;
+    if (sortBy === "value") return b.value - a.value;
+    if (sortBy === "age") return a.age - b.age;
+    if (sortBy === "wage") return (a.wage || 0) - (b.wage || 0);
+    if (sortBy === "potential") return (b.potential || 0) - (a.potential || 0);
+    return 0;
+  });
 
   const openNegotiation = (p) => {
     const demandedWage  = Math.round(p.wage * (1.05 + Math.random() * 0.2));
@@ -4562,6 +4651,7 @@ function TradeTab({ career, updateCareer }) {
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="#4ADBE8" />
+          <Stat label="Cap headroom" value={fmtK(headroom)} accent={headroom > 0 ? "#4AE89A" : "#E84A6F"} />
           <Stat label="Squad Size" value={`${career.squad.length}/40`} accent="var(--A-accent)" />
         </div>
       </div>
@@ -4571,45 +4661,64 @@ function TradeTab({ career, updateCareer }) {
         {["ALL", ...POSITIONS].map(pos => (
           <button key={pos} onClick={()=>setFilter(pos)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${filter===pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
         ))}
+        <label className="flex items-center gap-2 text-[11px] text-atext-dim cursor-pointer ml-2">
+          <input type="checkbox" checked={capOnly} onChange={e => setCapOnly(e.target.checked)} className="rounded border-aline" />
+          Fits cap (listed wage)
+        </label>
         <span className="ml-4 text-xs text-atext-dim uppercase tracking-wider">Sort:</span>
         <select value={sortBy} onChange={e=>setSortBy(e.target.value)} className="bg-apanel-2 border border-aline rounded-lg px-3 py-1.5 text-xs text-atext">
           <option value="overall">Overall</option>
           <option value="value">Value</option>
           <option value="age">Age</option>
+          <option value="wage">Listed wage</option>
+          <option value="potential">Potential</option>
         </select>
       </div>
 
-      <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
-        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
-          <div className="col-span-3">Player</div>
-          <div className="col-span-1">Pos</div>
-          <div className="col-span-1">Age</div>
-          <div className="col-span-1">OVR</div>
-          <div className="col-span-1">POT</div>
-          <div className="col-span-2">From</div>
-          <div className="col-span-2 text-right">Value</div>
-          <div className="col-span-1"></div>
+      <div className="rounded-2xl overflow-x-auto" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
+        <div className="gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b grid min-w-[720px]" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}}>
+          <div>Player</div>
+          <div>Ps</div>
+          <div>Ag</div>
+          <div>OVR</div>
+          <div>Pot</div>
+          <div>Club</div>
+          <div className="text-right">Fee</div>
+          <div className="text-right">Wage</div>
+          <div className="text-center">Cap</div>
+          <div></div>
         </div>
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="max-h-[60vh] overflow-y-auto min-w-[720px]">
           {sorted.map(p => {
             const canAfford = career.finance.transferBudget >= p.value;
             const capRoom = wageCap - currentWages;
             const isNeg = negotiating?.playerId === p.id;
             const capBlock = negotiating && isNeg && (currentWages + negotiating.wage > wageCap);
+            const fitsListWage = wageCap <= 0 || canAffordSigning(career, p.wage);
             return (
               <div key={p.id}>
-                <div className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom: isNeg ? "none" : "1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div className="col-span-3">
+                <div className="gap-2 px-4 py-3 items-center transition-colors grid min-w-[720px]" style={{borderBottom: isNeg ? "none" : "1px solid var(--A-line)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div>
                     <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
-                    <div className="text-[10px] text-atext-dim">Listed wage: {fmtK(p.wage)}/yr</div>
+                    <div className="text-[10px] text-atext-dim">Ask · {fmtK(p.wage)}/yr</div>
                   </div>
-                  <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
-                  <div className="col-span-1 text-sm">{p.age}</div>
-                  <div className="col-span-1"><RatingDot value={p.overall} /></div>
-                  <div className="col-span-1 text-sm text-[#4AE89A]">{p.potential}</div>
-                  <div className="col-span-2 text-xs text-atext-dim">{p.fromClub}</div>
-                  <div className="col-span-2 text-right text-sm font-mono font-bold" style={{color: canAfford ? "#4AE89A" : "#E84A6F"}}>{fmtK(p.value)}</div>
-                  <div className="col-span-1 flex justify-end">
+                  <div><Pill color="#4ADBE8">{p.position}</Pill></div>
+                  <div className="text-sm text-center">{p.age}</div>
+                  <div className="flex justify-center"><RatingDot value={p.overall} /></div>
+                  <div className="text-sm text-center text-[#4AE89A]">{p.potential}</div>
+                  <div className="text-[10px] text-atext-dim truncate" title={p.fromClub}>{p.fromClub}</div>
+                  <div className="text-right text-sm font-mono font-bold" style={{color: canAfford ? "#4AE89A" : "#E84A6F"}}>{fmtK(p.value)}</div>
+                  <div className="text-right text-xs font-mono text-atext-dim">{fmtK(p.wage)}</div>
+                  <div className="flex justify-center">
+                    {wageCap <= 0 ? (
+                      <Pill color="#64748B">—</Pill>
+                    ) : fitsListWage ? (
+                      <Pill color="#4AE89A">OK</Pill>
+                    ) : (
+                      <Pill color="#E84A6F">No</Pill>
+                    )}
+                  </div>
+                  <div className="flex justify-end">
                     {isNeg
                       ? <button onClick={()=>setNegotiating(null)} className="text-xs text-atext-mute hover:text-atext-dim px-2 py-1">✕</button>
                       : <button onClick={()=>canAfford ? openNegotiation(p) : null} disabled={!canAfford} className={canAfford ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>{canAfford ? "Negotiate" : "Too dear"}</button>
@@ -4663,16 +4772,32 @@ function TradeTab({ career, updateCareer }) {
 }
 
 function DraftTab({ career, club, updateCareer }) {
+  const [posFilter, setPosFilter] = useState("ALL");
+  const [poolSort, setPoolSort] = useState("overall");
   const draftOrder = career.draftOrder || [];
   const myPickIndex = draftOrder.findIndex(d => d.clubId === career.clubId && !d.used);
   const myNextPick = myPickIndex >= 0 ? draftOrder[myPickIndex] : null;
   const isMyTurn = myPickIndex !== -1 && myPickIndex === draftOrder.findIndex(d => !d.used);
-  const pool = (career.draftPool || []).slice().sort((a,b) => b.overall - a.overall);
+  const dTier = leagueTierOf(career);
+
+  const basePool = useMemo(() => {
+    let arr = [...(career.draftPool || [])];
+    if (posFilter !== "ALL") arr = arr.filter(p => p.position === posFilter);
+    arr.sort((a, b) => {
+      if (poolSort === "overall") return b.overall - a.overall;
+      if (poolSort === "potential") return (b.potential || 0) - (a.potential || 0);
+      if (poolSort === "wageFit") return rookieDraftWage(a.overall, dTier) - rookieDraftWage(b.overall, dTier);
+      return b.overall - a.overall;
+    });
+    return arr;
+  }, [career.draftPool, posFilter, poolSort, dTier]);
 
   const aiPickFromPool = (clubId, currentPool) => {
-    const top3 = currentPool.slice(0, 3);
-    if (top3.length === 0) return null;
-    return top3[Math.floor(Math.random() * top3.length)];
+    if (!currentPool.length) return null;
+    const ranked = [...currentPool].sort((a, b) => b.overall - a.overall);
+    if (Math.random() < 0.72) return ranked[0];
+    const k = Math.min(5, ranked.length);
+    return ranked[Math.floor(Math.random() * k)];
   };
 
   const draftPlayer = (p) => {
@@ -4705,15 +4830,12 @@ function DraftTab({ career, club, updateCareer }) {
       return;
     }
     if (career.squad.length >= 40) return;
-    const draftTier = leagueTierOf(career);
-    const rookieWage = draftTier === 1 ? Math.max(80_000, Math.round(p.overall * 1500))
-                     : draftTier === 2 ? Math.max(28_000, Math.round(p.overall * 480))
-                     :                    Math.max(6_000,  Math.round(p.overall * 90));
-    if (!canAffordSigning(career, rookieWage)) {
+    const rw = rookieDraftWage(p.overall, dTier);
+    if (!canAffordSigning(career, rw)) {
       updateCareer({ news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot draft ${p.firstName} ${p.lastName} — over salary cap` }, ...(career.news || [])].slice(0, 20) });
       return;
     }
-    const rookie = { ...p, id: `r_${Date.now()}_${Math.random()}`, wage: rookieWage, contract: 2, age: rand(17, 19), rookie: true };
+    const rookie = { ...p, id: `r_${Date.now()}_${Math.random()}`, wage: rw, contract: 2, age: rand(17, 19), rookie: true };
     let order = draftOrder.map((d, i) => i === myPickIndex ? { ...d, used: true, prospectName: `${p.firstName} ${p.lastName}`, prospectOverall: p.overall, prospectPos: p.position } : d);
     let currentPool = career.draftPool.filter(x => x.id !== p.id);
     let currentAiSquads = { ...(career.aiSquads || {}) };
@@ -4750,7 +4872,7 @@ function DraftTab({ career, club, updateCareer }) {
           <div className="text-xs text-atext-dim">{draftOrder.length === 0 ? 'Draft order is set after each season ends.' : isMyTurn ? `On the clock: pick #${myNextPick.pick}.` : myNextPick ? `Your next pick: #${myNextPick.pick}` : 'You have no remaining picks.'}</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Pool" value={pool.length} accent="#4AE89A" />
+          <Stat label="Pool" value={basePool.length} accent="#4AE89A" />
           <Stat label="Squad" value={`${career.squad.length}/40`} accent="var(--A-accent)" />
         </div>
       </div>
@@ -4780,6 +4902,19 @@ function DraftTab({ career, club, updateCareer }) {
         </div>
       )}
 
+      <div className="flex flex-wrap gap-2 items-center">
+        <span className="text-xs text-atext-dim uppercase tracking-wider">Position:</span>
+        {["ALL", ...POSITIONS].map(pos => (
+          <button key={pos} type="button" onClick={() => setPosFilter(pos)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${posFilter === pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
+        ))}
+        <span className="ml-3 text-xs text-atext-dim uppercase tracking-wider">Sort pool:</span>
+        <select value={poolSort} onChange={e => setPoolSort(e.target.value)} className="bg-apanel-2 border border-aline rounded-lg px-3 py-1.5 text-xs text-atext">
+          <option value="overall">Overall</option>
+          <option value="potential">Potential</option>
+          <option value="wageFit">Rookie wage (low first)</option>
+        </select>
+      </div>
+
       <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
         <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
           <div className="col-span-1">#</div>
@@ -4791,19 +4926,23 @@ function DraftTab({ career, club, updateCareer }) {
           <div className="col-span-1"></div>
         </div>
         <div className="max-h-[60vh] overflow-y-auto">
-          {pool.slice(0, 30).map((p, i) => {
-            const rookieWage = Math.max(60000, Math.round(p.overall * 1500));
+          {basePool.slice(0, 50).map((p, i) => {
+            const rw = rookieDraftWage(p.overall, dTier);
+            const capOk = canAffordSigning(career, rw);
             return (
               <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                 <div className="col-span-1 font-bold text-aaccent">#{i+1}</div>
-                <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">(age {rand(17,19)})</span></div>
+                <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">(draft age ~17–19)</span></div>
                 <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
                 <div className="col-span-1"><RatingDot value={p.overall} /></div>
                 <div className="col-span-2 flex items-center gap-2">
                   <div className="font-bold text-[#4AE89A]">{p.potential}</div>
                   <Bar value={p.potential} color="#4AE89A" small />
                 </div>
-                <div className="col-span-2 text-right text-sm font-mono">${(rookieWage/1000).toFixed(0)}k</div>
+                <div className="col-span-2 text-right text-sm font-mono">
+                  <span style={{ color: capOk ? '#4AE89A' : '#E84A6F' }}>${(rw/1000).toFixed(0)}k</span>
+                  <span className="text-[10px] text-atext-dim block">est. rookie</span>
+                </div>
                 <div className="col-span-1 flex justify-end">
                   <button onClick={()=>draftPlayer(p)} className={`${css.btnPrimary} text-xs px-3 py-1.5`}>{isMyTurn ? 'Draft' : 'Sim →'}</button>
                 </div>
@@ -5166,16 +5305,28 @@ function LadderTab({ career, club, league }) {
 }
 
 function FixturesTab({ career, club, league }) {
+  const { lastPlayedRoundIdx, nextRoundIdx } = useMemo(() => {
+    let last = -1;
+    for (const e of career.eventQueue || []) {
+      if (e.type === 'round' && e.completed && e.round != null) {
+        last = Math.max(last, e.round - 1);
+      }
+    }
+    const n = (career.fixtures || []).length;
+    const next = last < n - 1 ? last + 1 : Math.min(last, n - 1);
+    return { lastPlayedRoundIdx: last, nextRoundIdx: Math.max(0, next) };
+  }, [career.eventQueue, career.fixtures]);
+
   return (
     <div className="space-y-4">
       <div>
         <div className={`${css.h1} text-3xl`}>FIXTURES</div>
-        <div className="text-xs text-atext-dim">Full season schedule · {career.fixtures.length} rounds</div>
+        <div className="text-xs text-atext-dim">Full season schedule · {career.fixtures.length} rounds · progress follows completed matches</div>
       </div>
       <div className="grid md:grid-cols-2 gap-3">
         {career.fixtures.map((round, ri) => {
-          const isPlayed = ri < career.week;
-          const isCurrent = ri === career.week;
+          const isPlayed = ri <= lastPlayedRoundIdx;
+          const isCurrent = ri === nextRoundIdx && ri < career.fixtures.length && !isPlayed;
           return (
             <div key={ri} className={`${css.panel} p-4 ${isCurrent ? "ring-2 ring-[var(--A-accent)]" : ""}`}>
               <div className="flex items-center justify-between mb-2">
@@ -5245,6 +5396,7 @@ function PyramidTab({ career, club, league }) {
                 <div>
                   <div className="font-bold text-lg">{l.name}</div>
                   <div className="text-xs text-atext-dim">{l.clubs.length} clubs · Australia-wide</div>
+                  <div className="text-[11px] text-atext-mute mt-1.5 leading-snug max-w-2xl">{pyramidNoteForLeague(key, l.tier)}</div>
                 </div>
                 {career.leagueKey===key && <Pill color="var(--A-accent)">YOU ARE HERE</Pill>}
               </div>
@@ -5273,6 +5425,7 @@ function PyramidTab({ career, club, league }) {
                     <div>
                       <div className="font-bold text-sm">{l.short}</div>
                       <div className="text-[10px] text-atext-dim">{l.state} · {l.clubs.length} clubs</div>
+                      <div className="text-[10px] text-atext-mute mt-1 leading-snug line-clamp-2">{pyramidNoteForLeague(key, l.tier)}</div>
                     </div>
                     {isCurrent && <Pill color="var(--A-accent)">HERE</Pill>}
                   </div>
@@ -5298,7 +5451,8 @@ function PyramidTab({ career, club, league }) {
                 return (
                   <div key={key} className={`p-3 rounded-lg ${isCurrent ? "bg-aaccent/15 border-2 border-aaccent" : myStateLeague ? "bg-apos/10 border border-apos/30" : "bg-apanel border border-aline opacity-60"}`}>
                     <div className="font-bold text-xs">{l.short}</div>
-                    <div className="text-[10px] text-atext-dim">{l.clubs.length} clubs</div>
+                    <div className="text-[10px] text-atext-dim">{l.clubs.length} clubs · {l.state}</div>
+                    <div className="text-[10px] text-atext-mute mt-1 leading-snug line-clamp-3">{pyramidNoteForLeague(key, l.tier)}</div>
                     {isCurrent && <div className="mt-1"><Pill color="var(--A-accent)">HERE</Pill></div>}
                   </div>
                 );
