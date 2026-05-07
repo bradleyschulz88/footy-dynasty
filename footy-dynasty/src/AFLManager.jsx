@@ -37,6 +37,26 @@ import {
   COACH_TIERS, coachTierFromScore, applyEndOfSeasonReputation,
   applySackingReputation, generateJobMarket, takeSeasonOff,
 } from './lib/coachReputation.js';
+// --- Finance system rebuild ---
+import {
+  recomputeAnnualIncome, tickWeeklyCashflow, effectiveWageCap, capHeadroom,
+  currentPlayerWageBill,
+  canAffordSigning, refillTransferBudget, applyPrizeMoney, applyPromotionRipple,
+  cashCrisisLevel, makeStartingFinance, effectiveInjuryRate, scoutedOverall,
+  moraleClamp, incomeBreakdown, expenseBreakdown, annualNetProjection,
+  annualWageBill, annualSponsorIncome, annualFacilityUpkeep, leagueTierOf,
+} from './lib/finance/engine.js';
+import {
+  tickSponsorYears, proposalForRenewal, generateSponsorOffers,
+  applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
+} from './lib/finance/sponsors.js';
+import {
+  proposeRenewal, buildRenewalQueue, applyRenewal, applyRenewalRejection,
+  canAffordRenewal,
+} from './lib/finance/contracts.js';
+import {
+  TIER_FINANCE, INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, TICKET_PRICE, BASE_ATTENDANCE,
+} from './lib/finance/constants.js';
 
 // ============================================================================
 // ERROR BOUNDARY
@@ -204,10 +224,10 @@ function AFLManagerInner() {
       kits:      defaultKits(newClub.colors),
       ladder:    blankLadder(newLeague.clubs),
       fixtures:  newFixtures,
-      finance:   { ...baseFinance, cash: Math.round(baseFinance.cash * cfg.cashMultiplier), transferBudget: Math.round(baseFinance.transferBudget * cfg.transferBudgetMultiplier), boardConfidence: startingBoard },
+      finance:   makeStartingFinance(newLeague.tier, career.difficulty, startingBoard),
       sponsors:  generateSponsors(newLeague.tier).map(s => ({ ...s, annualValue: Math.round((s.annualValue ?? 0) * cfg.sponsorMultiplier) })),
       staff:     generateStaff(newLeague.tier),
-      facilities: { ...DEFAULT_FACILITIES(), stadium: 1 },
+      facilities: DEFAULT_FACILITIES(),
       training:  DEFAULT_TRAINING(),
       // Reset round/match state
       isSacked:  false,
@@ -231,6 +251,20 @@ function AFLManagerInner() {
       groundCondition: 85,
       groundName: `${newClub.short} Oval`,
       weeklyWeather: {},
+      // v4 finance state — fresh ledger at the new club
+      weeklyHistory: [],
+      lastFinanceTickWeek:        null,
+      cashCrisisStartWeek:        null,
+      cashCrisisLevel:            0,
+      bankLoan:                   null,
+      sponsorRenewalProposals:    [],
+      sponsorOffers:              [],
+      expiredSponsorsLastSeason:  [],
+      pendingRenewals:            [],
+      renewalsClosed:             false,
+      fundraisersUsed:            {},
+      communityGrantUsed:         false,
+      lastEosFinance:             null,
       // Fresh journalist at the new club
       journalist: career.coachReputation >= 60
         ? { ...generateJournalist(), satisfaction: 65 }
@@ -295,6 +329,68 @@ function AFLManagerInner() {
     c.phase = ev.phase || 'preseason';
     c.eventQueue[evIdx] = { ...ev, completed: true };
 
+    // Spec Phase 2 — weekly cashflow tick (runs every event that crosses an ISO week)
+    tickWeeklyCashflow(c);
+    // Insolvency monitor + escalating event chain (Phase 4)
+    const prevCrisis = c.cashCrisisLevel ?? 0;
+    c.cashCrisisLevel = cashCrisisLevel(c);
+    if (c.cashCrisisLevel >= 1 && (c.cashCrisisStartWeek == null || c.cashCrisisStartWeek > c.week)) {
+      c.cashCrisisStartWeek = c.week;
+    }
+    if (c.cashCrisisLevel > prevCrisis) {
+      if (c.cashCrisisLevel === 1) {
+        c.news = [{ week: c.week, type: 'loss', text: `🪙 Cash is in the red. The board is taking notice.` }, ...(c.news || [])].slice(0, 25);
+      } else if (c.cashCrisisLevel === 2) {
+        // Forced player-sale — pick a top-5 squad member and surface a low-ball offer
+        const top5 = (c.squad || []).slice().sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0)).slice(0, 5);
+        const target = top5.length ? top5[Math.floor(Math.random() * top5.length)] : null;
+        if (target) {
+          c.pendingTradeOffers = [...(c.pendingTradeOffers || []), {
+            id: `forced_${Date.now()}`,
+            fromClubId: 'forced_sale',
+            fromClubName: 'Emergency Sale',
+            targetPlayerId: target.id,
+            offerCash: Math.round((target.value || target.overall * 60_000) * 0.55),
+            offerPlayerId: null,
+            offerPlayerSnapshot: null,
+            status: 'pending',
+            createdAt: ev.date,
+            isEmergency: true,
+          }];
+          c.news = [{ week: c.week, type: 'loss', text: `🚨 Emergency board meeting — bidders are circling ${target.firstName} ${target.lastName}. Sale offer in the Recruit tab.` }, ...(c.news || [])].slice(0, 25);
+        }
+      } else if (c.cashCrisisLevel === 3) {
+        // Bank loan offer + sponsor flees
+        c.bankLoan = c.bankLoan || {
+          principal: Math.max(0, -c.finance.cash) + 50_000,
+          weeksRemaining: INSOLVENCY.bankLoanTermYears * 52,
+          interestPerWeek: Math.round((Math.max(0, -c.finance.cash) + 50_000) * INSOLVENCY.bankLoanInterestRate / 52),
+        };
+        c.finance.cash += c.bankLoan.principal;
+        if ((c.sponsors || []).length > 0) {
+          const fleeing = c.sponsors[Math.floor(Math.random() * c.sponsors.length)];
+          c.sponsors = c.sponsors.filter(s => s.id !== fleeing.id);
+          c.news = [{ week: c.week, type: 'loss', text: `📉 ${fleeing.name} pulled their sponsorship — bad news travels fast.` }, ...(c.news || [])].slice(0, 25);
+        }
+        c.news = [{ week: c.week, type: 'info', text: `🏦 Bank loan accepted: $${(c.bankLoan.principal/1000).toFixed(0)}k @ ${(INSOLVENCY.bankLoanInterestRate*100).toFixed(0)}% over ${INSOLVENCY.bankLoanTermYears}y` }, ...(c.news || [])].slice(0, 25);
+        c.finance.boardConfidence = clamp((c.finance.boardConfidence ?? 50) - 10, 0, 100);
+      } else if (c.cashCrisisLevel === 4) {
+        // Sacking trigger short-circuits regardless of difficulty
+        c.boardWarning = 99;
+        c.news = [{ week: c.week, type: 'loss', text: `💀 The club is insolvent. The board is preparing to wind up your contract.` }, ...(c.news || [])].slice(0, 25);
+      }
+    }
+    // Bank loan repayments tick weekly while alive
+    if (c.bankLoan && c.bankLoan.weeksRemaining > 0) {
+      const repay = Math.round(c.bankLoan.principal / (INSOLVENCY.bankLoanTermYears * 52)) + (c.bankLoan.interestPerWeek || 0);
+      c.finance.cash -= repay;
+      c.bankLoan = { ...c.bankLoan, weeksRemaining: c.bankLoan.weeksRemaining - 1 };
+      if (c.bankLoan.weeksRemaining <= 0) {
+        c.news = [{ week: c.week, type: 'info', text: `🏦 Bank loan fully repaid.` }, ...(c.news || [])].slice(0, 25);
+        c.bankLoan = null;
+      }
+    }
+
     // ── Training event ──
     if (ev.type === 'training') {
       const { squad, gains, staffName, staffRating, devNotes } = applyTraining(
@@ -307,7 +403,8 @@ function AFLManagerInner() {
       const intensity = c.training?.intensity ?? 60;
       const recoveryFocus = c.training?.focus?.recovery ?? 20;
       const medLevel = c.facilities?.medical?.level ?? 1;
-      const trainingInjuryProb = Math.max(0, ((intensity - 50) * 0.0014) + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008);
+      const trainingInjuryProb = effectiveInjuryRate(c,
+        Math.max(0, ((intensity - 50) * 0.0014) + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008));
       if (rng() < trainingInjuryProb && c.lineup.length > 0) {
         const injId = pick(c.lineup);
         const baseWeeks = rand(1, 2);
@@ -323,6 +420,27 @@ function AFLManagerInner() {
       const recoveryBoost = Math.round((recoveryFocus - 20) * 0.05);
       if (recoveryBoost > 0) {
         c.squad = c.squad.map(p => ({ ...p, fitness: clamp((p.fitness ?? 90) + recoveryBoost, 30, 100) }));
+      }
+
+      // Phase 4 — Tier-3 fundraiser pressure-valve. Small chance per training session.
+      if (league.tier === 3 && rng() < 0.18) {
+        const keys = Object.keys(FUNDRAISERS);
+        const eligible = keys.filter(k => !(c.fundraisersUsed?.[k] >= 2)); // each kind ≤ 2/season
+        if (eligible.length > 0) {
+          const kind = eligible[Math.floor(Math.random() * eligible.length)];
+          const def = FUNDRAISERS[kind];
+          const income = rand(def.min, def.max);
+          c.finance.cash += income;
+          c.fundraisersUsed = { ...(c.fundraisersUsed || {}), [kind]: ((c.fundraisersUsed || {})[kind] || 0) + 1 };
+          c.news = [{ week: c.week, type: 'info', text: `🎟️ ${def.labelEvent} raised $${income} for the club. Volunteers, you legends.` }, ...(c.news || [])].slice(0, 25);
+        }
+      }
+      // Phase 4 — Community grant (Tier-3 only, once per season, requires board confidence > floor)
+      if (league.tier === 3 && !c.communityGrantUsed && (c.finance?.boardConfidence ?? 0) >= COMMUNITY_GRANT.boardConfidenceFloor && rng() < 0.06) {
+        const grant = rand(COMMUNITY_GRANT.min, COMMUNITY_GRANT.max);
+        c.finance.cash += grant;
+        c.communityGrantUsed = true;
+        c.news = [{ week: c.week, type: 'win', text: `🤝 Community grant approved: +$${grant.toLocaleString()}. The council came through.` }, ...(c.news || [])].slice(0, 25);
       }
 
       const info = TRAINING_INFO[ev.subtype] || {};
@@ -509,7 +627,7 @@ function AFLManagerInner() {
           const medLevel = c.facilities?.medical?.level ?? 1;
           const recoveryFocus = c.training?.focus?.recovery ?? 20;
           const baseInjuryProb = 0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001;
-          const injuryProb = clamp(baseInjuryProb, 0.04, 0.28);
+          const injuryProb = effectiveInjuryRate(c, clamp(baseInjuryProb, 0.04, 0.28));
           // Add key-event injuries from the match engine
           (result.injuredPlayerIds || []).forEach(pid => {
             if (!c.lineup.includes(pid)) return;
@@ -564,18 +682,28 @@ function AFLManagerInner() {
         return { ...p, fitness: clamp(p.fitness + rand(8, 14), 30, 100), injured: Math.max(0, p.injured - 1) };
       });
 
-      // Finance for this round
+      // Match-day gate revenue (spec Phase 2 — layered on top of weekly cashflow tick).
+      // Wages, sponsor accrual and facility upkeep are now ticked weekly across the full
+      // calendar in `tickWeeklyCashflow`, so the round handler only adds match-day income.
       const isHomeMatch = myMatch && myMatch.home === c.clubId;
-      const stadiumLevel = c.facilities.stadium.level;
-      const baseAtt = league.tier === 1 ? 35000 : league.tier === 2 ? 4000 : 600;
-      const att = Math.round(baseAtt * (0.6 + stadiumLevel * 0.15) * (0.7 + c.finance.fanHappiness / 200));
-      const ticketRev = isHomeMatch ? Math.round(att * (league.tier === 1 ? 38 : league.tier === 2 ? 16 : 10)) : 0;
-      const sponsorAccrual = Math.round(c.sponsors.reduce((a, s) => a + s.annualValue, 0) / 22);
-      const wageWeekly = Math.round((c.squad.reduce((a, p) => a + p.wage, 0) + c.staff.reduce((a, s) => a + s.wage, 0)) / 52);
-      const facilityCosts = Math.round(Object.values(c.facilities).reduce((a, f) => a + f.level * 2500, 0));
-      c.finance.cash += ticketRev + sponsorAccrual - wageWeekly - facilityCosts;
-      c.weeklyHistory = (c.weeklyHistory || []).slice(-15);
-      c.weeklyHistory.push({ week: ev.round, profit: ticketRev + sponsorAccrual - wageWeekly - facilityCosts, cash: c.finance.cash });
+      if (isHomeMatch) {
+        const stadiumLevel = c.facilities.stadium.level;
+        const baseAtt = BASE_ATTENDANCE[league.tier] ?? 600;
+        const att = Math.round(baseAtt * (0.6 + stadiumLevel * 0.15) * (0.7 + c.finance.fanHappiness / 200));
+        const ticketRev = Math.round(att * (TICKET_PRICE[league.tier] ?? 10));
+        c.finance.cash += ticketRev;
+        // Annotate the latest weekly entry with the gate boost
+        if (Array.isArray(c.weeklyHistory) && c.weeklyHistory.length > 0) {
+          const last = c.weeklyHistory[c.weeklyHistory.length - 1];
+          c.weeklyHistory[c.weeklyHistory.length - 1] = {
+            ...last,
+            profit: (last.profit ?? 0) + ticketRev,
+            cash:   c.finance.cash,
+            ticketRev,
+            attendance: att,
+          };
+        }
+      }
 
       const cfg = getDifficultyConfig(c.difficulty);
       // Difficulty-driven board confidence delta
@@ -916,6 +1044,13 @@ function AFLManagerInner() {
     const newLeagueTier = PYRAMID[c.leagueKey]?.tier || league.tier;
     const newTierScale = TIER_SCALE[newLeagueTier] || 1.0;
 
+    // Phase 3 — first, sweep any unhandled renewals from LAST season's queue.
+    // Players the user never resolved → walk now.
+    const previousQueue = (c.pendingRenewals || []).filter(r => !r._handled || r._handled === 'rejected');
+    const walkingFromQueue = new Set(previousQueue.map(r => r.playerId));
+    // Mark squad members from rejected/unhandled renewals as departing.
+    c.squad = c.squad.map(p => walkingFromQueue.has(p.id) ? { ...p, _walking: true } : p);
+
     // Age players: capture retirements as narratives
     const retiredThisYear = [];
     const beforeIds = new Set(c.squad.map(p => p.id));
@@ -930,15 +1065,16 @@ function AFLManagerInner() {
                goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0,
                suspended: 0 };
     });
-    // Capture retirees/leavers
-    const survivors = c.squad.filter(p => p.age <= 36 && p.contract > 0);
-    const leavers = c.squad.filter(p => p.age > 36 || p.contract <= 0);
+    // Capture retirees/leavers — players walk if they're: too old, contract expired AND not preserved by an upcoming renewal,
+    // or marked _walking by a rejected renewal proposal.
+    const survivors = c.squad.filter(p => !p._walking && p.age <= 36 && p.contract > 0);
+    const leavers   = c.squad.filter(p =>  p._walking || p.age > 36 || p.contract <= 0);
     leavers.forEach(p => {
       retiredThisYear.push({
         id: p.id,
         name: p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'),
         age: p.age,
-        reason: p.age > 36 ? 'retired' : 'released',
+        reason: p._walking ? 'walked' : p.age > 36 ? 'retired' : 'released',
         career: { goals: p.goals || 0, gamesPlayed: p.gamesPlayed || 0 },
       });
     });
@@ -1000,6 +1136,79 @@ function AFLManagerInner() {
     // ── Spec Section 3B: reset footy trip availability for next season ──
     c.footyTripUsed = false;
     c.footyTripAvailable = false;
+
+    // ── Phase 4 — Prize money ──
+    const prizeArgs = { premiership: champion, runnerUp: !champion && myPos === 2,
+                        finals: myPos >= 3 && myPos <= 4, woodenSpoon: myPos === sorted.length };
+    const prize = applyPrizeMoney(c, prizeArgs);
+    const prizeCashChange = prize.cash - c.finance.cash;
+    c.finance.cash = prize.cash;
+    if (prize.events.length > 0) {
+      prize.events.forEach(ev => {
+        c.news = [{ week: 0, type: ev.amount >= 0 ? 'win' : 'loss',
+                    text: `💰 ${ev.label}: ${ev.amount >= 0 ? '+' : ''}${fmtK(ev.amount)}` },
+                  ...(c.news || [])].slice(0, 20);
+      });
+    }
+
+    // ── Phase 4 — Promotion / relegation ripple ──
+    const newTier = PYRAMID[c.leagueKey]?.tier ?? league.tier;
+    let rippleSummary = null;
+    if (promoted || relegated) {
+      const ripple = applyPromotionRipple(c, { promoted, relegated, newTier });
+      c.sponsors = ripple.sponsors;
+      c.finance  = { ...c.finance, ...ripple.finance };
+      rippleSummary = { promoted, relegated, sponsorMult: promoted ? 1.30 : 0.50 };
+    }
+
+    // ── Phase 3 — Sponsor lifecycle: tick years, expire, build renewal proposals ──
+    const sponsorTick = tickSponsorYears(c.sponsors || []);
+    c.sponsors = sponsorTick.active;
+    c.expiredSponsorsLastSeason = sponsorTick.expired;
+    sponsorTick.expired.forEach(s => {
+      c.news = [{ week: 0, type: 'loss', text: `📉 Sponsor ${s.name} did not renew their deal (${fmtK(s.annualValue)}/yr)` }, ...(c.news || [])].slice(0, 25);
+    });
+    // Renewal proposals for any sponsor with 1 year left
+    c.sponsorRenewalProposals = c.sponsors.filter(s => (s.yearsLeft ?? 0) === 1).map(s => proposalForRenewal(s, c));
+    // Backfill offers if we have fewer than min sponsors
+    const minSponsors = newTier === 1 ? 4 : newTier === 2 ? 2 : 1;
+    if (c.sponsors.length < minSponsors) {
+      const backfill = generateSponsorOffers(c, newTier, minSponsors - c.sponsors.length + 1);
+      c.sponsorOffers = backfill;
+    }
+
+    // ── Phase 2 — Refill transfer budget at season start ──
+    const beforeBudget = c.finance.transferBudget ?? 0;
+    c.finance.transferBudget = refillTransferBudget(c);
+    const budgetChange = c.finance.transferBudget - beforeBudget;
+
+    // ── Phase 2 — Recompute annualIncome dynamically (tier × ladder × fans × stadium) ──
+    c.finance.annualIncome = recomputeAnnualIncome(c);
+
+    // ── Phase 3 — Player contract renewals queue (players whose contract just hit 0/1) ──
+    c.pendingRenewals = buildRenewalQueue(c);
+    c.renewalsClosed  = false;
+
+    // Reset weekly tick + insolvency tracking for the new season
+    c.lastFinanceTickWeek = null;
+    c.weeklyHistory = [];
+    c.cashCrisisStartWeek = c.finance.cash < 0 ? 0 : null;
+    c.cashCrisisLevel = c.finance.cash < 0 ? 1 : 0;
+    c.fundraisersUsed = {};
+    c.communityGrantUsed = false;
+
+    // Stash the EOS finance summary for SeasonSummaryScreen
+    c.lastEosFinance = {
+      prizeMoney:        prize.events.reduce((a, e) => a + e.amount, 0),
+      transferBudgetRefill: budgetChange,
+      sponsorsExpired:   sponsorTick.expired.length,
+      sponsorsActive:    c.sponsors.length,
+      annualIncome:      c.finance.annualIncome,
+      annualNet:         annualNetProjection(c),
+      cashEnd:           c.finance.cash,
+      cashCrisis:        c.cashCrisisLevel,
+      ripple:            rippleSummary,
+    };
 
     // Retirement news
     retiredThisYear.slice(0, 4).forEach(r => {
@@ -1099,6 +1308,7 @@ function AFLManagerInner() {
           summary={career.seasonSummary}
           club={club}
           retiredThisSeason={career.retiredThisSeason}
+          eosFinance={career.lastEosFinance}
           onContinue={() => updateCareer({ showSeasonSummary: false })}
         />
       </div>
@@ -1231,13 +1441,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     const SEASON = 2026;
     seedRng(clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7) + 1);
     const cfg = getDifficultyConfig(difficulty);
-    const baseFinance = defaultFinance(league.tier);
-    const tunedFinance = {
-      ...baseFinance,
-      cash:           Math.round(baseFinance.cash           * cfg.cashMultiplier),
-      transferBudget: Math.round(baseFinance.transferBudget * cfg.transferBudgetMultiplier),
-      boardConfidence: 55,
-    };
+    const tunedFinance = makeStartingFinance(league.tier, difficulty, 55);
     const baseSponsors = generateSponsors(league.tier).map(s => ({
       ...s,
       annualValue: Math.round((s.annualValue ?? 0) * cfg.sponsorMultiplier),
@@ -1246,7 +1450,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
     const fixtures = generateFixtures(league.clubs);
     const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
-    const facilities = { ...DEFAULT_FACILITIES(), stadium: 1 };
+    const facilities = DEFAULT_FACILITIES();
     const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
     sessionStorage.removeItem(SETUP_SS_KEY);
     onStart({
@@ -1321,6 +1525,19 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       journalist: generateJournalist(),
       lastBoardConfidenceDelta: 0,
       lastMatchSummary: null,
+      // v4 additions — Finance system rebuild
+      lastFinanceTickWeek:        null,
+      cashCrisisStartWeek:        null,
+      cashCrisisLevel:            0,
+      bankLoan:                   null,
+      sponsorRenewalProposals:    [],
+      sponsorOffers:              [],
+      expiredSponsorsLastSeason:  [],
+      pendingRenewals:            [],
+      renewalsClosed:             false,
+      fundraisersUsed:            {},
+      communityGrantUsed:         false,
+      lastEosFinance:             null,
     });
     } catch (err) {
       setLoading(false);
@@ -2345,7 +2562,17 @@ function ScheduleScreen({ career, club, league }) {
 // ============================================================================
 // SEASON SUMMARY SCREEN
 // ============================================================================
-function SeasonSummaryScreen({ summary, club, retiredThisSeason = [], onContinue }) {
+function EosFinTile({ label, value, accent = 'var(--A-accent)', sub }) {
+  return (
+    <div className="rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+      <div className={css.label}>{label}</div>
+      <div className="font-display text-2xl mt-1" style={{ color: accent }}>{value}</div>
+      {sub && <div className="text-[10px] text-atext-mute mt-1">{sub}</div>}
+    </div>
+  );
+}
+
+function SeasonSummaryScreen({ summary, club, retiredThisSeason = [], eosFinance = null, onContinue }) {
   const posColor   = summary.position <= 1 ? '#FFD700' : summary.position <= 4 ? '#4AE89A' : summary.position <= summary.totalTeams / 2 ? 'var(--A-accent)' : '#E84A6F';
   const tierColors = { 1: '#E84A6F', 2: 'var(--A-accent)', 3: '#4ADBE8' };
   const tierColor  = tierColors[summary.leagueTier] || 'var(--A-accent)';
@@ -2460,6 +2687,29 @@ function SeasonSummaryScreen({ summary, club, retiredThisSeason = [], onContinue
             <div className="text-sm text-slate-400 mt-1">
               {summary.promoted ? 'A new challenge awaits in the division above.' : 'Time to rebuild and fight back up.'}
             </div>
+          </div>
+        )}
+
+        {eosFinance && (
+          <div className="rounded-2xl p-5 mt-2" style={{ background: 'var(--A-panel)', border: '1px solid var(--A-line-2)' }}>
+            <div className="flex items-center gap-2 mb-3">
+              <DollarSign className="w-5 h-5 text-aaccent" />
+              <div className="font-display text-2xl tracking-wide text-atext">FINANCIAL YEAR</div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <EosFinTile label="Cash on hand"        value={fmtK(eosFinance.cashEnd)} accent={eosFinance.cashEnd >= 0 ? '#4AE89A' : '#E84A6F'} />
+              <EosFinTile label="Prize money"         value={`+${fmtK(eosFinance.prizeMoney)}`} accent="#FFD200" />
+              <EosFinTile label="Transfer refill"     value={`+${fmtK(eosFinance.transferBudgetRefill)}`} accent="#4ADBE8" />
+              <EosFinTile label="Sponsors lost"       value={eosFinance.sponsorsExpired} accent={eosFinance.sponsorsExpired > 0 ? '#E84A6F' : '#4AE89A'} sub={`${eosFinance.sponsorsActive} active now`} />
+            </div>
+            {eosFinance.cashCrisis > 0 && (
+              <div className="mt-3 text-xs text-[#E84A6F] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Cash crisis level {eosFinance.cashCrisis} carries into next season</div>
+            )}
+            {eosFinance.ripple && (
+              <div className="mt-3 text-xs text-atext-dim">
+                {eosFinance.ripple.promoted ? `Promotion ripple: sponsor values +30%, board confidence +20.` : `Relegation ripple: sponsor values cut to half, board confidence -25.`}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -2727,11 +2977,15 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
 // SQUAD SCREEN — players, tactics, training
 // ============================================================================
 function SquadScreen({ career, club, updateCareer, tab, setTab }) {
-  const t = tab || "players";
+  const renewalCount = (career.pendingRenewals || []).filter(r => !r._handled).length;
+  const t = tab || (renewalCount > 0 ? "renewals" : "players");
   const tabs = [
     { key: "players", label: "Players", icon: Users },
     { key: "tactics", label: "Tactics", icon: Target },
     { key: "training", label: "Training", icon: Dumbbell },
+    ...(renewalCount > 0 || (career.pendingRenewals?.length ?? 0) > 0
+      ? [{ key: "renewals", label: `Renewals${renewalCount ? ` (${renewalCount})` : ''}`, icon: FileText }]
+      : []),
   ];
   return (
     <div className="anim-in">
@@ -2739,6 +2993,93 @@ function SquadScreen({ career, club, updateCareer, tab, setTab }) {
       {t === "players"  && <PlayersTab career={career} updateCareer={updateCareer} />}
       {t === "tactics"  && <TacticsTab career={career} updateCareer={updateCareer} />}
       {t === "training" && <TrainingTab career={career} updateCareer={updateCareer} />}
+      {t === "renewals" && <RenewalsTab career={career} updateCareer={updateCareer} />}
+    </div>
+  );
+}
+
+function RenewalsTab({ career, updateCareer }) {
+  const queue = (career.pendingRenewals || []).filter(r => !r._handled);
+  const accept = (proposal) => {
+    if (!canAffordRenewal(career, proposal)) {
+      updateCareer({
+        news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot renew ${proposal.name} — would breach the salary cap` }, ...(career.news || [])].slice(0, 25),
+      });
+      return;
+    }
+    const patch = applyRenewal(career, proposal);
+    updateCareer({
+      ...patch,
+      pendingRenewals: (career.pendingRenewals || []).map(r => r.playerId === proposal.playerId ? { ...r, _handled: 'accepted' } : r),
+      news: [{ week: career.week, type: 'win', text: `✍️ Re-signed ${proposal.name} for ${proposal.proposedYears}y @ ${fmtK(proposal.proposedWage)}/yr` }, ...(career.news || [])].slice(0, 25),
+    });
+  };
+  const reject = (proposal) => {
+    const patch = applyRenewalRejection(career, proposal);
+    updateCareer({
+      ...patch,
+      pendingRenewals: (career.pendingRenewals || []).map(r => r.playerId === proposal.playerId ? { ...r, _handled: 'rejected' } : r),
+      news: [{ week: career.week, type: 'loss', text: `🚪 ${proposal.name} will walk at the end of pre-season` }, ...(career.news || [])].slice(0, 25),
+    });
+  };
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className={`${css.h1} text-3xl`}>CONTRACT RENEWALS</div>
+          <div className="text-xs text-atext-dim">Players whose contracts are about to expire. Re-sign before pre-season ends or they walk.</div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Stat label="Cap Headroom" value={fmtK(capHeadroom(career))} accent={capHeadroom(career) > 0 ? '#4AE89A' : '#E84A6F'} />
+          <Stat label="Outstanding" value={queue.length} accent="var(--A-accent-2)" />
+        </div>
+      </div>
+      {queue.length === 0 ? (
+        <div className={`${css.panel} p-12 text-center`}>
+          <FileText className="w-12 h-12 mx-auto mb-3 opacity-30 text-atext-mute" />
+          <div className="text-sm text-atext-dim">No active renewals. They&apos;ll appear at season end.</div>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-3">
+          {queue.map(r => {
+            const player = (career.squad || []).find(p => p.id === r.playerId);
+            if (!player) return null;
+            const wageDelta = r.proposedWage - (r.currentWage ?? 0);
+            const canAfford = canAffordRenewal(career, r);
+            const formColor = (player.form ?? 70) >= 80 ? '#4AE89A' : (player.form ?? 70) >= 60 ? 'var(--A-accent)' : '#E84A6F';
+            return (
+              <div key={r.playerId} className={`${css.panel} p-4`}>
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <div className="font-bold text-base">{r.name}</div>
+                    <div className="text-[10px] text-atext-dim uppercase tracking-widest font-mono">{r.position} · age {r.age} · OVR {r.overall}</div>
+                  </div>
+                  <RatingDot value={r.overall} size="sm" />
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
+                  <div className="text-atext-mute">Current</div>
+                  <div className="text-atext text-right font-mono">{fmtK(r.currentWage)}/yr</div>
+                  <div className="text-atext-mute">Demand</div>
+                  <div className="text-right font-mono font-bold" style={{ color: wageDelta >= 0 ? '#FFB347' : '#4AE89A' }}>
+                    {fmtK(r.proposedWage)}/yr <span className="text-atext-mute font-normal">({wageDelta >= 0 ? '+' : ''}{fmtK(wageDelta)})</span>
+                  </div>
+                  <div className="text-atext-mute">Years</div>
+                  <div className="text-atext text-right font-mono">{r.proposedYears}y</div>
+                  <div className="text-atext-mute">Form factor</div>
+                  <div className="text-right font-mono" style={{ color: formColor }}>{(r.formMult ?? 1).toFixed(2)}×</div>
+                </div>
+                {!canAfford && (
+                  <div className="text-[10px] text-[#E84A6F] mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Over salary cap</div>
+                )}
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => reject(r)} className="text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10">Let Walk</button>
+                  <button onClick={() => accept(r)} disabled={!canAfford} className={canAfford ? `${css.btnPrimary} text-xs px-3 py-2` : "px-3 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>Re-Sign</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -2892,9 +3233,10 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-[11px] text-atext-dim">Age {player.age}</span>
               <span className="text-aline-2">·</span>
-              <span className="text-[11px] text-atext-dim">{player.contract}yr</span>
+              <span className={`text-[11px] ${player.contract <= 1 ? 'text-[#FFB347] font-bold' : 'text-atext-dim'}`}>{player.contract}yr</span>
               <span className="text-aline-2">·</span>
               <span className="text-[11px] text-atext-dim">{fmtK(player.wage)}/yr</span>
+              {player.contract <= 1 && <Pill color="#FFB347">Renew soon</Pill>}
             </div>
           </div>
           <div className="flex flex-col items-center gap-1.5">
@@ -3371,9 +3713,15 @@ function HonoursTab({ career, club }) {
 function RookieListTab({ career, updateCareer }) {
   const rookies = career.squad.filter(p => p.rookie || p.age <= 19);
   const promote = (p) => {
+    const newWage = Math.round((p.wage || 0) * 1.4);
+    const wageDelta = newWage - (p.wage || 0);
+    if (!canAffordSigning(career, wageDelta)) {
+      updateCareer({ news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot promote ${p.firstName} ${p.lastName} — would breach the salary cap` }, ...(career.news || [])].slice(0, 20) });
+      return;
+    }
     updateCareer({
-      squad: career.squad.map(x => x.id === p.id ? { ...x, rookie: false, wage: Math.round(x.wage * 1.4) } : x),
-      news: [{ week: career.week, type: 'info', text: `📈 Promoted ${p.firstName} ${p.lastName} to senior list` }, ...(career.news || [])].slice(0, 20),
+      squad: career.squad.map(x => x.id === p.id ? { ...x, rookie: false, wage: newWage } : x),
+      news: [{ week: career.week, type: 'info', text: `📈 Promoted ${p.firstName} ${p.lastName} to senior list (${fmtK(newWage)}/yr)` }, ...(career.news || [])].slice(0, 20),
     });
   };
   return (
@@ -3476,90 +3824,142 @@ function SettingsTab({ career, updateCareer }) {
 }
 
 function FinancesTab({ career }) {
-  const wages = career.squad.reduce((a, p) => a + p.wage, 0);
-  const staffWages = career.staff.reduce((a, s) => a + s.wage, 0);
-  const sponsors = career.sponsors.reduce((a, s) => a + s.annualValue, 0);
-  const facilityCosts = Math.round(Object.values(career.facilities).reduce((a, f) => a + f.level * 130000, 0));
-  const gateRev = Math.round(career.finance.annualIncome * 0.4);
-  const broadcastRev = Math.round(career.finance.annualIncome * 0.35);
-  const annualNet = (gateRev + broadcastRev + sponsors) - (wages + staffWages + facilityCosts);
-  const wageCap = career.finance.wageBudget || 0;
-  const wagePct = wageCap > 0 ? Math.min(100, Math.round((wages / wageCap) * 100)) : 0;
-  const wageCapColor = wagePct >= 95 ? "#E84A6F" : wagePct >= 80 ? "var(--A-accent)" : "#4AE89A";
+  const inc = incomeBreakdown(career);
+  const exp = expenseBreakdown(career);
+  const net = inc.grandTotal - exp.grandTotal;
+  const wageCap = effectiveWageCap(career);
+  const playerWages = currentPlayerWageBill(career);
+  const wagePct = wageCap > 0 ? Math.min(150, Math.round((playerWages / wageCap) * 100)) : 0;
+  const wageCapColor = wagePct >= 100 ? "#E84A6F" : wagePct >= 90 ? "var(--A-accent-2)" : wagePct >= 80 ? "var(--A-accent)" : "#4AE89A";
+  const cfg = getDifficultyConfig(career.difficulty);
+  const overflowPct = Math.round((cfg.capOverflow ?? 0) * 100);
+  const crisis = career.cashCrisisLevel ?? 0;
+
   return (
     <div className="space-y-4">
-      <div className="grid md:grid-cols-4 gap-4">
-        <Stat label="Cash" value={fmtK(career.finance.cash)} accent="#4AE89A" />
-        <Stat label="Annual Net (proj)" value={fmtK(annualNet)} accent={annualNet > 0 ? "#4AE89A" : "#E84A6F"} />
-        <Stat label="Wage Bill" value={fmtK(wages + staffWages)} sub="players + staff" accent="var(--A-accent)" />
-        <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="#4ADBE8" />
-      </div>
-
-      {/* Salary Cap Bar */}
-      {wageCap > 0 && (
-        <div className={`${css.panel} p-5`}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={`${css.h1} text-2xl`}>SALARY CAP</h3>
-            <span className="text-xs font-bold" style={{color: wageCapColor}}>{wagePct}% used</span>
-          </div>
-          <div className="flex justify-between text-xs text-atext-dim mb-2">
-            <span>Player wages: <span className="font-bold text-atext">{fmtK(wages)}</span></span>
-            <span>Cap: <span className="font-bold text-atext">{fmtK(wageCap)}</span></span>
-          </div>
-          <div className="h-4 rounded-full overflow-hidden" style={{background:"var(--A-panel-2)"}}>
-            <div className="h-full rounded-full transition-all" style={{width:`${wagePct}%`, background: wageCapColor}} />
-          </div>
-          <div className="text-xs text-atext-dim mt-2">
-            {fmtK(wageCap - wages)} remaining · {wagePct >= 95 ? '⚠️ Near cap — limited signing ability' : wagePct >= 80 ? 'Cap tightening — plan ahead' : 'Healthy cap space available'}
+      {/* Cash crisis banner */}
+      {crisis > 0 && (
+        <div className={`${css.panel} p-4 flex items-start gap-3`} style={{ borderColor: '#E84A6F', background: 'rgba(232,74,111,0.06)' }}>
+          <AlertCircle className="w-5 h-5 text-[#E84A6F] flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <div className="font-bold text-[#E84A6F] text-sm">CASH CRISIS · LEVEL {crisis}/4</div>
+            <div className="text-xs text-atext-dim mt-1">{
+              crisis === 1 ? 'Cash is in the red. Get back to black before the board steps in.' :
+              crisis === 2 ? 'Emergency board meeting — a forced player sale is on the table.' :
+              crisis === 3 ? 'Bank loan accepted. Sponsor pressure mounting.' :
+                              'Insolvent. The board is preparing your termination.'
+            }</div>
           </div>
         </div>
       )}
+
+      {/* Top-line stats */}
+      <div className="grid md:grid-cols-4 gap-3">
+        <Stat label="Cash" value={fmtK(career.finance.cash)} accent={career.finance.cash >= 0 ? "#4AE89A" : "#E84A6F"} icon={DollarSign} />
+        <Stat label="Annual Net (proj)" value={fmtK(net)} accent={net > 0 ? "#4AE89A" : "#E84A6F"} />
+        <Stat label="Wage Bill" value={fmtK(playerWages + exp.staffWages)} sub="players + staff" accent="var(--A-accent)" />
+        <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="#4ADBE8" />
+      </div>
+
+      {/* Salary cap with overflow indicator */}
+      {wageCap > 0 && (
+        <div className={`${css.panel} p-5`}>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 className={`${css.h1} text-2xl`}>SALARY CAP</h3>
+            <div className="flex items-center gap-3">
+              {overflowPct !== 0 && (
+                <Pill color={overflowPct > 0 ? '#4AE89A' : '#E84A6F'}>
+                  {overflowPct > 0 ? `+${overflowPct}% headroom` : `${overflowPct}% tighter`}
+                </Pill>
+              )}
+              <span className="text-xs font-bold" style={{ color: wageCapColor }}>{wagePct}% used</span>
+            </div>
+          </div>
+          <div className="flex justify-between text-xs text-atext-dim mb-2">
+            <span>Player wages: <span className="font-bold text-atext">{fmtK(playerWages)}</span></span>
+            <span>Effective cap: <span className="font-bold text-atext">{fmtK(wageCap)}</span></span>
+          </div>
+          <div className="h-4 rounded-full overflow-hidden" style={{ background: "var(--A-panel-2)" }}>
+            <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, wagePct)}%`, background: wageCapColor }} />
+          </div>
+          <div className="text-xs text-atext-dim mt-2">
+            {wagePct >= 100 ? '⚠️ Over the effective cap — board pressure rising' :
+             wagePct >= 90  ? 'Cap stretched — careful with new signings' :
+             wagePct >= 80  ? 'Cap tightening — plan ahead' :
+                              `${fmtK(wageCap - playerWages)} of cap headroom available`}
+          </div>
+        </div>
+      )}
+
+      {/* Income / Expenses split */}
       <div className="grid md:grid-cols-2 gap-4">
         <div className={`${css.panel} p-5`}>
           <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (ANNUAL)</h3>
           {[
-            { label: "Broadcast / TV Rights", value: broadcastRev, color: "var(--A-accent)" },
-            { label: "Gate & Membership", value: gateRev, color: "#4ADBE8" },
-            { label: "Sponsorship", value: sponsors, color: "#4AE89A" },
-          ].map(r => {
-            const total = broadcastRev + gateRev + sponsors;
-            return (
-              <div key={r.label} className="mb-3">
-                <div className="flex justify-between text-sm mb-1"><span className="text-atext">{r.label}</span><span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span></div>
-                <Bar value={(r.value / total) * 100} color={r.color} />
+            { label: "Broadcast / TV Rights", value: inc.broadcast,   color: "var(--A-accent)" },
+            { label: "Gate Revenue",          value: inc.gate,        color: "#4ADBE8" },
+            { label: "Membership",            value: inc.membership,  color: "#4AE89A" },
+            { label: "Merchandise",           value: inc.merchandise, color: "var(--A-accent-2)" },
+            { label: "Sponsorship",           value: inc.sponsors,    color: "#A78BFA" },
+          ].map(r => (
+            <div key={r.label} className="mb-3">
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-atext">{r.label}</span>
+                <span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span>
               </div>
-            );
-          })}
+              <Bar value={inc.grandTotal > 0 ? (r.value / inc.grandTotal) * 100 : 0} color={r.color} />
+            </div>
+          ))}
+          <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
+            <span>Total income</span><span className="text-[#4AE89A]">{fmtK(inc.grandTotal)}</span>
+          </div>
         </div>
         <div className={`${css.panel} p-5`}>
           <h3 className={`${css.h1} text-2xl mb-3`}>EXPENSES (ANNUAL)</h3>
           {[
-            { label: "Player Wages", value: wages, color: "#E84A6F" },
-            { label: "Staff Wages", value: staffWages, color: "var(--A-accent)" },
-            { label: "Facilities Upkeep", value: facilityCosts, color: "#4ADBE8" },
-          ].map(r => {
-            const total = wages + staffWages + facilityCosts;
-            return (
-              <div key={r.label} className="mb-3">
-                <div className="flex justify-between text-sm mb-1"><span className="text-atext">{r.label}</span><span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span></div>
-                <Bar value={(r.value / total) * 100} color={r.color} />
+            { label: "Player Wages",      value: exp.playerWages, color: "#E84A6F" },
+            { label: "Staff Wages",       value: exp.staffWages,  color: "var(--A-accent)" },
+            { label: "Facilities Upkeep", value: exp.facilities,  color: "#4ADBE8" },
+          ].map(r => (
+            <div key={r.label} className="mb-3">
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-atext">{r.label}</span>
+                <span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span>
               </div>
-            );
-          })}
+              <Bar value={exp.grandTotal > 0 ? (r.value / exp.grandTotal) * 100 : 0} color={r.color} />
+            </div>
+          ))}
+          <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
+            <span>Total expenses</span><span className="text-[#E84A6F]">{fmtK(exp.grandTotal)}</span>
+          </div>
         </div>
       </div>
+
+      {/* Bank loan card */}
+      {career.bankLoan && (
+        <div className={`${css.panel} p-5`}>
+          <h3 className={`${css.h1} text-2xl mb-2`}>BANK LOAN</h3>
+          <div className="grid sm:grid-cols-3 gap-3 text-sm">
+            <div><div className={css.label}>Principal</div><div className="font-display text-2xl">{fmtK(career.bankLoan.principal)}</div></div>
+            <div><div className={css.label}>Weeks left</div><div className="font-display text-2xl">{career.bankLoan.weeksRemaining}</div></div>
+            <div><div className={css.label}>Interest / wk</div><div className="font-display text-2xl text-[#E84A6F]">{fmtK(career.bankLoan.interestPerWeek)}</div></div>
+          </div>
+        </div>
+      )}
+
+      {/* Weekly cashflow chart */}
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>WEEKLY CASH FLOW</h3>
-        {career.weeklyHistory.length === 0 ? (
-          <div className="text-sm text-atext-dim py-8 text-center">No matches played yet — advance a week to see cash flow.</div>
+        {(career.weeklyHistory || []).length === 0 ? (
+          <div className="text-sm text-atext-dim py-8 text-center">No weeks recorded yet — advance to see cash flow.</div>
         ) : (
           <div className="flex items-end gap-1 h-40">
             {career.weeklyHistory.map((w, i) => {
-              const max = Math.max(...career.weeklyHistory.map(x => Math.abs(x.profit)));
-              const h = max === 0 ? 0 : (Math.abs(w.profit) / max) * 100;
+              const max = Math.max(...career.weeklyHistory.map(x => Math.abs(x.profit ?? 0)));
+              const h = max === 0 ? 0 : (Math.abs(w.profit ?? 0) / max) * 100;
               return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                  <div className="w-full rounded-t" style={{ height: `${h}%`, background: w.profit >= 0 ? "#4AE89A" : "#E84A6F", opacity: 0.85 }} />
+                <div key={i} className="flex-1 flex flex-col items-center gap-1" title={`Week ${w.week}: ${fmtK(w.profit)}`}>
+                  <div className="w-full rounded-t" style={{ height: `${h}%`, background: (w.profit ?? 0) >= 0 ? "#4AE89A" : "#E84A6F", opacity: 0.85 }} />
                   <div className="text-[9px] text-atext-dim">R{w.week}</div>
                 </div>
               );
@@ -3573,29 +3973,121 @@ function FinancesTab({ career }) {
 
 function SponsorsTab({ career, updateCareer }) {
   const totalAnnual = career.sponsors.reduce((a, s) => a + s.annualValue, 0);
-  const renew = (sp) => {
-    updateCareer({ sponsors: career.sponsors.map(s => s.id === sp.id ? { ...s, yearsLeft: s.yearsLeft + 2, annualValue: Math.round(s.annualValue * 1.08) } : s) });
-  };
+  const proposals = career.sponsorRenewalProposals || [];
+  const offers    = career.sponsorOffers || [];
+  const expiredLastSeason = career.expiredSponsorsLastSeason || [];
+  const cfg = getDifficultyConfig(career.difficulty);
+
   const drop = (sp) => updateCareer({ sponsors: career.sponsors.filter(s => s.id !== sp.id) });
-  const seek = () => {
-    const newOnes = generateSponsors(findLeagueOf(career.clubId).tier);
-    const fresh = newOnes[rand(0, newOnes.length - 1)];
-    if (career.sponsors.find(s => s.name === fresh.name)) return;
-    updateCareer({ sponsors: [...career.sponsors, fresh], finance: { ...career.finance, fanHappiness: clamp(career.finance.fanHappiness + 2, 10, 100) } });
+  const acceptRenewal = (proposal) => {
+    const patch = applyRenewalAcceptance(career, proposal);
+    updateCareer({
+      ...patch,
+      sponsorRenewalProposals: proposals.filter(p => p.sponsorId !== proposal.sponsorId),
+      news: [{ week: career.week, type: 'win', text: `🤝 Renewed ${proposal.name} for ${proposal.proposedYears}y @ ${fmtK(proposal.proposedValue)}/yr` }, ...(career.news || [])].slice(0, 25),
+    });
   };
+  const declineRenewal = (proposal) => {
+    const patch = applyRenewalDecline(career, proposal);
+    updateCareer({
+      ...patch,
+      sponsorRenewalProposals: proposals.filter(p => p.sponsorId !== proposal.sponsorId),
+      news: [{ week: career.week, type: 'loss', text: `📉 Let ${proposal.name} walk — sponsor expired` }, ...(career.news || [])].slice(0, 25),
+    });
+  };
+  const acceptOffer = (offer) => {
+    const patch = applySponsorOfferAcceptance(career, offer);
+    updateCareer({
+      ...patch,
+      sponsorOffers: offers.filter(o => o.offerId !== offer.offerId),
+      news: [{ week: career.week, type: 'win', text: `📈 New sponsor: ${offer.name} (${fmtK(offer.annualValue)}/yr, ${offer.yearsLeft}y)` }, ...(career.news || [])].slice(0, 25),
+    });
+  };
+  const declineOffer = (offer) => {
+    updateCareer({ sponsorOffers: offers.filter(o => o.offerId !== offer.offerId) });
+  };
+
   return (
     <div className="space-y-4">
-      <div className="grid md:grid-cols-3 gap-4">
-        <Stat label="Total Annual Sponsorship" value={fmtK(totalAnnual)} accent="#4AE89A" />
+      <div className="grid md:grid-cols-4 gap-4">
+        <Stat label="Total Annual" value={fmtK(totalAnnual)} accent="#4AE89A" />
         <Stat label="Active Deals" value={career.sponsors.length} accent="var(--A-accent)" />
         <Stat label="Avg Deal" value={career.sponsors.length ? fmtK(Math.round(totalAnnual/career.sponsors.length)) : "—"} accent="#4ADBE8" />
+        <Stat label="Sponsor x" value={`${cfg.sponsorMultiplier.toFixed(2)}×`} sub="difficulty" accent="var(--A-accent-2)" />
       </div>
+
+      {expiredLastSeason.length > 0 && (
+        <div className={`${css.panel} p-4`} style={{borderColor: '#E84A6F'}}>
+          <div className="flex items-center gap-2 mb-2"><AlertCircle className="w-4 h-4 text-[#E84A6F]" /><div className="font-bold text-sm">Lost last season</div></div>
+          <div className="flex flex-wrap gap-2">
+            {expiredLastSeason.map(s => (
+              <Pill key={s.id} color="#E84A6F">{s.name} · {fmtK(s.annualValue)}/yr</Pill>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {proposals.length > 0 && (
+        <div className={`${css.panel} p-5`}>
+          <h3 className={`${css.h1} text-2xl mb-3`}>RENEWAL PROPOSALS</h3>
+          <p className="text-xs text-atext-dim mb-3">These deals expire at season end. Renew now or let them walk.</p>
+          <div className="grid md:grid-cols-2 gap-3">
+            {proposals.map(p => {
+              const delta = (p.proposedValue ?? 0) - (p.currentValue ?? 0);
+              return (
+                <div key={p.sponsorId} className={`${css.inset} p-4`}>
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="font-display text-xl">{p.name}</div>
+                      <div className="text-[10px] text-atext-dim uppercase tracking-widest">{p.category} · {p.perf}</div>
+                    </div>
+                    <Pill color={delta >= 0 ? '#4AE89A' : '#E84A6F'}>{delta >= 0 ? '+' : ''}{fmtK(delta)}</Pill>
+                  </div>
+                  <div className="text-[11px] text-atext-dim mb-2">
+                    Was {fmtK(p.currentValue)}/yr → propose <span className="font-bold text-atext">{fmtK(p.proposedValue)}/yr</span> for {p.proposedYears}y
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button onClick={() => declineRenewal(p)} className="text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10">Decline</button>
+                    <button onClick={() => acceptRenewal(p)} className={`${css.btnPrimary} text-xs px-3 py-2`}>Accept Renewal</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {offers.length > 0 && (
+        <div className={`${css.panel} p-5`}>
+          <h3 className={`${css.h1} text-2xl mb-3`}>NEW OFFERS</h3>
+          <p className="text-xs text-atext-dim mb-3">Brands knocking on the door — performance-weighted by your finish.</p>
+          <div className="grid md:grid-cols-2 gap-3">
+            {offers.map(o => (
+              <div key={o.offerId} className={`${css.inset} p-4`}>
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <div className="font-display text-xl">{o.name}</div>
+                    <div className="text-[10px] text-atext-dim uppercase tracking-widest">{o.category} · {o.type}</div>
+                  </div>
+                  <Pill color="var(--A-accent)">{o.yearsLeft}y</Pill>
+                </div>
+                <div className="text-[11px] text-atext-dim mb-2">Offer: <span className="font-bold text-[#4AE89A]">{fmtK(o.annualValue)}/yr</span></div>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => declineOffer(o)} className="text-xs px-3 py-2 rounded-lg text-atext-mute hover:text-atext">Pass</button>
+                  <button onClick={() => acceptOffer(o)} className={`${css.btnPrimary} text-xs px-3 py-2`}>Accept Deal</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className={`${css.panel} p-5`}>
         <div className="flex items-center justify-between mb-4">
           <h3 className={`${css.h1} text-2xl`}>ACTIVE PARTNERS</h3>
-          <button onClick={seek} className={`${css.btnPrimary} text-sm flex items-center gap-2`}><Plus className="w-4 h-4" />SEEK NEW DEAL</button>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
+          {career.sponsors.length === 0 && <div className="text-sm text-atext-dim md:col-span-2 text-center py-6">No active sponsors. Wait for offers at season end.</div>}
           {career.sponsors.map(s => (
             <div key={s.id} className={`${css.inset} p-4`}>
               <div className="flex items-start justify-between gap-2">
@@ -3603,17 +4095,14 @@ function SponsorsTab({ career, updateCareer }) {
                   <div className="font-display text-2xl">{s.name}</div>
                   <div className="text-[10px] text-atext-dim uppercase tracking-widest">{s.category} • {s.type}</div>
                 </div>
-                <Pill color="var(--A-accent)">{s.yearsLeft}y left</Pill>
+                <Pill color={s.yearsLeft <= 1 ? '#FFB347' : 'var(--A-accent)'}>{s.yearsLeft}y left</Pill>
               </div>
               <div className="flex items-end justify-between mt-3">
                 <div>
                   <div className="text-[10px] text-atext-dim uppercase tracking-widest">Annual Value</div>
                   <div className="font-display text-3xl text-[#4AE89A]">{fmtK(s.annualValue)}</div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={()=>renew(s)} className={`${css.btnGhost} text-xs`}>Renew +2y</button>
-                  <button onClick={()=>drop(s)} className="text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10">Drop</button>
-                </div>
+                <button onClick={()=>drop(s)} className="text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10">Drop</button>
               </div>
             </div>
           ))}
@@ -3926,6 +4415,14 @@ function OffersTab({ career, club, updateCareer }) {
     const incomingPlayer = offer.offerPlayerSnapshot
       ? { ...offer.offerPlayerSnapshot, id: `incoming_${Date.now()}`, fitness: 90, form: 70, contract: 2, attrs: targetPlayer.attrs, potential: offer.offerPlayerSnapshot.overall + 4, trueRating: offer.offerPlayerSnapshot.overall, goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0, suspended: 0, morale: 75 }
       : null;
+    // Cap check: if a swap player is incoming, ensure their wage fits after target leaves
+    if (incomingPlayer) {
+      const wageDelta = (incomingPlayer.wage ?? 0) - (targetPlayer.wage ?? 0);
+      if (!canAffordSigning(career, wageDelta)) {
+        updateCareer({ news: [{ week: career.week, type: 'loss', text: `⚖️ Trade rejected — bringing in ${incomingPlayer.firstName} ${incomingPlayer.lastName} would breach the cap` }, ...(career.news || [])].slice(0, 20) });
+        return;
+      }
+    }
     const newSquad = career.squad.filter(p => p.id !== offer.targetPlayerId);
     if (incomingPlayer) newSquad.push(incomingPlayer);
     // Remove swap player from AI squad (if any)
@@ -4013,8 +4510,7 @@ function TradeTab({ career, updateCareer }) {
   const filtered = pool.filter(p => filter === "ALL" || p.position === filter);
   const sorted = [...filtered].sort((a,b) => sortBy === "overall" ? b.overall - a.overall : sortBy === "value" ? b.value - a.value : a.age - b.age);
 
-  const currentWages = career.squad.reduce((a, p) => a + p.wage, 0);
-  const wageCap = career.finance.wageBudget || Infinity;
+  const wageCap = effectiveWageCap(career);
 
   const openNegotiation = (p) => {
     const demandedWage  = Math.round(p.wage * (1.05 + Math.random() * 0.2));
@@ -4025,12 +4521,14 @@ function TradeTab({ career, updateCareer }) {
   const acceptDeal = (p) => {
     if (career.finance.transferBudget < p.value) return;
     if (career.squad.length >= 40) return;
-    if (currentWages + negotiating.wage > wageCap) return;
+    if (!canAffordSigning(career, negotiating.wage)) return;
     const signedPlayer = { ...p, id: Date.now() + Math.random(), wage: negotiating.wage, contract: negotiating.years };
+    // Spec Phase 2: trades come out of the transfer budget only; signing-on bonus = 5% of value from cash.
+    const signingBonus = Math.round(p.value * 0.05);
     updateCareer({
       squad: [...career.squad, signedPlayer],
       tradePool: pool.filter(x => x.id !== p.id),
-      finance: { ...career.finance, transferBudget: career.finance.transferBudget - p.value, cash: career.finance.cash - Math.round(p.value * 0.3) },
+      finance: { ...career.finance, transferBudget: career.finance.transferBudget - p.value, cash: career.finance.cash - signingBonus },
       news: [{ week: career.week, type: "win", text: `🤝 Signed ${p.firstName} ${p.lastName} (${p.overall} OVR) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr` }, ...career.news].slice(0,15),
     });
     setNegotiating(null);
@@ -4200,7 +4698,14 @@ function DraftTab({ career, club, updateCareer }) {
       return;
     }
     if (career.squad.length >= 40) return;
-    const rookieWage = Math.max(60000, Math.round(p.overall * 1500));
+    const draftTier = leagueTierOf(career);
+    const rookieWage = draftTier === 1 ? Math.max(80_000, Math.round(p.overall * 1500))
+                     : draftTier === 2 ? Math.max(28_000, Math.round(p.overall * 480))
+                     :                    Math.max(6_000,  Math.round(p.overall * 90));
+    if (!canAffordSigning(career, rookieWage)) {
+      updateCareer({ news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot draft ${p.firstName} ${p.lastName} — over salary cap` }, ...(career.news || [])].slice(0, 20) });
+      return;
+    }
     const rookie = { ...p, id: `r_${Date.now()}_${Math.random()}`, wage: rookieWage, contract: 2, age: rand(17, 19), rookie: true };
     let order = draftOrder.map((d, i) => i === myPickIndex ? { ...d, used: true, prospectName: `${p.firstName} ${p.lastName}`, prospectOverall: p.overall, prospectPos: p.position } : d);
     let currentPool = career.draftPool.filter(x => x.id !== p.id);
@@ -4363,13 +4868,19 @@ function YouthTab({ career, club, updateCareer }) {
   };
   const promote = (p) => {
     if (career.squad.length >= 40) return;
-    const rookie = { ...p, id: Date.now() + Math.random(), wage: 65000, contract: 2 };
+    const youthTier = leagueTierOf(career);
+    const wage = youthTier === 1 ? 100_000 : youthTier === 2 ? 35_000 : 8_000;
+    if (!canAffordSigning(career, wage)) {
+      updateCareer({ news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot promote ${p.firstName} ${p.lastName} — over salary cap` }, ...career.news].slice(0, 15) });
+      return;
+    }
+    const rookie = { ...p, id: Date.now() + Math.random(), wage, contract: 2, rookie: true };
     const remaining = generated.filter(x => x.id !== p.id);
     setGenerated(remaining);
     updateCareer({
       squad: [...career.squad, rookie],
       youth: { ...youth, recruits: remaining },
-      news: [{ week: career.week, type: "info", text: `🌱 Promoted academy talent ${p.firstName} ${p.lastName} to senior list` }, ...career.news].slice(0,15),
+      news: [{ week: career.week, type: "info", text: `🌱 Promoted academy talent ${p.firstName} ${p.lastName} to rookie list (${fmtK(wage)}/yr)` }, ...career.news].slice(0,15),
     });
   };
   const focusOptions = ["All-rounders", "Key Forwards", "Midfielders", "Key Defenders", "Ruckmen", "Small Forwards"];
@@ -4460,20 +4971,24 @@ function LocalTab({ career, club, updateCareer }) {
     const league = PYRAMID[leagueKey];
     const found = Array.from({length: 6}, (_, i) => {
       const p = generatePlayer(league.tier, 13000 + i + Date.now() % 500);
-      return { ...p, fromLocal: pick(league.clubs).short };
+      return { ...p, fromLocal: pick(league.clubs).short, scoutedOverall: scoutedOverall(p, career) };
     });
     setScoutedPlayers(found);
     setScoutingLeague(leagueKey);
   };
 
   const sign = (p) => {
-    if (career.finance.cash < 30000 || career.squad.length >= 40) return;
-    const newPlayer = { ...p, id: Date.now() + Math.random(), wage: 70000, contract: 2 };
+    const localTier = leagueTierOf(career);
+    const wage = localTier === 1 ? 200_000 : localTier === 2 ? 80_000 : 18_000;
+    const fee  = localTier === 1 ? 75_000  : localTier === 2 ? 30_000 : 8_000;
+    if (career.finance.cash < fee || career.squad.length >= 40) return;
+    if (!canAffordSigning(career, wage)) return;
+    const newPlayer = { ...p, id: Date.now() + Math.random(), wage, contract: 2 };
     setScoutedPlayers(s => s.filter(x => x.id !== p.id));
     updateCareer({
       squad: [...career.squad, newPlayer],
-      finance: { ...career.finance, cash: career.finance.cash - 30000 },
-      news: [{ week: career.week, type: "info", text: `📍 Signed local talent ${p.firstName} ${p.lastName} from ${p.fromLocal}` }, ...career.news].slice(0,15),
+      finance: { ...career.finance, cash: career.finance.cash - fee },
+      news: [{ week: career.week, type: "info", text: `📍 Signed local talent ${p.firstName} ${p.lastName} from ${p.fromLocal} ($${(fee/1000).toFixed(0)}k fee, ${(wage/1000).toFixed(0)}k/yr)` }, ...career.news].slice(0,15),
     });
   };
 
@@ -4521,23 +5036,35 @@ function LocalTab({ career, club, updateCareer }) {
             <div className="text-center py-12 text-sm text-atext-dim">Pick a league to dispatch your scouts.</div>
           ) : (
             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-              {scoutedPlayers.map(p => (
-                <div key={p.id} className={`${css.inset} p-3 grid grid-cols-12 gap-2 items-center`}>
-                  <div className="col-span-4">
-                    <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
-                    <div className="text-[10px] text-atext-dim">From {p.fromLocal} · Age {p.age}</div>
+              {scoutedPlayers.map(p => {
+                const localTier = leagueTierOf(career);
+                const wage = localTier === 1 ? 200_000 : localTier === 2 ? 80_000 : 18_000;
+                const fee  = localTier === 1 ? 75_000  : localTier === 2 ? 30_000 : 8_000;
+                const canCash = career.finance.cash >= fee;
+                const canCap  = canAffordSigning(career, wage);
+                const can     = canCash && canCap;
+                return (
+                  <div key={p.id} className={`${css.inset} p-3 grid grid-cols-12 gap-2 items-center`}>
+                    <div className="col-span-4">
+                      <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
+                      <div className="text-[10px] text-atext-dim">From {p.fromLocal} · Age {p.age}</div>
+                    </div>
+                    <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
+                    <div className="col-span-2"><RatingDot value={p.scoutedOverall ?? p.overall} /></div>
+                    <div className="col-span-2">
+                      <div className="text-[10px] text-atext-dim">Potential</div>
+                      <div className="flex items-center gap-1"><span className="text-xs font-bold text-[#4AE89A]">{p.potential}</span><Bar value={p.potential} color="#4AE89A" small /></div>
+                    </div>
+                    <div className="col-span-3 flex justify-end">
+                      <button onClick={()=>sign(p)} disabled={!can}
+                        className={can ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-apanel-2 text-atext-mute"}
+                        title={!canCap ? 'Over salary cap' : !canCash ? 'Insufficient cash' : ''}>
+                        Sign · ${(fee/1000).toFixed(0)}k
+                      </button>
+                    </div>
                   </div>
-                  <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
-                  <div className="col-span-2"><RatingDot value={p.overall} /></div>
-                  <div className="col-span-2">
-                    <div className="text-[10px] text-atext-dim">Potential</div>
-                    <div className="flex items-center gap-1"><span className="text-xs font-bold text-[#4AE89A]">{p.potential}</span><Bar value={p.potential} color="#4AE89A" small /></div>
-                  </div>
-                  <div className="col-span-3 flex justify-end">
-                    <button onClick={()=>sign(p)} disabled={career.finance.cash<30000} className={career.finance.cash>=30000 ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>Sign · $30k</button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

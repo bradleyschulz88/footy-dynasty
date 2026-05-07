@@ -16,22 +16,23 @@ describe('defaultFinance', () => {
     expect(defaultFinance(1).cash).toBeGreaterThan(defaultFinance(3).cash);
   });
 
+  // Numbers below come from finance/constants.js TIER_FINANCE — single source of truth.
   it('tier-1 returns expected cash value', () => {
-    expect(defaultFinance(1).cash).toBe(8_000_000);
+    expect(defaultFinance(1).cash).toBe(12_000_000);
   });
 
   it('tier-2 returns expected cash value', () => {
-    expect(defaultFinance(2).cash).toBe(800_000);
+    expect(defaultFinance(2).cash).toBe(1_200_000);
   });
 
   it('tier-3 returns expected cash value', () => {
-    expect(defaultFinance(3).cash).toBe(90_000);
+    expect(defaultFinance(3).cash).toBe(180_000);
   });
 
-  it('unknown tier falls back to defaults', () => {
+  it('unknown tier falls back to the tier-3 baseline', () => {
     const f = defaultFinance(9);
-    expect(f.cash).toBe(50_000);
-    expect(f.annualIncome).toBe(200_000);
+    expect(f.cash).toBe(180_000);
+    expect(f.annualIncome).toBe(480_000);
   });
 
   it('returns all required financial fields', () => {

@@ -1,15 +1,17 @@
 import { SEED, rand, pick, rng, seedRng } from './rng.js';
 import { FIRST_NAMES, LAST_NAMES, generatePlayer } from './playerGen.js';
 import { ALL_CLUBS } from '../data/pyramid.js';
+import { TIER_FINANCE } from './finance/constants.js';
 
+// `defaultFinance` now reads tier baselines from finance/constants.js.
+// All numerical balance lives in one file. See finance/constants.js.
 export function defaultFinance(tier) {
-  const cashByTier   = { 1: 8000000,  2: 800000,  3: 90000 };
-  const incomeByTier = { 1: 95000000, 2: 4500000, 3: 320000 };
+  const base = TIER_FINANCE[tier] || TIER_FINANCE[3];
   return {
-    cash:            cashByTier[tier]   || 50000,
-    annualIncome:    incomeByTier[tier] || 200000,
-    transferBudget:  tier === 1 ? 1500000 : tier === 2 ? 200000 : 25000,
-    wageBudget:      tier === 1 ? 14000000 : tier === 2 ? 1200000 : 80000,
+    cash:            base.cash,
+    annualIncome:    base.annualIncome,
+    transferBudget:  base.transferBudget,
+    wageBudget:      base.wageBudget,
     boardConfidence: 65,
     fanHappiness:    60,
   };

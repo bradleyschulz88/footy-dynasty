@@ -23,7 +23,7 @@ describe('migrate', () => {
     expect(migrate(null)).toBe(null);
   });
 
-  it('upgrades a v1 save through v2 to v3 with safe defaults', () => {
+  it('upgrades a v1 save through to the current SAVE_VERSION with safe defaults', () => {
     const v1 = { managerName: 'X', season: 2026, saveVersion: 1 };
     const m = migrate(v1);
     expect(m.saveVersion).toBe(SAVE_VERSION);
@@ -37,14 +37,39 @@ describe('migrate', () => {
     // v2 -> v3 fields (Gameplay Systems Spec)
     expect(m.difficulty).toBe('contender');
     expect(m.committee).toEqual([]);
-    expect(m.tutorialComplete).toBe(true); // existing saves skip tutorial
+    expect(m.tutorialComplete).toBe(true);
     expect(m.coachReputation).toBe(30);
     expect(m.coachTier).toBe('Journeyman');
     expect(m.coachStats).toBeTruthy();
     expect(m.previousClubs).toEqual([]);
     expect(m.groundCondition).toBe(85);
     expect(m.weeklyWeather).toEqual({});
-    expect(m.facilities.stadium).toBe(1);
+    // v3 -> v4 fields (Finance system rebuild)
+    // The stadium is now stamped as a structured object (v3 stamped `1` here, broken).
+    expect(m.facilities.stadium).toMatchObject({ level: 1, max: 5 });
+    expect(m.lastFinanceTickWeek).toBe(null);
+    expect(m.weeklyHistory).toEqual([]);
+    expect(m.cashCrisisStartWeek).toBe(null);
+    expect(m.cashCrisisLevel).toBe(0);
+    expect(m.bankLoan).toBe(null);
+    expect(m.sponsorRenewalProposals).toEqual([]);
+    expect(m.sponsorOffers).toEqual([]);
+    expect(m.expiredSponsorsLastSeason).toEqual([]);
+    expect(m.pendingRenewals).toEqual([]);
+    expect(m.fundraisersUsed).toEqual({});
+    expect(m.communityGrantUsed).toBe(false);
+    expect(m.lastEosFinance).toBe(null);
+  });
+
+  it('repairs a broken stadium schema where it was stamped as the integer 1', () => {
+    const broken = {
+      saveVersion: 3,
+      facilities: { stadium: 1, gym: { level: 2, cost: 60_000, max: 5 } },
+    };
+    const m = migrate(broken);
+    expect(m.saveVersion).toBe(SAVE_VERSION);
+    expect(m.facilities.stadium).toMatchObject({ level: 1, cost: 350_000, max: 5 });
+    expect(m.facilities.gym).toMatchObject({ level: 2, max: 5 });
   });
 
   it('does not clobber an existing themeMode', () => {

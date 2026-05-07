@@ -2,7 +2,7 @@
 // Save versioning, slots, autosave
 // ---------------------------------------------------------------------------
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
@@ -52,9 +52,11 @@ export function migrate(save) {
     s.groundName      = s.groundName || (s.clubId ? `${s.clubId.toUpperCase()} Oval` : 'Home Oval');
     s.weeklyWeather   = s.weeklyWeather || {};
 
-    // Stadium facility default (level 1) for ground-condition floor
+    // Stadium facility default (level 1) for ground-condition floor.
+    // NOTE: pre-v4 saves stamped a bare integer here, breaking facility upgrades
+    // and ground conditions. v4 migrator below repairs that.
     s.facilities = s.facilities || {};
-    if (!s.facilities.stadium) s.facilities.stadium = 1;
+    if (!s.facilities.stadium) s.facilities.stadium = { level: 1, cost: 350_000, max: 5 };
 
     // --- Coach reputation + sacking persistence (Section 3F) ---
     s.coachReputation = s.coachReputation ?? 30;
@@ -74,6 +76,41 @@ export function migrate(save) {
     if (Array.isArray(s.squad)) {
       s.squad = s.squad.map(p => p.traits ? p : { ...p, traits: [] });
     }
+  }
+
+  if (v < 4) {
+    // v3 -> v4: finance system rebuild
+    s.saveVersion = 4;
+
+    // Repair the broken stadium schema some v3 saves stamped as a bare integer.
+    if (s.facilities && (typeof s.facilities.stadium === 'number' || !s.facilities.stadium?.level)) {
+      s.facilities.stadium = { level: 1, cost: 350_000, max: 5 };
+    }
+
+    // Weekly cashflow tick state
+    s.lastFinanceTickWeek = s.lastFinanceTickWeek ?? null;
+    if (!Array.isArray(s.weeklyHistory)) s.weeklyHistory = [];
+
+    // Insolvency tracking
+    s.cashCrisisStartWeek = s.cashCrisisStartWeek ?? null;
+    s.cashCrisisLevel     = s.cashCrisisLevel ?? 0;
+    s.bankLoan            = s.bankLoan || null; // { principal, weeksRemaining, interestPerWeek }
+
+    // Sponsor lifecycle queues
+    s.sponsorRenewalProposals = s.sponsorRenewalProposals || [];
+    s.sponsorOffers           = s.sponsorOffers || [];
+    s.expiredSponsorsLastSeason = s.expiredSponsorsLastSeason || [];
+
+    // Player contract renewals queue
+    s.pendingRenewals = s.pendingRenewals || [];
+    s.renewalsClosed  = s.renewalsClosed ?? false;
+
+    // Fundraisers (Tier-3 pressure valve)
+    s.fundraisersUsed   = s.fundraisersUsed || {};
+    s.communityGrantUsed = s.communityGrantUsed ?? false;
+
+    // Last EOS finance summary (rendered in SeasonSummaryScreen)
+    s.lastEosFinance = s.lastEosFinance || null;
   }
 
   return s;
