@@ -66,6 +66,17 @@ describe('migrate', () => {
     expect(m.draftPickBank).toBe(null);
   });
 
+  it('v5 -> v6 adds secondaryPosition to squad and aiSquads players', () => {
+    const m = migrate({
+      saveVersion: 5,
+      squad: [{ id: 'p1', position: 'C' }],
+      aiSquads: { xyz: [{ id: 'a1', position: 'HF' }] },
+    });
+    expect(m.saveVersion).toBe(SAVE_VERSION);
+    expect(m.squad[0].secondaryPosition).toBe(null);
+    expect(m.aiSquads.xyz[0].secondaryPosition).toBe(null);
+  });
+
   it('repairs a broken stadium schema where it was stamped as the integer 1', () => {
     const broken = {
       saveVersion: 3,

@@ -2,7 +2,7 @@
 // Save versioning, slots, autosave
 // ---------------------------------------------------------------------------
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
@@ -131,6 +131,25 @@ export function migrate(save) {
         receivedInTrade: p.receivedInTrade ?? null,
         seasonsAtClub: p.seasonsAtClub ?? 0,
       }));
+    }
+  }
+
+  if (v < 6) {
+    s.saveVersion = 6;
+    if (Array.isArray(s.squad)) {
+      s.squad = s.squad.map((p) => ({
+        ...p,
+        secondaryPosition: p.secondaryPosition ?? null,
+      }));
+    }
+    if (s.aiSquads && typeof s.aiSquads === 'object') {
+      const next = {};
+      for (const [cid, squad] of Object.entries(s.aiSquads)) {
+        next[cid] = Array.isArray(squad)
+          ? squad.map((p) => ({ ...p, secondaryPosition: p.secondaryPosition ?? null }))
+          : squad;
+      }
+      s.aiSquads = next;
     }
   }
 

@@ -9,6 +9,58 @@ export const POSITION_NAMES = {
   RU: "Ruck", WG: "Wing", UT: "Utility",
 };
 
+/** Line groups for match & training heuristics (secondary position counts). */
+export const LINE_FWD = new Set(["KF", "HF"]);
+export const LINE_MID = new Set(["C", "R", "WG"]);
+export const LINE_BACK = new Set(["HB", "KB"]);
+export const LINE_RUCK = new Set(["RU"]);
+
+// Realistic secondary roles — kept disjoint from primary.
+const SECONDARY_RELATED = {
+  KF: ["HF", "KB", "UT", "RU"],
+  HF: ["KF", "C", "WG", "UT"],
+  C: ["R", "WG", "HF", "HB", "UT"],
+  HB: ["KB", "C", "WG", "UT"],
+  KB: ["HB", "KF", "RU", "UT"],
+  R: ["C", "WG", "UT"],
+  RU: ["KB", "HF", "C"],
+  WG: ["HB", "HF", "R", "C", "UT"],
+  UT: ["C", "R", "WG", "HF", "HB", "KF", "KB"],
+};
+
+export function playerHasPosition(player, pos) {
+  if (!player || pos == null || pos === "" || pos === "ALL") return false;
+  return player.position === pos || player.secondaryPosition === pos;
+}
+
+export function isForwardPreferred(p) {
+  return p && (LINE_FWD.has(p.position) || LINE_FWD.has(p.secondaryPosition));
+}
+
+/** Midfield-ish workload — includes UT (rotates through centre/wing). */
+export function isMidPreferred(p) {
+  if (!p) return false;
+  if (p.position === "UT" || p.secondaryPosition === "UT") return true;
+  return LINE_MID.has(p.position) || LINE_MID.has(p.secondaryPosition);
+}
+
+export function isBackPreferred(p) {
+  return p && (LINE_BACK.has(p.position) || LINE_BACK.has(p.secondaryPosition));
+}
+
+export function formatPositionSlash(p) {
+  if (!p) return "";
+  return p.secondaryPosition ? `${p.position} / ${p.secondaryPosition}` : p.position;
+}
+
+function rollSecondaryPosition(primary) {
+  const thr = primary === "UT" ? 0.10 : primary === "RU" ? 0.55 : 0.28;
+  if (rng() < thr) return null;
+  const opts = (SECONDARY_RELATED[primary] || POSITIONS.filter((x) => x !== primary)).filter((x) => x !== primary);
+  if (!opts.length) return null;
+  return pick(opts);
+}
+
 export function generatePlayer(clubTier, idx) {
   const tier = Math.max(1, Math.min(3, clubTier));
   const baseSkill = Math.max(42, Math.min(99, Math.round(randNorm(68, 11))));
@@ -39,13 +91,14 @@ export function generatePlayer(clubTier, idx) {
   const trueRating = Math.round(overall * (TIER_SCALE[tier] || 1.0));
   const potential = Math.min(99, overall + (age <= 21 ? rand(5, 18) : age <= 25 ? rand(0, 8) : rand(-2, 3)));
   const potentialTrue = Math.round(potential * (TIER_SCALE[tier] || 1.0));
+  const secondaryPosition = rollSecondaryPosition(position);
   const fname = pick(FIRST_NAMES);
   const lname = pick(LAST_NAMES);
   return {
     id: `p_${tier}_${idx}_${SEED}`,
     name: `${fname} ${lname}`,
     firstName: fname, lastName: lname,
-    age, position, attrs, overall, trueRating, potential, potentialTrue, tier,
+    age, position, secondaryPosition, attrs, overall, trueRating, potential, potentialTrue, tier,
     fitness: rand(85, 100),
     morale: rand(60, 90),
     form: rand(50, 85),
