@@ -9,7 +9,12 @@ import {
   generateSeasonObjectives,
   youthSeniorGameCount,
   recalcBoardConfidence,
+  maybeEnqueueBoardMessage,
+  resolveBoardInboxChoice,
+  BOARD_COMMS_THROTTLE_ROUNDS,
+  seasonRoundTick,
 } from '../board.js';
+import { findLeagueOf } from '../../data/pyramid.js';
 
 describe('board', () => {
   it('weightedBoardConfidence matches manual weighted average', () => {
@@ -38,6 +43,8 @@ describe('board', () => {
         lastReviewSeason: null,
         warningIssued: false,
         voteScheduled: false,
+        inbox: [],
+        lastCommsTick: null,
       },
     };
     alignBoardMembersToTarget(career.board, 30);
@@ -59,6 +66,8 @@ describe('board', () => {
         lastReviewSeason: null,
         warningIssued: false,
         voteScheduled: false,
+        inbox: [],
+        lastCommsTick: null,
       },
     };
     alignBoardMembersToTarget(career.board, 50);
@@ -93,10 +102,94 @@ describe('board', () => {
         lastReviewSeason: null,
         warningIssued: false,
         voteScheduled: false,
+        inbox: [],
+        lastCommsTick: null,
       },
     };
     alignBoardMembersToTarget(career.board, 60);
     generateSeasonObjectives(career, league);
     expect(career.board.objectives.length).toBe(3);
+  });
+
+  it('maybeEnqueueBoardMessage respects throttle and one active message', () => {
+    seedRng(42);
+    const league = findLeagueOf('mel');
+    const career = {
+      season: 2026,
+      week: 5,
+      clubId: 'mel',
+      leagueKey: 'AFL',
+      winStreak: -3,
+      finance: { boardConfidence: 55, cash: 1e6, fanHappiness: 60 },
+      board: {
+        members: generateBoardMembers({ id: 'mel' }, league),
+        objectives: [],
+        contractYears: 2,
+        contractSalary: 120_000,
+        lastReviewSeason: null,
+        warningIssued: false,
+        voteScheduled: false,
+        inbox: [],
+        lastCommsTick: null,
+      },
+    };
+    alignBoardMembersToTarget(career.board, 55);
+    recalcBoardConfidence(career);
+    const line = maybeEnqueueBoardMessage(career, league);
+    expect(line).toBeTruthy();
+    expect(career.board.inbox.length).toBe(1);
+    const tick = seasonRoundTick(2026, 5);
+    expect(career.board.lastCommsTick).toBe(tick);
+    expect(maybeEnqueueBoardMessage(career, league)).toBe(null);
+    career.board.inbox = [];
+    career.week = 6;
+    expect(maybeEnqueueBoardMessage(career, league)).toBe(null);
+    career.week = 5 + BOARD_COMMS_THROTTLE_ROUNDS;
+    const line2 = maybeEnqueueBoardMessage(career, league);
+    expect(line2).toBeTruthy();
+    expect(career.board.inbox.length).toBe(1);
+  });
+
+  it('resolveBoardInboxChoice applies member deltas and clears inbox', () => {
+    seedRng(3);
+    const league = findLeagueOf('mel');
+    const career = {
+      season: 2026,
+      week: 8,
+      clubId: 'mel',
+      leagueKey: 'AFL',
+      winStreak: 0,
+      finance: { boardConfidence: 60, cash: 1e6 },
+      board: {
+        members: generateBoardMembers({ id: 'mel' }, league),
+        objectives: [],
+        contractYears: 2,
+        contractSalary: 120_000,
+        lastReviewSeason: null,
+        warningIssued: false,
+        voteScheduled: false,
+        inbox: [
+          {
+            id: 'bm_test',
+            fromRole: 'Chairman',
+            title: 'Test',
+            body: 'Body',
+            options: [
+              { id: 'a', label: 'Yes', memberDeltas: { Chairman: 4 } },
+              { id: 'b', label: 'No', memberDeltas: { Chairman: -2 } },
+            ],
+          },
+        ],
+        lastCommsTick: null,
+      },
+    };
+    alignBoardMembersToTarget(career.board, 60);
+    recalcBoardConfidence(career);
+    const chair = career.board.members.find((m) => m.role === 'Chairman');
+    const before = chair.confidence;
+    const r = resolveBoardInboxChoice(career, league, 'bm_test', 'a');
+    expect(r.ok).toBe(true);
+    expect(career.board.inbox.length).toBe(0);
+    expect(chair.confidence - before).toBe(4);
   });
 });

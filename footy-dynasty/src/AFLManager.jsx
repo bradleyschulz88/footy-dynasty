@@ -83,6 +83,8 @@ import {
   resolveBoardObjectivesAtSeasonEnd,
   youthSeniorGameCount,
   boardObjectiveUiStatus,
+  maybeEnqueueBoardMessage,
+  resolveBoardInboxChoice,
 } from './lib/board.js';
 
 // ============================================================================
@@ -898,6 +900,13 @@ function AFLManagerInner() {
 
       c.week = ev.round;
       c.lastEvent = myResult ? { type: 'round', round: ev.round, date: ev.date, ...myResult } : null;
+
+      if (ev.phase === 'season' && myResult && !c.isSacked) {
+        const comms = maybeEnqueueBoardMessage(c, league);
+        if (comms) {
+          c.news = [{ week: ev.round, type: 'board', text: comms }, ...(c.news || [])].slice(0, 20);
+        }
+      }
 
       // Check if all regular-season rounds complete
       const hasMoreRounds = (c.eventQueue || []).some(e => !e.completed && e.type === 'round' && e.phase === 'season');
@@ -3691,7 +3700,7 @@ function ClubScreen({ career, club, updateCareer, tab, setTab }) {
     <div className="anim-in">
       <TabNav tabs={tabs} active={t} onChange={setTab} />
       {t === "finances"   && <FinancesTab career={career} />}
-      {t === "board"      && <BoardTab career={career} club={club} />}
+      {t === "board"      && <BoardTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "sponsors"   && <SponsorsTab career={career} updateCareer={updateCareer} />}
       {t === "kits"       && <KitsTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "facilities" && <FacilitiesTab career={career} updateCareer={updateCareer} />}
@@ -3704,11 +3713,35 @@ function ClubScreen({ career, club, updateCareer, tab, setTab }) {
   );
 }
 
-function BoardTab({ career, club }) {
+function BoardTab({ career, club, updateCareer }) {
   const league = findLeagueOf(career.clubId);
   const members = career.board?.members ?? [];
   const objectives = career.board?.objectives ?? [];
+  const inbox = career.board?.inbox ?? [];
   const overall = career.finance?.boardConfidence ?? 0;
+
+  const respondInbox = (messageId, optionId) => {
+    if (!league) return;
+    const draft = {
+      ...career,
+      board: {
+        ...career.board,
+        members: (career.board?.members || []).map((m) => ({ ...m })),
+        inbox: [...(career.board?.inbox || [])],
+        objectives: [...(career.board?.objectives || [])],
+      },
+      finance: { ...career.finance },
+    };
+    const result = resolveBoardInboxChoice(draft, league, messageId, optionId);
+    if (!result.ok) return;
+    updateCareer({
+      board: draft.board,
+      finance: draft.finance,
+      news: result.newsLine
+        ? [{ week: career.week, type: 'board', text: result.newsLine }, ...(career.news || [])].slice(0, 20)
+        : career.news,
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -3718,6 +3751,33 @@ function BoardTab({ career, club }) {
           Club directors and weighted confidence — separate from the volunteer committee at lower tiers. Overall score feeds into finances and match-day systems.
         </div>
       </div>
+
+      {inbox.length > 0 && (
+        <div>
+          <div className={`${css.h1} text-lg mb-2`}>Inbox</div>
+          <div className="space-y-3">
+            {inbox.map((msg) => (
+              <div key={msg.id} className={`${css.panel} p-4`} style={{ borderColor: 'var(--A-accent)' }}>
+                <div className="text-[10px] text-atext-mute uppercase tracking-widest mb-1">{msg.fromRole}</div>
+                <div className="font-bold text-atext mb-2">{msg.title}</div>
+                <p className="text-sm text-atext-dim leading-snug mb-3">{msg.body}</p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  {(msg.options || []).map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      onClick={() => respondInbox(msg.id, o.id)}
+                      className={`${css.btnPrimary} text-xs px-3 py-2 flex-1 text-left`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className={`${css.panel} p-4`}>
         <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
@@ -3784,7 +3844,7 @@ function BoardTab({ career, club }) {
 
       <p className="text-[11px] text-atext-mute leading-snug">
         Playing as <strong className="text-atext">{club?.short}</strong>
-        {league ? ` · ${league.short} (Tier ${league.tier})` : ''}. Inbox, meetings, and contract extensions from the design spec come in a later update.
+        {league ? ` · ${league.short} (Tier ${league.tier})` : ''}. Directors may message you after games — respond here. Formal meetings and votes are still to come.
       </p>
     </div>
   );
@@ -4520,11 +4580,19 @@ function FacilitiesTab({ career, updateCareer }) {
     if (f.level >= f.max) return;
     const cost = f.cost * f.level;
     if (career.finance.cash < cost) return;
-    updateCareer({
-      facilities: { ...career.facilities, [key]: { ...f, level: f.level + 1 } },
+    const nextLevel = f.level + 1;
+    const payload = {
+      facilities: { ...career.facilities, [key]: { ...f, level: nextLevel } },
       finance: { ...career.finance, cash: career.finance.cash - cost },
-      news: [{ week: career.week, type: "info", text: `📈 Upgraded ${FAC_INFO[key].name} to Level ${f.level+1}` }, ...career.news].slice(0,15),
-    });
+      news: [{ week: career.week, type: "info", text: `📈 Upgraded ${FAC_INFO[key].name} to Level ${nextLevel}` }, ...career.news].slice(0, 15),
+    };
+    if (key === "stadium") {
+      const lg = findLeagueOf(career.clubId);
+      const cg = getClubGround(findClub(career.clubId), nextLevel, lg?.tier ?? 2);
+      payload.clubGround = cg;
+      payload.groundName = cg.shortName;
+    }
+    updateCareer(payload);
   };
   const totalLevel = Object.values(career.facilities).reduce((a,b)=>a+b.level,0);
   const maxTotal = Object.values(career.facilities).reduce((a,b)=>a+b.max,0);

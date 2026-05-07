@@ -92,6 +92,31 @@ describe('migrate', () => {
     expect(m.clubGround?.shortName).toBe('MCG');
   });
 
+  it('v8 -> v9 adds board inbox scaffold', () => {
+    const m = migrate({
+      saveVersion: 8,
+      clubId: 'mel',
+      leagueKey: 'AFL',
+      season: 2026,
+      facilities: { stadium: { level: 1, cost: 350_000, max: 5 } },
+      finance: { boardConfidence: 62, cash: 1e6, fanHappiness: 60, annualIncome: 1e6, transferBudget: 100_000, wageBudget: 1e6 },
+      coachStats: { seasonsManaged: 1 },
+      ladder: [],
+      board: {
+        members: [],
+        objectives: [],
+        contractYears: 2,
+        contractSalary: 120_000,
+        lastReviewSeason: null,
+        warningIssued: false,
+        voteScheduled: false,
+      },
+    });
+    expect(m.saveVersion).toBe(SAVE_VERSION);
+    expect(Array.isArray(m.board.inbox)).toBe(true);
+    expect(m.board.lastCommsTick === undefined || m.board.lastCommsTick === null).toBe(true);
+  });
+
   it('v7 -> v8 adds executive board members and season objectives', () => {
     const m = migrate({
       saveVersion: 7,

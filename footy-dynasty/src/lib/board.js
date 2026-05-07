@@ -22,6 +22,8 @@ export function defaultBoardShell() {
     lastReviewSeason: null,
     warningIssued: false,
     voteScheduled: false,
+    inbox: [],
+    lastCommsTick: null,
   };
 }
 
@@ -91,6 +93,8 @@ export function ensureCareerBoard(career, club, league) {
   if (!career.board || !Array.isArray(career.board.members)) {
     career.board = defaultBoardShell();
   }
+  if (!Array.isArray(career.board.inbox)) career.board.inbox = [];
+  if (career.board.lastCommsTick === undefined) career.board.lastCommsTick = null;
   if (!career.board.members.length && club && league) {
     career.board.members = generateBoardMembers(club, league);
     alignBoardMembersToTarget(career.board, career.finance?.boardConfidence ?? 55);
@@ -131,6 +135,167 @@ export function migrateSaveBoardV8(save) {
   if (club && league && !save.board.objectives?.length) {
     generateSeasonObjectives(save, league);
   }
+}
+
+/** Throttle board inbox drops so one message is not spammed every round. */
+export const BOARD_COMMS_THROTTLE_ROUNDS = 4;
+
+export function seasonRoundTick(season, round) {
+  return season * 100 + round;
+}
+
+export function migrateSaveBoardV9(save) {
+  if (!save.board) return;
+  save.board.inbox = Array.isArray(save.board.inbox) ? save.board.inbox : [];
+  if (save.board.lastCommsTick === undefined) save.board.lastCommsTick = null;
+}
+
+function boardMemberFirstName(board, role) {
+  const m = board?.members?.find((x) => x.role === role);
+  if (!m?.name) return null;
+  return m.name.split(/\s+/)[0];
+}
+
+function buildBoardMessage(career, kind) {
+  const season = career.season ?? 2026;
+  const round = career.week ?? 1;
+  const board = career.board;
+  const club = findClub(career.clubId);
+  const short = club?.short ?? "the club";
+
+  if (kind === "pressure") {
+    const fn = boardMemberFirstName(board, "Chairman") || "The chairman";
+    return {
+      id: `bm_${season}_${round}_pressure`,
+      fromRole: "Chairman",
+      title: "Results under review",
+      body: `${fn} wants a clear plan to lift ${short}'s form. The board is watching closely.`,
+      options: [
+        {
+          id: "accountability",
+          label: "Own the slide — present a turnaround plan",
+          memberDeltas: { Chairman: 5, "Football Director": 2 },
+        },
+        {
+          id: "deflect",
+          label: "Cite injuries and draw as the main drivers",
+          memberDeltas: { Chairman: -6, "Player Relations Director": -2 },
+        },
+      ],
+    };
+  }
+  if (kind === "finance_cash") {
+    const fn = boardMemberFirstName(board, "Finance Director") || "Finance";
+    return {
+      id: `bm_${season}_${round}_finance`,
+      fromRole: "Finance Director",
+      title: "Cash-flow pressure",
+      body: `${fn} needs reassurance on how you'll stabilise the balance sheet this season.`,
+      options: [
+        {
+          id: "cut_costs",
+          label: "Commit to cost discipline and freeze extras",
+          memberDeltas: { "Finance Director": 6, Chairman: 2 },
+        },
+        {
+          id: "bet_on_overage",
+          label: "Argue the playing list needs investment now",
+          memberDeltas: { "Finance Director": -5, "Football Director": 3 },
+        },
+      ],
+    };
+  }
+  if (kind === "momentum") {
+    const fn = boardMemberFirstName(board, "Football Director") || "Football";
+    return {
+      id: `bm_${season}_${round}_momentum`,
+      fromRole: "Football Director",
+      title: "Stay ruthless",
+      body: `${fn} wants to lock in standards so ${short} does not ease off while ahead.`,
+      options: [
+        {
+          id: "double_down",
+          label: "Tighten standards — no complacency",
+          memberDeltas: { "Football Director": 5, Chairman: 3 },
+        },
+        {
+          id: "lighten",
+          label: "Ease the load — protect the list",
+          memberDeltas: { "Football Director": -3, "Player Relations Director": 4 },
+        },
+      ],
+    };
+  }
+  const fn = boardMemberFirstName(board, "Football Director") || "Football";
+  return {
+    id: `bm_${season}_${round}_process`,
+    fromRole: "Football Director",
+    title: "Football department check-in",
+    body: `${fn} wants a read on list balance and injury management heading into the next block.`,
+    options: [
+      {
+        id: "data_led",
+        label: "Share a clear, list-led rationale",
+        memberDeltas: { "Football Director": 4, Chairman: 1 },
+      },
+      {
+        id: "keep_cards",
+        label: "Keep detail internal for now",
+        memberDeltas: { "Football Director": -2, Chairman: -2 },
+      },
+    ],
+  };
+}
+
+/**
+ * After a home-and-away round, optionally queue one inbox item (throttled, one active at a time).
+ * @returns {string|null} news line when a message was queued
+ */
+export function maybeEnqueueBoardMessage(career, league) {
+  ensureCareerBoard(career, findClub(career.clubId), league);
+  const board = career.board;
+  if (board.inbox.length > 0) return null;
+  const season = career.season ?? 2026;
+  const round = career.week ?? 1;
+  const tick = seasonRoundTick(season, round);
+  if (board.lastCommsTick != null && tick - board.lastCommsTick < BOARD_COMMS_THROTTLE_ROUNDS) return null;
+
+  const overall = career.finance?.boardConfidence ?? 55;
+  const ws = career.winStreak ?? 0;
+  const cash = career.finance?.cash ?? 0;
+
+  const candidates = [];
+  if (overall <= 40 || ws <= -2) candidates.push("pressure");
+  if (cash < 0) candidates.push("finance_cash");
+  if (overall >= 70 && ws >= 3) candidates.push("momentum");
+  if (candidates.length === 0 && rand(1, 100) <= 38) candidates.push("football_process");
+  if (candidates.length === 0) return null;
+
+  const kind = pick(candidates);
+  const msg = buildBoardMessage(career, kind);
+  board.inbox.push(msg);
+  board.lastCommsTick = tick;
+  return `📩 ${msg.fromRole}: ${msg.title} — open the Board tab to respond.`;
+}
+
+/**
+ * @returns {{ ok: boolean, newsLine?: string }}
+ */
+export function resolveBoardInboxChoice(career, league, messageId, optionId) {
+  ensureCareerBoard(career, findClub(career.clubId), league);
+  const board = career.board;
+  const idx = board.inbox?.findIndex((m) => m.id === messageId) ?? -1;
+  if (idx < 0) return { ok: false };
+  const msg = board.inbox[idx];
+  const opt = msg.options?.find((o) => o.id === optionId);
+  if (!opt) return { ok: false };
+  const deltas = opt.memberDeltas || {};
+  for (const [role, d] of Object.entries(deltas)) {
+    applyMemberConfidenceDelta(career, role, d);
+  }
+  board.inbox.splice(idx, 1);
+  const label = opt.label.length > 48 ? `${opt.label.slice(0, 48)}…` : opt.label;
+  return { ok: true, newsLine: `📋 Board: You chose "${label}".` };
 }
 
 export function generateSeasonObjectives(career, league) {
