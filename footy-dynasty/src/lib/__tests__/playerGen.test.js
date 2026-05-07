@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { seedRng, TIER_SCALE } from '../rng.js';
-import { generatePlayer, generateSquad, POSITIONS, POSITION_NAMES } from '../playerGen.js';
+import { generatePlayer, generateSquad, POSITIONS, POSITION_NAMES, playerHasPosition, isForwardPreferred, formatPositionSlash } from '../playerGen.js';
 
 // ---------------------------------------------------------------------------
 // generatePlayer
@@ -17,6 +17,7 @@ describe('generatePlayer', () => {
       lastName:   expect.any(String),
       age:        expect.any(Number),
       position:   expect.any(String),
+      secondaryPosition: expect.anything(),
       attrs:      expect.any(Object),
       overall:    expect.any(Number),
       trueRating: expect.any(Number),
@@ -63,6 +64,32 @@ describe('generatePlayer', () => {
     seedRng(42); const t3 = generatePlayer(3, 0);
     expect(t1.trueRating).toBeGreaterThanOrEqual(t2.trueRating);
     expect(t2.trueRating).toBeGreaterThanOrEqual(t3.trueRating);
+  });
+
+  it('secondaryPosition is null or a different valid position', () => {
+    for (let i = 0; i < 80; i++) {
+      const p = generatePlayer(1, i);
+      if (p.secondaryPosition == null) continue;
+      expect(p.secondaryPosition).not.toBe(p.position);
+      expect(POSITIONS).toContain(p.secondaryPosition);
+    }
+  });
+
+  it('playerHasPosition matches primary or secondary', () => {
+    const p = { position: 'C', secondaryPosition: 'HF' };
+    expect(playerHasPosition(p, 'C')).toBe(true);
+    expect(playerHasPosition(p, 'HF')).toBe(true);
+    expect(playerHasPosition(p, 'KB')).toBe(false);
+  });
+
+  it('isForwardPreferred is true when secondary is a forward', () => {
+    expect(isForwardPreferred({ position: 'C', secondaryPosition: 'HF' })).toBe(true);
+    expect(isForwardPreferred({ position: 'C', secondaryPosition: 'HB' })).toBe(false);
+  });
+
+  it('formatPositionSlash shows both when present', () => {
+    expect(formatPositionSlash({ position: 'WG', secondaryPosition: 'HB' })).toBe('WG / HB');
+    expect(formatPositionSlash({ position: 'RU', secondaryPosition: null })).toBe('RU');
   });
 
   it('position is always a valid AFL position code', () => {
@@ -145,6 +172,7 @@ describe('generateSquad', () => {
     const b = generateSquad('col', 1, 10);
     expect(a.map(p => p.overall)).toEqual(b.map(p => p.overall));
     expect(a.map(p => p.position)).toEqual(b.map(p => p.position));
+    expect(a.map(p => p.secondaryPosition)).toEqual(b.map(p => p.secondaryPosition));
   });
 
   it('different clubs produce different squads', () => {

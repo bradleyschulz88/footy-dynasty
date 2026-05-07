@@ -11,7 +11,7 @@ import {
 import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf } from './data/pyramid.js';
 import { pyramidNoteForLeague } from './data/pyramidMeta.js';
-import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad } from './lib/playerGen.js';
+import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from './lib/playerGen.js';
 import { teamRating, simMatch, simMatchWithQuarters, aiClubRating } from './lib/matchEngine.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague } from './lib/leagueEngine.js';
 import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
@@ -534,7 +534,7 @@ function AFLManagerInner() {
             targetPlayerId: targetPlayer.id,
             offerCash: cashOffer,
             offerPlayerId: swapPlayer?.id || null,
-            offerPlayerSnapshot: swapPlayer ? { id: swapPlayer.id, firstName: swapPlayer.firstName, lastName: swapPlayer.lastName, overall: swapPlayer.overall, position: swapPlayer.position, age: swapPlayer.age, wage: swapPlayer.wage } : null,
+            offerPlayerSnapshot: swapPlayer ? { id: swapPlayer.id, firstName: swapPlayer.firstName, lastName: swapPlayer.lastName, overall: swapPlayer.overall, position: swapPlayer.position, secondaryPosition: swapPlayer.secondaryPosition ?? null, age: swapPlayer.age, wage: swapPlayer.wage } : null,
             status: 'pending',
             createdAt: ev.date,
           });
@@ -597,7 +597,7 @@ function AFLManagerInner() {
         if (!c.lineup.includes(p.id)) return p;
         const fitDrop = rand(5, 12);
         const formChange = won ? rand(1, 4) : drew ? rand(-1, 2) : rand(-3, 1);
-        const gAdd = (p.position === 'KF' || p.position === 'HF') ? rand(0, 2) : 0;
+        const gAdd = isForwardPreferred(p) ? rand(0, 2) : 0;
         return { ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: clamp(p.form + formChange, 30, 100),
                  goals: p.goals + gAdd, behinds: p.behinds + rand(0, 1), disposals: p.disposals + rand(6, 18),
                  marks: p.marks + rand(1, 4), tackles: p.tackles + rand(1, 3), gamesPlayed: p.gamesPlayed + 1 };
@@ -666,7 +666,7 @@ function AFLManagerInner() {
             const fitDrop = rand(8, 18);
             const formChange = won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1);
             const att = attribution[p.id] || { goals: 0, behinds: 0 };
-            const dispAdd = (p.position === 'C' || p.position === 'R' || p.position === 'WG') ? rand(15, 32) : rand(8, 22);
+            const dispAdd = isMidPreferred(p) ? rand(15, 32) : rand(8, 22);
             return { ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: clamp(p.form + formChange, 30, 100),
                      goals: p.goals + (att.goals || 0), behinds: p.behinds + (att.behinds || 0), disposals: p.disposals + dispAdd,
                      marks: p.marks + rand(2, 7), tackles: p.tackles + rand(1, 5), gamesPlayed: p.gamesPlayed + 1 };
@@ -3210,7 +3210,7 @@ function PlayersTab({ career, updateCareer }) {
   const [selected, setSelected] = useState(null);
   const players = useMemo(() => {
     let arr = [...career.squad];
-    if (filterPos !== "ALL") arr = arr.filter(p => p.position === filterPos);
+    if (filterPos !== "ALL") arr = arr.filter(p => playerHasPosition(p, filterPos));
     if (filterStatus === "lineup") arr = arr.filter(p => career.lineup.includes(p.id));
     if (filterStatus === "bench") arr = arr.filter(p => !career.lineup.includes(p.id));
     if (filterStatus === "injured") arr = arr.filter(p => (p.injured || 0) > 0 || (p.suspended || 0) > 0);
@@ -3304,7 +3304,7 @@ function PlayersTab({ career, updateCareer }) {
                     <span className="truncate text-sm font-semibold text-atext">{pName(p)}</span>
                     {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"#4ADBE822",color:"#4ADBE8"}}>R</span>}
                   </div>
-                  <div className="text-center"><Pill color="#4ADBE8">{p.position}</Pill></div>
+                  <div className="text-center"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
                   <div className="text-center text-sm text-[#8A9AB8]">{p.age}</div>
                   <div className="text-center flex justify-center"><RatingDot value={p.overall} size="sm" /></div>
                   <div className="flex items-center gap-1">
@@ -3376,7 +3376,9 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
       <div className="p-4" style={{background:`linear-gradient(135deg, var(--A-panel), var(--A-panel-2))`}}>
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-dim mb-0.5">{POSITION_NAMES[player.position]}</div>
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-dim mb-0.5">
+              {POSITION_NAMES[player.position]}{player.secondaryPosition ? ` · ${POSITION_NAMES[player.secondaryPosition]}` : ''}
+            </div>
             <h3 className="font-display text-2xl text-atext leading-tight truncate">{pName.toUpperCase()}</h3>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-[11px] text-atext-dim">Age {player.age}</span>
@@ -3553,7 +3555,7 @@ function TacticsTab({ career, updateCareer }) {
           {lineup.length === 0 && <div className="text-sm text-atext-dim text-center py-12">No players selected.</div>}
           {lineup.sort((a,b)=>b.overall-a.overall).map(p => (
             <button key={p.id} onClick={()=>updateCareer({ lineup: career.lineup.filter(id => id !== p.id) })} className="w-full flex items-center gap-2 p-2 rounded-lg bg-apanel hover:bg-apanel-2 transition group">
-              <span className="text-[10px] px-1.5 py-0.5 bg-aline rounded font-bold w-9 text-center">{p.position}</span>
+              <span className="text-[9px] px-1 py-0.5 bg-aline rounded font-bold text-center leading-tight inline-block max-w-[4.5rem]" title={formatPositionSlash(p)}>{formatPositionSlash(p)}</span>
               <span className="text-sm flex-1 text-left truncate">{p.firstName ? p.firstName + " " + p.lastName : p.name}</span>
               <span className="text-xs text-atext-dim">{p.age}</span>
               <RatingDot value={p.overall} />
@@ -3891,7 +3893,7 @@ function RookieListTab({ career, updateCareer }) {
           {rookies.map((p, i) => (
             <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center" style={{borderBottom:"1px solid var(--A-line)"}}>
               <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">age {p.age}</span></div>
-              <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
+              <div className="col-span-1"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
               <div className="col-span-1"><RatingDot value={p.overall} /></div>
               <div className="col-span-2 flex items-center gap-1 text-[11px]">
                 <span className="text-atext-mute">POT</span>
@@ -4822,7 +4824,7 @@ function TradeTab({ career, updateCareer }) {
   const headroom = Math.max(0, wageCap - currentWages);
 
   const filtered = pool.filter(p => {
-    if (filter !== "ALL" && p.position !== filter) return false;
+    if (filter !== "ALL" && !playerHasPosition(p, filter)) return false;
     if (capOnly && wageCap > 0 && !canAffordSigning(career, p.wage)) return false;
     return true;
   });
@@ -4929,7 +4931,7 @@ function TradeTab({ career, updateCareer }) {
                     <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
                     <div className="text-[10px] text-atext-dim">Ask · {fmtK(p.wage)}/yr</div>
                   </div>
-                  <div><Pill color="#4ADBE8">{p.position}</Pill></div>
+                  <div><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
                   <div className="text-sm text-center">{p.age}</div>
                   <div className="flex justify-center"><RatingDot value={p.overall} /></div>
                   <div className="text-sm text-center text-[#4AE89A]">{p.potential}</div>
@@ -5009,7 +5011,7 @@ function DraftTab({ career, club, updateCareer }) {
 
   const basePool = useMemo(() => {
     let arr = [...(career.draftPool || [])];
-    if (posFilter !== "ALL") arr = arr.filter(p => p.position === posFilter);
+    if (posFilter !== "ALL") arr = arr.filter(p => playerHasPosition(p, posFilter));
     arr.sort((a, b) => {
       if (poolSort === "overall") return b.overall - a.overall;
       if (poolSort === "potential") return (b.potential || 0) - (a.potential || 0);
@@ -5160,7 +5162,7 @@ function DraftTab({ career, club, updateCareer }) {
               <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                 <div className="col-span-1 font-bold text-aaccent">#{i+1}</div>
                 <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">(draft age ~17–19)</span></div>
-                <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
+                <div className="col-span-1"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
                 <div className="col-span-1"><RatingDot value={p.overall} /></div>
                 <div className="col-span-2 flex items-center gap-2">
                   <div className="font-bold text-[#4AE89A]">{p.potential}</div>
@@ -5211,7 +5213,7 @@ function YouthTab({ career, club, updateCareer }) {
       // Reroll up to 3 times if position doesn't match the focus
       let attempts = 0;
       let cand = p;
-      while (bias.positions && !bias.positions.includes(cand.position) && attempts < 3) {
+      while (bias.positions && !bias.positions.includes(cand.position) && !(cand.secondaryPosition && bias.positions.includes(cand.secondaryPosition)) && attempts < 3) {
         cand = generatePlayer(2 + Math.floor(youth.programLevel / 3), 12000 + i + Date.now() % 1000);
         i++;
         attempts++;
@@ -5312,7 +5314,7 @@ function YouthTab({ career, club, updateCareer }) {
                     <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
                     <div className="text-[10px] text-atext-dim">Age {rand(16,18)} · From {youth.zone}</div>
                   </div>
-                  <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
+                  <div className="col-span-1"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
                   <div className="col-span-2"><RatingDot value={p.overall} /></div>
                   <div className="col-span-2">
                     <div className="text-[10px] text-atext-dim">Potential</div>
@@ -5422,7 +5424,7 @@ function LocalTab({ career, club, updateCareer }) {
                       <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
                       <div className="text-[10px] text-atext-dim">From {p.fromLocal} · Age {p.age}</div>
                     </div>
-                    <div className="col-span-1"><Pill color="#4ADBE8">{p.position}</Pill></div>
+                    <div className="col-span-1"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
                     <div className="col-span-2"><RatingDot value={p.scoutedOverall ?? p.overall} /></div>
                     <div className="col-span-2">
                       <div className="text-[10px] text-atext-dim">Potential</div>

@@ -1,5 +1,6 @@
 import { rand, randNorm, rng, pick } from './rng.js';
 import { findClub } from '../data/pyramid.js';
+import { isForwardPreferred, isMidPreferred } from './playerGen.js';
 
 export const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
@@ -69,11 +70,11 @@ function poisson(mean) {
   return k - 1;
 }
 
-// Pick a goal-likely position for "scorer" attribution: weight forwards heavier
+// Pick a goal-likely position for "scorer" attribution: weight forwards heavier (primary or secondary).
 function pickScorerId(playerLineup) {
   if (!playerLineup || playerLineup.length === 0) return null;
-  const fwd = playerLineup.filter(p => p && (p.position === 'KF' || p.position === 'HF'));
-  const mid = playerLineup.filter(p => p && (p.position === 'C' || p.position === 'R' || p.position === 'WG'));
+  const fwd = playerLineup.filter(p => p && isForwardPreferred(p));
+  const mid = playerLineup.filter(p => p && isMidPreferred(p));
   const all = playerLineup.filter(Boolean);
   const r = rng();
   let pool;
@@ -229,7 +230,7 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
       let playerId = null;
       if (side === (isPlayerHome ? 'home' : 'away') && playerLineup.length) {
         const filtered = moment.posKey
-          ? playerLineup.filter(p => moment.posKey.includes(p.position))
+          ? playerLineup.filter(p => moment.posKey.includes(p.position) || moment.posKey.includes(p.secondaryPosition))
           : playerLineup;
         playerId = filtered.length ? pick(filtered).id : pick(playerLineup).id;
       }
