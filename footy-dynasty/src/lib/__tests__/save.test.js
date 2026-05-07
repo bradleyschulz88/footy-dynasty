@@ -48,6 +48,7 @@ describe('migrate', () => {
     // The stadium is now stamped as a structured object (v3 stamped `1` here, broken).
     expect(m.facilities.stadium).toMatchObject({ level: 1, max: 5 });
     expect(m.lastFinanceTickWeek).toBe(null);
+    expect(m.lastFinanceTickDay).toBe(null);
     expect(m.weeklyHistory).toEqual([]);
     expect(m.cashCrisisStartWeek).toBe(null);
     expect(m.cashCrisisLevel).toBe(0);

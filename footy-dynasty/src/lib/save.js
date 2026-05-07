@@ -89,6 +89,7 @@ export function migrate(save) {
 
     // Weekly cashflow tick state
     s.lastFinanceTickWeek = s.lastFinanceTickWeek ?? null;
+    s.lastFinanceTickDay = s.lastFinanceTickDay ?? null;
     if (!Array.isArray(s.weeklyHistory)) s.weeklyHistory = [];
 
     // Insolvency tracking

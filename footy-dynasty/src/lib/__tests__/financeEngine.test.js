@@ -126,39 +126,54 @@ describe('salary cap', () => {
   });
 });
 
-describe('weekly cashflow tick', () => {
-  it('does nothing the first time it runs (just records the week)', () => {
-    const c = baseCareer({ currentDate: '2026-03-25', lastFinanceTickWeek: null });
+describe('operating cashflow tick (per calendar day)', () => {
+  it('applies a daily slice of the annual P&L the first time a date is seen', () => {
+    const c = baseCareer({ currentDate: '2026-03-25' });
     const before = c.finance.cash;
     const delta = tickWeeklyCashflow(c);
-    expect(delta).toBe(0);
-    expect(c.finance.cash).toBe(before);
-    expect(c.lastFinanceTickWeek).toBeTruthy();
+    expect(delta).not.toBe(0);
+    expect(c.finance.cash).toBe(before + delta);
+    expect(c.lastFinanceTickDay).toBe('2026-03-25');
+    expect((c.weeklyHistory || []).length).toBeGreaterThan(0);
   });
 
-  it('charges wages + facility upkeep on subsequent weeks', () => {
-    const c = baseCareer({ currentDate: '2026-03-25', lastFinanceTickWeek: null });
+  it('accrues again when the calendar advances to a new day', () => {
+    const c = baseCareer({ currentDate: '2026-03-25' });
     tickWeeklyCashflow(c);
-    c.currentDate = '2026-04-08'; // ~2 weeks later
+    c.currentDate = '2026-03-26';
     const before = c.finance.cash;
     tickWeeklyCashflow(c);
     expect(c.finance.cash).not.toBe(before);
   });
 
-  it('does not double-charge inside the same ISO week', () => {
-    const c = baseCareer({ currentDate: '2026-03-25', lastFinanceTickWeek: null });
+  it('does not double-charge when called twice for the same day', () => {
+    const c = baseCareer({ currentDate: '2026-03-25' });
     tickWeeklyCashflow(c);
     const after1 = c.finance.cash;
-    tickWeeklyCashflow(c); // same date
+    tickWeeklyCashflow(c);
     expect(c.finance.cash).toBe(after1);
   });
 
-  it('updates cashCrisisStartWeek when cash goes negative', () => {
-    const c = baseCareer({ currentDate: '2026-03-25', lastFinanceTickWeek: null,
-                            finance: { cash: 100, annualIncome: 1, wageBudget: 1, transferBudget: 0, boardConfidence: 50, fanHappiness: 50 },
-                            squad: [{ id: 'a', wage: 10_000_000 }] });
+  it('merges multiple days in the same ISO week into one chart bucket', () => {
+    const c = baseCareer({ currentDate: '2026-03-25' });
     tickWeeklyCashflow(c);
-    c.currentDate = '2026-04-08';
+    c.currentDate = '2026-03-26';
+    tickWeeklyCashflow(c);
+    expect(c.weeklyHistory.length).toBe(1);
+    expect(c.weeklyHistory[0].profit).toBe(
+      c.weeklyHistory[0].income - c.weeklyHistory[0].expenses
+    );
+  });
+
+  it('updates cashCrisisStartWeek when cash goes negative', () => {
+    const c = baseCareer({
+      currentDate: '2026-03-25',
+      clubId: '__none__',
+      finance: { cash: 100, annualIncome: 1, wageBudget: 1, transferBudget: 0, boardConfidence: 50, fanHappiness: 50 },
+      squad: [{ id: 'a', wage: 500_000_000 }],
+      staff: [],
+      sponsors: [],
+    });
     tickWeeklyCashflow(c);
     expect(c.finance.cash).toBeLessThan(0);
     expect(c.cashCrisisStartWeek).not.toBe(null);
