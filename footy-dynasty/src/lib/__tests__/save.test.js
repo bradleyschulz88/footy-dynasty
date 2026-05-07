@@ -64,6 +64,8 @@ describe('migrate', () => {
     expect(m.postSeasonPhase).toBe('none');
     expect(m.inTradePeriod).toBe(false);
     expect(m.draftPickBank).toBe(null);
+    expect(m.board).toBeTruthy();
+    expect(Array.isArray(m.board.members)).toBe(true);
   });
 
   it('v5 -> v6 adds secondaryPosition to squad and aiSquads players', () => {
@@ -88,6 +90,23 @@ describe('migrate', () => {
     expect(m.homeWinStreak).toBe(0);
     expect(m.winStreak).toBe(0);
     expect(m.clubGround?.shortName).toBe('MCG');
+  });
+
+  it('v7 -> v8 adds executive board members and season objectives', () => {
+    const m = migrate({
+      saveVersion: 7,
+      clubId: 'mel',
+      leagueKey: 'AFL',
+      season: 2026,
+      facilities: { stadium: { level: 1, cost: 350_000, max: 5 } },
+      finance: { boardConfidence: 62, cash: 1e6, fanHappiness: 60, annualIncome: 1e6, transferBudget: 100_000, wageBudget: 1e6 },
+      coachStats: { seasonsManaged: 1 },
+      ladder: [],
+    });
+    expect(m.saveVersion).toBe(SAVE_VERSION);
+    expect(m.board.members.length).toBe(5);
+    expect(m.finance.boardConfidence).toBeGreaterThanOrEqual(0);
+    expect(m.board.objectives.length).toBeGreaterThanOrEqual(3);
   });
 
   it('repairs a broken stadium schema where it was stamped as the integer 1', () => {

@@ -5,7 +5,9 @@
 import { PYRAMID, findClub } from '../data/pyramid.js';
 import { getClubGround } from '../data/grounds.js';
 
-export const SAVE_VERSION = 7;
+import { migrateSaveBoardV8 } from './board.js';
+
+export const SAVE_VERSION = 8;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
@@ -166,6 +168,11 @@ export function migrate(save) {
       const tier = (s.leagueKey && PYRAMID[s.leagueKey]?.tier) ?? 2;
       s.clubGround = getClubGround(cl, st, tier);
     }
+  }
+
+  if (v < 8) {
+    s.saveVersion = 8;
+    migrateSaveBoardV8(s);
   }
 
   return s;
