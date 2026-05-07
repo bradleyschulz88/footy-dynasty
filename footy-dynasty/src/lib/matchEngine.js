@@ -109,8 +109,8 @@ function pickScorerId(playerLineup) {
 // =============================================================================
 // simMatch — legacy API kept for AI-vs-AI macro sim
 // =============================================================================
-export function simMatch(home, away, isPlayerHome, playerStrength) {
-  const hAdv = 4;
+export function simMatch(home, away, isPlayerHome, playerStrength, homeFixtureAdvantage = 4) {
+  const hAdv = homeFixtureAdvantage;
   const hStr = isPlayerHome ? playerStrength + hAdv : home.rating + hAdv;
   const aStr = !isPlayerHome ? playerStrength : away.rating;
   const diff = hStr - aStr;
@@ -150,7 +150,7 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
   const groundScoring = clamp(opts.groundScoringMod ?? 1.0, 0.5, 1.1);
   const groundAccuracy = clamp(opts.groundAccuracyMod ?? 1.0, 0.5, 1.1);
 
-  const hAdv = 4;
+  const hAdv = opts.homeFixtureAdvantage ?? 4;
 
   // Apply tactic mods to whichever side is the player
   const playerSideMod = profile.goalRateMod;
@@ -159,6 +159,8 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
   const oppOppMod     = oppProfile.oppRateMod;
 
   let momentum = 0; // -1 .. +1, positive = home
+  let runHomePts = 0;
+  let runAwayPts = 0;
   const quarters = [];
   const events = [];   // flat timeline
   const keyMoments = [];
@@ -167,6 +169,12 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
   const reportedPlayerIds = [];
 
   for (let q = 0; q < 4; q++) {
+    if (q > 0) {
+      momentum *= 0.72;
+      const marginPts = runHomePts - runAwayPts;
+      const marginNudge = clamp(marginPts / 48, -1, 1) * 0.14;
+      momentum = clamp(momentum + marginNudge, -1, 1);
+    }
     const quarterNum = q + 1;
     const playerStrNow = typeof opts.getPlayerStrengthForQuarter === 'function'
       ? opts.getPlayerStrengthForQuarter(quarterNum)
@@ -184,7 +192,7 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
       hStr = (oppStrNow != null ? oppStrNow : home.rating) + hAdv;
       aStr = playerStrNow;
     }
-    const diff = (hStr - aStr) + momentum * 8; // momentum tilts up to ~8 rating
+    const diff = (hStr - aStr) + momentum * 9; // momentum tilts effective strength (~9 pts at full swing)
     const rates = shotRates(diff);
 
     // Apply tactic shot-rate adjustments
@@ -294,15 +302,17 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
     qEvents.sort((a, b) => a.minute - b.minute);
     events.push(...qEvents);
 
+    const qHomeTot = hG * 6 + hB;
+    const qAwayTot = aG * 6 + aB;
+    runHomePts += qHomeTot;
+    runAwayPts += qAwayTot;
+
     quarters.push({
-      homeGoals: hG, homeBehinds: hB, homeTotal: hG * 6 + hB,
-      awayGoals: aG, awayBehinds: aB, awayTotal: aG * 6 + aB,
+      homeGoals: hG, homeBehinds: hB, homeTotal: qHomeTot,
+      awayGoals: aG, awayBehinds: aB, awayTotal: qAwayTot,
       events: qEvents,
       momentumEnd: momentum,
     });
-
-    // Decay momentum slightly between quarters
-    momentum *= 0.55;
   }
 
   const homeGoals = quarters.reduce((a, q) => a + q.homeGoals, 0);
@@ -350,10 +360,11 @@ function splitAcrossQuarters(total, n) {
 }
 
 export function simMatchWithQuarters(home, away, isPlayerHome, playerStrength, opts = {}) {
+  const homeAdv = opts.homeFixtureAdvantage ?? 4;
   if (opts && (opts.playerLineup || opts.tactic)) {
-    return simMatchEvents(home, away, isPlayerHome, playerStrength, opts);
+    return simMatchEvents(home, away, isPlayerHome, playerStrength, { ...opts, homeFixtureAdvantage: homeAdv });
   }
-  const result = simMatch(home, away, isPlayerHome, playerStrength);
+  const result = simMatch(home, away, isPlayerHome, playerStrength, homeAdv);
   const hGQ = splitAcrossQuarters(result.homeGoals, 4);
   const hBQ = splitAcrossQuarters(result.homeBehinds, 4);
   const aGQ = splitAcrossQuarters(result.awayGoals, 4);
