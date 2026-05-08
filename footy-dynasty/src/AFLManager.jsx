@@ -394,6 +394,7 @@ function AFLManagerInner() {
       setActiveSlotState(slot);
       const initialised = { ...c, saveVersion: SAVE_VERSION, options: c.options || { autosave: true } };
       writeSlot(slot, initialised);
+      sessionStorage.removeItem(SETUP_SS_KEY);
       setCareer(initialised);
       setScreen("hub");
     }} existingSlots={readSlotMeta()} onResume={(slot) => { handleSwitchSlot(slot); }} />;
@@ -749,7 +750,6 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       ladder: ladder0,
       coachReputation: 30,
     });
-    sessionStorage.removeItem(SETUP_SS_KEY);
     const newCareer = {
       managerName: managerName || "Coach",
       clubId,
