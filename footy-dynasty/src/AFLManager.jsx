@@ -36,7 +36,15 @@ import PostMatchSummary from './screens/PostMatchSummary.jsx';
 import SackingSequence from './screens/SackingSequence.jsx';
 import VoteOfConfidenceFlow from './screens/VoteOfConfidenceFlow.jsx';
 import BoardMeetingScreen from './screens/BoardMeetingScreen.jsx';
-import TutorialOverlay, { TUTORIAL_STEPS } from './components/TutorialOverlay.jsx';
+import ArrivalBriefingFlow from './screens/ArrivalBriefingFlow.jsx';
+import TutorialOverlay, {
+  TUTORIAL_STEPS,
+  tutorialAllowsNavigation,
+  tutorialMidStepCompleted,
+  tutorialHighlightScreen,
+  tutorialHighlightTab,
+  tutorialLocksAdvanceButton,
+} from './components/TutorialOverlay.jsx';
 import SeasonStrip from './components/SeasonStrip.jsx';
 import MatchPreviewPanel from './components/MatchPreviewPanel.jsx';
 
@@ -70,6 +78,7 @@ import {
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
   buildInitialSponsorOffers,
 } from './lib/finance/sponsors.js';
+import { applyRenewal, applyRenewalRejection, canAffordRenewal } from './lib/finance/contracts.js';
 import { getAdvanceContext } from './lib/advanceContext.js';
 import {
   TIER_FINANCE, INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, TICKET_PRICE, BASE_ATTENDANCE,
@@ -86,6 +95,7 @@ import {
   youthSeniorGameCount,
   boardObjectiveUiStatus,
   maybeEnqueueBoardMessage,
+  maybeEnqueueBoardCrisisPrep,
   resolveBoardInboxChoice,
   planSeasonBoardMeetings,
   findDueBoardMeetingSlot,
@@ -93,6 +103,9 @@ import {
   catchUpBoardMeetingForCurrentWeek,
   applyVoteSurvivalMutate,
   resolveRoutineBoardMeeting,
+  alignBoardMembersToTarget,
+  recalcBoardConfidence,
+  applyMemberConfidenceDelta,
 } from './lib/board.js';
 
 // ============================================================================
@@ -314,6 +327,9 @@ function AFLManagerInner() {
       gameOver:  null,
       jobOffers: [],
       boardWarning: 0,
+      boardVotePrepBonus: 0,
+      jobMarketRerolls: 0,
+      arrivalBriefing: { pending: true },
       boardCrisis: null,
       boardMeetingBlocking: null,
       boardMeetingSlots: [],
@@ -407,28 +423,41 @@ function AFLManagerInner() {
     };
     c.coachReputation = applySackingReputation(c.coachReputation);
     c.coachTier = coachTierFromScore(c.coachReputation);
+    c.boardVotePrepBonus = 0;
+    c.jobMarketRerolls = 0;
+    c.arrivalBriefing = null;
     c.news = [{ week: round, type: 'loss', text: `💼 The board has terminated your contract at ${clubName}.` }, ...(c.news || [])].slice(0, 20);
   }
 
   // ============== ADVANCE TO NEXT EVENT ==============
+  function markTutorialCompleteAfterAdvance(draft) {
+    if (!draft.tutorialComplete && (draft.tutorialStep ?? 0) === 6) {
+      draft.tutorialStep = TUTORIAL_STEPS.length;
+      draft.tutorialComplete = true;
+    }
+  }
+
   function advanceToNextEvent() {
     const c = JSON.parse(JSON.stringify(career));
 
     // Finals override — keep old logic
     if (c.inFinals) {
       advanceFinalsWeek(c);
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
 
     if (c.postSeasonPhase === 'trade_period' && c.inTradePeriod) {
       advanceTradePeriodDay(c, league, c.leagueKey);
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
     if (c.postSeasonPhase === 'draft_waiting') {
       const next = advanceDraftCountdown(c);
       if (next === 'finish_season') finishSeason(c);
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
@@ -442,6 +471,7 @@ function AFLManagerInner() {
       } else {
         beginPostSeasonTradePeriod(c, league, c.leagueKey);
       }
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
@@ -570,6 +600,7 @@ function AFLManagerInner() {
 
       const info = TRAINING_INFO[ev.subtype] || {};
       c.lastEvent = { type: 'training', subtype: ev.subtype, name: info.name || ev.subtype, date: ev.date, gains, staffName, staffRating, devNotes, intensity };
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       setScreen('hub');
       return;
@@ -646,6 +677,7 @@ function AFLManagerInner() {
         ...extraNews,
         ...(c.news || []),
       ].slice(0, 20);
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       setScreen('hub');
       return;
@@ -689,6 +721,7 @@ function AFLManagerInner() {
       c.lastEvent = { type: 'preseason_match', label: ev.label, date: ev.date, isHome, opp, result, myTotal, oppTotal, won, drew };
       c.inMatchDay = true;
       c.currentMatchResult = { ...result, isHome, opp, myTotal, oppTotal, won, drew, isPreseason: true, label: ev.label, isAFL: league.tier === 1 };
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
@@ -916,6 +949,12 @@ function AFLManagerInner() {
           c.boardWarning = (c.boardWarning || 0) + 1;
         }
       }
+      if (!c.isSacked && !inBoardCrisis) {
+        const prepLine = maybeEnqueueBoardCrisisPrep(c, league, sackPatience, c.boardWarning || 0);
+        if (prepLine) {
+          c.news = [{ week: ev.round, type: 'board', text: prepLine }, ...(c.news || [])].slice(0, 20);
+        }
+      }
       if ((c.boardWarning || 0) >= sackPatience && !c.isSacked && !inBoardCrisis) {
         const instantSack = c.finance.boardConfidence <= 0 || (c.boardWarning || 0) >= 99;
         if (instantSack) {
@@ -937,7 +976,7 @@ function AFLManagerInner() {
       if (ev.phase === 'season' && !c.isSacked && c.boardCrisis?.phase !== 'active') {
         const due = findDueBoardMeetingSlot(c, c.week);
         if (due) {
-          c.boardMeetingBlocking = openBoardMeetingBlockingFromSlot(due);
+          c.boardMeetingBlocking = openBoardMeetingBlockingFromSlot(due, league.tier);
         }
       }
 
@@ -964,10 +1003,12 @@ function AFLManagerInner() {
         // Build the post-match summary payload (Section 3E)
         c.lastMatchSummary = buildPostMatchSummary(c, league, club, myResult, ev.round);
       }
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
 
+    markTutorialCompleteAfterAdvance(c);
     setCareer(c);
   }
 
@@ -1484,6 +1525,26 @@ function AFLManagerInner() {
   const updateCareer = (patch) => setCareer(c => ({ ...c, ...patch }));
   const updateField = (field, value) => setCareer(c => ({ ...c, [field]: value }));
 
+  const tutorialActive = career && !career.tutorialComplete;
+
+  const onNavScreen = (key) => {
+    if (career && !career.tutorialComplete && !tutorialAllowsNavigation(career.tutorialStep ?? 0, key)) {
+      return;
+    }
+    setScreen(key);
+    setTab(null);
+  };
+
+  useEffect(() => {
+    if (!career || career.tutorialComplete) return;
+    const step = career.tutorialStep ?? 0;
+    if (step <= 0 || step >= 6) return;
+    if (!tutorialMidStepCompleted(step, screen, tab, career)) return;
+    const next = step + 1;
+    const isDone = next >= TUTORIAL_STEPS.length;
+    setCareer((c) => ({ ...c, tutorialStep: next, tutorialComplete: isDone }));
+  }, [career, career?.tutorialStep, career?.tutorialComplete, career?.sponsors, screen, tab]);
+
   const myLadderPos = (() => {
     const s = sortedLadder(career.ladder);
     return s.findIndex(r => r.id === career.clubId) + 1;
@@ -1518,6 +1579,14 @@ function AFLManagerInner() {
               ...result,
               jobOffers: generateJobMarket({ ...career, ...result }),
               news: [{ week: 0, type: 'info', text: `🪞 Took the season off. Reputation +5. The phone might ring louder next year.` }, ...(career.news || [])].slice(0, 20),
+            });
+          }}
+          onRerollJobMarket={() => {
+            if ((career.jobMarketRerolls ?? 0) >= 1) return;
+            updateCareer({
+              jobMarketRerolls: (career.jobMarketRerolls ?? 0) + 1,
+              jobOffers: generateJobMarket(career, { desperate: true }),
+              news: [{ week: career.week ?? 0, type: 'info', text: '📡 Re-scanned the job market — deeper vacancies listed.' }, ...(career.news || [])].slice(0, 20),
             });
           }}
         />
@@ -1611,6 +1680,7 @@ function AFLManagerInner() {
         <VoteOfConfidenceFlow
           career={career}
           club={club}
+          league={league}
           onComplete={({ survived, pitchBonus }) => {
             if (survived) {
               const next = JSON.parse(JSON.stringify(career));
@@ -1652,10 +1722,36 @@ function AFLManagerInner() {
     );
   }
 
+  if (career.arrivalBriefing?.pending) {
+    return (
+      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+        {globalStyle}
+        <ArrivalBriefingFlow
+          career={career}
+          club={club}
+          league={league}
+          onComplete={(patch) => {
+            const next = JSON.parse(JSON.stringify({ ...career, ...patch }));
+            ensureCareerBoard(next, findClub(next.clubId), PYRAMID[next.leagueKey]);
+            alignBoardMembersToTarget(next.board, next.finance.boardConfidence);
+            recalcBoardConfidence(next);
+            setCareer(next);
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
       {globalStyle}
-      <Sidebar screen={screen} setScreen={(s)=>{setScreen(s);setTab(null);}} club={club} league={league} career={career} myLadderPos={myLadderPos}
+      <Sidebar
+        screen={screen}
+        onNavigate={onNavScreen}
+        club={club}
+        league={league}
+        career={career}
+        myLadderPos={myLadderPos}
         onNewGame={handleNewGame}
         onSaveNow={handleSaveNow}
         activeSlot={activeSlot}
@@ -1667,16 +1763,24 @@ function AFLManagerInner() {
         onDeleteSlot={handleDeleteSlot}
       />
       <main className="flex-1 overflow-y-auto min-w-0">
-        <TopBar career={career} club={club} league={league} myLadderPos={myLadderPos} onAdvance={advanceToNextEvent} />
+        <TopBar
+          career={career}
+          club={club}
+          league={league}
+          myLadderPos={myLadderPos}
+          onAdvance={advanceToNextEvent}
+          advanceDisabled={tutorialLocksAdvanceButton(career)}
+          tutorialSpotlightAdvance={!!tutorialActive && (career.tutorialStep ?? 0) === 6}
+        />
         <div className="p-3 md:p-6 max-w-[1400px] mx-auto">
-          {screen === "hub"      && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={setScreen} setTab={setTab} onAdvance={advanceToNextEvent} />}
-          {screen === "squad"    && <SquadScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
+          {screen === "hub"      && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={onNavScreen} setTab={setTab} onAdvance={advanceToNextEvent} />}
+          {screen === "squad"    && <SquadScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} tutorialActive={tutorialActive} />}
           {screen === "schedule" && (
             <Suspense fallback={<div className="anim-in py-16 text-center text-atext-dim font-mono text-sm">Loading calendar…</div>}>
               <ScheduleScreenLazy career={career} club={club} league={league} />
             </Suspense>
           )}
-          {screen === "club"     && <ClubScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
+          {screen === "club"     && <ClubScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} tutorialActive={tutorialActive} />}
           {screen === "recruit"  && <RecruitScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
           {screen === "compete"  && <CompetitionScreen career={career} club={club} league={league} tab={tab} setTab={setTab} />}
         </div>
@@ -1686,12 +1790,10 @@ function AFLManagerInner() {
         <TutorialOverlay
           step={career.tutorialStep ?? 0}
           onNext={() => {
-            const next = (career.tutorialStep ?? 0) + 1;
-            const isDone = next >= TUTORIAL_STEPS.length;
-            updateCareer({ tutorialStep: next, tutorialComplete: isDone });
-            // Auto-jump to the next step's recommended screen for guided flow
-            const target = TUTORIAL_STEPS[next];
-            if (target?.targetScreen) setScreen(target.targetScreen);
+            const cur = career.tutorialStep ?? 0;
+            if (cur !== 0) return;
+            const next = 1;
+            updateCareer({ tutorialStep: next, tutorialComplete: next >= TUTORIAL_STEPS.length });
           }}
           onSkip={() => updateCareer({ tutorialStep: TUTORIAL_STEPS.length, tutorialComplete: true })}
         />
@@ -1847,6 +1949,9 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       jobMarketOpen: false,
       sackingStep: null,
       jobOffers: [],
+      boardVotePrepBonus: 0,
+      jobMarketRerolls: 0,
+      arrivalBriefing: null,
       journalist: generateJournalist(),
       lastBoardConfidenceDelta: 0,
       lastMatchSummary: null,
@@ -2124,10 +2229,13 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
 // ============================================================================
 // SIDEBAR + TOPBAR
 // ============================================================================
-function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGame, onSaveNow, activeSlot, slotMeta, slotMetaTick, onTogglePicker, showSlotPicker, onSwitchSlot, onDeleteSlot }) {
+function Sidebar({ screen, onNavigate, club, league, career, myLadderPos, onNewGame, onSaveNow, activeSlot, slotMeta, slotMetaTick, onTogglePicker, showSlotPicker, onSwitchSlot, onDeleteSlot }) {
   const season = career.season;
   const week   = career.week;
   const phase  = career.phase || 'preseason';
+  const tutorialOn = career && !career.tutorialComplete;
+  const tutStep = career?.tutorialStep ?? 0;
+  const highlightNav = tutorialOn ? tutorialHighlightScreen(tutStep) : null;
   const items = [
     { key: "hub",      label: "Hub",        icon: Home,      desc: "Overview" },
     { key: "squad",    label: "Squad",       icon: Users,     desc: "Players & Tactics" },
@@ -2183,9 +2291,12 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGa
         {items.map(it => {
           const Icon = it.icon;
           const active = screen === it.key;
+          const navLocked = tutorialOn && !tutorialAllowsNavigation(tutStep, it.key);
+          const spotlight = tutorialOn && highlightNav === it.key;
           return (
-            <button key={it.key} onClick={()=>setScreen(it.key)}
-              className={`flex items-center gap-2 md:gap-3 px-3 py-2 md:py-3 rounded-xl transition-all group border whitespace-nowrap md:w-full ${active ? "bg-aaccent/10 border-aaccent/40 text-aaccent" : "border-transparent text-atext-dim hover:bg-aaccent/5 hover:text-atext"}`}>
+            <button key={it.key} type="button" disabled={navLocked} onClick={() => { if (!navLocked) onNavigate(it.key); }}
+              title={navLocked ? 'Complete the current tutorial step or skip the tutorial.' : undefined}
+              className={`flex items-center gap-2 md:gap-3 px-3 py-2 md:py-3 rounded-xl transition-all group border whitespace-nowrap md:w-full ${spotlight ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${navLocked ? "opacity-35 cursor-not-allowed border-transparent" : ""} ${active ? "bg-aaccent/10 border-aaccent/40 text-aaccent" : !navLocked ? "border-transparent text-atext-dim hover:bg-aaccent/5 hover:text-atext" : "border-transparent text-atext-mute"}`}>
               <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${active ? "bg-aaccent/15 text-aaccent" : "text-atext-mute"}`}>
                 <Icon className="w-4 h-4" />
               </div>
@@ -2250,7 +2361,7 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGa
   );
 }
 
-function TopBar({ career, club, league, myLadderPos, onAdvance }) {
+function TopBar({ career, club, league, myLadderPos, onAdvance, advanceDisabled, tutorialSpotlightAdvance }) {
   const ctx = getAdvanceContext(career, league);
   const nextEv = (career.eventQueue || []).find(e => !e.completed);
   const phaseColors = { preseason: 'var(--A-accent)', season: 'var(--A-accent-2)', finals: 'var(--A-neg)', offseason: '#A78BFA' };
@@ -2334,7 +2445,13 @@ function TopBar({ career, club, league, myLadderPos, onAdvance }) {
             <div className="text-[11px] font-mono font-bold uppercase tracking-widest text-atext-mute">Next</div>
             <div className="text-sm font-semibold text-atext truncate" title={ctx.detail}>{headerNextLabel}</div>
           </div>
-          <button type="button" onClick={onAdvance} className={`${css.btnPrimary} flex items-center gap-1.5 md:gap-2 glow text-[11px] md:text-xs px-3 md:px-5`}>
+          <button
+            type="button"
+            onClick={onAdvance}
+            disabled={advanceDisabled}
+            title={advanceDisabled ? "Finish the tutorial step in the card (or skip) before advancing time." : undefined}
+            className={`${css.btnPrimary} flex items-center gap-1.5 md:gap-2 glow text-[11px] md:text-xs px-3 md:px-5 ${tutorialSpotlightAdvance ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${advanceDisabled ? "opacity-45 cursor-not-allowed" : ""}`}
+          >
             <Play className="w-4 h-4" /> {ctx.buttonLabel.toUpperCase()}
           </button>
         </div>
@@ -3219,9 +3336,11 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
 // ============================================================================
 // SQUAD SCREEN — players, tactics, training
 // ============================================================================
-function SquadScreen({ career, club, updateCareer, tab, setTab }) {
+function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }) {
   const renewalCount = (career.pendingRenewals || []).filter(r => !r._handled).length;
   const t = tab || (renewalCount > 0 ? "renewals" : "players");
+  const tutStep = career.tutorialStep ?? 0;
+  const squadTutorialTab = tutorialActive && (tutStep === 1 || tutStep === 2 || tutStep === 5) ? tutorialHighlightTab(tutStep) : null;
   const tabs = [
     { key: "players", label: "Players", icon: Users },
     { key: "tactics", label: "Tactics", icon: Target },
@@ -3232,7 +3351,13 @@ function SquadScreen({ career, club, updateCareer, tab, setTab }) {
   ];
   return (
     <div className="anim-in">
-      <TabNav tabs={tabs} active={t} onChange={setTab} />
+      <TabNav
+        tabs={tabs}
+        active={t}
+        onChange={setTab}
+        tutorialAllowOnly={squadTutorialTab}
+        tutorialHighlightKey={squadTutorialTab}
+      />
       {t === "players"  && <PlayersTab career={career} updateCareer={updateCareer} />}
       {t === "tactics"  && <TacticsTab career={career} updateCareer={updateCareer} />}
       {t === "training" && <TrainingTab career={career} updateCareer={updateCareer} />}
@@ -3243,6 +3368,10 @@ function SquadScreen({ career, club, updateCareer, tab, setTab }) {
 
 function RenewalsTab({ career, updateCareer }) {
   const queue = (career.pendingRenewals || []).filter(r => !r._handled);
+  const renewalsLeague = PYRAMID[career.leagueKey];
+  const capLimit = effectiveWageCap(career);
+  const wageBillAnnual = annualWageBill(career);
+  const headroom = capHeadroom(career);
   const accept = (proposal) => {
     if (!canAffordRenewal(career, proposal)) {
       updateCareer({
@@ -3251,8 +3380,23 @@ function RenewalsTab({ career, updateCareer }) {
       return;
     }
     const patch = applyRenewal(career, proposal);
+    const merged = JSON.parse(JSON.stringify({ ...career, ...patch }));
+    ensureCareerBoard(merged, findClub(merged.clubId), renewalsLeague);
+    const wageDelta = proposal.proposedWage - (proposal.currentWage ?? 0);
+    if (wageDelta <= 0) {
+      applyMemberConfidenceDelta(merged, "Football Director", 2);
+      applyMemberConfidenceDelta(merged, "Finance Director", 1);
+    } else if (wageDelta >= 40_000) {
+      applyMemberConfidenceDelta(merged, "Finance Director", -2);
+      applyMemberConfidenceDelta(merged, "Football Director", 1);
+    } else {
+      applyMemberConfidenceDelta(merged, "Chairman", 1);
+    }
+    recalcBoardConfidence(merged);
     updateCareer({
       ...patch,
+      board: merged.board,
+      finance: merged.finance,
       pendingRenewals: (career.pendingRenewals || []).map(r => r.playerId === proposal.playerId ? { ...r, _handled: 'accepted' } : r),
       news: [{ week: career.week, type: 'win', text: `✍️ Re-signed ${proposal.name} for ${proposal.proposedYears}y @ ${fmtK(proposal.proposedWage)}/yr` }, ...(career.news || [])].slice(0, 25),
     });
@@ -3273,8 +3417,22 @@ function RenewalsTab({ career, updateCareer }) {
           <div className="text-xs text-atext-dim">Players whose contracts are about to expire. Re-sign before pre-season ends or they walk.</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Cap Headroom" value={fmtK(capHeadroom(career))} accent={capHeadroom(career) > 0 ? '#4AE89A' : '#E84A6F'} />
+          <Stat label="Cap Headroom" value={fmtK(headroom)} accent={headroom > 0 ? '#4AE89A' : '#E84A6F'} />
           <Stat label="Outstanding" value={queue.length} accent="var(--A-accent-2)" />
+        </div>
+      </div>
+      <div className={`${css.panel} p-4 grid sm:grid-cols-3 gap-3 text-[11px]`}>
+        <div>
+          <div className={css.label}>Annual wage bill</div>
+          <div className="text-atext font-mono font-bold">${fmtK(wageBillAnnual)}</div>
+        </div>
+        <div>
+          <div className={css.label}>Salary cap</div>
+          <div className="text-atext font-mono font-bold">${fmtK(capLimit)}</div>
+        </div>
+        <div>
+          <div className={css.label}>If you renew…</div>
+          <div className="text-atext-dim leading-snug">Board reacts to wage discipline. Cap-smart deals please Football + Finance; big raises draw Treasury heat.</div>
         </div>
       </div>
       {queue.length === 0 ? (
@@ -3767,8 +3925,10 @@ function TrainingTab({ career, updateCareer }) {
 // ============================================================================
 // CLUB SCREEN — finances, sponsors, kits, facilities, staff
 // ============================================================================
-function ClubScreen({ career, club, updateCareer, tab, setTab }) {
+function ClubScreen({ career, club, updateCareer, tab, setTab, tutorialActive }) {
   const t = tab || "finances";
+  const tutStep = career.tutorialStep ?? 0;
+  const clubTutorialTab = tutorialActive && (tutStep === 3 || tutStep === 4) ? tutorialHighlightTab(tutStep) : null;
   const leagueTier = (() => {
     const lg = findLeagueOf(career.clubId);
     return lg ? lg.tier : 1;
@@ -3788,7 +3948,13 @@ function ClubScreen({ career, club, updateCareer, tab, setTab }) {
   ];
   return (
     <div className="anim-in">
-      <TabNav tabs={tabs} active={t} onChange={setTab} />
+      <TabNav
+        tabs={tabs}
+        active={t}
+        onChange={setTab}
+        tutorialAllowOnly={clubTutorialTab}
+        tutorialHighlightKey={clubTutorialTab}
+      />
       {t === "finances"   && <FinancesTab career={career} />}
       {t === "board"      && <BoardTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "sponsors"   && <SponsorsTab career={career} updateCareer={updateCareer} />}

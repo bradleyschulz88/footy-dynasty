@@ -56,6 +56,7 @@ export function getDifficultyConfig(difficulty) {
       moraleFloor:           50,
       sponsorMultiplier:     1.20,
       tutorialPolicy:        'always',
+      voteSurvivalShift:     0.04,
     },
     contender: {
       boardPatienceSeasons:  2,
@@ -70,6 +71,7 @@ export function getDifficultyConfig(difficulty) {
       moraleFloor:           30,
       sponsorMultiplier:     1.0,
       tutorialPolicy:        'first_career_only',
+      voteSurvivalShift:     0,
     },
     legend: {
       boardPatienceSeasons:  1,
@@ -84,6 +86,7 @@ export function getDifficultyConfig(difficulty) {
       moraleFloor:           10,
       sponsorMultiplier:     0.85,
       tutorialPolicy:        'never',
+      voteSurvivalShift:     -0.045,
     },
   };
   return configs[difficulty] || configs.contender;

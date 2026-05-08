@@ -114,8 +114,42 @@ export function getJobInterviewQuestion(offer, career) {
   return { question, options };
 }
 
+/** Second interview beat for Tier 1–2 panels (after first answer). */
+export function getJobFollowUpInterview(offer, career, firstBonus = 0) {
+  const aggressive = (firstBonus ?? 0) >= 4 || offer.leagueTier === 1;
+  const q = aggressive
+    ? "One more thing: how do you handle a losing streak in the headline papers?"
+    : "Follow-up: what is your non-negotiable on medical and conditioning spend?";
+  const options = aggressive
+    ? [
+        { id: "shield", label: "Shield the playing group — one voice to media.", startingBoardBonus: 3 },
+        { id: "open", label: "Open door — transparency even when it's ugly.", startingBoardBonus: -2 },
+      ]
+    : [
+        { id: "invest_med", label: "Invest in medical — fewer soft-tissue weeks.", startingBoardBonus: 4 },
+        { id: "hold", label: "Hold spend until we know the list.", startingBoardBonus: 0 },
+      ];
+  return { question: q, options };
+}
+
+function appendFallbackJobOffers(career, excludeIds, seenIds, offers, count) {
+  let added = 0;
+  while (added < count) {
+    const candidates = ALL_CLUBS.filter((c) => {
+      if (excludeIds.has(c.id) || seenIds.has(c.id)) return false;
+      const lg = findLeagueOf(c.id);
+      return lg && lg.tier === 3;
+    });
+    if (!candidates.length) break;
+    const club = pick(candidates);
+    seenIds.add(club.id);
+    offers.push(buildJobListing(club, findLeagueOf(club.id), career));
+    added++;
+  }
+}
+
 // Generate available jobs filtered by the coach's tier + current club exclusion.
-export function generateJobMarket(career) {
+export function generateJobMarket(career, options = {}) {
   const tier = coachTierFromScore(career.coachReputation ?? 30);
   const wantTiers = {
     Rookie:      [3, 3, 3, 3, 2, 2, 3],
@@ -139,6 +173,12 @@ export function generateJobMarket(career) {
     seenIds.add(club.id);
     const lg = findLeagueOf(club.id);
     offers.push(buildJobListing(club, lg, career));
+  }
+  if (options.desperate) {
+    appendFallbackJobOffers(career, excludeIds, seenIds, offers, 3);
+  }
+  if (offers.length === 0) {
+    appendFallbackJobOffers(career, excludeIds, seenIds, offers, 4);
   }
   offers.sort((a, b) => {
     const fa = a.interestLabel === "Preferred candidate" ? 2 : a.interestLabel === "Shortlisted" ? 1 : 0;

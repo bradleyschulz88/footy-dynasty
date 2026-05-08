@@ -84,6 +84,14 @@ describe('generateJobMarket', () => {
     const tier1Count = offers.filter(o => o.leagueTier === 1).length;
     expect(tier1Count).toBeGreaterThanOrEqual(2);
   });
+
+  it('desperate market scan does not shrink the offer list', () => {
+    seedRng(5);
+    const career = { coachReputation: 55, clubId: 'mel', previousClubs: [] };
+    const base = generateJobMarket(career);
+    const desperate = generateJobMarket(career, { desperate: true });
+    expect(desperate.length).toBeGreaterThanOrEqual(base.length);
+  });
 });
 
 describe('takeSeasonOff', () => {

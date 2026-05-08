@@ -15,6 +15,7 @@ import {
   seasonRoundTick,
   planSeasonBoardMeetings,
   voteOfConfidenceSurvivalChance,
+  maybeEnqueueBoardCrisisPrep,
 } from '../board.js';
 import { findLeagueOf } from '../../data/pyramid.js';
 
@@ -203,6 +204,43 @@ describe('board', () => {
     planSeasonBoardMeetings(career);
     expect(career.boardMeetingSlots.length).toBe(2);
     expect(career.boardMeetingSlots[0].dueRound).toBeGreaterThanOrEqual(3);
+  });
+
+  it('voteOfConfidenceSurvivalChance increases with inbox prep bonus', () => {
+    const base = { finance: { boardConfidence: 40 }, difficulty: 'contender' };
+    const low = voteOfConfidenceSurvivalChance(base, 0);
+    const high = voteOfConfidenceSurvivalChance({ ...base, boardVotePrepBonus: 8 }, 0);
+    expect(high).toBeGreaterThan(low);
+  });
+
+  it('maybeEnqueueBoardCrisisPrep queues once before a two-step vote', () => {
+    seedRng(1);
+    const league = findLeagueOf('mel');
+    const career = {
+      season: 2026,
+      week: 4,
+      clubId: 'mel',
+      leagueKey: 'AFL',
+      finance: { boardConfidence: 12, cash: 500_000 },
+      boardCrisis: null,
+      board: {
+        members: generateBoardMembers({ id: 'mel' }, league),
+        objectives: [],
+        contractYears: 2,
+        contractSalary: 120_000,
+        lastReviewSeason: null,
+        warningIssued: false,
+        voteScheduled: false,
+        inbox: [],
+        lastCommsTick: null,
+      },
+    };
+    alignBoardMembersToTarget(career.board, 12);
+    recalcBoardConfidence(career);
+    const line = maybeEnqueueBoardCrisisPrep(career, league, 2, 1);
+    expect(line).toBeTruthy();
+    expect(career.board.inbox.some((m) => String(m.id).startsWith('crisis_prep_'))).toBe(true);
+    expect(maybeEnqueueBoardCrisisPrep(career, league, 2, 1)).toBe(null);
   });
 
   it('voteOfConfidenceSurvivalChance stays within bounds', () => {

@@ -37,6 +37,12 @@ describe('getDifficultyConfig', () => {
     expect(getDifficultyConfig('legend').showAssistantTips).toBe(false);
     expect(getDifficultyConfig('grassroots').showAssistantTips).toBe(true);
   });
+
+  it('vote survival shift nudges confidence votes on grassroots vs legend', () => {
+    expect(getDifficultyConfig('grassroots').voteSurvivalShift).toBeGreaterThan(0);
+    expect(getDifficultyConfig('legend').voteSurvivalShift).toBeLessThan(0);
+    expect(getDifficultyConfig('contender').voteSurvivalShift).toBe(0);
+  });
 });
 
 describe('shouldShowTutorial', () => {
