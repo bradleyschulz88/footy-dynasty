@@ -66,6 +66,9 @@ describe('migrate', () => {
     expect(m.draftPickBank).toBe(null);
     expect(m.board).toBeTruthy();
     expect(Array.isArray(m.board.members)).toBe(true);
+    expect(m.boardVotePrepBonus).toBe(0);
+    expect(m.jobMarketRerolls).toBe(0);
+    expect(m.arrivalBriefing).toBe(null);
   });
 
   it('v5 -> v6 adds secondaryPosition to squad and aiSquads players', () => {

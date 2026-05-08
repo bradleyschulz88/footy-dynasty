@@ -12,13 +12,18 @@ const PITCHES = [
   { id: "fight", label: "Push back: the board must back the long-term plan in public.", bonus: -7 },
 ];
 
-export default function VoteOfConfidenceFlow({ career, club, onComplete }) {
+export default function VoteOfConfidenceFlow({ career, club, league, onComplete }) {
   const [phase, setPhase] = useState(0);
   const [pitchBonus, setPitchBonus] = useState(PITCHES[0].bonus);
   const [survived, setSurvived] = useState(null);
 
+  const tier = league?.tier ?? 2;
+  const isCommittee = tier === 3;
   const chair =
     career.board?.members?.find((m) => m.role === "Chairman")?.name || `${club?.short || ""} Chair`;
+  const bodyLabel = isCommittee ? "committee" : "board";
+  const sessionLabel = isCommittee ? "Committee session" : "Executive board";
+  const prep = career.boardVotePrepBonus ?? 0;
   const pSurvive = Math.round(voteOfConfidenceSurvivalChance(career, pitchBonus) * 100);
 
   const runVote = () => {
@@ -33,7 +38,7 @@ export default function VoteOfConfidenceFlow({ career, club, onComplete }) {
     <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, #07101F 0%, #1E293B 100%)" }}>
       <div className="px-6 py-4 flex items-center justify-center gap-2">
         <Landmark className="w-4 h-4 text-aaccent" />
-        <span className="text-[11px] font-mono uppercase tracking-[0.25em] text-atext-mute">Executive board</span>
+        <span className="text-[11px] font-mono uppercase tracking-[0.25em] text-atext-mute">{sessionLabel}</span>
       </div>
       <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
         {phase === 0 && (
@@ -44,14 +49,14 @@ export default function VoteOfConfidenceFlow({ career, club, onComplete }) {
             <div className="rounded-2xl p-6 mb-6 text-left" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line-2)" }}>
               <p className="text-atext leading-relaxed">
                 <span className="text-aaccent">&ldquo;</span>
-                {career.managerName}, the board has lost patience with where results are heading. We are formally convening
-                a confidence motion. You will address directors now — then we vote. What you say matters.
+                {career.managerName}, the {bodyLabel} has lost patience with where results are heading. We are formally convening
+                a confidence motion. You will address {isCommittee ? "the room" : "directors"} now — then we vote. What you say matters.
                 <span className="text-aaccent">&rdquo;</span>
               </p>
               <div className="text-right mt-4 text-[11px] uppercase tracking-widest text-atext-mute font-mono">— {chair}</div>
             </div>
             <button type="button" onClick={() => setPhase(1)} className={`${css.btnPrimary} px-8 py-3`}>
-              ADDRESS THE BOARD →
+              {isCommittee ? "ADDRESS THE COMMITTEE →" : "ADDRESS THE BOARD →"}
             </button>
           </div>
         )}
@@ -60,6 +65,11 @@ export default function VoteOfConfidenceFlow({ career, club, onComplete }) {
           <div className="max-w-xl w-full anim-in">
             <div className="text-[11px] font-mono font-bold uppercase tracking-[0.3em] text-atext-mute text-center mb-2">Your pitch</div>
             <h2 className="font-display text-3xl text-atext mb-6 text-center leading-none">HOW DO YOU RESPOND?</h2>
+            {prep !== 0 && (
+              <div className="text-center text-[11px] text-aaccent font-mono mb-4 px-2">
+                Inbox prep carries into this vote: {prep > 0 ? "+" : ""}{prep} (included in the odds below)
+              </div>
+            )}
             <div className="space-y-3 mb-6">
               {PITCHES.map((p) => (
                 <button
@@ -79,7 +89,7 @@ export default function VoteOfConfidenceFlow({ career, club, onComplete }) {
                 </button>
               ))}
             </div>
-            <div className="text-center text-[11px] text-atext-dim mb-4">Current modelled odds (after pitch): ~{pSurvive}%</div>
+            <div className="text-center text-[11px] text-atext-dim mb-4">Current modelled odds (after pitch + prep): ~{pSurvive}%</div>
             <div className="flex justify-center">
               <button type="button" onClick={runVote} className={`${css.btnPrimary} px-8 py-3`}>
                 CALL THE VOTE →
@@ -95,7 +105,7 @@ export default function VoteOfConfidenceFlow({ career, club, onComplete }) {
             </h2>
             <p className="text-atext-dim text-sm mb-8 leading-relaxed px-2">
               {survived
-                ? "A slim majority backs you — for now. Stabilise results before this room convenes again."
+                ? `A slim majority backs you — for now. Stabilise results before this ${isCommittee ? "group" : "room"} convenes again.`
                 : "The vote fails. The board will move to terminate immediately."}
             </p>
             <button type="button" onClick={finish} className={`${css.btnPrimary} px-8 py-3`}>

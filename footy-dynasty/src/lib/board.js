@@ -4,6 +4,7 @@ import { FIRST_NAMES, LAST_NAMES } from "./playerGen.js";
 import { clamp } from "./format.js";
 import { sortedLadder } from "./leagueEngine.js";
 import { findClub, PYRAMID } from "../data/pyramid.js";
+import { getDifficultyConfig } from "./difficulty.js";
 
 const BOARD_ROLE_DEFS = [
   { role: "Chairman", weight: 2.0, priority: "results", personality: "demanding" },
@@ -157,17 +158,25 @@ export function migrateSaveBoardV10(save) {
   if (save.boardMeetingSeasonPlanned === undefined) save.boardMeetingSeasonPlanned = null;
 }
 
+export function migrateSaveBoardV11(save) {
+  if (save.boardVotePrepBonus === undefined) save.boardVotePrepBonus = 0;
+  if (save.jobMarketRerolls === undefined) save.jobMarketRerolls = 0;
+  if (save.arrivalBriefing === undefined) save.arrivalBriefing = null;
+}
+
 /** Schedule two blocking board meetings per season from fixture length. */
 export function planSeasonBoardMeetings(career) {
   const season = career.season ?? 2026;
   if (career.boardMeetingSeasonPlanned === season && career.boardMeetingSlots?.length) return;
   const rounds = (career.eventQueue || []).filter((e) => e.type === "round" && e.phase === "season");
   const n = rounds.length || 18;
-  const r1 = Math.max(3, Math.ceil(n / 3));
-  const r2 = Math.max(r1 + 2, Math.ceil((2 * n) / 3));
+  const maxR = rounds.length ? Math.max(...rounds.map((e) => e.round ?? 0)) : n;
+  const span = maxR > 0 ? maxR : n;
+  const r1 = Math.max(3, Math.ceil(span / 3));
+  const r2 = Math.max(r1 + 2, Math.ceil((2 * span) / 3));
   career.boardMeetingSlots = [
-    { id: `bms_${season}_1`, dueRound: r1, kind: "review", title: "Mid-season football review", resolved: false },
-    { id: `bms_${season}_2`, dueRound: r2, kind: "finance", title: "Finance & facilities checkpoint", resolved: false },
+    { id: `bms_${season}_1`, dueRound: Math.min(r1, span || r1), kind: "review", title: "Mid-season football review", resolved: false },
+    { id: `bms_${season}_2`, dueRound: Math.min(r2, span || r2), kind: "finance", title: "Finance & facilities checkpoint", resolved: false },
   ];
   career.boardMeetingSeasonPlanned = season;
 }
@@ -197,16 +206,38 @@ const ROUTINE_MEETING_COPY = {
   },
 };
 
-export function openBoardMeetingBlockingFromSlot(slot) {
-  const copy = ROUTINE_MEETING_COPY[slot.kind];
+/** Tier-3 community clubs: volunteer committee roundtable (same mechanical deltas, different story). */
+const COMMITTEE_MEETING_COPY = {
+  review: {
+    intro:
+      "The football working group — president, football manager, and a few life members — want plain language on the game plan and the kids coming through.",
+    choices: [
+      { id: "direct", label: "Be straight about list gaps and how you'll fix them", memberDeltas: { "Football Director": 5, Chairman: 2 } },
+      { id: "steady", label: "Ask for patience — it's a rebuild in a small town", memberDeltas: { Chairman: 4, "Football Director": -1 } },
+    ],
+  },
+  finance: {
+    intro:
+      "Treasurer and volunteers want to know discretionary spend stays under what the AGM approved — no surprises before finals.",
+    choices: [
+      { id: "tighten", label: "Promise visible belt-tightening on non-essentials", memberDeltas: { Chairman: 2 } },
+      { id: "invest", label: "Pitch one junior pathway spend that grows gate and merch", memberDeltas: { Chairman: 1 } },
+    ],
+  },
+};
+
+export function openBoardMeetingBlockingFromSlot(slot, leagueTier = 2) {
+  const table = leagueTier === 3 ? COMMITTEE_MEETING_COPY : ROUTINE_MEETING_COPY;
+  const copy = table[slot.kind];
   if (!copy) return null;
   return {
     slotId: slot.id,
     kind: slot.kind,
-    title: slot.title,
+    title: leagueTier === 3 ? slot.title.replace("Board", "Committee") : slot.title,
     intro: copy.intro,
     choices: copy.choices,
     step: 0,
+    leagueTier,
   };
 }
 
@@ -215,7 +246,8 @@ export function catchUpBoardMeetingForCurrentWeek(career) {
   if (career.boardCrisis?.phase === "active") return null;
   const due = findDueBoardMeetingSlot(career, career.week ?? 0);
   if (!due) return null;
-  return openBoardMeetingBlockingFromSlot(due);
+  const tier = career.leagueKey && PYRAMID[career.leagueKey] ? PYRAMID[career.leagueKey].tier : 2;
+  return openBoardMeetingBlockingFromSlot(due, tier);
 }
 
 /**
@@ -225,7 +257,9 @@ export function resolveRoutineBoardMeeting(career, league, slotId, choiceId) {
   ensureCareerBoard(career, findClub(career.clubId), league);
   const slot = career.boardMeetingSlots?.find((s) => s.id === slotId);
   if (!slot || slot.resolved) return { ok: false };
-  const copy = ROUTINE_MEETING_COPY[slot.kind];
+  const tier = league?.tier ?? 2;
+  const table = tier === 3 ? COMMITTEE_MEETING_COPY : ROUTINE_MEETING_COPY;
+  const copy = table[slot.kind];
   if (!copy) return { ok: false };
   const ch = copy.choices.find((c) => c.id === choiceId);
   if (!ch) return { ok: false };
@@ -235,13 +269,17 @@ export function resolveRoutineBoardMeeting(career, league, slotId, choiceId) {
   for (const [role, d] of Object.entries(deltas)) {
     applyMemberConfidenceDelta(career, role, d);
   }
-  return { ok: true, newsLine: `📅 Board meeting: ${slot.title} — you ${ch.label.toLowerCase()}.` };
+  const labelWho = tier === 3 ? "Committee session" : "Board meeting";
+  return { ok: true, newsLine: `📅 ${labelWho}: ${slot.title} — you ${ch.label.toLowerCase()}.` };
 }
 
-/** Survival probability before dice roll (0–1). */
+/** Survival probability before dice roll (0–1). Respects difficulty.voteSurvivalShift and inbox crisis prep. */
 export function voteOfConfidenceSurvivalChance(career, pitchBonus = 0) {
   const conf = career.finance?.boardConfidence ?? 35;
-  let p = 0.22 + conf / 165 + pitchBonus / 85;
+  const cfg = getDifficultyConfig(career?.difficulty);
+  const diffShift = cfg.voteSurvivalShift ?? 0;
+  const prep = career?.boardVotePrepBonus ?? 0;
+  let p = 0.22 + conf / 165 + (pitchBonus + prep) / 85 + diffShift;
   return clamp(p, 0.1, 0.9);
 }
 
@@ -253,10 +291,11 @@ export function rollVoteOfConfidenceSurvival(career, pitchBonus = 0) {
  * Mutates `career` — use on a JSON clone in React handlers.
  * @returns {{ newsLine: string }}
  */
-export function applyVoteSurvivalMutate(career, _league, pitchBonus) {
+export function applyVoteSurvivalMutate(career, league, pitchBonus) {
   ensureCareerBoard(career, findClub(career.clubId), league);
   career.boardCrisis = null;
   career.boardWarning = 0;
+  career.boardVotePrepBonus = 0;
   career.board = career.board || defaultBoardShell();
   career.board.voteScheduled = false;
   const bump = clamp(6 + Math.round(pitchBonus / 3), 4, 15);
@@ -272,6 +311,35 @@ function boardMemberFirstName(board, role) {
   const m = board?.members?.find((x) => x.role === role);
   if (!m?.name) return null;
   return m.name.split(/\s+/)[0];
+}
+
+/**
+ * When you are one warning away from a vote, chairman may demand an on-record inbox reply that adjusts vote odds.
+ * @returns {string|null} optional news line
+ */
+export function maybeEnqueueBoardCrisisPrep(career, league, sackPatience, boardWarning) {
+  if (sackPatience <= 1) return null;
+  if (boardWarning !== sackPatience - 1) return null;
+  if ((career.finance?.boardConfidence ?? 100) > 18) return null;
+  if (career.boardCrisis?.phase === "active") return null;
+  ensureCareerBoard(career, findClub(career.clubId), league);
+  const board = career.board;
+  if (board.inbox.some((m) => String(m.id).startsWith("crisis_prep_"))) return null;
+  const season = career.season ?? 2026;
+  const week = career.week ?? 1;
+  const fn = boardMemberFirstName(board, "Chairman") || "Chair";
+  board.inbox.push({
+    id: `crisis_prep_${season}_${week}`,
+    fromRole: "Chairman",
+    title: "On the record before the vote",
+    body: `${fn} wants something documented before the confidence motion. How do you handle it?`,
+    options: [
+      { id: "data", label: "Quiet confidence — data, milestones, no panic", memberDeltas: { Chairman: 3, "Football Director": 2 }, votePrepBonus: 4 },
+      { id: "heart", label: "Emotional appeal to the jumper and the members", memberDeltas: { Chairman: 1, "Community Director": 3 }, votePrepBonus: 2 },
+      { id: "vague", label: "Keep it vague — buy time", memberDeltas: { Chairman: -3 }, votePrepBonus: -4 },
+    ],
+  });
+  return `📩 ${fn}: statement before the vote — respond in Board → Inbox.`;
 }
 
 function buildBoardMessage(career, kind) {
@@ -410,6 +478,9 @@ export function resolveBoardInboxChoice(career, league, messageId, optionId) {
   const deltas = opt.memberDeltas || {};
   for (const [role, d] of Object.entries(deltas)) {
     applyMemberConfidenceDelta(career, role, d);
+  }
+  if (typeof opt.votePrepBonus === "number") {
+    career.boardVotePrepBonus = clamp((career.boardVotePrepBonus || 0) + opt.votePrepBonus, -12, 12);
   }
   board.inbox.splice(idx, 1);
   const label = opt.label.length > 48 ? `${opt.label.slice(0, 48)}…` : opt.label;

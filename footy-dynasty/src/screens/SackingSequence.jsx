@@ -3,10 +3,10 @@
 // Five-screen narrative: Call → Captain's Message → Headline → Legacy → Job Market.
 // Driven by career.sackingStep (0..4). Step 4 hands off to JobMarket.
 // ---------------------------------------------------------------------------
-import React, { useState } from "react";
-import { ChevronRight, Trophy, AlertCircle, Newspaper, Award, Briefcase } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { ChevronRight, Trophy, AlertCircle, Newspaper, Award, Briefcase, Star } from "lucide-react";
 import { css } from "../components/primitives.jsx";
-import { getJobInterviewQuestion } from "../lib/coachReputation.js";
+import { getJobInterviewQuestion, getJobFollowUpInterview } from "../lib/coachReputation.js";
 
 const STEPS = [
   { key: 'call',      title: 'THE CALL' },
@@ -16,7 +16,7 @@ const STEPS = [
   { key: 'market',    title: 'JOB MARKET' },
 ];
 
-export default function SackingSequence({ career, club, onAdvanceStep, onAcceptJob, onTakeSeasonOff }) {
+export default function SackingSequence({ career, club, onAdvanceStep, onAcceptJob, onTakeSeasonOff, onRerollJobMarket }) {
   const step = Math.max(0, Math.min(STEPS.length - 1, career.sackingStep ?? 0));
   const stepKey = STEPS[step].key;
   return (
@@ -41,7 +41,7 @@ export default function SackingSequence({ career, club, onAdvanceStep, onAcceptJ
         {stepKey === 'captain'  && <CaptainStep  career={career} club={club} onNext={() => onAdvanceStep(2)} />}
         {stepKey === 'headline' && <HeadlineStep career={career} club={club} onNext={() => onAdvanceStep(3)} />}
         {stepKey === 'legacy'   && <LegacyStep   career={career} club={club} onNext={() => onAdvanceStep(4)} />}
-        {stepKey === 'market'   && <JobMarketStep career={career} onAcceptJob={onAcceptJob} onTakeSeasonOff={onTakeSeasonOff} />}
+        {stepKey === 'market'   && <JobMarketStep career={career} onAcceptJob={onAcceptJob} onTakeSeasonOff={onTakeSeasonOff} onRerollJobMarket={onRerollJobMarket} />}
       </div>
     </div>
   );
@@ -200,17 +200,45 @@ function LegacyTile({ label, value, accent = 'var(--A-accent)', icon: Icon }) {
 // =============================================================================
 // Step 5 — Job Market
 // =============================================================================
-function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff }) {
+function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff, onRerollJobMarket }) {
   const offers = career.jobOffers || [];
+  const coachRep = career.coachReputation ?? 30;
+  const [starredIds, setStarredIds] = useState([]);
   const [stage, setStage] = useState("list");
   const [focusOffer, setFocusOffer] = useState(null);
-  const [interviewBonus, setInterviewBonus] = useState(0);
+  const [round1Bonus, setRound1Bonus] = useState(0);
+  const [round2Bonus, setRound2Bonus] = useState(0);
   const [pickedOption, setPickedOption] = useState(null);
+  const [pickedFollow, setPickedFollow] = useState(null);
+
+  const sortedOffers = useMemo(() => {
+    const arr = [...offers];
+    const starScore = (o) => (starredIds.includes(o.clubId) ? 1 : 0);
+    arr.sort((a, b) => {
+      const sb = starScore(b) - starScore(a);
+      if (sb !== 0) return sb;
+      const fa = a.interestLabel === "Preferred candidate" ? 2 : a.interestLabel === "Shortlisted" ? 1 : 0;
+      const fb = b.interestLabel === "Preferred candidate" ? 2 : b.interestLabel === "Shortlisted" ? 1 : 0;
+      if (fb !== fa) return fb - fa;
+      return a.leagueTier - b.leagueTier;
+    });
+    return arr;
+  }, [offers, starredIds]);
+
+  const toggleStar = (clubId) => {
+    setStarredIds((prev) => {
+      if (prev.includes(clubId)) return prev.filter((id) => id !== clubId);
+      if (prev.length >= 2) return prev;
+      return [...prev, clubId];
+    });
+  };
 
   const goInterview = (offer) => {
     setFocusOffer(offer);
-    setInterviewBonus(0);
+    setRound1Bonus(0);
+    setRound2Bonus(0);
     setPickedOption(null);
+    setPickedFollow(null);
     setStage("interview");
   };
 
@@ -219,10 +247,69 @@ function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff }) {
     setStage("list");
   };
 
+  const goFollowUp = () => {
+    if (!pickedOption) return;
+    setRound2Bonus(0);
+    setPickedFollow(null);
+    setStage("followup");
+  };
+
   const confirmHire = () => {
     if (!focusOffer) return;
-    onAcceptJob({ ...focusOffer, interviewStartingBoardBonus: interviewBonus });
+    const tier = focusOffer.leagueTier ?? 3;
+    const total = tier <= 2 ? round1Bonus + round2Bonus : round1Bonus;
+    onAcceptJob({ ...focusOffer, interviewStartingBoardBonus: total });
   };
+
+  const needsFollowUp = focusOffer && (focusOffer.leagueTier ?? 3) <= 2;
+
+  if (stage === "followup" && focusOffer) {
+    const iv2 = getJobFollowUpInterview(focusOffer, career, round1Bonus);
+    return (
+      <div className="max-w-2xl w-full anim-in mx-auto">
+        <div className="mb-3 text-[11px] font-mono font-bold uppercase tracking-[0.3em] text-atext-mute text-center">Follow-up</div>
+        <h2 className="font-display text-3xl text-atext mb-2 text-center leading-none">{focusOffer.clubName}</h2>
+        <div className={`${css.panel} p-5 mb-4`}>
+          <p className="text-sm text-atext leading-relaxed">{iv2.question}</p>
+        </div>
+        <div className="space-y-2 mb-4">
+          {iv2.options.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => {
+                setPickedFollow(opt.id);
+                setRound2Bonus(opt.startingBoardBonus ?? 0);
+              }}
+              className="w-full text-left rounded-xl p-3 text-sm transition"
+              style={{
+                border: `2px solid ${pickedFollow === opt.id ? "var(--A-accent)" : "var(--A-line)"}`,
+                background: "var(--A-panel-2)",
+              }}
+            >
+              {opt.label}
+              <span className="block text-[10px] text-atext-mute mt-1 font-mono">
+                Starting board confidence {(opt.startingBoardBonus ?? 0) >= 0 ? "+" : ""}{opt.startingBoardBonus ?? 0}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2 justify-center">
+          <button type="button" onClick={() => setStage("interview")} className={`${css.btnGhost} text-[11px] py-2 px-4`}>
+            BACK
+          </button>
+          <button
+            type="button"
+            disabled={!pickedFollow}
+            onClick={confirmHire}
+            className={!pickedFollow ? "px-4 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute" : `${css.btnPrimary} text-[11px] py-2 px-4`}
+          >
+            SIGN CONTRACT →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (stage === "interview" && focusOffer) {
     const iv = getJobInterviewQuestion(focusOffer, career);
@@ -240,7 +327,7 @@ function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff }) {
               type="button"
               onClick={() => {
                 setPickedOption(opt.id);
-                setInterviewBonus(opt.startingBoardBonus ?? 0);
+                setRound1Bonus(opt.startingBoardBonus ?? 0);
               }}
               className="w-full text-left rounded-xl p-3 text-sm transition"
               style={{
@@ -262,15 +349,17 @@ function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff }) {
           <button
             type="button"
             disabled={!pickedOption}
-            onClick={confirmHire}
+            onClick={needsFollowUp ? goFollowUp : confirmHire}
             className={!pickedOption ? "px-4 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute" : `${css.btnPrimary} text-[11px] py-2 px-4`}
           >
-            SIGN CONTRACT →
+            {needsFollowUp ? "NEXT QUESTION →" : "SIGN CONTRACT →"}
           </button>
         </div>
       </div>
     );
   }
+
+  const canReroll = typeof onRerollJobMarket === "function" && (career.jobMarketRerolls ?? 0) < 1;
 
   return (
     <div className="max-w-4xl w-full anim-in">
@@ -279,21 +368,40 @@ function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff }) {
       <div className="text-center text-sm text-atext-dim mb-2">
         Coach Tier: <span className="text-aaccent font-bold">{career.coachTier || "Journeyman"}</span>
         <span className="text-atext-mute"> · </span>
-        Reputation: <span className="text-aaccent font-bold">{career.coachReputation ?? 30}</span>
+        Reputation: <span className="text-aaccent font-bold">{coachRep}</span>
       </div>
-      <p className="text-center text-[11px] text-atext-mute mb-6 max-w-xl mx-auto leading-snug">
-        Shortlist is wider now: vacancy notes, media heat, and how keen each club is on you. Every offer runs through a quick panel interview before you sign.
+      <p className="text-center text-[11px] text-atext-mute mb-4 max-w-xl mx-auto leading-snug">
+        Star up to two clubs to pin them to the top. Tier 1–2 panels run a second question. Offers below your reputation bar are long-shots — doable, but the room starts cold.
       </p>
+      {canReroll && (
+        <div className="flex justify-center mb-4">
+          <button type="button" onClick={onRerollJobMarket} className={`${css.btnGhost} text-[11px] py-2 px-4`}>
+            Re-scan the market once (pulls deeper vacancies)
+          </button>
+        </div>
+      )}
 
       {offers.length === 0 ? (
         <div className={`${css.panel} p-12 text-center`}>
           <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-40 text-atext-mute" />
-          <div className="text-sm text-atext-dim">No clubs are calling right now. Take a season off and watch the market.</div>
+          <div className="text-sm text-atext-dim mb-2">No clubs are calling right now. The ladder may soften next season — or sit out and come back louder.</div>
+          {canReroll && (
+            <button type="button" onClick={onRerollJobMarket} className={`${css.btnPrimary} text-[11px] py-2 px-4 mt-2`}>
+              TRY A DEEPER SCAN →
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-3 mb-4">
-          {offers.map((o) => (
-            <JobOfferCard key={o.clubId} offer={o} onSelect={() => goInterview(o)} />
+          {sortedOffers.map((o) => (
+            <JobOfferCard
+              key={o.clubId}
+              offer={o}
+              coachRep={coachRep}
+              isStarred={starredIds.includes(o.clubId)}
+              onToggleStar={() => toggleStar(o.clubId)}
+              onSelect={() => goInterview(o)}
+            />
           ))}
         </div>
       )}
@@ -311,25 +419,48 @@ function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff }) {
   );
 }
 
-function JobOfferCard({ offer, onSelect }) {
+function JobOfferCard({ offer, onSelect, coachRep, isStarred, onToggleStar }) {
   const tierColor = offer.leagueTier === 1 ? "#FFD200" : offer.leagueTier === 2 ? "var(--A-accent)" : "#4ADE80";
   const heatColor = offer.mediaHeat === "high" ? "#E84A6F" : offer.mediaHeat === "med" ? "var(--A-accent-2)" : "#4AE89A";
+  const longShot = coachRep < (offer.minReputation ?? 0);
   return (
-    <div className={`${css.panel} p-4 flex flex-col`}>
+    <div
+      className={`${css.panel} p-4 flex flex-col transition`}
+      style={{
+        boxShadow: isStarred ? "0 0 0 2px rgba(0, 224, 255, 0.35)" : undefined,
+      }}
+    >
       <div className="h-1 -mx-4 -mt-4 mb-3" style={{ background: offer.color }} />
-      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-        <div>
+      <div className="flex items-start justify-between mb-2 flex-wrap gap-2">
+        <div className="flex-1 min-w-0">
           <div className={css.label}>{offer.leagueShort} · Tier {offer.leagueTier}</div>
           <div className="font-bold text-atext leading-tight">{offer.clubName}</div>
         </div>
-        <span className="text-[10px] uppercase tracking-widest font-mono font-bold px-2 py-1 rounded-md" style={{ background: `${tierColor}18`, color: tierColor, border: `1px solid ${tierColor}40` }}>
-          T{offer.leagueTier}
-        </span>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            type="button"
+            className="p-1.5 rounded-lg transition"
+            style={{ color: isStarred ? "#FFD200" : "var(--A-text-mute)", border: "1px solid var(--A-line)" }}
+            aria-label={isStarred ? "Remove from shortlist" : "Add to shortlist"}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStar();
+            }}
+          >
+            <Star className="w-4 h-4" fill={isStarred ? "currentColor" : "none"} />
+          </button>
+          <span className="text-[10px] uppercase tracking-widest font-mono font-bold px-2 py-1 rounded-md" style={{ background: `${tierColor}18`, color: tierColor, border: `1px solid ${tierColor}40` }}>
+            T{offer.leagueTier}
+          </span>
+        </div>
       </div>
       <div className="flex flex-wrap gap-2 mb-2 text-[10px] font-mono">
         <span className="px-2 py-0.5 rounded" style={{ border: `1px solid ${heatColor}`, color: heatColor }}>Media {offer.mediaHeat}</span>
         <span className="px-2 py-0.5 rounded text-atext-dim" style={{ border: "1px solid var(--A-line)" }}>List {offer.rosterTag}</span>
         <span className="px-2 py-0.5 rounded text-aaccent" style={{ border: "1px solid var(--A-line)" }}>{offer.interestLabel}</span>
+        {longShot && (
+          <span className="px-2 py-0.5 rounded text-[#FFB347]" style={{ border: "1px solid #FFB34755" }}>Long shot vs bar</span>
+        )}
       </div>
       <div className="text-[10px] text-atext-mute mb-2 leading-snug italic">{offer.vacancyReason}</div>
       <div className="grid grid-cols-2 gap-1 text-[11px] mb-3">
@@ -341,6 +472,8 @@ function JobOfferCard({ offer, onSelect }) {
         <div className="text-atext text-right">{offer.finance}</div>
         <div className="text-atext-mute">Wage</div>
         <div className="text-aaccent text-right font-mono font-bold">${offer.wage.toLocaleString()}</div>
+        <div className="text-atext-mute">Rep bar</div>
+        <div className="text-atext text-right font-mono">{offer.minReputation ?? 0}+</div>
       </div>
       <div className="text-[11px] text-atext-dim italic mb-2 leading-snug">{offer.expectations}</div>
       <div className="text-[11px] text-atext leading-snug mb-3">{offer.chairmanLine}</div>

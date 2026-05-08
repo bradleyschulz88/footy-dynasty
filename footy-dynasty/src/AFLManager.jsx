@@ -36,6 +36,7 @@ import PostMatchSummary from './screens/PostMatchSummary.jsx';
 import SackingSequence from './screens/SackingSequence.jsx';
 import VoteOfConfidenceFlow from './screens/VoteOfConfidenceFlow.jsx';
 import BoardMeetingScreen from './screens/BoardMeetingScreen.jsx';
+import ArrivalBriefingFlow from './screens/ArrivalBriefingFlow.jsx';
 import TutorialOverlay, { TUTORIAL_STEPS } from './components/TutorialOverlay.jsx';
 import SeasonStrip from './components/SeasonStrip.jsx';
 import MatchPreviewPanel from './components/MatchPreviewPanel.jsx';
@@ -70,6 +71,7 @@ import {
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
   buildInitialSponsorOffers,
 } from './lib/finance/sponsors.js';
+import { applyRenewal, applyRenewalRejection, canAffordRenewal } from './lib/finance/contracts.js';
 import { getAdvanceContext } from './lib/advanceContext.js';
 import {
   TIER_FINANCE, INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, TICKET_PRICE, BASE_ATTENDANCE,
@@ -86,6 +88,7 @@ import {
   youthSeniorGameCount,
   boardObjectiveUiStatus,
   maybeEnqueueBoardMessage,
+  maybeEnqueueBoardCrisisPrep,
   resolveBoardInboxChoice,
   planSeasonBoardMeetings,
   findDueBoardMeetingSlot,
@@ -93,6 +96,9 @@ import {
   catchUpBoardMeetingForCurrentWeek,
   applyVoteSurvivalMutate,
   resolveRoutineBoardMeeting,
+  alignBoardMembersToTarget,
+  recalcBoardConfidence,
+  applyMemberConfidenceDelta,
 } from './lib/board.js';
 
 // ============================================================================
@@ -314,6 +320,9 @@ function AFLManagerInner() {
       gameOver:  null,
       jobOffers: [],
       boardWarning: 0,
+      boardVotePrepBonus: 0,
+      jobMarketRerolls: 0,
+      arrivalBriefing: { pending: true },
       boardCrisis: null,
       boardMeetingBlocking: null,
       boardMeetingSlots: [],
@@ -407,6 +416,9 @@ function AFLManagerInner() {
     };
     c.coachReputation = applySackingReputation(c.coachReputation);
     c.coachTier = coachTierFromScore(c.coachReputation);
+    c.boardVotePrepBonus = 0;
+    c.jobMarketRerolls = 0;
+    c.arrivalBriefing = null;
     c.news = [{ week: round, type: 'loss', text: `💼 The board has terminated your contract at ${clubName}.` }, ...(c.news || [])].slice(0, 20);
   }
 
@@ -916,6 +928,12 @@ function AFLManagerInner() {
           c.boardWarning = (c.boardWarning || 0) + 1;
         }
       }
+      if (!c.isSacked && !inBoardCrisis) {
+        const prepLine = maybeEnqueueBoardCrisisPrep(c, league, sackPatience, c.boardWarning || 0);
+        if (prepLine) {
+          c.news = [{ week: ev.round, type: 'board', text: prepLine }, ...(c.news || [])].slice(0, 20);
+        }
+      }
       if ((c.boardWarning || 0) >= sackPatience && !c.isSacked && !inBoardCrisis) {
         const instantSack = c.finance.boardConfidence <= 0 || (c.boardWarning || 0) >= 99;
         if (instantSack) {
@@ -937,7 +955,7 @@ function AFLManagerInner() {
       if (ev.phase === 'season' && !c.isSacked && c.boardCrisis?.phase !== 'active') {
         const due = findDueBoardMeetingSlot(c, c.week);
         if (due) {
-          c.boardMeetingBlocking = openBoardMeetingBlockingFromSlot(due);
+          c.boardMeetingBlocking = openBoardMeetingBlockingFromSlot(due, league.tier);
         }
       }
 
@@ -1520,6 +1538,14 @@ function AFLManagerInner() {
               news: [{ week: 0, type: 'info', text: `🪞 Took the season off. Reputation +5. The phone might ring louder next year.` }, ...(career.news || [])].slice(0, 20),
             });
           }}
+          onRerollJobMarket={() => {
+            if ((career.jobMarketRerolls ?? 0) >= 1) return;
+            updateCareer({
+              jobMarketRerolls: (career.jobMarketRerolls ?? 0) + 1,
+              jobOffers: generateJobMarket(career, { desperate: true }),
+              news: [{ week: career.week ?? 0, type: 'info', text: '📡 Re-scanned the job market — deeper vacancies listed.' }, ...(career.news || [])].slice(0, 20),
+            });
+          }}
         />
       </div>
     );
@@ -1611,6 +1637,7 @@ function AFLManagerInner() {
         <VoteOfConfidenceFlow
           career={career}
           club={club}
+          league={league}
           onComplete={({ survived, pitchBonus }) => {
             if (survived) {
               const next = JSON.parse(JSON.stringify(career));
@@ -1646,6 +1673,26 @@ function AFLManagerInner() {
                 news: [{ week: draft.week, type: 'board', text: r.newsLine }, ...(draft.news || [])].slice(0, 20),
               });
             }
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (career.arrivalBriefing?.pending) {
+    return (
+      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+        {globalStyle}
+        <ArrivalBriefingFlow
+          career={career}
+          club={club}
+          league={league}
+          onComplete={(patch) => {
+            const next = JSON.parse(JSON.stringify({ ...career, ...patch }));
+            ensureCareerBoard(next, findClub(next.clubId), PYRAMID[next.leagueKey]);
+            alignBoardMembersToTarget(next.board, next.finance.boardConfidence);
+            recalcBoardConfidence(next);
+            setCareer(next);
           }}
         />
       </div>
@@ -1847,6 +1894,9 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       jobMarketOpen: false,
       sackingStep: null,
       jobOffers: [],
+      boardVotePrepBonus: 0,
+      jobMarketRerolls: 0,
+      arrivalBriefing: null,
       journalist: generateJournalist(),
       lastBoardConfidenceDelta: 0,
       lastMatchSummary: null,
@@ -3243,6 +3293,10 @@ function SquadScreen({ career, club, updateCareer, tab, setTab }) {
 
 function RenewalsTab({ career, updateCareer }) {
   const queue = (career.pendingRenewals || []).filter(r => !r._handled);
+  const renewalsLeague = PYRAMID[career.leagueKey];
+  const capLimit = effectiveWageCap(career);
+  const wageBillAnnual = annualWageBill(career);
+  const headroom = capHeadroom(career);
   const accept = (proposal) => {
     if (!canAffordRenewal(career, proposal)) {
       updateCareer({
@@ -3251,8 +3305,23 @@ function RenewalsTab({ career, updateCareer }) {
       return;
     }
     const patch = applyRenewal(career, proposal);
+    const merged = JSON.parse(JSON.stringify({ ...career, ...patch }));
+    ensureCareerBoard(merged, findClub(merged.clubId), renewalsLeague);
+    const wageDelta = proposal.proposedWage - (proposal.currentWage ?? 0);
+    if (wageDelta <= 0) {
+      applyMemberConfidenceDelta(merged, "Football Director", 2);
+      applyMemberConfidenceDelta(merged, "Finance Director", 1);
+    } else if (wageDelta >= 40_000) {
+      applyMemberConfidenceDelta(merged, "Finance Director", -2);
+      applyMemberConfidenceDelta(merged, "Football Director", 1);
+    } else {
+      applyMemberConfidenceDelta(merged, "Chairman", 1);
+    }
+    recalcBoardConfidence(merged);
     updateCareer({
       ...patch,
+      board: merged.board,
+      finance: merged.finance,
       pendingRenewals: (career.pendingRenewals || []).map(r => r.playerId === proposal.playerId ? { ...r, _handled: 'accepted' } : r),
       news: [{ week: career.week, type: 'win', text: `✍️ Re-signed ${proposal.name} for ${proposal.proposedYears}y @ ${fmtK(proposal.proposedWage)}/yr` }, ...(career.news || [])].slice(0, 25),
     });
@@ -3273,8 +3342,22 @@ function RenewalsTab({ career, updateCareer }) {
           <div className="text-xs text-atext-dim">Players whose contracts are about to expire. Re-sign before pre-season ends or they walk.</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Cap Headroom" value={fmtK(capHeadroom(career))} accent={capHeadroom(career) > 0 ? '#4AE89A' : '#E84A6F'} />
+          <Stat label="Cap Headroom" value={fmtK(headroom)} accent={headroom > 0 ? '#4AE89A' : '#E84A6F'} />
           <Stat label="Outstanding" value={queue.length} accent="var(--A-accent-2)" />
+        </div>
+      </div>
+      <div className={`${css.panel} p-4 grid sm:grid-cols-3 gap-3 text-[11px]`}>
+        <div>
+          <div className={css.label}>Annual wage bill</div>
+          <div className="text-atext font-mono font-bold">${fmtK(wageBillAnnual)}</div>
+        </div>
+        <div>
+          <div className={css.label}>Salary cap</div>
+          <div className="text-atext font-mono font-bold">${fmtK(capLimit)}</div>
+        </div>
+        <div>
+          <div className={css.label}>If you renew…</div>
+          <div className="text-atext-dim leading-snug">Board reacts to wage discipline. Cap-smart deals please Football + Finance; big raises draw Treasury heat.</div>
         </div>
       </div>
       {queue.length === 0 ? (
