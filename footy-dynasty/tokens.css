@@ -1,7 +1,37 @@
 /* Footy Dynasty — Redesign Tokens
-   Two directions share the same data + structure but diverge on tokens. */
+   Two directions share the same data + structure but diverge on tokens.
+   Figma: mirror colour + number variables here and in design/tokens.json (JSON for plugins / handoff). */
 
 :root {
+  /* ── Spacing (4px grid; Tailwind: space-token-*) ───────────── */
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* ── Radii (Tailwind: rounded-token-*) ───────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-pill: 9999px;
+  --radius-b-panel: 4px;
+  --radius-b-flat: 2px;
+
+  /* ── Typography scale (px at base; Tailwind: text-token-*) ─ */
+  --font-micro: 9px;
+  --font-caption: 10px;
+  --font-ui: 11px;
+  --font-body: 13px;
+  --font-lead: 16px;
+  --font-display-sm: 20px;
+  --font-display: 32px;
+
   /* Broadcast Cinematic (Direction A) */
   --A-bg: #07101F;
   --A-bg-2: #0C1828;
@@ -35,6 +65,23 @@
   --B-neg: #FF3D5C;
   --B-club: #1B3B7A;
   --B-club-2: #FFD200;
+
+  /* Stitch (Google Stitch mockups) — neon lime on charcoal */
+  --S-bg: #0B0E0D;
+  --S-bg-2: #111615;
+  --S-panel: #161C1A;
+  --S-panel-2: #0F1412;
+  --S-line: rgba(200, 255, 61, 0.24);
+  --S-line-2: rgba(200, 255, 61, 0.42);
+  --S-text: #F7FAF8;
+  --S-text-dim: #9CA89F;
+  --S-text-mute: #5C6962;
+  --S-accent: #C8FF3D;
+  --S-accent-2: #E8FF7A;
+  --S-pos: #5EFFA8;
+  --S-neg: #FF5A7C;
+  --S-club: #1B3B7A;
+  --S-club-2: #FFD200;
 }
 
 /* shared */
@@ -50,7 +97,7 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   background: var(--A-bg);
   color: var(--A-text);
   font-family: "Inter", system-ui, sans-serif;
-  font-size: 13px;
+  font-size: var(--font-body);
   line-height: 1.4;
   position: relative;
   overflow: hidden;
@@ -66,16 +113,16 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
 .dirA .panel {
   background: linear-gradient(180deg, var(--A-panel), var(--A-panel-2));
   border: 1px solid var(--A-line);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
 }
 .dirA .panel-flat {
   background: var(--A-panel);
   border: 1px solid var(--A-line);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
 }
 .dirA .label {
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 9px;
+  font-size: var(--font-micro);
   letter-spacing: 0.2em;
   color: var(--A-text-mute);
   text-transform: uppercase;
@@ -91,9 +138,9 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
 .dirA .mute { color: var(--A-text-mute); }
 .dirA .pill {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 3px 8px; border-radius: 999px;
+  padding: 3px 8px; border-radius: var(--radius-pill);
   font-family: "JetBrains Mono", monospace;
-  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  font-size: var(--font-caption); letter-spacing: 0.12em; text-transform: uppercase;
   background: rgba(0, 224, 255, 0.08);
   color: var(--A-accent);
   border: 1px solid rgba(0, 224, 255, 0.22);
@@ -103,9 +150,9 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   border: 1px solid var(--A-line-2);
   color: var(--A-text);
   padding: 8px 14px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-family: "JetBrains Mono", monospace;
-  font-size: 10px;
+  font-size: var(--font-caption);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   cursor: pointer;
@@ -115,9 +162,9 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   background: var(--A-accent);
   color: #001520;
   padding: 10px 18px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-family: "JetBrains Mono", monospace;
-  font-size: 11px;
+  font-size: var(--font-ui);
   font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -156,7 +203,7 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   background: var(--B-bg);
   color: var(--B-text);
   font-family: "Inter", system-ui, sans-serif;
-  font-size: 13px;
+  font-size: var(--font-body);
   line-height: 1.4;
   position: relative;
   overflow: hidden;
@@ -173,16 +220,16 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
 .dirB .panel {
   background: var(--B-panel);
   border: 1px solid var(--B-line);
-  border-radius: 4px;
+  border-radius: var(--radius-b-panel);
 }
 .dirB .panel-flat {
   background: var(--B-panel);
   border: 1px solid var(--B-line);
-  border-radius: 2px;
+  border-radius: var(--radius-b-flat);
 }
 .dirB .label {
   font-family: "Bebas Neue", sans-serif;
-  font-size: 11px;
+  font-size: var(--font-ui);
   letter-spacing: 0.2em;
   color: var(--B-text-mute);
   text-transform: uppercase;
@@ -236,6 +283,122 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   cursor: pointer;
 }
 
+/* ── Direction S (Stitch mockups) ───────────────────────────── */
+.dirS {
+  --A-bg:        var(--S-bg);
+  --A-bg-2:      var(--S-bg-2);
+  --A-panel:     var(--S-panel);
+  --A-panel-2:   var(--S-panel-2);
+  --A-line:      var(--S-line);
+  --A-line-2:    var(--S-line-2);
+  --A-text:      var(--S-text);
+  --A-text-dim:  var(--S-text-dim);
+  --A-text-mute: var(--S-text-mute);
+  --A-accent:    var(--S-accent);
+  --A-accent-2:  var(--S-accent-2);
+  --A-pos:       var(--S-pos);
+  --A-neg:       var(--S-neg);
+  --A-club:      var(--S-club);
+  --A-club-2:    var(--S-club-2);
+}
+.dirS {
+  background: var(--S-bg);
+  color: var(--S-text);
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: var(--font-body);
+  line-height: 1.4;
+  position: relative;
+  overflow: hidden;
+}
+.dirS::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 50% 40% at 50% 0%, rgba(200, 255, 61, 0.06), transparent 55%),
+    radial-gradient(ellipse 70% 45% at 100% 100%, rgba(94, 255, 168, 0.04), transparent 60%);
+  pointer-events: none;
+}
+.dirS .panel {
+  background: linear-gradient(180deg, var(--S-panel), var(--S-panel-2));
+  border: 1px solid var(--S-line);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 0 28px rgba(200, 255, 61, 0.07);
+}
+.dirS .panel-flat {
+  background: var(--S-panel);
+  border: 1px solid var(--S-line);
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 16px rgba(200, 255, 61, 0.05);
+}
+.dirS .label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: var(--font-micro);
+  letter-spacing: 0.2em;
+  color: var(--S-text-mute);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.dirS .display { color: var(--S-text); }
+.dirS hr { border: 0; border-top: 1px solid var(--S-line); margin: 0; }
+.dirS .accent { color: var(--S-accent); }
+.dirS .accent-2 { color: var(--S-accent-2); }
+.dirS .pos { color: var(--S-pos); }
+.dirS .neg { color: var(--S-neg); }
+.dirS .dim { color: var(--S-text-dim); }
+.dirS .mute { color: var(--S-text-mute); }
+.dirS .pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border-radius: var(--radius-pill);
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--font-caption); letter-spacing: 0.12em; text-transform: uppercase;
+  background: rgba(200, 255, 61, 0.12);
+  color: var(--S-accent);
+  border: 1px solid rgba(200, 255, 61, 0.35);
+}
+.dirS .btn-ghost {
+  background: transparent;
+  border: 1px solid var(--S-line-2);
+  color: var(--S-text);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--font-caption);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.dirS .btn-ghost:hover { border-color: var(--S-accent); color: var(--S-accent); }
+.dirS .btn-primary {
+  background: var(--S-accent);
+  color: #0A0D0C;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border: 0;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(200, 255, 61, 0.35), 0 8px 28px rgba(200, 255, 61, 0.22);
+}
+.dirS .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(200, 255, 61, 0.55), 0 12px 36px rgba(200, 255, 61, 0.28);
+}
+.dirS .grid-bg {
+  background-image:
+    linear-gradient(var(--S-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--S-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.dirS .stitch-neon-card {
+  border: 1px solid var(--S-accent);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(180deg, var(--S-panel), var(--S-panel-2));
+  box-shadow: 0 0 20px rgba(200, 255, 61, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
 /* shared utilities */
 .row { display: flex; }
 .col { display: flex; flex-direction: column; }
@@ -274,6 +437,7 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
 @keyframes liveBlink { 0%, 60% { opacity: 1 } 70% { opacity: 0.3 } 100% { opacity: 1 } }
 .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--A-neg); display: inline-block; animation: liveBlink 1.4s infinite; }
 .dirB .live-dot { background: var(--B-accent); }
+.dirS .live-dot { background: var(--S-accent); }
 
 /* ── Micro-interactions ──────────────────────────────────────── */
 @keyframes momentumPulse {
@@ -346,6 +510,19 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   transform: translateY(-2px);
   border-color: var(--A-accent);
   box-shadow: 0 8px 24px rgba(0, 224, 255, 0.12);
+}
+
+.dirS .panel, .dirS .panel-flat {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.dirS .btn-ghost, .dirS .btn-primary, .dirS .pill {
+  transition: all 0.15s ease;
+}
+.dirS .card-hover { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; cursor: pointer; }
+.dirS .card-hover:hover {
+  transform: translateY(-2px);
+  border-color: var(--S-accent);
+  box-shadow: 0 8px 28px rgba(200, 255, 61, 0.15);
 }
 
 /* mobile breakpoint helpers */
