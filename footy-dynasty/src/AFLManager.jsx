@@ -193,6 +193,17 @@ function AFLManagerInner() {
     setSlotMetaTick(t => t + 1);
   }, [career, activeSlot]);
 
+  // Tutorial mid-step auto-advance (must run before any early return — Rules of Hooks)
+  useEffect(() => {
+    if (!career || career.tutorialComplete) return;
+    const step = career.tutorialStep ?? 0;
+    if (step <= 0 || step >= 6) return;
+    if (!tutorialMidStepCompleted(step, screen, tab, career)) return;
+    const next = step + 1;
+    const isDone = next >= TUTORIAL_STEPS.length;
+    setCareer((c) => ({ ...c, tutorialStep: next, tutorialComplete: isDone }));
+  }, [career, career?.tutorialStep, career?.tutorialComplete, career?.sponsors, screen, tab]);
+
   function handleNewGame() {
     if (!window.confirm('Abandon your current career and start a new game?')) return;
     sessionStorage.removeItem(SETUP_SS_KEY);
@@ -1534,16 +1545,6 @@ function AFLManagerInner() {
     setScreen(key);
     setTab(null);
   };
-
-  useEffect(() => {
-    if (!career || career.tutorialComplete) return;
-    const step = career.tutorialStep ?? 0;
-    if (step <= 0 || step >= 6) return;
-    if (!tutorialMidStepCompleted(step, screen, tab, career)) return;
-    const next = step + 1;
-    const isDone = next >= TUTORIAL_STEPS.length;
-    setCareer((c) => ({ ...c, tutorialStep: next, tutorialComplete: isDone }));
-  }, [career, career?.tutorialStep, career?.tutorialComplete, career?.sponsors, screen, tab]);
 
   const myLadderPos = (() => {
     const s = sortedLadder(career.ladder);
