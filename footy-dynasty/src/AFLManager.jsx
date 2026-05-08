@@ -37,7 +37,14 @@ import SackingSequence from './screens/SackingSequence.jsx';
 import VoteOfConfidenceFlow from './screens/VoteOfConfidenceFlow.jsx';
 import BoardMeetingScreen from './screens/BoardMeetingScreen.jsx';
 import ArrivalBriefingFlow from './screens/ArrivalBriefingFlow.jsx';
-import TutorialOverlay, { TUTORIAL_STEPS } from './components/TutorialOverlay.jsx';
+import TutorialOverlay, {
+  TUTORIAL_STEPS,
+  tutorialAllowsNavigation,
+  tutorialMidStepCompleted,
+  tutorialHighlightScreen,
+  tutorialHighlightTab,
+  tutorialLocksAdvanceButton,
+} from './components/TutorialOverlay.jsx';
 import SeasonStrip from './components/SeasonStrip.jsx';
 import MatchPreviewPanel from './components/MatchPreviewPanel.jsx';
 
@@ -423,24 +430,34 @@ function AFLManagerInner() {
   }
 
   // ============== ADVANCE TO NEXT EVENT ==============
+  function markTutorialCompleteAfterAdvance(draft) {
+    if (!draft.tutorialComplete && (draft.tutorialStep ?? 0) === 6) {
+      draft.tutorialStep = TUTORIAL_STEPS.length;
+      draft.tutorialComplete = true;
+    }
+  }
+
   function advanceToNextEvent() {
     const c = JSON.parse(JSON.stringify(career));
 
     // Finals override — keep old logic
     if (c.inFinals) {
       advanceFinalsWeek(c);
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
 
     if (c.postSeasonPhase === 'trade_period' && c.inTradePeriod) {
       advanceTradePeriodDay(c, league, c.leagueKey);
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
     if (c.postSeasonPhase === 'draft_waiting') {
       const next = advanceDraftCountdown(c);
       if (next === 'finish_season') finishSeason(c);
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
@@ -454,6 +471,7 @@ function AFLManagerInner() {
       } else {
         beginPostSeasonTradePeriod(c, league, c.leagueKey);
       }
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
@@ -582,6 +600,7 @@ function AFLManagerInner() {
 
       const info = TRAINING_INFO[ev.subtype] || {};
       c.lastEvent = { type: 'training', subtype: ev.subtype, name: info.name || ev.subtype, date: ev.date, gains, staffName, staffRating, devNotes, intensity };
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       setScreen('hub');
       return;
@@ -658,6 +677,7 @@ function AFLManagerInner() {
         ...extraNews,
         ...(c.news || []),
       ].slice(0, 20);
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       setScreen('hub');
       return;
@@ -701,6 +721,7 @@ function AFLManagerInner() {
       c.lastEvent = { type: 'preseason_match', label: ev.label, date: ev.date, isHome, opp, result, myTotal, oppTotal, won, drew };
       c.inMatchDay = true;
       c.currentMatchResult = { ...result, isHome, opp, myTotal, oppTotal, won, drew, isPreseason: true, label: ev.label, isAFL: league.tier === 1 };
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
@@ -982,10 +1003,12 @@ function AFLManagerInner() {
         // Build the post-match summary payload (Section 3E)
         c.lastMatchSummary = buildPostMatchSummary(c, league, club, myResult, ev.round);
       }
+      markTutorialCompleteAfterAdvance(c);
       setCareer(c);
       return;
     }
 
+    markTutorialCompleteAfterAdvance(c);
     setCareer(c);
   }
 
@@ -1502,6 +1525,26 @@ function AFLManagerInner() {
   const updateCareer = (patch) => setCareer(c => ({ ...c, ...patch }));
   const updateField = (field, value) => setCareer(c => ({ ...c, [field]: value }));
 
+  const tutorialActive = career && !career.tutorialComplete;
+
+  const onNavScreen = (key) => {
+    if (career && !career.tutorialComplete && !tutorialAllowsNavigation(career.tutorialStep ?? 0, key)) {
+      return;
+    }
+    setScreen(key);
+    setTab(null);
+  };
+
+  useEffect(() => {
+    if (!career || career.tutorialComplete) return;
+    const step = career.tutorialStep ?? 0;
+    if (step <= 0 || step >= 6) return;
+    if (!tutorialMidStepCompleted(step, screen, tab, career)) return;
+    const next = step + 1;
+    const isDone = next >= TUTORIAL_STEPS.length;
+    setCareer((c) => ({ ...c, tutorialStep: next, tutorialComplete: isDone }));
+  }, [career, career?.tutorialStep, career?.tutorialComplete, career?.sponsors, screen, tab]);
+
   const myLadderPos = (() => {
     const s = sortedLadder(career.ladder);
     return s.findIndex(r => r.id === career.clubId) + 1;
@@ -1702,7 +1745,13 @@ function AFLManagerInner() {
   return (
     <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
       {globalStyle}
-      <Sidebar screen={screen} setScreen={(s)=>{setScreen(s);setTab(null);}} club={club} league={league} career={career} myLadderPos={myLadderPos}
+      <Sidebar
+        screen={screen}
+        onNavigate={onNavScreen}
+        club={club}
+        league={league}
+        career={career}
+        myLadderPos={myLadderPos}
         onNewGame={handleNewGame}
         onSaveNow={handleSaveNow}
         activeSlot={activeSlot}
@@ -1714,16 +1763,24 @@ function AFLManagerInner() {
         onDeleteSlot={handleDeleteSlot}
       />
       <main className="flex-1 overflow-y-auto min-w-0">
-        <TopBar career={career} club={club} league={league} myLadderPos={myLadderPos} onAdvance={advanceToNextEvent} />
+        <TopBar
+          career={career}
+          club={club}
+          league={league}
+          myLadderPos={myLadderPos}
+          onAdvance={advanceToNextEvent}
+          advanceDisabled={tutorialLocksAdvanceButton(career)}
+          tutorialSpotlightAdvance={!!tutorialActive && (career.tutorialStep ?? 0) === 6}
+        />
         <div className="p-3 md:p-6 max-w-[1400px] mx-auto">
-          {screen === "hub"      && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={setScreen} setTab={setTab} onAdvance={advanceToNextEvent} />}
-          {screen === "squad"    && <SquadScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
+          {screen === "hub"      && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={onNavScreen} setTab={setTab} onAdvance={advanceToNextEvent} />}
+          {screen === "squad"    && <SquadScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} tutorialActive={tutorialActive} />}
           {screen === "schedule" && (
             <Suspense fallback={<div className="anim-in py-16 text-center text-atext-dim font-mono text-sm">Loading calendar…</div>}>
               <ScheduleScreenLazy career={career} club={club} league={league} />
             </Suspense>
           )}
-          {screen === "club"     && <ClubScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
+          {screen === "club"     && <ClubScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} tutorialActive={tutorialActive} />}
           {screen === "recruit"  && <RecruitScreen career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />}
           {screen === "compete"  && <CompetitionScreen career={career} club={club} league={league} tab={tab} setTab={setTab} />}
         </div>
@@ -1733,12 +1790,10 @@ function AFLManagerInner() {
         <TutorialOverlay
           step={career.tutorialStep ?? 0}
           onNext={() => {
-            const next = (career.tutorialStep ?? 0) + 1;
-            const isDone = next >= TUTORIAL_STEPS.length;
-            updateCareer({ tutorialStep: next, tutorialComplete: isDone });
-            // Auto-jump to the next step's recommended screen for guided flow
-            const target = TUTORIAL_STEPS[next];
-            if (target?.targetScreen) setScreen(target.targetScreen);
+            const cur = career.tutorialStep ?? 0;
+            if (cur !== 0) return;
+            const next = 1;
+            updateCareer({ tutorialStep: next, tutorialComplete: next >= TUTORIAL_STEPS.length });
           }}
           onSkip={() => updateCareer({ tutorialStep: TUTORIAL_STEPS.length, tutorialComplete: true })}
         />
@@ -2174,10 +2229,13 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
 // ============================================================================
 // SIDEBAR + TOPBAR
 // ============================================================================
-function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGame, onSaveNow, activeSlot, slotMeta, slotMetaTick, onTogglePicker, showSlotPicker, onSwitchSlot, onDeleteSlot }) {
+function Sidebar({ screen, onNavigate, club, league, career, myLadderPos, onNewGame, onSaveNow, activeSlot, slotMeta, slotMetaTick, onTogglePicker, showSlotPicker, onSwitchSlot, onDeleteSlot }) {
   const season = career.season;
   const week   = career.week;
   const phase  = career.phase || 'preseason';
+  const tutorialOn = career && !career.tutorialComplete;
+  const tutStep = career?.tutorialStep ?? 0;
+  const highlightNav = tutorialOn ? tutorialHighlightScreen(tutStep) : null;
   const items = [
     { key: "hub",      label: "Hub",        icon: Home,      desc: "Overview" },
     { key: "squad",    label: "Squad",       icon: Users,     desc: "Players & Tactics" },
@@ -2233,9 +2291,12 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGa
         {items.map(it => {
           const Icon = it.icon;
           const active = screen === it.key;
+          const navLocked = tutorialOn && !tutorialAllowsNavigation(tutStep, it.key);
+          const spotlight = tutorialOn && highlightNav === it.key;
           return (
-            <button key={it.key} onClick={()=>setScreen(it.key)}
-              className={`flex items-center gap-2 md:gap-3 px-3 py-2 md:py-3 rounded-xl transition-all group border whitespace-nowrap md:w-full ${active ? "bg-aaccent/10 border-aaccent/40 text-aaccent" : "border-transparent text-atext-dim hover:bg-aaccent/5 hover:text-atext"}`}>
+            <button key={it.key} type="button" disabled={navLocked} onClick={() => { if (!navLocked) onNavigate(it.key); }}
+              title={navLocked ? 'Complete the current tutorial step or skip the tutorial.' : undefined}
+              className={`flex items-center gap-2 md:gap-3 px-3 py-2 md:py-3 rounded-xl transition-all group border whitespace-nowrap md:w-full ${spotlight ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${navLocked ? "opacity-35 cursor-not-allowed border-transparent" : ""} ${active ? "bg-aaccent/10 border-aaccent/40 text-aaccent" : !navLocked ? "border-transparent text-atext-dim hover:bg-aaccent/5 hover:text-atext" : "border-transparent text-atext-mute"}`}>
               <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${active ? "bg-aaccent/15 text-aaccent" : "text-atext-mute"}`}>
                 <Icon className="w-4 h-4" />
               </div>
@@ -2300,7 +2361,7 @@ function Sidebar({ screen, setScreen, club, league, career, myLadderPos, onNewGa
   );
 }
 
-function TopBar({ career, club, league, myLadderPos, onAdvance }) {
+function TopBar({ career, club, league, myLadderPos, onAdvance, advanceDisabled, tutorialSpotlightAdvance }) {
   const ctx = getAdvanceContext(career, league);
   const nextEv = (career.eventQueue || []).find(e => !e.completed);
   const phaseColors = { preseason: 'var(--A-accent)', season: 'var(--A-accent-2)', finals: 'var(--A-neg)', offseason: '#A78BFA' };
@@ -2384,7 +2445,13 @@ function TopBar({ career, club, league, myLadderPos, onAdvance }) {
             <div className="text-[11px] font-mono font-bold uppercase tracking-widest text-atext-mute">Next</div>
             <div className="text-sm font-semibold text-atext truncate" title={ctx.detail}>{headerNextLabel}</div>
           </div>
-          <button type="button" onClick={onAdvance} className={`${css.btnPrimary} flex items-center gap-1.5 md:gap-2 glow text-[11px] md:text-xs px-3 md:px-5`}>
+          <button
+            type="button"
+            onClick={onAdvance}
+            disabled={advanceDisabled}
+            title={advanceDisabled ? "Finish the tutorial step in the card (or skip) before advancing time." : undefined}
+            className={`${css.btnPrimary} flex items-center gap-1.5 md:gap-2 glow text-[11px] md:text-xs px-3 md:px-5 ${tutorialSpotlightAdvance ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${advanceDisabled ? "opacity-45 cursor-not-allowed" : ""}`}
+          >
             <Play className="w-4 h-4" /> {ctx.buttonLabel.toUpperCase()}
           </button>
         </div>
@@ -3269,9 +3336,11 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
 // ============================================================================
 // SQUAD SCREEN — players, tactics, training
 // ============================================================================
-function SquadScreen({ career, club, updateCareer, tab, setTab }) {
+function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }) {
   const renewalCount = (career.pendingRenewals || []).filter(r => !r._handled).length;
   const t = tab || (renewalCount > 0 ? "renewals" : "players");
+  const tutStep = career.tutorialStep ?? 0;
+  const squadTutorialTab = tutorialActive && (tutStep === 1 || tutStep === 2 || tutStep === 5) ? tutorialHighlightTab(tutStep) : null;
   const tabs = [
     { key: "players", label: "Players", icon: Users },
     { key: "tactics", label: "Tactics", icon: Target },
@@ -3282,7 +3351,13 @@ function SquadScreen({ career, club, updateCareer, tab, setTab }) {
   ];
   return (
     <div className="anim-in">
-      <TabNav tabs={tabs} active={t} onChange={setTab} />
+      <TabNav
+        tabs={tabs}
+        active={t}
+        onChange={setTab}
+        tutorialAllowOnly={squadTutorialTab}
+        tutorialHighlightKey={squadTutorialTab}
+      />
       {t === "players"  && <PlayersTab career={career} updateCareer={updateCareer} />}
       {t === "tactics"  && <TacticsTab career={career} updateCareer={updateCareer} />}
       {t === "training" && <TrainingTab career={career} updateCareer={updateCareer} />}
@@ -3850,8 +3925,10 @@ function TrainingTab({ career, updateCareer }) {
 // ============================================================================
 // CLUB SCREEN — finances, sponsors, kits, facilities, staff
 // ============================================================================
-function ClubScreen({ career, club, updateCareer, tab, setTab }) {
+function ClubScreen({ career, club, updateCareer, tab, setTab, tutorialActive }) {
   const t = tab || "finances";
+  const tutStep = career.tutorialStep ?? 0;
+  const clubTutorialTab = tutorialActive && (tutStep === 3 || tutStep === 4) ? tutorialHighlightTab(tutStep) : null;
   const leagueTier = (() => {
     const lg = findLeagueOf(career.clubId);
     return lg ? lg.tier : 1;
@@ -3871,7 +3948,13 @@ function ClubScreen({ career, club, updateCareer, tab, setTab }) {
   ];
   return (
     <div className="anim-in">
-      <TabNav tabs={tabs} active={t} onChange={setTab} />
+      <TabNav
+        tabs={tabs}
+        active={t}
+        onChange={setTab}
+        tutorialAllowOnly={clubTutorialTab}
+        tutorialHighlightKey={clubTutorialTab}
+      />
       {t === "finances"   && <FinancesTab career={career} />}
       {t === "board"      && <BoardTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "sponsors"   && <SponsorsTab career={career} updateCareer={updateCareer} />}
