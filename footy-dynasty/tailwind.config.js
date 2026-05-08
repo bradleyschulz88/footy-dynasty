@@ -3,6 +3,35 @@ export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      spacing: {
+        'token-0': 'var(--space-0)',
+        'token-1': 'var(--space-1)',
+        'token-2': 'var(--space-2)',
+        'token-3': 'var(--space-3)',
+        'token-4': 'var(--space-4)',
+        'token-5': 'var(--space-5)',
+        'token-6': 'var(--space-6)',
+        'token-8': 'var(--space-8)',
+        'token-10': 'var(--space-10)',
+      },
+      borderRadius: {
+        'token-sm': 'var(--radius-sm)',
+        'token-md': 'var(--radius-md)',
+        'token-lg': 'var(--radius-lg)',
+        'token-xl': 'var(--radius-xl)',
+        'token-pill': 'var(--radius-pill)',
+        'token-b-panel': 'var(--radius-b-panel)',
+        'token-b-flat': 'var(--radius-b-flat)',
+      },
+      fontSize: {
+        'token-micro': ['var(--font-micro)', { lineHeight: '1.3' }],
+        'token-caption': ['var(--font-caption)', { lineHeight: '1.35' }],
+        'token-ui': ['var(--font-ui)', { lineHeight: '1.35' }],
+        'token-body': ['var(--font-body)', { lineHeight: '1.4' }],
+        'token-lead': ['var(--font-lead)', { lineHeight: '1.45' }],
+        'token-display-sm': ['var(--font-display-sm)', { lineHeight: '1.1' }],
+        'token-display': ['var(--font-display)', { lineHeight: '1.05' }],
+      },
       colors: {
         abg: 'var(--A-bg)',
         abg2: 'var(--A-bg-2)',
