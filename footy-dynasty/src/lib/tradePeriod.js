@@ -1,5 +1,5 @@
 // Post-season trade period & off-season free agency (spec from FootyDynasty_TradePeriod).
-import { seedRng, rand, rng } from './rng.js';
+import { seedRng, rand, rng, pick } from './rng.js';
 import { generatePlayer } from './playerGen.js';
 import { generateTradePool } from './defaults.js';
 import { sortedLadder } from './leagueEngine.js';
@@ -21,16 +21,13 @@ function seedAiTradeOffers(c, league) {
   const offerClubs = (league.clubs || []).filter((cl) => cl.id !== c.clubId);
   const offers = [];
   for (let i = 0; i < offerCount; i++) {
-    const targetPlayer = tradableSquad[Math.floor(Math.random() * tradableSquad.length)];
-    const offeringClub = offerClubs[Math.floor(Math.random() * offerClubs.length)];
+    const targetPlayer = pick(tradableSquad);
+    const offeringClub = pick(offerClubs);
     if (!targetPlayer || !offeringClub || offers.find((o) => o.targetPlayerId === targetPlayer.id)) continue;
-    const cashOffer = Math.round(targetPlayer.value * (0.5 + Math.random() * 0.6));
+    const cashOffer = Math.round(targetPlayer.value * (0.5 + rng() * 0.6));
     const aiSq = c.aiSquads?.[offeringClub.id] || [];
-    const swapPlayer =
-      aiSq.length > 0
-        ? aiSq.filter((ap) => Math.abs(ap.overall - targetPlayer.overall) <= 8).slice(0, 5)[Math.floor(Math.random() * 5)] ||
-          null
-        : null;
+    const swapCandidates = aiSq.filter((ap) => Math.abs(ap.overall - targetPlayer.overall) <= 8).slice(0, 5);
+    const swapPlayer = swapCandidates.length ? pick(swapCandidates) : null;
     offers.push({
       id: `tp_offer_${Date.now()}_${i}`,
       fromClubId: offeringClub.id,

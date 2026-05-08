@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Finance engine — pure functions consumed by AFLManager.jsx.
+// Finance engine — pure functions consumed by AFLManager.jsx and careerAdvance.js.
 // All functions take the career object and return either a delta to apply or
 // a new partial career patch.
 // ---------------------------------------------------------------------------
@@ -11,6 +11,7 @@ import {
 import { getDifficultyConfig } from '../difficulty.js';
 import { findLeagueOf } from '../../data/pyramid.js';
 import { clamp } from '../format.js';
+import { rng } from '../rng.js';
 
 // =============================================================================
 // Helpers
@@ -336,8 +337,8 @@ export function scoutedOverall(player, career) {
   const bonus = cfg.scoutAccuracyBonus ?? 0;
   // Positive bonus -> shown rating closer to true; negative -> more noise.
   const noise = bonus >= 0
-    ? Math.round(((Math.random() * 2 - 1) * Math.max(0, 8 - bonus * 0.4)))
-    : Math.round(((Math.random() * 2 - 1) * (8 + Math.abs(bonus) * 0.4)));
+    ? Math.round(((rng() * 2 - 1) * Math.max(0, 8 - bonus * 0.4)))
+    : Math.round(((rng() * 2 - 1) * (8 + Math.abs(bonus) * 0.4)));
   return clamp((player.overall ?? 60) + noise, 30, 99);
 }
 

@@ -2,6 +2,8 @@
 // Date utilities — all dates stored as 'YYYY-MM-DD' strings
 // ---------------------------------------------------------------------------
 
+import { rng } from './rng.js';
+
 export function addDays(dateStr, n) {
   const y = parseInt(dateStr.slice(0, 4), 10);
   const mo = parseInt(dateStr.slice(5, 7), 10) - 1;
@@ -183,7 +185,7 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
     info.attrs.forEach(attr => {
       if (attr in updated.attrs) {
         const focusBoost = focusBoostFor(attr, focus);
-        const raw = Math.max(0, Math.round((Math.random() * 1.5 + 0.5) * scale * focusBoost));
+        const raw = Math.max(0, Math.round((rng() * 1.5 + 0.5) * scale * focusBoost));
         const g   = Math.min(raw, Math.max(0, potential - updated.attrs[attr]));
         updated.attrs[attr] = Math.min(potential, updated.attrs[attr] + g);
         gains[attr] = (gains[attr] || 0) + g;

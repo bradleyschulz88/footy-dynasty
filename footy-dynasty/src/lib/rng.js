@@ -1,6 +1,6 @@
-// Seeded pseudo-random number generator shared across the whole game.
-// All game systems read/write through this single SEED so results are
-// reproducible when you call seedRng() with a known value before generation.
+// Seeded LCG shared across gameplay (`rng`, `rand`, `pick`, `randNorm`).
+// Call `seedRng(n)` when starting a new career or sim block so flows are reproducible.
+// Note: timestamps in entity ids (e.g. `Date.now()` in UI-only rows) are not derived from this stream.
 
 export let SEED = 42;
 

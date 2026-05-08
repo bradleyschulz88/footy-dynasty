@@ -351,7 +351,7 @@ function splitAcrossQuarters(total, n) {
   const parts = [];
   let rem = total;
   for (let i = 0; i < n - 1; i++) {
-    const q = rem > 0 ? Math.floor(Math.random() * Math.ceil(rem * 0.6 + 1)) : 0;
+    const q = rem > 0 ? Math.floor(rng() * Math.ceil(rem * 0.6 + 1)) : 0;
     parts.push(q);
     rem -= q;
   }
