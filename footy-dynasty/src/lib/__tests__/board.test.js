@@ -13,6 +13,8 @@ import {
   resolveBoardInboxChoice,
   BOARD_COMMS_THROTTLE_ROUNDS,
   seasonRoundTick,
+  planSeasonBoardMeetings,
+  voteOfConfidenceSurvivalChance,
 } from '../board.js';
 import { findLeagueOf } from '../../data/pyramid.js';
 
@@ -191,5 +193,22 @@ describe('board', () => {
     expect(r.ok).toBe(true);
     expect(career.board.inbox.length).toBe(0);
     expect(chair.confidence - before).toBe(4);
+  });
+
+  it('planSeasonBoardMeetings stamps two due rounds for the fixture', () => {
+    const career = {
+      season: 2026,
+      eventQueue: Array.from({ length: 18 }, (_, i) => ({ type: "round", phase: "season", round: i + 1 })),
+    };
+    planSeasonBoardMeetings(career);
+    expect(career.boardMeetingSlots.length).toBe(2);
+    expect(career.boardMeetingSlots[0].dueRound).toBeGreaterThanOrEqual(3);
+  });
+
+  it('voteOfConfidenceSurvivalChance stays within bounds', () => {
+    const career = { finance: { boardConfidence: 15 } };
+    expect(voteOfConfidenceSurvivalChance(career, -20)).toBeGreaterThanOrEqual(0.1);
+    expect(voteOfConfidenceSurvivalChance(career, -20)).toBeLessThanOrEqual(0.9);
+    expect(voteOfConfidenceSurvivalChance({ finance: { boardConfidence: 90 } }, 15)).toBeLessThanOrEqual(0.9);
   });
 });

@@ -92,6 +92,18 @@ describe('migrate', () => {
     expect(m.clubGround?.shortName).toBe('MCG');
   });
 
+  it('v9 -> v10 adds board crisis + meeting scaffolding', () => {
+    const m = migrate({
+      saveVersion: 9,
+      clubId: 'mel',
+      leagueKey: 'AFL',
+      board: { inbox: [], members: [] },
+    });
+    expect(m.saveVersion).toBe(SAVE_VERSION);
+    expect(m.boardCrisis).toBe(null);
+    expect(Array.isArray(m.boardMeetingSlots)).toBe(true);
+  });
+
   it('v8 -> v9 adds board inbox scaffold', () => {
     const m = migrate({
       saveVersion: 8,

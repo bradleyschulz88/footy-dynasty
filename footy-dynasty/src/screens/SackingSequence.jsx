@@ -3,9 +3,10 @@
 // Five-screen narrative: Call → Captain's Message → Headline → Legacy → Job Market.
 // Driven by career.sackingStep (0..4). Step 4 hands off to JobMarket.
 // ---------------------------------------------------------------------------
-import React from "react";
+import React, { useState } from "react";
 import { ChevronRight, Trophy, AlertCircle, Newspaper, Award, Briefcase } from "lucide-react";
 import { css } from "../components/primitives.jsx";
+import { getJobInterviewQuestion } from "../lib/coachReputation.js";
 
 const STEPS = [
   { key: 'call',      title: 'THE CALL' },
@@ -201,15 +202,88 @@ function LegacyTile({ label, value, accent = 'var(--A-accent)', icon: Icon }) {
 // =============================================================================
 function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff }) {
   const offers = career.jobOffers || [];
+  const [stage, setStage] = useState("list");
+  const [focusOffer, setFocusOffer] = useState(null);
+  const [interviewBonus, setInterviewBonus] = useState(0);
+  const [pickedOption, setPickedOption] = useState(null);
+
+  const goInterview = (offer) => {
+    setFocusOffer(offer);
+    setInterviewBonus(0);
+    setPickedOption(null);
+    setStage("interview");
+  };
+
+  const cancelInterview = () => {
+    setFocusOffer(null);
+    setStage("list");
+  };
+
+  const confirmHire = () => {
+    if (!focusOffer) return;
+    onAcceptJob({ ...focusOffer, interviewStartingBoardBonus: interviewBonus });
+  };
+
+  if (stage === "interview" && focusOffer) {
+    const iv = getJobInterviewQuestion(focusOffer, career);
+    return (
+      <div className="max-w-2xl w-full anim-in mx-auto">
+        <div className="mb-3 text-[11px] font-mono font-bold uppercase tracking-[0.3em] text-atext-mute text-center">Interview panel</div>
+        <h2 className="font-display text-3xl text-atext mb-2 text-center leading-none">{focusOffer.clubName}</h2>
+        <div className={`${css.panel} p-5 mb-4`}>
+          <p className="text-sm text-atext leading-relaxed">{iv.question}</p>
+        </div>
+        <div className="space-y-2 mb-4">
+          {iv.options.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => {
+                setPickedOption(opt.id);
+                setInterviewBonus(opt.startingBoardBonus ?? 0);
+              }}
+              className="w-full text-left rounded-xl p-3 text-sm transition"
+              style={{
+                border: `2px solid ${pickedOption === opt.id ? "var(--A-accent)" : "var(--A-line)"}`,
+                background: "var(--A-panel-2)",
+              }}
+            >
+              {opt.label}
+              <span className="block text-[10px] text-atext-mute mt-1 font-mono">
+                Starting board confidence {(opt.startingBoardBonus ?? 0) >= 0 ? "+" : ""}{opt.startingBoardBonus ?? 0}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2 justify-center">
+          <button type="button" onClick={cancelInterview} className={`${css.btnGhost} text-[11px] py-2 px-4`}>
+            BACK TO LISTINGS
+          </button>
+          <button
+            type="button"
+            disabled={!pickedOption}
+            onClick={confirmHire}
+            className={!pickedOption ? "px-4 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute" : `${css.btnPrimary} text-[11px] py-2 px-4`}
+          >
+            SIGN CONTRACT →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl w-full anim-in">
       <div className="mb-3 text-[11px] font-mono font-bold uppercase tracking-[0.3em] text-atext-mute text-center">The Phone Is Ringing</div>
       <h2 className="font-display text-4xl sm:text-5xl text-atext mb-2 leading-none text-center">JOB MARKET</h2>
-      <div className="text-center text-sm text-atext-dim mb-6">
-        Coach Tier: <span className="text-aaccent font-bold">{career.coachTier || 'Journeyman'}</span>
+      <div className="text-center text-sm text-atext-dim mb-2">
+        Coach Tier: <span className="text-aaccent font-bold">{career.coachTier || "Journeyman"}</span>
         <span className="text-atext-mute"> · </span>
         Reputation: <span className="text-aaccent font-bold">{career.coachReputation ?? 30}</span>
       </div>
+      <p className="text-center text-[11px] text-atext-mute mb-6 max-w-xl mx-auto leading-snug">
+        Shortlist is wider now: vacancy notes, media heat, and how keen each club is on you. Every offer runs through a quick panel interview before you sign.
+      </p>
 
       {offers.length === 0 ? (
         <div className={`${css.panel} p-12 text-center`}>
@@ -218,8 +292,8 @@ function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff }) {
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-3 mb-4">
-          {offers.map(o => (
-            <JobOfferCard key={o.clubId} offer={o} onAccept={() => onAcceptJob(o)} />
+          {offers.map((o) => (
+            <JobOfferCard key={o.clubId} offer={o} onSelect={() => goInterview(o)} />
           ))}
         </div>
       )}
@@ -229,18 +303,21 @@ function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff }) {
           <div className={css.label}>Take a Season Off</div>
           <div className="text-sm text-atext leading-snug">Decline these offers. Reputation +5. Better jobs may appear next season.</div>
         </div>
-        <button onClick={onTakeSeasonOff} className={`${css.btnGhost} text-[11px] py-2 px-4`}>SIT OUT THE SEASON</button>
+        <button type="button" onClick={onTakeSeasonOff} className={`${css.btnGhost} text-[11px] py-2 px-4`}>
+          SIT OUT THE SEASON
+        </button>
       </div>
     </div>
   );
 }
 
-function JobOfferCard({ offer, onAccept }) {
-  const tierColor = offer.leagueTier === 1 ? '#FFD200' : offer.leagueTier === 2 ? 'var(--A-accent)' : '#4ADE80';
+function JobOfferCard({ offer, onSelect }) {
+  const tierColor = offer.leagueTier === 1 ? "#FFD200" : offer.leagueTier === 2 ? "var(--A-accent)" : "#4ADE80";
+  const heatColor = offer.mediaHeat === "high" ? "#E84A6F" : offer.mediaHeat === "med" ? "var(--A-accent-2)" : "#4AE89A";
   return (
     <div className={`${css.panel} p-4 flex flex-col`}>
       <div className="h-1 -mx-4 -mt-4 mb-3" style={{ background: offer.color }} />
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div>
           <div className={css.label}>{offer.leagueShort} · Tier {offer.leagueTier}</div>
           <div className="font-bold text-atext leading-tight">{offer.clubName}</div>
@@ -249,11 +326,17 @@ function JobOfferCard({ offer, onAccept }) {
           T{offer.leagueTier}
         </span>
       </div>
+      <div className="flex flex-wrap gap-2 mb-2 text-[10px] font-mono">
+        <span className="px-2 py-0.5 rounded" style={{ border: `1px solid ${heatColor}`, color: heatColor }}>Media {offer.mediaHeat}</span>
+        <span className="px-2 py-0.5 rounded text-atext-dim" style={{ border: "1px solid var(--A-line)" }}>List {offer.rosterTag}</span>
+        <span className="px-2 py-0.5 rounded text-aaccent" style={{ border: "1px solid var(--A-line)" }}>{offer.interestLabel}</span>
+      </div>
+      <div className="text-[10px] text-atext-mute mb-2 leading-snug italic">{offer.vacancyReason}</div>
       <div className="grid grid-cols-2 gap-1 text-[11px] mb-3">
         <div className="text-atext-mute">Position</div>
         <div className="text-atext text-right font-mono">#{offer.ladderPos}</div>
         <div className="text-atext-mute">Form</div>
-        <div className="text-atext text-right font-mono">{offer.recentForm.join('')}</div>
+        <div className="text-atext text-right font-mono">{offer.recentForm.join("")}</div>
         <div className="text-atext-mute">Finances</div>
         <div className="text-atext text-right">{offer.finance}</div>
         <div className="text-atext-mute">Wage</div>
@@ -262,7 +345,9 @@ function JobOfferCard({ offer, onAccept }) {
       <div className="text-[11px] text-atext-dim italic mb-2 leading-snug">{offer.expectations}</div>
       <div className="text-[11px] text-atext leading-snug mb-3">{offer.chairmanLine}</div>
       <div className="mt-auto">
-        <button onClick={onAccept} className={`${css.btnPrimary} w-full text-[11px] py-2`}>ACCEPT JOB →</button>
+        <button type="button" onClick={onSelect} className={`${css.btnPrimary} w-full text-[11px] py-2`}>
+          APPLY &amp; INTERVIEW →
+        </button>
       </div>
     </div>
   );

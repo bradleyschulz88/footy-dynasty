@@ -1,5 +1,5 @@
 // Executive board (staged MVP): weighted members drive finance.boardConfidence.
-import { pick, rand } from "./rng.js";
+import { pick, rand, rng } from "./rng.js";
 import { FIRST_NAMES, LAST_NAMES } from "./playerGen.js";
 import { clamp } from "./format.js";
 import { sortedLadder } from "./leagueEngine.js";
@@ -148,6 +148,124 @@ export function migrateSaveBoardV9(save) {
   if (!save.board) return;
   save.board.inbox = Array.isArray(save.board.inbox) ? save.board.inbox : [];
   if (save.board.lastCommsTick === undefined) save.board.lastCommsTick = null;
+}
+
+export function migrateSaveBoardV10(save) {
+  if (save.boardCrisis === undefined) save.boardCrisis = null;
+  save.boardMeetingSlots = Array.isArray(save.boardMeetingSlots) ? save.boardMeetingSlots : [];
+  if (save.boardMeetingBlocking === undefined) save.boardMeetingBlocking = null;
+  if (save.boardMeetingSeasonPlanned === undefined) save.boardMeetingSeasonPlanned = null;
+}
+
+/** Schedule two blocking board meetings per season from fixture length. */
+export function planSeasonBoardMeetings(career) {
+  const season = career.season ?? 2026;
+  if (career.boardMeetingSeasonPlanned === season && career.boardMeetingSlots?.length) return;
+  const rounds = (career.eventQueue || []).filter((e) => e.type === "round" && e.phase === "season");
+  const n = rounds.length || 18;
+  const r1 = Math.max(3, Math.ceil(n / 3));
+  const r2 = Math.max(r1 + 2, Math.ceil((2 * n) / 3));
+  career.boardMeetingSlots = [
+    { id: `bms_${season}_1`, dueRound: r1, kind: "review", title: "Mid-season football review", resolved: false },
+    { id: `bms_${season}_2`, dueRound: r2, kind: "finance", title: "Finance & facilities checkpoint", resolved: false },
+  ];
+  career.boardMeetingSeasonPlanned = season;
+}
+
+export function findDueBoardMeetingSlot(career, completedSeasonRound) {
+  const slots = career.boardMeetingSlots;
+  if (!slots?.length) return null;
+  return slots.find((s) => !s.resolved && s.dueRound === completedSeasonRound) || null;
+}
+
+const ROUTINE_MEETING_COPY = {
+  review: {
+    intro:
+      "The football sub-committee wants an honest read on where the game plan is working — and where the list is fraying.",
+    choices: [
+      { id: "direct", label: "Be direct about weaknesses and the fix", memberDeltas: { "Football Director": 5, Chairman: 2 } },
+      { id: "steady", label: "Stress patience — it's a year-long project", memberDeltas: { Chairman: 4, "Football Director": -1 } },
+    ],
+  },
+  finance: {
+    intro:
+      "Finance wants visibility on cash runway and whether facility spend stays inside the plan you sold them in pre-season.",
+    choices: [
+      { id: "tighten", label: "Commit to a tighter spend line this quarter", memberDeltas: { "Finance Director": 6, Chairman: 1 } },
+      { id: "invest", label: "Push for one investment exception (youth / medical)", memberDeltas: { "Finance Director": -3, "Football Director": 4 } },
+    ],
+  },
+};
+
+export function openBoardMeetingBlockingFromSlot(slot) {
+  const copy = ROUTINE_MEETING_COPY[slot.kind];
+  if (!copy) return null;
+  return {
+    slotId: slot.id,
+    kind: slot.kind,
+    title: slot.title,
+    intro: copy.intro,
+    choices: copy.choices,
+    step: 0,
+  };
+}
+
+/** If a routine meeting was due this round but skipped (e.g. vote crisis), open it after vote resolves. */
+export function catchUpBoardMeetingForCurrentWeek(career) {
+  if (career.boardCrisis?.phase === "active") return null;
+  const due = findDueBoardMeetingSlot(career, career.week ?? 0);
+  if (!due) return null;
+  return openBoardMeetingBlockingFromSlot(due);
+}
+
+/**
+ * @returns {{ ok: boolean, newsLine?: string }}
+ */
+export function resolveRoutineBoardMeeting(career, league, slotId, choiceId) {
+  ensureCareerBoard(career, findClub(career.clubId), league);
+  const slot = career.boardMeetingSlots?.find((s) => s.id === slotId);
+  if (!slot || slot.resolved) return { ok: false };
+  const copy = ROUTINE_MEETING_COPY[slot.kind];
+  if (!copy) return { ok: false };
+  const ch = copy.choices.find((c) => c.id === choiceId);
+  if (!ch) return { ok: false };
+  slot.resolved = true;
+  career.boardMeetingBlocking = null;
+  const deltas = ch.memberDeltas || {};
+  for (const [role, d] of Object.entries(deltas)) {
+    applyMemberConfidenceDelta(career, role, d);
+  }
+  return { ok: true, newsLine: `📅 Board meeting: ${slot.title} — you ${ch.label.toLowerCase()}.` };
+}
+
+/** Survival probability before dice roll (0–1). */
+export function voteOfConfidenceSurvivalChance(career, pitchBonus = 0) {
+  const conf = career.finance?.boardConfidence ?? 35;
+  let p = 0.22 + conf / 165 + pitchBonus / 85;
+  return clamp(p, 0.1, 0.9);
+}
+
+export function rollVoteOfConfidenceSurvival(career, pitchBonus = 0) {
+  return rng() < voteOfConfidenceSurvivalChance(career, pitchBonus);
+}
+
+/**
+ * Mutates `career` — use on a JSON clone in React handlers.
+ * @returns {{ newsLine: string }}
+ */
+export function applyVoteSurvivalMutate(career, _league, pitchBonus) {
+  ensureCareerBoard(career, findClub(career.clubId), league);
+  career.boardCrisis = null;
+  career.boardWarning = 0;
+  career.board = career.board || defaultBoardShell();
+  career.board.voteScheduled = false;
+  const bump = clamp(6 + Math.round(pitchBonus / 3), 4, 15);
+  applyBoardConfidenceDelta(career, bump);
+  career.finance = career.finance || {};
+  career.finance.boardConfidence = Math.max(career.finance.boardConfidence ?? 0, 36);
+  alignBoardMembersToTarget(career.board, career.finance.boardConfidence);
+  recalcBoardConfidence(career);
+  return { newsLine: "✅ Vote of confidence carried — you retain the senior coach role." };
 }
 
 function boardMemberFirstName(board, role) {

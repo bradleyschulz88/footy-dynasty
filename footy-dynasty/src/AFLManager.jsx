@@ -34,6 +34,8 @@ import TabNav from './components/TabNav.jsx';
 import GameOverScreen from './screens/GameOverScreen.jsx';
 import PostMatchSummary from './screens/PostMatchSummary.jsx';
 import SackingSequence from './screens/SackingSequence.jsx';
+import VoteOfConfidenceFlow from './screens/VoteOfConfidenceFlow.jsx';
+import BoardMeetingScreen from './screens/BoardMeetingScreen.jsx';
 import TutorialOverlay, { TUTORIAL_STEPS } from './components/TutorialOverlay.jsx';
 import SeasonStrip from './components/SeasonStrip.jsx';
 import MatchPreviewPanel from './components/MatchPreviewPanel.jsx';
@@ -85,6 +87,12 @@ import {
   boardObjectiveUiStatus,
   maybeEnqueueBoardMessage,
   resolveBoardInboxChoice,
+  planSeasonBoardMeetings,
+  findDueBoardMeetingSlot,
+  openBoardMeetingBlockingFromSlot,
+  catchUpBoardMeetingForCurrentWeek,
+  applyVoteSurvivalMutate,
+  resolveRoutineBoardMeeting,
 } from './lib/board.js';
 
 // ============================================================================
@@ -234,7 +242,12 @@ function AFLManagerInner() {
     const newFixtures = generateFixtures(newLeague.clubs);
     const SEASON = career.season + 1;
     const eventQueue = generateSeasonCalendar(SEASON, newLeague.clubs, newFixtures, newClub.id);
-    const startingBoard = (career.coachReputation ?? 30) >= 60 ? 65 : 55;
+    const interviewBump = offer.interviewStartingBoardBonus ?? 0;
+    const startingBoard = clamp(
+      ((career.coachReputation ?? 30) >= 60 ? 65 : 55) + interviewBump,
+      38,
+      78,
+    );
     const newFinance = makeStartingFinance(newLeague.tier, career.difficulty, startingBoard);
     const newLadder = blankLadder(newLeague.clubs);
     const squadForCap = scaledSquadToFitCap({
@@ -301,6 +314,10 @@ function AFLManagerInner() {
       gameOver:  null,
       jobOffers: [],
       boardWarning: 0,
+      boardCrisis: null,
+      boardMeetingBlocking: null,
+      boardMeetingSlots: [],
+      boardMeetingSeasonPlanned: null,
       aiSquads:  {},
       brownlow:  {},
       pendingTradeOffers: [],
@@ -352,6 +369,7 @@ function AFLManagerInner() {
     };
     resetExecutiveBoard(nextCareer, newClub, newLeague, newFinance.boardConfidence);
     generateSeasonObjectives(nextCareer, newLeague);
+    planSeasonBoardMeetings(nextCareer);
     setCareer(nextCareer);
     setScreen('hub');
     setTab(null);
@@ -377,6 +395,20 @@ function AFLManagerInner() {
   const club = findClub(career.clubId);
   const league = PYRAMID[career.leagueKey];
   const myLineup = career.lineup;
+
+  function triggerSackState(c, clubName, round) {
+    c.isSacked = true;
+    c.sackingStep = 0;
+    c.boardCrisis = null;
+    c.boardMeetingBlocking = null;
+    c.gameOver = {
+      reason: 'sacked', club: clubName, season: c.season, week: round,
+      premiership: c.premiership || null,
+    };
+    c.coachReputation = applySackingReputation(c.coachReputation);
+    c.coachTier = coachTierFromScore(c.coachReputation);
+    c.news = [{ week: round, type: 'loss', text: `💼 The board has terminated your contract at ${clubName}.` }, ...(c.news || [])].slice(0, 20);
+  }
 
   // ============== ADVANCE TO NEXT EVENT ==============
   function advanceToNextEvent() {
@@ -874,32 +906,40 @@ function AFLManagerInner() {
         c.groundCondition = applyGroundDegradation(c.groundCondition ?? 85, weather, c.facilities?.stadium ?? 1);
       }
 
-      // Board sacking: trigger immediately if confidence hits 0 (legend) or after 2 warnings (others)
+      const inBoardCrisis = c.boardCrisis?.phase === 'active';
+      // Board sacking: zero confidence / insolvency = immediate sack; otherwise vote-of-confidence first
       const sackPatience = cfg.boardPatienceSeasons === 1 ? 1 : 2;
-      if (c.finance.boardConfidence <= 0) {
-        c.boardWarning = sackPatience; // immediate sack
-      } else if (c.finance.boardConfidence <= 10) {
-        c.boardWarning = (c.boardWarning || 0) + 1;
+      if (!inBoardCrisis) {
+        if (c.finance.boardConfidence <= 0) {
+          c.boardWarning = sackPatience;
+        } else if (c.finance.boardConfidence <= 10) {
+          c.boardWarning = (c.boardWarning || 0) + 1;
+        }
       }
-      if ((c.boardWarning || 0) >= sackPatience && !c.isSacked) {
-        // Trigger the multi-step sacking sequence (Section 3F)
-        c.isSacked = true;
-        c.sackingStep = 0;
-        c.gameOver = {
-          reason: 'sacked', club: club.name, season: c.season, week: ev.round,
-          premiership: c.premiership || null,
-        };
-        c.coachReputation = applySackingReputation(c.coachReputation);
-        c.coachTier = coachTierFromScore(c.coachReputation);
-        c.news = [{ week: ev.round, type: 'loss', text: `💼 The board has terminated your contract at ${club.name}.` }, ...(c.news || [])].slice(0, 20);
-      } else if (c.finance.boardConfidence > 30) {
+      if ((c.boardWarning || 0) >= sackPatience && !c.isSacked && !inBoardCrisis) {
+        const instantSack = c.finance.boardConfidence <= 0 || (c.boardWarning || 0) >= 99;
+        if (instantSack) {
+          triggerSackState(c, club.name, ev.round);
+        } else {
+          c.boardCrisis = { phase: 'active', step: 0 };
+          if (c.board) c.board.voteScheduled = true;
+          c.news = [{ week: ev.round, type: 'loss', text: '📋 Emergency board meeting: a vote of confidence is underway. Address the chair before play continues.' }, ...(c.news || [])].slice(0, 20);
+        }
+      } else if (!inBoardCrisis && c.finance.boardConfidence > 30) {
         c.boardWarning = 0;
-      } else if (c.finance.boardConfidence <= 20) {
+      } else if (!inBoardCrisis && c.finance.boardConfidence <= 20) {
         c.news = [{ week: ev.round, type: 'loss', text: `⚠️ Board confidence is critical — your job is on the line.` }, ...(c.news || [])].slice(0, 20);
       }
 
       c.week = ev.round;
       c.lastEvent = myResult ? { type: 'round', round: ev.round, date: ev.date, ...myResult } : null;
+
+      if (ev.phase === 'season' && !c.isSacked && c.boardCrisis?.phase !== 'active') {
+        const due = findDueBoardMeetingSlot(c, c.week);
+        if (due) {
+          c.boardMeetingBlocking = openBoardMeetingBlockingFromSlot(due);
+        }
+      }
 
       if (ev.phase === 'season' && myResult && !c.isSacked) {
         const comms = maybeEnqueueBoardMessage(c, league);
@@ -1429,6 +1469,7 @@ function AFLManagerInner() {
     c.eventQueue = generateSeasonCalendar(c.season, nextLeague.clubs, c.fixtures, c.clubId);
     ensureCareerBoard(c, seasonClub, nextLeague);
     generateSeasonObjectives(c, nextLeague);
+    planSeasonBoardMeetings(c);
     updateBoardObjectiveProgress(c, nextLeague);
     c.currentDate = `${c.season - 1}-12-01`;
     c.phase = 'preseason';
@@ -1559,6 +1600,54 @@ function AFLManagerInner() {
             }}
           />
         )}
+      </div>
+    );
+  }
+
+  if (career.boardCrisis?.phase === 'active') {
+    return (
+      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+        {globalStyle}
+        <VoteOfConfidenceFlow
+          career={career}
+          club={club}
+          onComplete={({ survived, pitchBonus }) => {
+            if (survived) {
+              const next = JSON.parse(JSON.stringify(career));
+              const { newsLine } = applyVoteSurvivalMutate(next, league, pitchBonus);
+              const catchUp = catchUpBoardMeetingForCurrentWeek(next);
+              if (catchUp) next.boardMeetingBlocking = catchUp;
+              next.news = [{ week: next.week, type: 'board', text: newsLine }, ...(next.news || [])].slice(0, 20);
+              updateCareer(next);
+            } else {
+              const next = JSON.parse(JSON.stringify(career));
+              triggerSackState(next, club.name, career.week);
+              updateCareer(next);
+            }
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (career.boardMeetingBlocking) {
+    return (
+      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+        {globalStyle}
+        <BoardMeetingScreen
+          career={career}
+          blocking={career.boardMeetingBlocking}
+          onChoose={(choiceId) => {
+            const draft = JSON.parse(JSON.stringify(career));
+            const r = resolveRoutineBoardMeeting(draft, league, career.boardMeetingBlocking.slotId, choiceId);
+            if (r.ok) {
+              updateCareer({
+                ...draft,
+                news: [{ week: draft.week, type: 'board', text: r.newsLine }, ...(draft.news || [])].slice(0, 20),
+              });
+            }
+          }}
+        />
       </div>
     );
   }
@@ -1787,6 +1876,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     };
     ensureCareerBoard(newCareer, club, league);
     generateSeasonObjectives(newCareer, league);
+    planSeasonBoardMeetings(newCareer);
     onStart(newCareer);
     } catch (err) {
       setStartError(err.message);
