@@ -399,6 +399,206 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   box-shadow: 0 0 20px rgba(200, 255, 61, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+/* ── Stitch PNG mockup layouts (club_dashboard, team_management) ─ */
+.dirS .stitch-mock-hub-heading {
+  text-align: center;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: var(--S-text);
+  font-weight: 700;
+}
+.dirS .stitch-mock-hub-line {
+  height: 2px;
+  margin: 12px auto 22px;
+  max-width: 220px;
+  background: linear-gradient(90deg, transparent, var(--S-accent), transparent);
+  box-shadow: 0 0 14px rgba(200, 255, 61, 0.5);
+  border-radius: 2px;
+}
+.dirS .stitch-mock-next-card {
+  border: 2px solid var(--S-accent);
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--S-panel), var(--S-panel-2));
+  box-shadow:
+    0 0 28px rgba(200, 255, 61, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  padding: 1.25rem 1.25rem 1.5rem;
+}
+.dirS .stitch-mock-next-title {
+  text-align: center;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: var(--S-accent);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+.dirS .stitch-mock-btn-primary {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 10px;
+  border: none;
+  background: var(--S-accent);
+  color: #0a0d0c;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 0 22px rgba(200, 255, 61, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.dirS .stitch-mock-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 28px rgba(200, 255, 61, 0.45);
+}
+.dirS .stitch-mock-btn-ghost {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--S-accent);
+  background: transparent;
+  color: var(--S-accent);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.dirS .stitch-mock-btn-ghost:hover {
+  background: rgba(200, 255, 61, 0.12);
+}
+.dirS .stitch-mock-action-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 2px solid var(--S-accent);
+  border-radius: 12px;
+  background: rgba(15, 20, 18, 0.92);
+  box-shadow: 0 0 18px rgba(200, 255, 61, 0.14);
+  margin-bottom: 10px;
+}
+.dirS .stitch-mock-action-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(200, 255, 61, 0.45);
+  color: var(--S-accent);
+  background: rgba(200, 255, 61, 0.08);
+  flex-shrink: 0;
+}
+.dirS .stitch-mock-badge {
+  align-self: flex-start;
+  margin-top: -4px;
+  margin-bottom: 4px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: var(--S-accent);
+  color: #0a0d0c;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.dirS .stitch-mock-player-card {
+  display: flex;
+  align-items: stretch;
+  min-height: 64px;
+  border-radius: 10px;
+  background: var(--S-panel);
+  border: 1px solid var(--S-line);
+  overflow: hidden;
+  margin-bottom: 8px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  padding: 0;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.dirS .stitch-mock-player-card:hover {
+  border-color: rgba(200, 255, 61, 0.45);
+  box-shadow: 0 4px 16px rgba(200, 255, 61, 0.12);
+}
+.dirS .stitch-mock-player-card-selected {
+  border-color: var(--S-accent);
+  box-shadow: 0 0 0 1px rgba(200, 255, 61, 0.35), 0 6px 20px rgba(200, 255, 61, 0.15);
+}
+.dirS .stitch-mock-player-rating {
+  width: 42px;
+  flex-shrink: 0;
+  background: var(--S-accent);
+  color: #0a0d0c;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 800;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dirS .stitch-mock-player-tab {
+  width: 8px;
+  flex-shrink: 0;
+  background: var(--S-accent);
+  box-shadow: 0 0 12px rgba(200, 255, 61, 0.35);
+}
+.dirS .stitch-mock-field-wrap {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 2px solid rgba(200, 255, 61, 0.35);
+  box-shadow: 0 0 24px rgba(200, 255, 61, 0.12);
+}
+.dirS .stitch-mock-squad-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 0 16px;
+  border-bottom: 1px solid var(--S-line);
+  margin-bottom: 16px;
+}
+.dirS .stitch-mock-bench-label {
+  font-family: "Bebas Neue", Oswald, sans-serif;
+  font-size: 1.25rem;
+  letter-spacing: 0.08em;
+  color: var(--S-text);
+  text-transform: uppercase;
+  margin: 1rem 0 0.5rem;
+}
+.dirS .stitch-mock-slant-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 6px;
+  background: var(--S-accent);
+  color: #0a0d0c;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 900;
+  font-size: 12px;
+  font-style: italic;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transform: skewX(-8deg);
+  box-shadow: 0 4px 20px rgba(200, 255, 61, 0.3);
+}
+.dirS .stitch-mock-slant-btn > span {
+  display: block;
+  transform: skewX(8deg);
+}
+
 /* shared utilities */
 .row { display: flex; }
 .col { display: flex; flex-direction: column; }

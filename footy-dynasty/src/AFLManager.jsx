@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect, useRef, lazy, Suspense } from "react";
 import {
   Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
-  UserCog, Repeat, Sprout, BarChart3, Calendar, ChevronRight, ChevronLeft,
+  UserCog,   Repeat, Sprout, BarChart3, Calendar, ChevronRight, ChevronLeft,
   Home, Settings, Play, Pause, Save, ArrowUp, ArrowDown, ArrowRight,
   Star, Zap, Heart, Target, Activity, Flame, Sparkles, Crown,
   TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
   Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
   Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus,
-  Landmark,
+  Landmark, GripVertical,
 } from "lucide-react";
 import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf } from './data/pyramid.js';
@@ -41,6 +41,7 @@ import TutorialOverlay, {
 } from './components/TutorialOverlay.jsx';
 import SeasonStrip from './components/SeasonStrip.jsx';
 import MatchPreviewPanel from './components/MatchPreviewPanel.jsx';
+import StitchClubDashboard from './components/stitch/StitchClubDashboard.jsx';
 
 const ScheduleScreenLazy = lazy(() => import('./screens/ScheduleScreen.jsx'));
 
@@ -1445,9 +1446,21 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
 
   return (
     <div className="anim-in space-y-5">
-      {/* Hero Banner — Stitch: club_dashboard (neon frame + mono kicker) */}
-      <div className={`${stitch ? 'stitch-neon-card' : 'panel rounded-2xl border border-aline'} overflow-hidden relative min-h-[160px]`}>
-        {stitch && <div className="pointer-events-none absolute inset-0 opacity-[0.07] grid-bg" aria-hidden />}
+      {stitch ? (
+        <StitchClubDashboard
+          career={career}
+          club={club}
+          league={league}
+          myLadderPos={myLadderPos}
+          myRow={myRow}
+          setScreen={setScreen}
+          setTab={setTab}
+          onAdvance={onAdvance}
+        />
+      ) : (
+      <>
+      {/* Hero Banner */}
+      <div className="panel rounded-2xl overflow-hidden relative min-h-[160px] border border-aline">
         <div className="absolute inset-0 opacity-40" style={{background:`linear-gradient(135deg, ${club.colors[0]}33 0%, transparent 55%)`}} />
         <div className="absolute inset-0" style={{background:`radial-gradient(ellipse at 80% 50%, ${club.colors[1]}22, transparent 65%)`}} />
         <div className="absolute right-6 top-0 bottom-0 flex items-center opacity-20">
@@ -1455,9 +1468,6 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
         </div>
         <div className="relative z-10 p-6 flex items-end justify-between">
           <div>
-            {stitch && (
-              <div className="font-mono text-[10px] tracking-[0.28em] text-aaccent mb-2">CLUB DASHBOARD</div>
-            )}
             <div className="label mb-1 dim">{league.name} · Season {career.season}</div>
             <h1 className="display text-5xl tracking-wide text-atext leading-none">{club.name.toUpperCase()}</h1>
             <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -1479,11 +1489,13 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
       <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} />
 
-      <MatchPreviewPanel career={career} league={league} />
+      {!stitch && <MatchPreviewPanel career={career} league={league} />}
 
       {/* Last Event Result Card */}
       {lastEv && (
@@ -2233,7 +2245,6 @@ function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }
   const tutStep = career.tutorialStep ?? 0;
   const squadTutorialTab = tutorialActive && (tutStep === 1 || tutStep === 2 || tutStep === 5) ? tutorialHighlightTab(tutStep) : null;
   const stitch = (career.themeMode || 'A') === 'S';
-  const squadAvg = career.squad.length ? Math.round(career.squad.reduce((a, p) => a + p.overall, 0) / career.squad.length) : 0;
   const lineupN = (career.lineup || []).length;
   const tabs = [
     { key: "players", label: "Players", icon: Users },
@@ -2246,19 +2257,27 @@ function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }
   return (
     <div className="anim-in">
       {stitch && (
-        <div className="stitch-neon-card p-4 md:p-5 mb-5 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <div className="label mb-1">Squad · Roster &amp; tactics</div>
-            <h2 className="display font-display text-3xl md:text-4xl tracking-wide">{club.name}</h2>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <Pill color="var(--A-accent)">{career.squad.length} players</Pill>
-              <Pill color="#5EFFA8">Avg OVR {squadAvg}</Pill>
-              <Pill color="var(--A-accent-2)">{lineupN} in XXII</Pill>
+        <div className="stitch-mock-squad-head">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-10 h-10 rounded-xl border border-[rgba(200,255,61,0.35)] flex items-center justify-center flex-shrink-0 bg-[rgba(200,255,61,0.08)]">
+              <Jersey kit={career.kits.home} size={36} />
+            </div>
+            <div className="min-w-0">
+              <div className="font-display text-2xl md:text-3xl text-atext tracking-wide uppercase leading-tight truncate">
+                Team management
+              </div>
+              <div className="text-[10px] font-mono text-atext-mute uppercase tracking-widest mt-1">
+                {club.name} · {lineupN}/22 XXII
+              </div>
             </div>
           </div>
-          <div className="text-[10px] font-mono text-atext-mute uppercase tracking-widest max-w-[260px] leading-relaxed">
-            Lineup, tactics, training — match-day control centre.
-          </div>
+          <button
+            type="button"
+            className="stitch-mock-btn-ghost"
+            onClick={() => setTab('tactics')}
+          >
+            Apply tactics
+          </button>
         </div>
       )}
       <TabNav
@@ -2467,8 +2486,91 @@ function PlayersTab({ career, updateCareer }) {
           </div>
         </div>
 
-        {/* Table */}
-        <div className={`rounded-2xl overflow-hidden ${stitch ? 'stitch-neon-card' : ''}`} style={stitch ? undefined : { border: "1px solid var(--A-line)" }}>
+        {/* Roster: data table (A/B) · Stitch cards (corrected_18 PNG) */}
+        {stitch ? (
+          <>
+            <div className="stitch-neon-card p-3 md:p-4 space-y-2 max-h-[65vh] overflow-y-auto">
+              {players.map((p) => {
+                const inLineup = career.lineup.includes(p.id);
+                const isSelected = selected?.id === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelected(isSelected ? null : p)}
+                    className={`stitch-mock-player-card ${isSelected ? 'stitch-mock-player-card-selected' : ''}`}
+                  >
+                    <div className="stitch-mock-player-rating">{p.overall}</div>
+                    <div className="flex items-center gap-3 flex-1 min-w-0 px-3 py-2">
+                      <div className="w-9 h-9 rounded-full border border-[rgba(200,255,61,0.25)] bg-apanel-2 flex items-center justify-center text-[10px] font-bold text-atext flex-shrink-0">
+                        {(p.firstName?.[0] || '')}{(p.lastName?.[0] || '')}
+                      </div>
+                      <div className="min-w-0 flex-1 text-left">
+                        <div className="text-[9px] font-mono text-atext-mute uppercase tracking-wider">
+                          {formatPositionSlash(p)}
+                          {inLineup && <span className="text-aaccent ml-2">· XXII</span>}
+                          {p.injured > 0 && <span className="text-aneg ml-1">· OUT {p.injured}w</span>}
+                        </div>
+                        <div className="font-bold text-sm text-atext truncate">{pName(p)}</div>
+                        <div className="flex gap-2 mt-1 text-[10px] font-mono text-atext-mute">
+                          <span>FIT {p.fitness}</span>
+                          <span>·</span>
+                          <span>FRM {p.form}</span>
+                        </div>
+                      </div>
+                      <GripVertical className="w-4 h-4 text-atext-mute flex-shrink-0 opacity-60" aria-hidden />
+                    </div>
+                    <div className="stitch-mock-player-tab" aria-hidden />
+                  </button>
+                );
+              })}
+            </div>
+            {(() => {
+              const bench = [...career.squad]
+                .filter((p) => !career.lineup.includes(p.id))
+                .sort((a, b) => b.overall - a.overall)
+                .slice(0, 14);
+              if (bench.length === 0) return null;
+              return (
+                <div className="mt-4">
+                  <div className="stitch-mock-bench-label">
+                    Bench ({bench.length})
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2 snap-x">
+                    {bench.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setSelected(p.id === selected?.id ? null : p)}
+                        className={`flex-shrink-0 snap-start stitch-mock-player-card max-w-[220px] ${selected?.id === p.id ? 'stitch-mock-player-card-selected' : ''}`}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <div className="stitch-mock-player-rating text-xs w-9">{p.overall}</div>
+                        <div className="flex flex-col justify-center px-2 py-1.5 min-w-0 text-left flex-1">
+                          <div className="text-[8px] font-mono text-atext-mute uppercase truncate">{formatPositionSlash(p)}</div>
+                          <div className="text-xs font-bold text-atext truncate">{pName(p)}</div>
+                        </div>
+                        <div className="stitch-mock-player-tab w-1.5" aria-hidden />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+            <button
+              type="button"
+              className="stitch-mock-slant-btn mt-4"
+              onClick={() =>
+                updateCareer({
+                  lineup: [...career.squad].sort((a, b) => b.overall - a.overall).slice(0, 22).map((p) => p.id),
+                })
+              }
+            >
+              <span>Auto-select team</span>
+            </button>
+          </>
+        ) : (
+        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--A-line)" }}>
           <div className="overflow-x-auto">
           <div className="grid px-4 py-3 min-w-[820px]" style={{gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
             {["#","Player","Pos","Age","OVR","Form","Fitness","Wage","Status"].map((h,i)=>(
@@ -2530,6 +2632,7 @@ function PlayersTab({ career, updateCareer }) {
           </div>
           </div>
         </div>
+        )}
         <div className="mt-2 text-[10px] text-atext-mute">{players.length} players · {career.lineup.length}/22 in XXII · {career.squad.length} total squad</div>
       </div>
 
@@ -2665,14 +2768,21 @@ const TACTIC_CARDS = [
 ];
 
 function TacticsTab({ career, updateCareer }) {
+  const stitch = (career.themeMode || 'A') === 'S';
   const lineup = career.lineup.map(id => career.squad.find(p => p.id === id)).filter(Boolean);
   const byPos = POSITIONS.reduce((acc, p) => ({ ...acc, [p]: lineup.filter(pl => pl.position === p) }), {});
   const currentTactic = career.tacticChoice || 'balanced';
+  const fieldStroke = stitch ? 'rgba(200, 255, 61, 0.28)' : '#FFFFFF20';
+  const fieldStrokeHi = stitch ? 'rgba(200, 255, 61, 0.45)' : '#FFFFFF30';
+  const goalStroke = stitch ? 'rgba(200, 255, 61, 0.55)' : '#FFFFFF60';
   return (
     <div className="space-y-4">
       <div className={`${css.panel} p-5`}>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className={`${css.h1} text-2xl`}>MATCH-DAY APPROACH</h3>
+          {stitch && (
+            <span className="text-[10px] font-mono text-aaccent uppercase tracking-[0.2em] hidden sm:inline">Stitch · team_selection_tactics</span>
+          )}
           <Pill color="var(--A-accent)">Active: {TACTIC_CARDS.find(t => t.key === currentTactic)?.label || 'Balanced'}</Pill>
         </div>
         <p className="text-xs text-atext-dim mb-4">Sets shot rate, momentum gain and risk for every match. Switch tactics to suit the opposition.</p>
@@ -2700,15 +2810,14 @@ function TacticsTab({ career, updateCareer }) {
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>FORMATION (XXII)</h3>
         <div className="text-[11px] text-atext-dim mb-4">{lineup.length}/22 selected. AFL teams field 18 + 4 interchange.</div>
-        {/* SVG oval */}
-        <div className="relative aspect-[5/4] rounded-2xl overflow-hidden" style={{ background: "radial-gradient(ellipse at center, #1B5E3F 0%, #0F4029 70%, #08251A 100%)" }}>
+        {/* SVG oval — Stitch: neon pitch lines per mock */}
+        <div className={`relative aspect-[5/4] rounded-2xl overflow-hidden ${stitch ? 'stitch-mock-field-wrap' : ''}`} style={{ background: stitch ? 'radial-gradient(ellipse at center, #0f1a14 0%, #0a120e 70%, #060a08 100%)' : 'radial-gradient(ellipse at center, #1B5E3F 0%, #0F4029 70%, #08251A 100%)' }}>
           <svg viewBox="0 0 500 400" className="absolute inset-0">
-            <ellipse cx="250" cy="200" rx="240" ry="190" fill="none" stroke="#FFFFFF20" strokeWidth="2" />
-            <ellipse cx="250" cy="200" rx="60" ry="60" fill="none" stroke="#FFFFFF30" strokeWidth="1.5" />
-            <line x1="250" y1="10" x2="250" y2="390" stroke="#FFFFFF20" strokeWidth="1" strokeDasharray="4,4" />
-            {/* Goalposts */}
-            <line x1="10" y1="170" x2="10" y2="230" stroke="#FFFFFF60" strokeWidth="3" />
-            <line x1="490" y1="170" x2="490" y2="230" stroke="#FFFFFF60" strokeWidth="3" />
+            <ellipse cx="250" cy="200" rx="240" ry="190" fill="none" stroke={fieldStroke} strokeWidth={stitch ? 2 : 2} />
+            <ellipse cx="250" cy="200" rx="60" ry="60" fill="none" stroke={fieldStrokeHi} strokeWidth={1.5} />
+            <line x1="250" y1="10" x2="250" y2="390" stroke={fieldStroke} strokeWidth={1} strokeDasharray="4,4" />
+            <line x1="10" y1="170" x2="10" y2="230" stroke={goalStroke} strokeWidth={3} />
+            <line x1="490" y1="170" x2="490" y2="230" stroke={goalStroke} strokeWidth={3} />
             {/* Position dots */}
             {[
               { pos: "KF", x: 80, y: 200, lbl: "Full Forward" },
@@ -2725,10 +2834,11 @@ function TacticsTab({ career, updateCareer }) {
             ].map((sp, i) => {
               const players = byPos[sp.pos] || [];
               const filled = players.length > 0;
+              const dotStroke = stitch ? 'rgba(200, 255, 61, 0.5)' : (filled ? career.kits.home.accent : '#FFFFFF40');
               return (
                 <g key={i}>
-                  <circle cx={sp.x} cy={sp.y} r="14" fill={filled ? career.kits.home.primary : "#FFFFFF20"} stroke={filled ? career.kits.home.accent : "#FFFFFF40"} strokeWidth="2" />
-                  <text x={sp.x} y={sp.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#FFFFFF" fontFamily="Bebas Neue">{sp.pos}</text>
+                  <circle cx={sp.x} cy={sp.y} r="14" fill={filled ? (stitch ? 'rgba(200,255,61,0.15)' : career.kits.home.primary) : (stitch ? 'rgba(200,255,61,0.08)' : '#FFFFFF20')} stroke={dotStroke} strokeWidth={stitch ? 2 : 2} />
+                  <text x={sp.x} y={sp.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill={stitch ? '#C8FF3D' : '#FFFFFF'} fontFamily={stitch ? 'JetBrains Mono, monospace' : 'Bebas Neue'}>{sp.pos}</text>
                 </g>
               );
             })}
@@ -2746,9 +2856,30 @@ function TacticsTab({ career, updateCareer }) {
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>SELECTED XXII</h3>
         <div className="text-[11px] text-atext-dim mb-4">Tap to remove. Add players from the Players tab.</div>
-        <div className="space-y-1.5 max-h-[60vh] overflow-y-auto">
+        <div className={`space-y-1.5 max-h-[60vh] overflow-y-auto ${stitch ? 'pr-1' : ''}`}>
           {lineup.length === 0 && <div className="text-sm text-atext-dim text-center py-12">No players selected.</div>}
           {lineup.sort((a,b)=>b.overall-a.overall).map(p => (
+            stitch ? (
+              <button
+                key={p.id}
+                type="button"
+                onClick={()=>updateCareer({ lineup: career.lineup.filter(id => id !== p.id) })}
+                className="stitch-mock-player-card"
+              >
+                <div className="stitch-mock-player-rating">{p.overall}</div>
+                <div className="flex items-center gap-3 flex-1 min-w-0 px-3 py-2">
+                  <div className="w-9 h-9 rounded-full border border-[rgba(200,255,61,0.25)] bg-apanel-2 flex items-center justify-center text-[10px] font-bold text-atext flex-shrink-0">
+                    {(p.firstName?.[0] || '')}{(p.lastName?.[0] || '')}
+                  </div>
+                  <div className="min-w-0 flex-1 text-left">
+                    <div className="text-[9px] font-mono text-atext-mute uppercase tracking-wider">{formatPositionSlash(p)}</div>
+                    <div className="font-bold text-sm text-atext truncate">{p.firstName ? `${p.firstName} ${p.lastName}` : p.name}</div>
+                  </div>
+                  <GripVertical className="w-4 h-4 text-atext-mute flex-shrink-0" aria-hidden />
+                </div>
+                <div className="stitch-mock-player-tab" aria-hidden />
+              </button>
+            ) : (
             <button key={p.id} onClick={()=>updateCareer({ lineup: career.lineup.filter(id => id !== p.id) })} className="w-full flex items-center gap-2 p-2 rounded-lg bg-apanel hover:bg-apanel-2 transition group">
               <span className="text-[9px] px-1 py-0.5 bg-aline rounded font-bold text-center leading-tight inline-block max-w-[4.5rem]" title={formatPositionSlash(p)}>{formatPositionSlash(p)}</span>
               <span className="text-sm flex-1 text-left truncate">{p.firstName ? p.firstName + " " + p.lastName : p.name}</span>
@@ -2756,8 +2887,20 @@ function TacticsTab({ career, updateCareer }) {
               <RatingDot value={p.overall} />
               <X className="w-4 h-4 text-[#E84A6F] opacity-0 group-hover:opacity-100" />
             </button>
+          )
           ))}
         </div>
+        {stitch && (
+          <button
+            type="button"
+            className="stitch-mock-slant-btn mt-4"
+            onClick={() => updateCareer({
+              lineup: [...career.squad].sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p => p.id),
+            })}
+          >
+            <span>Auto-select XXII</span>
+          </button>
+        )}
       </div>
     </div>
     </div>
