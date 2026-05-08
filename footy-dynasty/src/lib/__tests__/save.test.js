@@ -165,6 +165,11 @@ describe('migrate', () => {
     expect(m.themeMode).toBe('B');
   });
 
+  it('preserves themeMode S (Stitch)', () => {
+    const m = migrate({ saveVersion: 1, themeMode: 'S' });
+    expect(m.themeMode).toBe('S');
+  });
+
   it('treats missing saveVersion as v1 and migrates to current version', () => {
     const m = migrate({ managerName: 'X' });
     expect(m.saveVersion).toBe(SAVE_VERSION);

@@ -97,6 +97,13 @@ import {
 import { getClubGround } from './data/grounds.js';
 import { advanceCareerNextEvent, triggerSackState } from './lib/careerAdvance.js';
 
+/** Visual theme: aligns with `.dirA` / `.dirB` / `.dirS` in tokens.css (Stitch mockups → dirS). */
+function themeWrapperClass(themeMode) {
+  if (themeMode === 'B') return 'dirB';
+  if (themeMode === 'S') return 'dirS';
+  return 'dirA';
+}
+
 // ============================================================================
 // ERROR BOUNDARY
 // ============================================================================
@@ -426,7 +433,7 @@ function AFLManagerInner() {
   // Drives the 5-step narrative, then a Job Market screen for the new club.
   if (career.isSacked) {
     return (
-      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
         {globalStyle}
         <SackingSequence
           career={career}
@@ -465,7 +472,7 @@ function AFLManagerInner() {
   // Legacy game-over (kept as a no-op fallback so older saves with gameOver but no isSacked don't crash)
   if (career.gameOver && !career.isSacked) {
     return (
-      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
         {globalStyle}
         <GameOverScreen
           career={career}
@@ -494,7 +501,7 @@ function AFLManagerInner() {
 
   if (career.showSeasonSummary && career.seasonSummary) {
     return (
-      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
         {globalStyle}
         <SeasonSummaryScreen
           summary={career.seasonSummary}
@@ -509,7 +516,7 @@ function AFLManagerInner() {
 
   if (career.inMatchDay && career.currentMatchResult) {
     return (
-      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
         {globalStyle}
         <MatchDayScreen
           result={career.currentMatchResult}
@@ -543,7 +550,7 @@ function AFLManagerInner() {
 
   if (career.boardCrisis?.phase === 'active') {
     return (
-      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
         {globalStyle}
         <VoteOfConfidenceFlow
           career={career}
@@ -570,7 +577,7 @@ function AFLManagerInner() {
 
   if (career.boardMeetingBlocking) {
     return (
-      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
         {globalStyle}
         <BoardMeetingScreen
           career={career}
@@ -592,7 +599,7 @@ function AFLManagerInner() {
 
   if (career.arrivalBriefing?.pending) {
     return (
-      <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
         {globalStyle}
         <ArrivalBriefingFlow
           career={career}
@@ -611,7 +618,7 @@ function AFLManagerInner() {
   }
 
   return (
-    <div className={`${career.themeMode === 'B' ? 'dirB' : 'dirA'} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
+    <div className={`${themeWrapperClass(career.themeMode)} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
       {globalStyle}
       <Sidebar
         screen={screen}
@@ -1419,6 +1426,7 @@ function DifficultyMiniSummary({ career, cfg }) {
 }
 
 function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdvance }) {
+  const stitch = (career.themeMode || 'A') === 'S';
   const advanceCtx = getAdvanceContext(career, league);
   const sorted = sortedLadder(career.ladder);
   const top5 = sorted.slice(0, 5);
@@ -1437,8 +1445,9 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
 
   return (
     <div className="anim-in space-y-5">
-      {/* Hero Banner */}
-      <div className="panel rounded-2xl overflow-hidden relative min-h-[160px] border border-aline">
+      {/* Hero Banner — Stitch: club_dashboard (neon frame + mono kicker) */}
+      <div className={`${stitch ? 'stitch-neon-card' : 'panel rounded-2xl border border-aline'} overflow-hidden relative min-h-[160px]`}>
+        {stitch && <div className="pointer-events-none absolute inset-0 opacity-[0.07] grid-bg" aria-hidden />}
         <div className="absolute inset-0 opacity-40" style={{background:`linear-gradient(135deg, ${club.colors[0]}33 0%, transparent 55%)`}} />
         <div className="absolute inset-0" style={{background:`radial-gradient(ellipse at 80% 50%, ${club.colors[1]}22, transparent 65%)`}} />
         <div className="absolute right-6 top-0 bottom-0 flex items-center opacity-20">
@@ -1446,6 +1455,9 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
         </div>
         <div className="relative z-10 p-6 flex items-end justify-between">
           <div>
+            {stitch && (
+              <div className="font-mono text-[10px] tracking-[0.28em] text-aaccent mb-2">CLUB DASHBOARD</div>
+            )}
             <div className="label mb-1 dim">{league.name} · Season {career.season}</div>
             <h1 className="display text-5xl tracking-wide text-atext leading-none">{club.name.toUpperCase()}</h1>
             <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -1638,12 +1650,23 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
       )}
 
       {/* Stat Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users} />
-        <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="#4AE89A" icon={DollarSign} />
-        <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="#4ADBE8" icon={Handshake} />
-        <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.w||0}W / ${myRow?.l||0}L`} accent={posColor} icon={Trophy} />
-      </div>
+      {stitch ? (
+        <div className="stitch-neon-card p-4 md:p-5">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users} />
+            <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="#4AE89A" icon={DollarSign} />
+            <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="#4ADBE8" icon={Handshake} />
+            <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.w||0}W / ${myRow?.l||0}L`} accent={posColor} icon={Trophy} />
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users} />
+          <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="#4AE89A" icon={DollarSign} />
+          <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="#4ADBE8" icon={Handshake} />
+          <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.w||0}W / ${myRow?.l||0}L`} accent={posColor} icon={Trophy} />
+        </div>
+      )}
 
       <div className="grid md:grid-cols-5 gap-5">
         {/* Ladder */}
@@ -2209,6 +2232,9 @@ function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }
   const t = tab || (renewalCount > 0 ? "renewals" : "players");
   const tutStep = career.tutorialStep ?? 0;
   const squadTutorialTab = tutorialActive && (tutStep === 1 || tutStep === 2 || tutStep === 5) ? tutorialHighlightTab(tutStep) : null;
+  const stitch = (career.themeMode || 'A') === 'S';
+  const squadAvg = career.squad.length ? Math.round(career.squad.reduce((a, p) => a + p.overall, 0) / career.squad.length) : 0;
+  const lineupN = (career.lineup || []).length;
   const tabs = [
     { key: "players", label: "Players", icon: Users },
     { key: "tactics", label: "Tactics", icon: Target },
@@ -2219,6 +2245,22 @@ function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }
   ];
   return (
     <div className="anim-in">
+      {stitch && (
+        <div className="stitch-neon-card p-4 md:p-5 mb-5 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="label mb-1">Squad · Roster &amp; tactics</div>
+            <h2 className="display font-display text-3xl md:text-4xl tracking-wide">{club.name}</h2>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Pill color="var(--A-accent)">{career.squad.length} players</Pill>
+              <Pill color="#5EFFA8">Avg OVR {squadAvg}</Pill>
+              <Pill color="var(--A-accent-2)">{lineupN} in XXII</Pill>
+            </div>
+          </div>
+          <div className="text-[10px] font-mono text-atext-mute uppercase tracking-widest max-w-[260px] leading-relaxed">
+            Lineup, tactics, training — match-day control centre.
+          </div>
+        </div>
+      )}
       <TabNav
         tabs={tabs}
         active={t}
@@ -2358,6 +2400,9 @@ function PlayersTab({ career, updateCareer }) {
   const [filterPos, setFilterPos] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selected, setSelected] = useState(null);
+  const stitch = (career.themeMode || 'A') === 'S';
+  const rowHoverBg = stitch ? 'rgba(200,255,61,0.06)' : 'rgba(0,224,255,0.05)';
+  const rowSelectBg = stitch ? 'rgba(200, 255, 61, 0.1)' : 'rgba(0, 224, 255, 0.08)';
   const players = useMemo(() => {
     let arr = [...career.squad];
     if (filterPos !== "ALL") arr = arr.filter(p => playerHasPosition(p, filterPos));
@@ -2423,7 +2468,7 @@ function PlayersTab({ career, updateCareer }) {
         </div>
 
         {/* Table */}
-        <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)"}}>
+        <div className={`rounded-2xl overflow-hidden ${stitch ? 'stitch-neon-card' : ''}`} style={stitch ? undefined : { border: "1px solid var(--A-line)" }}>
           <div className="overflow-x-auto">
           <div className="grid px-4 py-3 min-w-[820px]" style={{gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
             {["#","Player","Pos","Age","OVR","Form","Fitness","Wage","Status"].map((h,i)=>(
@@ -2442,10 +2487,10 @@ function PlayersTab({ career, updateCareer }) {
                   style={{
                     gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem",
                     borderBottom:"1px solid var(--A-line)",
-                    background: isSelected ? "rgba(0, 224, 255, 0.08)" : "transparent",
+                    background: isSelected ? rowSelectBg : "transparent",
                     borderLeft: isSelected ? "3px solid var(--A-accent)" : "3px solid transparent",
                   }}
-                  onMouseEnter={e=>{if(!isSelected) e.currentTarget.style.background="rgba(0,224,255,0.05)";}}
+                  onMouseEnter={e=>{if(!isSelected) e.currentTarget.style.background=rowHoverBg;}}
                   onMouseLeave={e=>{if(!isSelected) e.currentTarget.style.background="transparent";}}>
                   <div className="text-atext-mute text-sm font-bold text-left">{i+1}</div>
                   <div className="flex items-center gap-2 min-w-0 text-left">
@@ -3224,11 +3269,12 @@ function SettingsTab({ career, updateCareer }) {
 
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>VISUAL THEME</h3>
-        <p className="text-xs text-atext-dim mb-4">Switch between two cinematic palettes. Your choice persists with the save.</p>
-        <div className="grid sm:grid-cols-2 gap-3">
+        <p className="text-xs text-atext-dim mb-4">Choose a palette for the UI. Your choice persists with the save.</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {[
             { key: 'A', label: 'Broadcast Cinematic', sub: 'Warm cyan + slate. The default.' },
             { key: 'B', label: 'Stadium Carbon',      sub: 'Cool monochrome with green pop.' },
+            { key: 'S', label: 'Stitch mockups',      sub: 'Neon lime on charcoal — Hub & Squad tuned to design refs.' },
           ].map(t => {
             const active = themeMode === t.key;
             return (

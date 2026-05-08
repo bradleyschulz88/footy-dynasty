@@ -162,6 +162,8 @@ export const GlobalStyle = () => (
     .anim-in { animation: slideIn 0.2s ease-out; }
     .dirA select option { background:var(--A-panel); color:var(--A-text); }
     .dirA select { color:var(--A-text); background:var(--A-panel); border:1px solid var(--A-line); border-radius:8px; }
+    .dirS select option { background:var(--A-panel); color:var(--A-text); }
+    .dirS select { color:var(--A-text); background:var(--A-panel); border:1px solid var(--A-line); border-radius:8px; }
     input[type=color] { padding:2px; cursor:pointer; border-radius:6px; }
     button:disabled { opacity:0.4; cursor:not-allowed; }
     * { box-sizing:border-box; }
