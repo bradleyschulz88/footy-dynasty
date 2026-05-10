@@ -145,7 +145,7 @@ export function generateTradePool(leagueKey, season) {
   seedRng(season * 333 + 7);
   return Array.from({ length: 25 }, (_, i) => {
     const tierForPlayer = rand(1, 3);
-    const p = generatePlayer(tierForPlayer, 5000 + i + season * 50);
+    const p = generatePlayer(tierForPlayer, 5000 + i + season * 50, { clubId: 'trade', season });
     return { ...p, fromClub: pick(ALL_CLUBS).short };
   });
 }

@@ -237,7 +237,7 @@ function AFLManagerInner() {
     if (!newClub) return;
     seedRng(Date.now() % 100000);
     const cfg = getDifficultyConfig(career.difficulty);
-    const newSquad = generateSquad(newClub.id, newLeague.tier).map(p => ({
+    const newSquad = generateSquad(newClub.id, newLeague.tier, 32, career.season + 1).map(p => ({
       ...p,
       // Spec 3F: legacy follows you — premiership winners boost morale, relegation history sows doubt
       morale: clamp((p.morale ?? 70)
@@ -728,11 +728,10 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     if (!club) throw new Error(`Club not found: ${clubId}`);
     if (!league) throw new Error(`League not found: ${leagueKey}`);
     const SEASON = 2026;
-    seedRng(clubId.split("").reduce((a,c)=>a + c.charCodeAt(0), 7) + 1);
     const cfg = getDifficultyConfig(difficulty);
     const tunedFinance = makeStartingFinance(league.tier, difficulty, 55);
     const ladder0 = blankLadder(league.clubs);
-    const squadRaw = generateSquad(clubId, league.tier).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
+    const squadRaw = generateSquad(clubId, league.tier, 32, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
     const squad = scaledSquadToFitCap({
       clubId,
       leagueKey,
@@ -775,8 +774,16 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       kits: defaultKits(club.colors),
       ladder: ladder0,
       fixtures,
-      tradePool: (() => { seedRng(7777); return Array.from({ length: 25 }, (_, i) => { const p = generatePlayer(rand(1,3), 5000+i); return { ...p, fromClub: pick(ALL_CLUBS).short }; }); })(),
-      draftPool: Array.from({ length: 60 }, (_, i) => generatePlayer(2, 9000 + i)),
+      tradePool: (() => {
+        seedRng(SEASON * 4441 + 7777);
+        return Array.from({ length: 25 }, (_, i) => {
+          const p = generatePlayer(rand(1, 3), 5000 + i + SEASON * 50, { clubId: 'trade', season: SEASON });
+          return { ...p, fromClub: pick(ALL_CLUBS).short };
+        });
+      })(),
+      draftPool: Array.from({ length: 60 }, (_, i) =>
+        generatePlayer(2, 9000 + i + SEASON * 100, { clubId: 'draft', season: SEASON }),
+      ),
       youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
       news: [
         { week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` },
@@ -4695,13 +4702,19 @@ function YouthTab({ career, club, updateCareer }) {
     const recruits = [];
     let i = 0;
     while (recruits.length < count) {
-      const p = generatePlayer(2 + Math.floor(youth.programLevel / 3), 12000 + i + Date.now() % 1000);
+      const p = generatePlayer(2 + Math.floor(youth.programLevel / 3), 12000 + i + Date.now() % 1000, {
+        clubId: career.clubId,
+        season: career.season,
+      });
       i++;
       // Reroll up to 3 times if position doesn't match the focus
       let attempts = 0;
       let cand = p;
       while (bias.positions && !bias.positions.includes(cand.position) && !(cand.secondaryPosition && bias.positions.includes(cand.secondaryPosition)) && attempts < 3) {
-        cand = generatePlayer(2 + Math.floor(youth.programLevel / 3), 12000 + i + Date.now() % 1000);
+        cand = generatePlayer(2 + Math.floor(youth.programLevel / 3), 12000 + i + Date.now() % 1000, {
+          clubId: career.clubId,
+          season: career.season,
+        });
         i++;
         attempts++;
       }
@@ -4832,7 +4845,10 @@ function LocalTab({ career, club, updateCareer }) {
     seedRng(Date.now() % 88888);
     const league = PYRAMID[leagueKey];
     const found = Array.from({length: 6}, (_, i) => {
-      const p = generatePlayer(league.tier, 13000 + i + Date.now() % 500);
+      const p = generatePlayer(league.tier, 13000 + i + Date.now() % 500, {
+        clubId: `local:${leagueKey}`,
+        season: career.season,
+      });
       return { ...p, fromLocal: pick(league.clubs).short, scoutedOverall: scoutedOverall(p, career) };
     });
     setScoutedPlayers(found);

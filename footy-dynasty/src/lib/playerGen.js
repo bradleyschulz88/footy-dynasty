@@ -1,7 +1,40 @@
 import { SEED, rng, seedRng, rand, pick, randNorm, TIER_SCALE } from './rng.js';
 
-export const FIRST_NAMES = ["Jack","Tom","Sam","Charlie","Will","Patrick","Marcus","Luke","Dylan","Lachie","Bailey","Riley","Mitch","Harry","Noah","Hudson","Archie","Cooper","Levi","Oscar","Ollie","Tyler","Jed","Nick","Jordan","Bradley","Connor","Caleb","Kai","Toby","Zac","Beau","Ben","Christian","Adam","Steele","Hayden","Hugh","Liam","Reuben","Eli","Finn","Max","George","Joel","Daniel","Joe","Fletcher","Brodie","Touk","Isaac","Jye"];
-export const LAST_NAMES = ["Walsh","Petracca","Bontempelli","Daicos","Cripps","Heeney","Neale","Oliver","Steele","Macrae","Whitfield","Mitchell","Marshall","Sheezel","Sicily","Fyfe","Rowell","Anderson","Witts","Ginnivan","Stengle","Coleman","Ratugolea","Houston","Jones","Mills","McCartin","Roberton","English","Naughton","Treloar","Bruhn","Reid","Harrison","Madgen","Lloyd","Smith","Riewoldt","Brown","Kelly","Clark","Black","Watson","Lee","King","Chol","Gunston","Fletcher","Pickett","Maynard","Sidebottom","Pendlebury","Long","Phillips","Stewart","Tuohy","Henry","Holmes","Ah Chee","Worrell"];
+export const FIRST_NAMES = [
+  "Jack","Tom","Sam","Charlie","Will","Patrick","Marcus","Luke","Dylan","Lachie","Bailey","Riley","Mitch","Harry","Noah","Hudson","Archie","Cooper","Levi","Oscar","Ollie","Tyler","Jed","Nick","Jordan","Bradley","Connor","Caleb","Kai","Toby","Zac","Beau","Ben","Christian","Adam","Steele","Hayden","Hugh","Liam","Reuben","Eli","Finn","Max","George","Joel","Daniel","Joe","Fletcher","Brodie","Touk","Isaac","Jye",
+  "Angus","Xavier","Flynn","Callum","Jesse","Brayden","Travis","Joshua","Nathan","Shaun","Kade","Aaron","Mason","Blake","Ethan","Logan","Jayden","Taylor","Declan","Kysaiah","Brent","Corey","Tyson","Rhys","Lachlan","Ed","Jasper","Harvey","Hunter","Jaxon","Taj","Zane","Bodhi","Jett","Ky","River",
+];
+export const LAST_NAMES = [
+  "Walsh","Petracca","Bontempelli","Daicos","Cripps","Heeney","Neale","Oliver","Steele","Macrae","Whitfield","Mitchell","Marshall","Sheezel","Sicily","Fyfe","Rowell","Anderson","Witts","Ginnivan","Stengle","Coleman","Ratugolea","Houston","Jones","Mills","McCartin","Roberton","English","Naughton","Treloar","Bruhn","Reid","Harrison","Madgen","Lloyd","Smith","Riewoldt","Brown","Kelly","Clark","Black","Watson","Lee","King","Chol","Gunston","Fletcher","Pickett","Maynard","Sidebottom","Pendlebury","Long","Phillips","Stewart","Tuohy","Henry","Holmes","Ah Chee","Worrell",
+  "McDonald","Cameron","Andrews","Greenwood","Darcy","Gawn","Cotchin","Grundy","Parish","Weitering","McGovern","Zurhaar","Hipwood","McStay","McLean","Howe","Goldstein","Short","Vlastuin","Rioli","Hill","Thomas","Williams","Johnson","Martin","Zorko","Lyons","McKay","Curnow","Fantasia","Francis","Simpkin","Walters","McGrath","Sheed","Caldwell","Ridley","Colyer","van Rooyen",
+];
+
+/** FNV-1a 32-bit hash — stable name variety per club / season / slot. */
+function hash32(str) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h >>> 0;
+}
+
+/**
+ * Pick first/last name from pools using club + season + index so different clubs and
+ * new years don't all draw the same small set of combinations. Does not consume RNG
+ * (player stat rolls stay reproducible for a given seed).
+ */
+export function pickPlayerNames(clubKey, season, playerIdx) {
+  const base = String(clubKey ?? "");
+  const y = Number(season) || 0;
+  const idx = Number(playerIdx) || 0;
+  const h1 = hash32(`${base}\0fname\0${y}\0${idx}`);
+  const h2 = hash32(`${base}\0lname\0${y}\0${idx}`);
+  const fname = FIRST_NAMES[h1 % FIRST_NAMES.length];
+  const lname = LAST_NAMES[h2 % LAST_NAMES.length];
+  return { firstName: fname, lastName: lname };
+}
+
 export const POSITIONS = ["KF","HF","C","HB","KB","R","RU","WG","UT"];
 export const POSITION_NAMES = {
   KF: "Key Forward", HF: "Half Forward", C: "Centre Mid",
@@ -61,7 +94,14 @@ function rollSecondaryPosition(primary) {
   return pick(opts);
 }
 
-export function generatePlayer(clubTier, idx) {
+/**
+ * @param {number} clubTier
+ * @param {number} idx  Slot / sequence index (feeds player id and name hashing).
+ * @param {{ clubId?: string, season?: number } | null} [nameContext]  When set, names come from
+ *   pickPlayerNames(clubId, season, idx) so lists vary by club and year. When null/omitted, uses
+ *   generic pool key `_` and season 0 (still deterministic, no RNG consumed for names).
+ */
+export function generatePlayer(clubTier, idx, nameContext) {
   const tier = Math.max(1, Math.min(3, clubTier));
   const baseSkill = Math.max(42, Math.min(99, Math.round(randNorm(68, 11))));
   const positions = ["KF","HF","C","HB","KB","R","RU","WG","UT"];
@@ -92,8 +132,9 @@ export function generatePlayer(clubTier, idx) {
   const potential = Math.min(99, overall + (age <= 21 ? rand(5, 18) : age <= 25 ? rand(0, 8) : rand(-2, 3)));
   const potentialTrue = Math.round(potential * (TIER_SCALE[tier] || 1.0));
   const secondaryPosition = rollSecondaryPosition(position);
-  const fname = pick(FIRST_NAMES);
-  const lname = pick(LAST_NAMES);
+  const nameKey = nameContext?.clubId != null ? String(nameContext.clubId) : "_";
+  const nameSeason = nameContext?.season != null ? Number(nameContext.season) : 0;
+  const { firstName: fname, lastName: lname } = pickPlayerNames(nameKey, nameSeason, idx);
   return {
     id: `p_${tier}_${idx}_${SEED}`,
     name: `${fname} ${lname}`,
@@ -110,7 +151,19 @@ export function generatePlayer(clubTier, idx) {
   };
 }
 
-export function generateSquad(clubId, tier, size = 32) {
-  seedRng(clubId.split("").reduce((a, c) => a + c.charCodeAt(0), 7));
-  return Array.from({ length: size }, (_, i) => generatePlayer(tier, i));
+/**
+ * @param {string} clubId
+ * @param {number} tier
+ * @param {number} [size]
+ * @param {number} [season]  When provided, mixes into RNG seed and name hashing so a new year
+ *   refreshes AI/user lists without colliding with the previous season’s generator state.
+ */
+export function generateSquad(clubId, tier, size = 32, season) {
+  const base = clubId.split("").reduce((a, c) => a + c.charCodeAt(0), 7);
+  if (season == null) seedRng(base);
+  else seedRng(base + Number(season) * 1000003);
+  const nameSeason = season == null ? 0 : Number(season);
+  return Array.from({ length: size }, (_, i) =>
+    generatePlayer(tier, i, { clubId, season: nameSeason }),
+  );
 }

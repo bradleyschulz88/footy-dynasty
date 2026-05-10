@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { seedRng, TIER_SCALE } from '../rng.js';
-import { generatePlayer, generateSquad, POSITIONS, POSITION_NAMES, playerHasPosition, isForwardPreferred, formatPositionSlash } from '../playerGen.js';
+import { generatePlayer, generateSquad, pickPlayerNames, POSITIONS, POSITION_NAMES, playerHasPosition, isForwardPreferred, formatPositionSlash } from '../playerGen.js';
 
 // ---------------------------------------------------------------------------
 // generatePlayer
@@ -187,9 +187,21 @@ describe('generateSquad', () => {
     expect(new Set(ids).size).toBe(32);
   });
 
-  it('all players have the correct tier recorded', () => {
-    const squad = generateSquad('ade', 2, 10);
-    squad.forEach(p => expect(p.tier).toBe(2));
+  it('different seasons shift names and stats for the same club', () => {
+    const a = generateSquad('ade', 1, 12, 2026);
+    const b = generateSquad('ade', 1, 12, 2027);
+    const namesA = a.map((p) => `${p.firstName} ${p.lastName}`).join('|');
+    const namesB = b.map((p) => `${p.firstName} ${p.lastName}`).join('|');
+    expect(namesA).not.toBe(namesB);
+    expect(a.map((p) => p.overall).join(',')).not.toBe(b.map((p) => p.overall).join(','));
+  });
+
+  it('pickPlayerNames separates clubs and years without RNG', () => {
+    const n1 = pickPlayerNames('col', 2026, 3);
+    const n2 = pickPlayerNames('gee', 2026, 3);
+    const n3 = pickPlayerNames('col', 2027, 3);
+    expect(n1.firstName !== n2.firstName || n1.lastName !== n2.lastName).toBe(true);
+    expect(n1.firstName !== n3.firstName || n1.lastName !== n3.lastName).toBe(true);
   });
 });
 

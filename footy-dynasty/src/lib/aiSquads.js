@@ -2,7 +2,7 @@
 // AI club squads — generation, ageing, mid-season rotation
 // ---------------------------------------------------------------------------
 import { generateSquad, generatePlayer } from './playerGen.js';
-import { rand, rng, seedRng, TIER_SCALE } from './rng.js';
+import { rand, rng, TIER_SCALE } from './rng.js';
 import { selectBalancedLineup } from './lineupBalance.js';
 
 const SQUAD_SIZE = 32;
@@ -14,8 +14,7 @@ export function ensureSquadsForLeague(career, league) {
   for (const c of (league.clubs || [])) {
     if (c.id === career.clubId) continue;
     if (!out[c.id] || out[c.id].length === 0) {
-      seedRng(c.id.split('').reduce((a, ch) => a + ch.charCodeAt(0), 7) + (career.season || 2026));
-      out[c.id] = generateSquad(c.id, league.tier, SQUAD_SIZE);
+      out[c.id] = generateSquad(c.id, league.tier, SQUAD_SIZE, career.season || 2026);
       changed = true;
     }
   }
@@ -52,7 +51,7 @@ export function tickAiSquads(aiSquads) {
 }
 
 // End-of-season ageing for AI clubs
-export function ageAiSquads(aiSquads, newLeagueTier) {
+export function ageAiSquads(aiSquads, newLeagueTier, season = 2026) {
   const out = {};
   const tierScale = TIER_SCALE[newLeagueTier] || 1.0;
   for (const [id, squad] of Object.entries(aiSquads || {})) {
@@ -79,7 +78,8 @@ export function ageAiSquads(aiSquads, newLeagueTier) {
 
     // Top up squad to SQUAD_SIZE with younger talent
     while (aged.length < SQUAD_SIZE) {
-      const p = generatePlayer(newLeagueTier, Math.floor(rng() * 1e6));
+      const slot = Math.floor(rng() * 1e6);
+      const p = generatePlayer(newLeagueTier, slot, { clubId: id, season });
       aged.push({ ...p, age: rand(18, 22) });
     }
     out[id] = aged;

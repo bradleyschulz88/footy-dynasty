@@ -456,9 +456,11 @@ function finishSeason(c, league) {
   });
   c.squad = survivors;
   c.retiredThisSeason = retiredThisYear;
-  c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier);
+  c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier, c.season);
   seedRng(c.season * 999 + 17);
-  c.draftPool = Array.from({ length: 60 }, (_, i) => generatePlayer(2, 9000 + i + c.season * 100));
+  c.draftPool = Array.from({ length: 60 }, (_, i) =>
+    generatePlayer(2, 9000 + i + c.season * 100, { clubId: 'draft', season: c.season }),
+  );
   c.tradePool = generateTradePool(c.leagueKey, c.season);
   const newLeague = PYRAMID[c.leagueKey];
   const draftOrder = sortedLadder(c.ladder.length ? c.ladder : blankLadder(newLeague.clubs))

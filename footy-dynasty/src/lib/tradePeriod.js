@@ -118,7 +118,10 @@ export function buildOffSeasonFreeAgents(c, generatePlayerFn = generatePlayer) {
   const n = 10;
   for (let i = 0; i < n; i++) {
     const tier = rand(1, 3);
-    const p = generatePlayerFn(tier, 12000 + i + (c.season || 0) * 13);
+    const p = generatePlayerFn(tier, 12000 + i + (c.season || 0) * 13, {
+      clubId: 'freeAgent',
+      season: c.season || 2026,
+    });
     const ask = Math.round((p.wage || 0) * (0.92 + rng() * 0.2));
     const years = rand(1, 3);
     out.push({
