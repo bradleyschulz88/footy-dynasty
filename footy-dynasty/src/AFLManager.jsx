@@ -96,7 +96,8 @@ import {
   applyMemberConfidenceDelta,
 } from './lib/board.js';
 import { getClubGround } from './data/grounds.js';
-import { advanceCareerNextEvent, triggerSackState } from './lib/careerAdvance.js';
+import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from './lib/careerAdvance.js';
+import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from './lib/gameDepth.js';
 
 /** Visual theme: aligns with `.dirA` / `.dirB` / `.dirS` in tokens.css (Stitch mockups → dirS). */
 function themeWrapperClass(themeMode) {
@@ -854,10 +855,22 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       tradeHistory:               [],
       draftPickBank:              null,
       offSeasonFreeAgents:        [],
+      clubCulture:                defaultClubCulture(),
+      headToHead:                 {},
+      captainId:                  null,
+      viceCaptainId:              null,
+      captainHistory:             [],
+      bogeyTeamId:                null,
+      dominatedTeamId:            null,
+      crucialFive:                [],
+      crisisFiredThisSeason:      false,
+      teamStats:                  null,
     };
+    assignDefaultCaptains(newCareer);
     ensureCareerBoard(newCareer, club, league);
     generateSeasonObjectives(newCareer, league);
     planSeasonBoardMeetings(newCareer);
+    primeSeasonStoryState(newCareer);
     onStart(newCareer);
     } catch (err) {
       setStartError(err.message);
@@ -1479,6 +1492,11 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
                   : <Pill color="#4ADBE8">Round {career.week}</Pill>}
               <Pill color={posColor}>#{myLadderPos || "—"} on Ladder</Pill>
               {myRow && <Pill color="#64748B">{myRow.W}W {myRow.L}L {myRow.D}D</Pill>}
+              {career.clubCulture && (
+                <Pill color="#A78BFA">
+                  Culture: {career.clubCulture.tier} {Math.round(career.clubCulture.score ?? 60)}
+                </Pill>
+              )}
             </div>
           </div>
           <div className="hidden md:flex flex-col items-end gap-1">
@@ -5050,33 +5068,48 @@ function FixturesTab({ career, club, league }) {
         {career.fixtures.map((round, ri) => {
           const isPlayed = ri <= lastPlayedRoundIdx;
           const isCurrent = ri === nextRoundIdx && ri < career.fixtures.length && !isPlayed;
+          const crucialHere = (career.crucialFive || []).some((c) => c.round === ri + 1);
           return (
-            <div key={ri} className={`${css.panel} p-4 ${isCurrent ? "ring-2 ring-[var(--A-accent)]" : ""}`}>
+            <div key={ri} className={`${css.panel} p-4 ${isCurrent ? "ring-2 ring-[var(--A-accent)]" : ""} ${crucialHere ? "ring-1 ring-amber-500/50" : ""}`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="font-bold tracking-wide">Round {ri+1}</div>
-                {isPlayed && <Pill color="#64748B">Played</Pill>}
-                {isCurrent && <Pill color="var(--A-accent)">Up Next</Pill>}
+                <div className="flex flex-wrap gap-1 justify-end">
+                  {crucialHere && <Pill color="#F59E0B">Crucial</Pill>}
+                  {isPlayed && <Pill color="#64748B">Played</Pill>}
+                  {isCurrent && <Pill color="var(--A-accent)">Up Next</Pill>}
+                </div>
               </div>
               <div className="space-y-1.5">
                 {round.map((m, mi) => {
                   const home = findClub(m.home);
                   const away = findClub(m.away);
                   const myMatch = m.home === career.clubId || m.away === career.clubId;
+                  const oppId = myMatch ? (m.home === career.clubId ? m.away : m.home) : null;
+                  const isBogey = myMatch && oppId && career.bogeyTeamId === oppId;
                   const result = isPlayed && m.result;
+                  const tp = m.turningPoint ? turningPointRibbon(m.turningPoint) : null;
                   return (
                     <div key={mi} className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${myMatch ? "bg-aaccent/10 border border-aaccent/30" : "bg-apanel"}`}>
-                      <div className="flex items-center gap-2 flex-1">
-                        <div className="w-1.5 h-4 rounded-sm" style={{background: home?.colors[0] || "var(--A-line)"}} />
-                        <span className={myMatch && m.home === career.clubId ? "font-bold" : ""}>{home?.short || m.home}</span>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: home?.colors[0] || "var(--A-line)"}} />
+                        <span className={`truncate ${myMatch && m.home === career.clubId ? "font-bold" : ""}`}>{home?.short || m.home}</span>
                       </div>
-                      {result ? (
-                        <div className="font-mono font-bold text-xs px-2">{result.hScore}–{result.aScore}</div>
-                      ) : (
-                        <div className="text-[10px] text-atext-dim px-2">vs</div>
-                      )}
-                      <div className="flex items-center gap-2 flex-1 justify-end">
-                        <span className={myMatch && m.away === career.clubId ? "font-bold" : ""}>{away?.short || m.away}</span>
-                        <div className="w-1.5 h-4 rounded-sm" style={{background: away?.colors[0] || "var(--A-line)"}} />
+                      <div className="flex flex-col items-center gap-0.5 px-1 flex-shrink-0">
+                        {result ? (
+                          <div className="font-mono font-bold text-xs">{result.hScore}–{result.aScore}</div>
+                        ) : (
+                          <div className="text-[10px] text-atext-dim">vs</div>
+                        )}
+                        {myMatch && tp && (
+                          <span className="text-[9px] font-bold uppercase tracking-tight" title={tp.ribbon}>{tp.emoji} {tp.ribbon}</span>
+                        )}
+                        {myMatch && isBogey && (
+                          <span className="text-[9px] font-bold text-[#E879F9]" title="Bogey opponent">👻 Bogey</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                        <span className={`truncate ${myMatch && m.away === career.clubId ? "font-bold" : ""}`}>{away?.short || m.away}</span>
+                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: away?.colors[0] || "var(--A-line)"}} />
                       </div>
                     </div>
                   );

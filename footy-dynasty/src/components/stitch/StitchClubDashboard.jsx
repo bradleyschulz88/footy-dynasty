@@ -4,6 +4,7 @@ import { findClub, findLeagueOf } from '../../data/pyramid.js';
 import { getClubGround } from '../../data/grounds.js';
 import { formatDate, TRAINING_INFO } from '../../lib/calendar.js';
 import { getAdvanceContext } from '../../lib/advanceContext.js';
+import { turningPointRibbon } from '../../lib/gameDepth.js';
 import { Jersey } from '../primitives.jsx';
 
 function nextMatchEvent(career) {
@@ -41,12 +42,16 @@ function resolveNextMatch(career) {
     const groundClub = isHome ? selfClub : opp;
     const g = groundClub ? getClubGround(groundClub, stadiumLevel, tier) : null;
     const venue = isHome ? (g?.shortName || g?.name || 'Home') : (g?.shortName || g?.name || `${opp.short}`);
+    const tp = m.turningPoint ? turningPointRibbon(m.turningPoint) : null;
+    const bogey = career.bogeyTeamId === opp.id;
     return {
       opp,
       isHome,
       vsLabel: `VS ${opp.name.toUpperCase()}`,
       metaLine: `${venue.toUpperCase()} · ${formatDate(ev.date).toUpperCase()}`,
       event: ev,
+      turningMeta: tp,
+      bogey,
     };
   }
 
@@ -118,6 +123,11 @@ export default function StitchClubDashboard({
               {club.name}
             </div>
             <div className="text-xs text-atext-mute font-mono mt-1.5 tracking-wide uppercase">{ladderLine}</div>
+            {career.clubCulture && (
+              <div className="text-[10px] text-atext-dim font-mono mt-1 uppercase tracking-wider">
+                Culture: {career.clubCulture.tier} · {Math.round(career.clubCulture.score ?? 60)}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -137,6 +147,21 @@ export default function StitchClubDashboard({
                 {next.vsLabel}
               </div>
               <div className="text-[11px] text-atext-mute font-mono mt-1 uppercase tracking-wider">{next.metaLine}</div>
+              {(career.winStreak ?? 0) !== 0 && Math.abs(career.winStreak ?? 0) >= 3 && (
+                <div className="text-[11px] font-bold text-amber-400 mt-1 font-mono uppercase">
+                  {(career.winStreak ?? 0) > 0
+                    ? `Win streak: ${career.winStreak}`
+                    : `Cold spell: ${Math.abs(career.winStreak ?? 0)} L`}
+                </div>
+              )}
+              {next.turningMeta && (
+                <div className="text-[11px] font-bold text-[#FB7185] mt-1 font-mono uppercase">
+                  {next.turningMeta.emoji} NEXT: {next.turningMeta.ribbon}
+                </div>
+              )}
+              {next.bogey && (
+                <div className="text-[11px] font-bold text-[#E879F9] mt-1 font-mono uppercase">👻 Bogey clash</div>
+              )}
             </div>
             <div className="flex flex-col items-center gap-1">
               <div

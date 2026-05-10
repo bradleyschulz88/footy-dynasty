@@ -56,6 +56,16 @@ import {
   findDueBoardMeetingSlot,
   openBoardMeetingBlockingFromSlot,
 } from './board.js';
+import {
+  getCaptainMatchBonus,
+  recordHeadToHead,
+  celebrateBogeyBreakIfNeeded,
+  refreshTurningPointForNextFixture,
+  refreshCrucialFive,
+  pushTeamStatsFromResult,
+  applyCaptainWeeklyEffect,
+  bumpClubCulture,
+} from './gameDepth.js';
 
 /** Home / form streaks for dynamic home-ground advantage (community.js). */
 function applyMatchStreaks(c, won, drew, isHome) {
@@ -204,7 +214,8 @@ function advanceFinalsWeek(c, league) {
   }
 
   const newAlive = [];
-  const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
+  const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff))
+    + getCaptainMatchBonus(c, true);
   const roundLabel = finalsLabel(c.finalsRound, c.finalsTotalRounds);
 
   for (const m of pairs) {
@@ -273,6 +284,20 @@ function advanceFinalsWeek(c, league) {
       const drewFinal = myScore === oppScore;
       applyMatchStreaks(c, playerWon, drewFinal, isHome);
       const opp = findClub(isHome ? m.away : m.home);
+      const oid = opp?.id;
+      if (oid) {
+        const wasBogey = c.bogeyTeamId === oid;
+        const prevStreak = c.headToHead?.[oid]?.streak ?? 0;
+        const diff = myScore - oppScore;
+        const lbl = `${playerWon ? 'W' : drewFinal ? 'D' : 'L'} ${Math.abs(diff)}pt`;
+        recordHeadToHead(c, oid, playerWon, drewFinal, diff, lbl);
+        celebrateBogeyBreakIfNeeded(c, oid, playerWon, wasBogey, prevStreak, findClub);
+      }
+      const hg = isHome ? (result.homeGoals ?? 0) : (result.awayGoals ?? 0);
+      const hb = isHome ? (result.homeBehinds ?? 0) : (result.awayBehinds ?? 0);
+      const ag = isHome ? (result.awayGoals ?? 0) : (result.homeGoals ?? 0);
+      const ab = isHome ? (result.awayBehinds ?? 0) : (result.homeBehinds ?? 0);
+      pushTeamStatsFromResult(c, hg, hb, ag, ab, playerWon, drewFinal);
       c.news = [{ week: c.week, type: playerWon ? 'win' : 'loss',
         text: playerWon
           ? `✅ ${roundLabel} WIN! ${myScore} def ${opp?.short} ${oppScore}`
@@ -564,6 +589,8 @@ function finishSeason(c, league) {
   if (brownlowWinner) {
     c.news = [{ week: 0, type: 'info', text: `🥇 Brownlow Medal: ${brownlowWinner.name} (${brownlowWinner.votes} votes)` }, ...c.news].slice(0, 20);
   }
+  if (champion) bumpClubCulture(c, 15);
+  c.crisisFiredThisSeason = false;
   const nextLeagueForCal = PYRAMID[c.leagueKey];
   const seasonClub = findClub(c.clubId);
   const regGround = getClubGround(seasonClub, c.facilities?.stadium?.level ?? 1, nextLeagueForCal.tier);
@@ -580,7 +607,14 @@ function finishSeason(c, league) {
   c.inMatchDay = false;
   c.currentMatchResult = null;
   clearPostSeasonTransient(c);
+  primeSeasonStoryState(c);
   return c;
+}
+
+export function primeSeasonStoryState(career) {
+  const lg = PYRAMID[career.leagueKey];
+  if (!lg) return;
+  refreshTurningPointForNextFixture(career, lg);
 }
 
 /**
@@ -716,6 +750,8 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     if (recoveryBoost > 0) {
       c.squad = c.squad.map((p) => ({ ...p, fitness: clamp((p.fitness ?? 90) + recoveryBoost, 30, 100) }));
     }
+
+    applyCaptainWeeklyEffect(c, c.difficulty);
 
     if (league.tier === 3 && rng() < 0.18) {
       const keys = Object.keys(FUNDRAISERS);
@@ -869,11 +905,14 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 
     c.aiSquads = ensureSquadsForLeague(c, league);
 
+    let turningPointPlayedThisRound = null;
     round.forEach((m) => {
       if (m.home === c.clubId || m.away === c.clubId) {
         const isHome = m.home === c.clubId;
         const opp = findClub(isHome ? m.away : m.home);
-        const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
+        turningPointPlayedThisRound = m.turningPoint || null;
+        let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
+        myRating += getCaptainMatchBonus(c, false);
         const oppSquad = c.aiSquads?.[opp.id];
         const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
         const oppLineupIds = oppLineup.map((p) => p.id);
@@ -1048,6 +1087,32 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           }
         }
       }
+
+      const oppId = myResult.opp?.id;
+      if (oppId) {
+        const wasBogey = c.bogeyTeamId === oppId;
+        const prevStreak = c.headToHead?.[oppId]?.streak ?? 0;
+        const diff = myResult.myTotal - myResult.oppTotal;
+        const lbl = `${myResult.won ? 'W' : myResult.drew ? 'D' : 'L'} ${Math.abs(diff)}pt`;
+        recordHeadToHead(c, oppId, myResult.won, myResult.drew, diff, lbl);
+        celebrateBogeyBreakIfNeeded(c, oppId, myResult.won, wasBogey, prevStreak, findClub);
+      }
+      const hg = myResult.isHome ? (myResult.result?.homeGoals ?? 0) : (myResult.result?.awayGoals ?? 0);
+      const hb = myResult.isHome ? (myResult.result?.homeBehinds ?? 0) : (myResult.result?.awayBehinds ?? 0);
+      const ag = myResult.isHome ? (myResult.result?.awayGoals ?? 0) : (myResult.result?.homeGoals ?? 0);
+      const ab = myResult.isHome ? (myResult.result?.awayBehinds ?? 0) : (myResult.result?.homeBehinds ?? 0);
+      pushTeamStatsFromResult(c, hg, hb, ag, ab, myResult.won, myResult.drew);
+
+      if (turningPointPlayedThisRound === 'must_win') {
+        ensureCareerBoard(c, findClub(c.clubId), league);
+        applyBoardConfidenceDelta(c, myResult.won ? 5 : myResult.drew ? 0 : -8);
+      } else if (turningPointPlayedThisRound === 'undefeated_run') {
+        if (!myResult.won && !myResult.drew) {
+          c.squad = c.squad.map((p) => ({ ...p, morale: clamp((p.morale ?? 70) - 2, cfg.moraleFloor, 100) }));
+        }
+      } else if (turningPointPlayedThisRound === 'bogey_buster' && myResult.won) {
+        bumpClubCulture(c, 2);
+      }
     }
 
     if (myResult && myResult.isHome) {
@@ -1086,6 +1151,10 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     }
 
     c.week = ev.round;
+    if (ev.phase === 'season') {
+      refreshTurningPointForNextFixture(c, league);
+      refreshCrucialFive(c, league, ev.round);
+    }
     c.lastEvent = myResult ? { type: 'round', round: ev.round, date: ev.date, ...myResult } : null;
 
     if (ev.phase === 'season' && !c.isSacked && c.boardCrisis?.phase !== 'active') {
