@@ -7,7 +7,7 @@ import {
   TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
   Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
   Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus,
-  Landmark, GripVertical,
+  Landmark, GripVertical, LayoutDashboard, Wrench,
 } from "lucide-react";
 import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf } from './data/pyramid.js';
@@ -34,6 +34,7 @@ import BoardMeetingScreen from './screens/BoardMeetingScreen.jsx';
 import ArrivalBriefingFlow from './screens/ArrivalBriefingFlow.jsx';
 import TutorialOverlay, {
   TUTORIAL_STEPS,
+  clubEffectiveTab,
   tutorialAllowsNavigation,
   tutorialMidStepCompleted,
   tutorialHighlightScreen,
@@ -1367,7 +1368,7 @@ function TopBar({ career, club, league, myLadderPos, onAdvance, advanceDisabled,
 // Hub strip showing ground conditions + footy trip prompt + committee mood.
 // Spec Sections 3A, 3B, 3D.
 // ---------------------------------------------------------------------------
-function HubGroundStrip({ career, club, league, setScreen }) {
+function HubGroundStrip({ career, club, league, setScreen, setTab }) {
   const cfg = getDifficultyConfig(career.difficulty);
   const showCommunity = league.tier <= 3 && Array.isArray(career.committee) && career.committee.length > 0;
   const band = groundConditionBand(career.groundCondition ?? 85);
@@ -1396,9 +1397,9 @@ function HubGroundStrip({ career, club, league, setScreen }) {
       {/* Footy trip prompt or committee summary */}
       <div className={`${css.panel} p-4`}>
         {career.footyTripAvailable && !career.footyTripUsed ? (
-          <FootyTripPromoCard career={career} setScreen={setScreen} />
+          <FootyTripPromoCard career={career} setScreen={setScreen} setTab={setTab} />
         ) : showCommunity ? (
-          <CommitteeMiniSummary career={career} setScreen={setScreen} />
+          <CommitteeMiniSummary career={career} setScreen={setScreen} setTab={setTab} />
         ) : (
           <DifficultyMiniSummary career={career} cfg={cfg} />
         )}
@@ -1407,19 +1408,27 @@ function HubGroundStrip({ career, club, league, setScreen }) {
   );
 }
 
-function FootyTripPromoCard({ career, setScreen }) {
+function FootyTripPromoCard({ career, setScreen, setTab }) {
   const social = (career.committee || []).find(m => m.role === 'Social Coordinator');
   return (
     <div>
       <div className={css.label}>Footy Trip</div>
       <div className="font-bold text-sm text-atext leading-tight mb-1">{social ? social.name : 'The Social Coordinator'} has a proposal</div>
       <div className="text-[11px] text-atext-dim mb-3 leading-snug">An annual footy trip is on the table. Approve a destination in the Club tab.</div>
-      <button onClick={() => setScreen('club')} className={`${css.btnPrimary} text-[10px] py-2 px-3`}>OPEN CLUB →</button>
+      <button
+        onClick={() => {
+          setScreen('club');
+          setTab?.('committee');
+        }}
+        className={`${css.btnPrimary} text-[10px] py-2 px-3`}
+      >
+        OPEN CLUB →
+      </button>
     </div>
   );
 }
 
-function CommitteeMiniSummary({ career, setScreen }) {
+function CommitteeMiniSummary({ career, setScreen, setTab }) {
   const avg = committeeMoodAverage(career.committee);
   const accent = avg >= 70 ? '#4AE89A' : avg >= 40 ? 'var(--A-accent-2)' : '#E84A6F';
   return (
@@ -1431,7 +1440,15 @@ function CommitteeMiniSummary({ career, setScreen }) {
         : avg >= 40 ? 'The committee is supportive but watching closely.'
         : 'Committee tensions are surfacing — keep an eye on them.'
       }</div>
-      <button onClick={() => setScreen('club')} className={`${css.btnGhost} text-[10px] py-1.5 px-2.5`}>VIEW COMMITTEE →</button>
+      <button
+        onClick={() => {
+          setScreen('club');
+          setTab?.('committee');
+        }}
+        className={`${css.btnGhost} text-[10px] py-1.5 px-2.5`}
+      >
+        VIEW COMMITTEE →
+      </button>
     </div>
   );
 }
@@ -1520,7 +1537,7 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
       )}
 
       {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
-      <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} />
+      <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} setTab={setTab} />
 
       {!stitch && <MatchPreviewPanel career={career} league={league} />}
 
@@ -2977,50 +2994,206 @@ function TrainingTab({ career, updateCareer }) {
   );
 }
 
+function clubLeafSection(leaf, showCommittee) {
+  if (leaf === "overview") return "overview";
+  if (["finances", "board", "sponsors"].includes(leaf)) return "commercial";
+  const ops = ["facilities", "staff"];
+  if (showCommittee) ops.push("committee");
+  if (ops.includes(leaf)) return "operations";
+  if (["kits", "honours", "rookies", "settings"].includes(leaf)) return "identity";
+  return "overview";
+}
+
+/** Hub landing for Club — jump-off tiles instead of a single long tab strip. */
+function ClubOverviewTab({ career, club, setTab }) {
+  const cash = career.finance?.cash ?? 0;
+  const boardConf = career.finance?.boardConfidence ?? 0;
+  const sponsorsN = (career.sponsors || []).length;
+  const sponsorsAnnual = (career.sponsors || []).reduce((a, s) => a + (s.annualValue || 0), 0);
+  const facAvg = avgFacilities(career.facilities);
+  const staffAvg = avgStaff(career.staff);
+  const rookies = (career.squad || []).filter((p) => p.rookie).length;
+
+  const tile = (title, sublines, Icon, accent, go) => (
+    <button
+      type="button"
+      key={title}
+      onClick={go}
+      className={`${css.panel} p-4 text-left rounded-xl border border-aline hover:border-aaccent/45 transition w-full`}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: `${accent}18`, border: `1px solid ${accent}40` }}
+        >
+          <Icon className="w-5 h-5" style={{ color: accent }} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="font-bold text-atext text-sm tracking-wide">{title}</div>
+          <div className="text-[11px] text-atext-dim mt-1 space-y-0.5 leading-snug">
+            {sublines.map((line) => (
+              <div key={line}>{line}</div>
+            ))}
+          </div>
+        </div>
+        <ChevronRight className="w-4 h-4 text-atext-dim flex-shrink-0 mt-1" />
+      </div>
+    </button>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <div className={`${css.h1} text-2xl md:text-3xl`}>CLUB OVERVIEW</div>
+        <div className="text-xs text-atext-dim mt-1">
+          {club.name} · Pick an area below or use the sections above
+        </div>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {tile(
+          "Commercial",
+          [`Cash ${fmtK(cash)}`, `Board confidence ${boardConf}%`, `${sponsorsN} sponsor deals · ${fmtK(sponsorsAnnual)}/yr`],
+          Briefcase,
+          "#4ADBE8",
+          () => setTab("finances"),
+        )}
+        {tile(
+          "Operations",
+          [`Facilities avg ${facAvg.toFixed(1)}`, `Staff avg ${Math.round(staffAvg)} rating`, "Venue, medical, coaches"],
+          Wrench,
+          "#4AE89A",
+          () => setTab("facilities"),
+        )}
+        {tile(
+          "Club & list",
+          [`${rookies} rookies on list`, "Kits, honours, rookie list, settings"],
+          Shirt,
+          "#A78BFA",
+          () => setTab("kits"),
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ============================================================================
-// CLUB SCREEN — finances, sponsors, kits, facilities, staff
+// CLUB SCREEN — grouped navigation + overview hub
 // ============================================================================
 function ClubScreen({ career, club, updateCareer, tab, setTab, tutorialActive }) {
-  const t = tab || "finances";
+  const t = clubEffectiveTab(tab);
   const tutStep = career.tutorialStep ?? 0;
   const clubTutorialTab = tutorialActive && (tutStep === 3 || tutStep === 4) ? tutorialHighlightTab(tutStep) : null;
+  const primaryLockedToCommercial = !!clubTutorialTab;
   const leagueTier = (() => {
     const lg = findLeagueOf(career.clubId);
     return lg ? lg.tier : 1;
   })();
   const showCommittee = leagueTier <= 3 && Array.isArray(career.committee) && career.committee.length > 0;
-  const tabs = [
-    { key: "finances", label: "Finances", icon: DollarSign },
-    { key: "board", label: "Board", icon: Landmark },
-    { key: "sponsors", label: "Sponsors", icon: Handshake },
-    { key: "kits", label: "Kits", icon: Shirt },
-    { key: "facilities", label: "Facilities", icon: Building2 },
-    { key: "staff", label: "Staff", icon: UserCog },
-    ...(showCommittee ? [{ key: "committee", label: "Committee", icon: Users }] : []),
-    { key: "honours", label: "Honours", icon: Award },
-    { key: "rookies", label: "Rookie List", icon: Sprout },
-    { key: "settings", label: "Settings", icon: Settings },
+  const activePrimary = clubLeafSection(t, showCommittee);
+
+  useEffect(() => {
+    if (t === "committee" && !showCommittee) setTab("facilities");
+  }, [t, showCommittee, setTab]);
+
+  const primarySections = [
+    { key: "overview", label: "Overview", icon: LayoutDashboard },
+    { key: "commercial", label: "Commercial", icon: Briefcase },
+    { key: "operations", label: "Operations", icon: Wrench },
+    { key: "identity", label: "Club & list", icon: Shirt },
   ];
+
+  function goPrimary(sectionKey) {
+    if (primaryLockedToCommercial && sectionKey !== "commercial") return;
+    if (sectionKey === "overview") {
+      setTab("overview");
+      return;
+    }
+    if (activePrimary === sectionKey) return;
+    if (sectionKey === "commercial") setTab("finances");
+    else if (sectionKey === "operations") setTab("facilities");
+    else setTab("kits");
+  }
+
+  let subTabs = [];
+  if (activePrimary === "commercial") {
+    subTabs = [
+      { key: "finances", label: "Finances", icon: DollarSign },
+      { key: "board", label: "Board", icon: Landmark },
+      { key: "sponsors", label: "Sponsors", icon: Handshake },
+    ];
+  } else if (activePrimary === "operations") {
+    subTabs = [
+      { key: "facilities", label: "Facilities", icon: Building2 },
+      { key: "staff", label: "Staff", icon: UserCog },
+    ];
+    if (showCommittee) subTabs.push({ key: "committee", label: "Committee", icon: Users });
+  } else if (activePrimary === "identity") {
+    subTabs = [
+      { key: "kits", label: "Kits", icon: Shirt },
+      { key: "honours", label: "Honours", icon: Award },
+      { key: "rookies", label: "Rookie List", icon: Sprout },
+      { key: "settings", label: "Settings", icon: Settings },
+    ];
+  }
+
   return (
     <div className="anim-in">
-      <TabNav
-        tabs={tabs}
-        active={t}
-        onChange={setTab}
-        tutorialAllowOnly={clubTutorialTab}
-        tutorialHighlightKey={clubTutorialTab}
-      />
-      {t === "finances"   && <FinancesTab career={career} />}
-      {t === "board"      && <BoardTab career={career} club={club} updateCareer={updateCareer} />}
-      {t === "sponsors"   && <SponsorsTab career={career} updateCareer={updateCareer} />}
-      {t === "kits"       && <KitsTab career={career} club={club} updateCareer={updateCareer} />}
+      <div
+        className="flex flex-wrap gap-2 p-1 rounded-xl mb-3"
+        style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}
+      >
+        {primarySections.map((s) => {
+          const Icon = s.icon;
+          const isAct = activePrimary === s.key;
+          const locked = primaryLockedToCommercial && s.key !== "commercial";
+          return (
+            <button
+              key={s.key}
+              type="button"
+              disabled={locked}
+              onClick={() => goPrimary(s.key)}
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap flex-none ${
+                locked ? "opacity-35 cursor-not-allowed" : ""
+              } ${isAct ? "ring-2 ring-[var(--A-accent)] ring-offset-1 ring-offset-[var(--A-panel-2)]" : ""}`}
+              style={
+                isAct
+                  ? {
+                      background: "linear-gradient(135deg, var(--A-accent), #0099b0)",
+                      color: "#001520",
+                      boxShadow: "0 2px 8px rgba(0, 224, 255, 0.2)",
+                    }
+                  : { color: locked ? "var(--A-text-mute)" : "var(--A-text-dim)" }
+              }
+            >
+              <Icon className="w-4 h-4" />
+              <span>{s.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {subTabs.length > 0 && (
+        <TabNav
+          tabs={subTabs}
+          active={t}
+          onChange={setTab}
+          tutorialAllowOnly={clubTutorialTab}
+          tutorialHighlightKey={clubTutorialTab}
+          growButtons={false}
+        />
+      )}
+
+      {t === "overview" && <ClubOverviewTab career={career} club={club} setTab={setTab} />}
+      {t === "finances" && <FinancesTab career={career} />}
+      {t === "board" && <BoardTab career={career} club={club} updateCareer={updateCareer} />}
+      {t === "sponsors" && <SponsorsTab career={career} updateCareer={updateCareer} />}
+      {t === "kits" && <KitsTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "facilities" && <FacilitiesTab career={career} updateCareer={updateCareer} />}
-      {t === "staff"      && <StaffTab career={career} updateCareer={updateCareer} />}
-      {t === "committee"  && <CommitteeTab career={career} club={club} updateCareer={updateCareer} />}
-      {t === "honours"    && <HonoursTab career={career} club={club} />}
-      {t === "rookies"    && <RookieListTab career={career} updateCareer={updateCareer} />}
-      {t === "settings"   && <SettingsTab career={career} updateCareer={updateCareer} />}
+      {t === "staff" && <StaffTab career={career} updateCareer={updateCareer} />}
+      {t === "committee" && showCommittee && <CommitteeTab career={career} club={club} updateCareer={updateCareer} />}
+      {t === "honours" && <HonoursTab career={career} club={club} />}
+      {t === "rookies" && <RookieListTab career={career} updateCareer={updateCareer} />}
+      {t === "settings" && <SettingsTab career={career} updateCareer={updateCareer} />}
     </div>
   );
 }

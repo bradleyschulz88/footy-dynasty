@@ -39,7 +39,7 @@ export const TUTORIAL_STEPS = [
     step: 3,
     title: "CHECK YOUR FINANCES",
     intro: "Know your numbers.",
-    instruction: "Open Club in the side nav, then Finances (highlighted). This is what you can spend and what flows in and out.",
+    instruction: "Open Club in the side nav. Choose Commercial (top row), then Finances (second row). This is what you can spend and what flows in and out.",
     targetScreen: "club",
     targetTab: "finances",
     advanceWithNext: false,
@@ -48,7 +48,7 @@ export const TUTORIAL_STEPS = [
     step: 4,
     title: "SIGN A SPONSOR",
     intro: "Sponsors keep the lights on.",
-    instruction: "Open Club → Sponsors (highlighted) and accept at least one shirt deal.",
+    instruction: "Stay in Club. Open Commercial if needed, then Sponsors (highlighted) and accept at least one shirt deal.",
     targetScreen: "club",
     targetTab: "sponsors",
     advanceWithNext: false,
@@ -81,8 +81,9 @@ export function squadEffectiveTab(career, tab) {
   return tab || (renewalCount > 0 ? "renewals" : "players");
 }
 
+/** Club screen default when `tab` is unset — Overview hub ( Finances / Sponsors are explicit for tutorial steps). */
 export function clubEffectiveTab(tab) {
-  return tab || "finances";
+  return tab == null ? "overview" : tab;
 }
 
 /** Whether navigating to `nextScreen` is allowed during this tutorial step. */

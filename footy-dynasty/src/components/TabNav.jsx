@@ -4,7 +4,16 @@
 // ---------------------------------------------------------------------------
 import React from "react";
 
-export default function TabNav({ tabs, active, onChange, tutorialAllowOnly, tutorialHighlightKey }) {
+export default function TabNav({
+  tabs,
+  active,
+  onChange,
+  tutorialAllowOnly,
+  tutorialHighlightKey,
+  /** When false, buttons size to content (better for fewer sub-tabs in a second row). */
+  growButtons = true,
+}) {
+  const growCls = growButtons ? "flex-1 justify-center" : "flex-none shrink-0 justify-center";
   return (
     <div className="flex gap-1 p-1 rounded-xl mb-5 overflow-x-auto" style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}>
       {tabs.map((tb) => {
@@ -21,7 +30,7 @@ export default function TabNav({ tabs, active, onChange, tutorialAllowOnly, tuto
               if (locked) return;
               onChange(tb.key);
             }}
-            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex-1 justify-center whitespace-nowrap ${spotlight ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-[var(--A-panel-2)] animate-pulse" : ""} ${locked ? "opacity-35 cursor-not-allowed" : ""}`}
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${growCls} ${spotlight ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-[var(--A-panel-2)] animate-pulse" : ""} ${locked ? "opacity-35 cursor-not-allowed" : ""}`}
             style={isActive
               ? { background: "linear-gradient(135deg, var(--A-accent), #0099b0)", color: "#001520", boxShadow: "0 2px 8px rgba(0, 224, 255, 0.25)" }
               : { color: locked ? "var(--A-text-mute)" : "var(--A-text-dim)" }}
