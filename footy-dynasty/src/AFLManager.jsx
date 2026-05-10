@@ -24,6 +24,7 @@ import {
   POST_TRADE_DRAFT_COUNTDOWN_DAYS,
 } from './lib/tradePeriod.js';
 import { css, Bar, RatingDot, Pill, Stat, Jersey, GlobalStyle } from './components/primitives.jsx';
+import { SquadLineupBuilder, LineupSortablePanel } from './components/SquadLineupDnD.jsx';
 import TabNav from './components/TabNav.jsx';
 import GameOverScreen from './screens/GameOverScreen.jsx';
 import PostMatchSummary from './screens/PostMatchSummary.jsx';
@@ -98,6 +99,7 @@ import {
 import { getClubGround } from './data/grounds.js';
 import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from './lib/careerAdvance.js';
 import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from './lib/gameDepth.js';
+import { lineupPlayersOrdered } from './lib/lineupHelpers.js';
 
 /** Visual theme: aligns with `.dirA` / `.dirB` / `.dirS` in tokens.css (Stitch mockups → dirS). */
 function themeWrapperClass(themeMode) {
@@ -2459,9 +2461,21 @@ function PlayersTab({ career, updateCareer }) {
     });
     return arr;
   }, [career.squad, career.lineup, sort, filterPos, filterStatus]);
+  const benchPlayerIds = useMemo(
+    () => players.filter((p) => !career.lineup.includes(p.id)).map((p) => p.id),
+    [players, career.lineup],
+  );
   const pName = p => p.firstName ? p.firstName+" "+p.lastName : (p.name||"Player");
 
   return (
+    <div className="flex flex-col gap-5">
+      <SquadLineupBuilder
+        career={career}
+        updateCareer={updateCareer}
+        benchPlayerIds={benchPlayerIds}
+        stitch={stitch}
+        onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
+      />
     <div className="flex flex-col lg:flex-row gap-5">
       {/* Left: filters + table */}
       <div className="flex-1 min-w-0">
@@ -2536,61 +2550,51 @@ function PlayersTab({ career, updateCareer }) {
                           <span>FRM {p.form}</span>
                         </div>
                       </div>
-                      <GripVertical className="w-4 h-4 text-atext-mute flex-shrink-0 opacity-60" aria-hidden />
                     </div>
                     <div className="stitch-mock-player-tab" aria-hidden />
                   </button>
                 );
               })}
             </div>
-            {(() => {
-              const bench = [...career.squad]
-                .filter((p) => !career.lineup.includes(p.id))
-                .sort((a, b) => b.overall - a.overall)
-                .slice(0, 14);
-              if (bench.length === 0) return null;
-              return (
-                <div className="mt-4">
-                  <div className="stitch-mock-bench-label">
-                    Bench ({bench.length})
-                  </div>
-                  <div className="flex gap-2 overflow-x-auto pb-2 snap-x">
-                    {bench.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setSelected(p.id === selected?.id ? null : p)}
-                        className={`flex-shrink-0 snap-start stitch-mock-player-card max-w-[220px] ${selected?.id === p.id ? 'stitch-mock-player-card-selected' : ''}`}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <div className="stitch-mock-player-rating text-xs w-9">{p.overall}</div>
-                        <div className="flex flex-col justify-center px-2 py-1.5 min-w-0 text-left flex-1">
-                          <div className="text-[8px] font-mono text-atext-mute uppercase truncate">{formatPositionSlash(p)}</div>
-                          <div className="text-xs font-bold text-atext truncate">{pName(p)}</div>
-                        </div>
-                        <div className="stitch-mock-player-tab w-1.5" aria-hidden />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-            <button
-              type="button"
-              className="stitch-mock-slant-btn mt-4"
-              onClick={() =>
-                updateCareer({
-                  lineup: [...career.squad].sort((a, b) => b.overall - a.overall).slice(0, 22).map((p) => p.id),
-                })
-              }
-            >
-              <span>Auto-select team</span>
-            </button>
           </>
         ) : (
-        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--A-line)" }}>
+        <>
+        <div className="md:hidden space-y-2 max-h-[65vh] overflow-y-auto px-0.5">
+          {players.map((p) => {
+            const inLineup = career.lineup.includes(p.id);
+            const isSelected = selected?.id === p.id;
+            const formColor = p.form >= 75 ? "#4AE89A" : p.form >= 55 ? "var(--A-accent)" : "#E84A6F";
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setSelected(isSelected ? null : p)}
+                className="w-full text-left rounded-xl p-3 border transition-all"
+                style={{
+                  borderColor: isSelected ? "var(--A-accent)" : "var(--A-line)",
+                  background: isSelected ? rowSelectBg : "var(--A-panel)",
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-atext truncate">{pName(p)}</div>
+                    <div className="text-[10px] text-atext-mute">{formatPositionSlash(p)} · age {p.age}</div>
+                  </div>
+                  <RatingDot value={p.overall} size="sm" />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-2 text-[10px]">
+                  <span className="font-bold" style={{ color: formColor }}>Form {p.form}</span>
+                  <span className="text-atext-mute">Fitness {p.fitness}</span>
+                  {inLineup && <Pill color="#4AE89A">XI</Pill>}
+                  {p.injured > 0 && <Pill color="#E84A6F">{p.injured}w</Pill>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="hidden md:block rounded-2xl overflow-hidden" style={{ border: "1px solid var(--A-line)" }}>
           <div className="overflow-x-auto">
-          <div className="grid px-4 py-3 min-w-[820px]" style={{gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
+          <div className="grid px-4 py-3 min-w-[720px]" style={{gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
             {["#","Player","Pos","Age","OVR","Form","Fitness","Wage","Status"].map((h,i)=>(
               <div key={h} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${i>1?"text-center":""} ${i===7?"text-right":""}`}>{h}</div>
             ))}
@@ -2650,6 +2654,7 @@ function PlayersTab({ career, updateCareer }) {
           </div>
           </div>
         </div>
+        </>
         )}
         <div className="mt-2 text-[10px] text-atext-mute">{players.length} players · {career.lineup.length}/22 in XXII · {career.squad.length} total squad</div>
       </div>
@@ -2665,6 +2670,7 @@ function PlayersTab({ career, updateCareer }) {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }
@@ -2787,7 +2793,7 @@ const TACTIC_CARDS = [
 
 function TacticsTab({ career, updateCareer }) {
   const stitch = (career.themeMode || 'A') === 'S';
-  const lineup = career.lineup.map(id => career.squad.find(p => p.id === id)).filter(Boolean);
+  const lineup = lineupPlayersOrdered(career.squad, career.lineup);
   const byPos = POSITIONS.reduce((acc, p) => ({ ...acc, [p]: lineup.filter(pl => pl.position === p) }), {});
   const currentTactic = career.tacticChoice || 'balanced';
   const fieldStroke = stitch ? 'rgba(200, 255, 61, 0.28)' : '#FFFFFF20';
@@ -2873,41 +2879,10 @@ function TacticsTab({ career, updateCareer }) {
       </div>
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>SELECTED XXII</h3>
-        <div className="text-[11px] text-atext-dim mb-4">Tap to remove. Add players from the Players tab.</div>
-        <div className={`space-y-1.5 max-h-[60vh] overflow-y-auto ${stitch ? 'pr-1' : ''}`}>
-          {lineup.length === 0 && <div className="text-sm text-atext-dim text-center py-12">No players selected.</div>}
-          {lineup.sort((a,b)=>b.overall-a.overall).map(p => (
-            stitch ? (
-              <button
-                key={p.id}
-                type="button"
-                onClick={()=>updateCareer({ lineup: career.lineup.filter(id => id !== p.id) })}
-                className="stitch-mock-player-card"
-              >
-                <div className="stitch-mock-player-rating">{p.overall}</div>
-                <div className="flex items-center gap-3 flex-1 min-w-0 px-3 py-2">
-                  <div className="w-9 h-9 rounded-full border border-[rgba(200,255,61,0.25)] bg-apanel-2 flex items-center justify-center text-[10px] font-bold text-atext flex-shrink-0">
-                    {(p.firstName?.[0] || '')}{(p.lastName?.[0] || '')}
-                  </div>
-                  <div className="min-w-0 flex-1 text-left">
-                    <div className="text-[9px] font-mono text-atext-mute uppercase tracking-wider">{formatPositionSlash(p)}</div>
-                    <div className="font-bold text-sm text-atext truncate">{p.firstName ? `${p.firstName} ${p.lastName}` : p.name}</div>
-                  </div>
-                  <GripVertical className="w-4 h-4 text-atext-mute flex-shrink-0" aria-hidden />
-                </div>
-                <div className="stitch-mock-player-tab" aria-hidden />
-              </button>
-            ) : (
-            <button key={p.id} onClick={()=>updateCareer({ lineup: career.lineup.filter(id => id !== p.id) })} className="w-full flex items-center gap-2 p-2 rounded-lg bg-apanel hover:bg-apanel-2 transition group">
-              <span className="text-[9px] px-1 py-0.5 bg-aline rounded font-bold text-center leading-tight inline-block max-w-[4.5rem]" title={formatPositionSlash(p)}>{formatPositionSlash(p)}</span>
-              <span className="text-sm flex-1 text-left truncate">{p.firstName ? p.firstName + " " + p.lastName : p.name}</span>
-              <span className="text-xs text-atext-dim">{p.age}</span>
-              <RatingDot value={p.overall} />
-              <X className="w-4 h-4 text-[#E84A6F] opacity-0 group-hover:opacity-100" />
-            </button>
-          )
-          ))}
+        <div className="text-[11px] text-atext-dim mb-4">
+          Drag the grip to reorder. Remove with ✕. Add or swap players from <span className="text-atext font-semibold">Squad → Players</span>.
         </div>
+        <LineupSortablePanel career={career} updateCareer={updateCareer} stitch={stitch} />
         {stitch && (
           <button
             type="button"
