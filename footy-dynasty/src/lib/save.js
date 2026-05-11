@@ -7,9 +7,9 @@ import { getClubGround } from '../data/grounds.js';
 
 import { migrateSaveBoardV8, migrateSaveBoardV9, migrateSaveBoardV10, migrateSaveBoardV11 } from './board.js';
 import { migrateSaveGameDepthV12 } from './gameDepth.js';
-import { localDivisionForClub } from './leagueEngine.js';
+import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 
-export const SAVE_VERSION = 13;
+export const SAVE_VERSION = 14;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
@@ -203,9 +203,20 @@ export function migrate(save) {
     s.regionState = s.regionState ?? cl?.state ?? null;
     const tier = (s.leagueKey && PYRAMID[s.leagueKey]?.tier) ?? null;
     if (tier === 3 && s.leagueKey && s.clubId) {
-      s.localDivision = s.localDivision ?? localDivisionForClub(s.clubId, s.leagueKey);
+      s.localDivision = s.localDivision ?? localDivisionForClub(s.clubId, s.leagueKey, s.regionState);
     } else {
       s.localDivision = s.localDivision ?? null;
+    }
+  }
+
+  if (v < 14) {
+    s.saveVersion = 14;
+    const tier = (s.leagueKey && PYRAMID[s.leagueKey]?.tier) ?? null;
+    if (tier === 3 && s.leagueKey && s.clubId && s.regionState) {
+      const K = tier3DivisionCount(s.leagueKey, s.regionState);
+      const inferred = localDivisionForClub(s.clubId, s.leagueKey, s.regionState);
+      const prev = s.localDivision ?? inferred;
+      s.localDivision = Math.max(1, Math.min(K, prev));
     }
   }
 

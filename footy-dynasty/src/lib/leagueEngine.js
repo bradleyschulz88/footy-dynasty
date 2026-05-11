@@ -1,14 +1,45 @@
 import { PYRAMID, findClub } from '../data/pyramid.js';
 
-/** How many parallel ladders exist in tier-3 (local) leagues. */
+/** Cap on parallel local ladders in one tier-3 competition pool. */
 export const LOCAL_DIVISION_COUNT = 5;
 
-/** Stable bucket 1..LOCAL_DIVISION_COUNT for suburban draw splitting (no pyramid data edits). */
-export function localDivisionForClub(clubId, leagueKey) {
-  let h = 0;
-  const s = `${leagueKey}\0${clubId}`;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
-  return (Math.abs(h) % LOCAL_DIVISION_COUNT) + 1;
+/** ~This many clubs per ladder before adding another division (ceil(n / this), capped at LOCAL_DIVISION_COUNT). */
+export const TIER3_CLUBS_PER_DIVISION_TARGET = 5;
+
+/** Sorted club ids in this league that belong to `regionState` (deterministic split). */
+export function tier3RegionSortedIds(leagueKey, regionState) {
+  const league = PYRAMID[leagueKey];
+  if (!league?.clubs || !regionState) return [];
+  return league.clubs.filter((c) => c.state === regionState).map((c) => c.id).sort();
+}
+
+/** How many parallel divisions exist for this pool (1 for tiny lists, up to 5 for large ones). */
+export function tier3DivisionCount(leagueKey, regionState) {
+  const n = tier3RegionSortedIds(leagueKey, regionState).length;
+  if (n <= 0) return 1;
+  return Math.min(LOCAL_DIVISION_COUNT, Math.max(1, Math.ceil(n / TIER3_CLUBS_PER_DIVISION_TARGET)));
+}
+
+/** Team counts per division index [div1, div2, …] — useful for setup UI. */
+export function tier3DivisionTeamCounts(leagueKey, regionState) {
+  const K = tier3DivisionCount(leagueKey, regionState);
+  const counts = Array.from({ length: K }, () => 0);
+  const n = tier3RegionSortedIds(leagueKey, regionState).length;
+  for (let i = 0; i < n; i++) counts[i % K] += 1;
+  return counts;
+}
+
+/**
+ * Which local ladder (1..K) a club sits in. Round-robin on sorted ids keeps divisions even.
+ * @param {string|null} regionState – pass `regionState` from career/setup; otherwise uses the club's `.state`.
+ */
+export function localDivisionForClub(clubId, leagueKey, regionState) {
+  const st = regionState ?? findClub(clubId)?.state;
+  const ids = tier3RegionSortedIds(leagueKey, st);
+  const K = tier3DivisionCount(leagueKey, st);
+  const idx = ids.indexOf(clubId);
+  if (idx < 0) return 1;
+  return (idx % K) + 1;
 }
 
 /**
@@ -22,8 +53,9 @@ export function getCompetitionClubs(leagueKey, regionState, localDivision) {
   if (!regionState) return [...league.clubs];
   let clubs = league.clubs.filter((c) => c.state === regionState);
   if (league.tier === 3 && localDivision != null) {
-    const d = Math.max(1, Math.min(LOCAL_DIVISION_COUNT, Number(localDivision) || 1));
-    clubs = clubs.filter((c) => localDivisionForClub(c.id, leagueKey) === d);
+    const K = tier3DivisionCount(leagueKey, regionState);
+    const d = Math.max(1, Math.min(K, Number(localDivision) || 1));
+    clubs = clubs.filter((c) => localDivisionForClub(c.id, leagueKey, regionState) === d);
   }
   return clubs;
 }
@@ -33,9 +65,12 @@ export function competitionClubsForCareer(c) {
   const league = PYRAMID[c.leagueKey];
   if (!league) return [];
   const region = c.regionState ?? findClub(c.clubId)?.state;
-  const div = league.tier === 3
-    ? (c.localDivision ?? localDivisionForClub(c.clubId, c.leagueKey))
-    : null;
+  let div = null;
+  if (league.tier === 3) {
+    const K = tier3DivisionCount(c.leagueKey, region);
+    const raw = c.localDivision ?? localDivisionForClub(c.clubId, c.leagueKey, region);
+    div = Math.max(1, Math.min(K, raw));
+  }
   return getCompetitionClubs(c.leagueKey, region, div);
 }
 

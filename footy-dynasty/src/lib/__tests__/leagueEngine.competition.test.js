@@ -4,17 +4,32 @@ import {
   localDivisionForClub,
   getCompetitionClubs,
   competitionClubsForCareer,
+  tier3DivisionCount,
+  tier3DivisionTeamCounts,
+  TIER3_CLUBS_PER_DIVISION_TARGET,
 } from '../leagueEngine.js';
 
+describe('tier3DivisionCount', () => {
+  it('returns 1 for tiny pools and up to LOCAL_DIVISION_COUNT for large pools', () => {
+    const k = tier3DivisionCount('AdelFL', 'SA');
+    expect(k).toBeGreaterThanOrEqual(1);
+    expect(k).toBeLessThanOrEqual(LOCAL_DIVISION_COUNT);
+    const all = getCompetitionClubs('AdelFL', 'SA', null);
+    const expected = Math.min(LOCAL_DIVISION_COUNT, Math.max(1, Math.ceil(all.length / TIER3_CLUBS_PER_DIVISION_TARGET)));
+    expect(k).toBe(expected);
+  });
+});
+
 describe('localDivisionForClub', () => {
-  it('returns integers in 1..LOCAL_DIVISION_COUNT', () => {
-    const d = localDivisionForClub('some_club', 'AdelFL');
+  it('returns integers in 1..K where K is tier3DivisionCount', () => {
+    const d = localDivisionForClub('some_club', 'AdelFL', 'SA');
+    const K = tier3DivisionCount('AdelFL', 'SA');
     expect(d).toBeGreaterThanOrEqual(1);
-    expect(d).toBeLessThanOrEqual(LOCAL_DIVISION_COUNT);
+    expect(d).toBeLessThanOrEqual(K);
   });
 
   it('is stable for the same inputs', () => {
-    expect(localDivisionForClub('x', 'LKey')).toBe(localDivisionForClub('x', 'LKey'));
+    expect(localDivisionForClub('x', 'AdelFL', 'SA')).toBe(localDivisionForClub('x', 'AdelFL', 'SA'));
   });
 });
 
@@ -31,30 +46,35 @@ describe('getCompetitionClubs', () => {
     expect(sa.every((c) => c.state === 'SA')).toBe(true);
   });
 
-  it('splits tier 3 into a division subset', () => {
-    const allLocal = getCompetitionClubs('AdelFL', 'SA', null);
-    const div3 = getCompetitionClubs('AdelFL', 'SA', 3);
-    expect(div3.length).toBeGreaterThan(0);
-    expect(div3.length).toBeLessThanOrEqual(allLocal.length);
-    for (const c of div3) {
-      expect(localDivisionForClub(c.id, 'AdelFL')).toBe(3);
+  it('partitions tier 3 into K divisions that cover the full pool without overlap', () => {
+    const region = 'SA';
+    const leagueKey = 'AdelFL';
+    const allLocal = getCompetitionClubs(leagueKey, region, null);
+    const K = tier3DivisionCount(leagueKey, region);
+    const counts = tier3DivisionTeamCounts(leagueKey, region);
+    expect(counts.length).toBe(K);
+    expect(counts.reduce((a, b) => a + b, 0)).toBe(allLocal.length);
+    let total = 0;
+    for (let d = 1; d <= K; d++) {
+      const divClubs = getCompetitionClubs(leagueKey, region, d);
+      total += divClubs.length;
+      for (const c of divClubs) {
+        expect(localDivisionForClub(c.id, leagueKey, region)).toBe(d);
+      }
     }
+    expect(total).toBe(allLocal.length);
   });
 });
 
 describe('competitionClubsForCareer', () => {
-  it('includes player club and matches division', () => {
+  it('includes player club when division matches career', () => {
     const clubId = 'adelfl_adelaide_lutheran';
-    const d = localDivisionForClub(clubId, 'AdelFL');
-    const career = {
-      leagueKey: 'AdelFL',
-      clubId,
-      regionState: 'SA',
-      localDivision: d,
-    };
+    const leagueKey = 'AdelFL';
+    const regionState = 'SA';
+    const d = localDivisionForClub(clubId, leagueKey, regionState);
+    const career = { leagueKey, clubId, regionState, localDivision: d };
     const pool = competitionClubsForCareer(career);
     expect(pool.some((c) => c.id === clubId)).toBe(true);
-    expect(pool.every((c) => c.state === 'SA')).toBe(true);
-    expect(pool.every((c) => localDivisionForClub(c.id, 'AdelFL') === d)).toBe(true);
+    expect(pool.every((c) => localDivisionForClub(c.id, leagueKey, regionState) === d)).toBe(true);
   });
 });

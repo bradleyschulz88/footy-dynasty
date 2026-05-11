@@ -3,12 +3,20 @@ import { Pill } from "./primitives.jsx";
 import { getAdvanceContext } from "../lib/advanceContext.js";
 import { effectiveWageCap, currentPlayerWageBill, capHeadroom } from "../lib/finance/engine.js";
 import { fmtK } from "../lib/format.js";
+import { tier3DivisionCount } from "../lib/leagueEngine.js";
 
 export default function SeasonStrip({ career, league, club }) {
   const ctx = getAdvanceContext(career, league);
   const cap = effectiveWageCap(career);
   const bill = currentPlayerWageBill(career);
   const headroom = capHeadroom(career);
+  const region = career.regionState ?? club?.state;
+  const t3k =
+    league?.tier === 3 && region && career.leagueKey ? tier3DivisionCount(career.leagueKey, region) : 0;
+  const t3d =
+    t3k > 0 && career.localDivision != null
+      ? Math.max(1, Math.min(t3k, career.localDivision))
+      : null;
 
   let phasePill = "Season";
   let phaseColor = "var(--A-accent)";
@@ -32,6 +40,12 @@ export default function SeasonStrip({ career, league, club }) {
     <div className="border-t border-aline/60 bg-apanel/50 px-3 md:px-6 py-2">
       <div className="max-w-[1400px] mx-auto flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] md:text-sm">
         <span className="font-mono uppercase tracking-widest text-atext-mute shrink-0">{league?.name}</span>
+        {league?.tier === 3 && t3k > 0 && t3d != null && (
+          <>
+            <span className="text-atext-mute hidden sm:inline">·</span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-aaccent shrink-0">Local div {t3d}/{t3k}</span>
+          </>
+        )}
         <span className="text-atext-mute hidden sm:inline">·</span>
         <span className="font-display text-atext shrink-0">
           {club?.short} · S{career.season}

@@ -5,7 +5,7 @@ import { seedRng, rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred, generatePlayer } from './playerGen.js';
 import { teamRating, simMatch, simMatchWithQuarters, aiClubRating } from './matchEngine.js';
-import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub } from './leagueEngine.js';
+import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { generateTradePool } from './defaults.js';
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
@@ -374,7 +374,7 @@ function finishSeason(c, league) {
       if (newLeagueKey) {
         const newLeague = PYRAMID[newLeagueKey];
         c.leagueKey = newLeagueKey;
-        c.localDivision = localDivisionForClub(c.clubId, newLeagueKey);
+        c.localDivision = localDivisionForClub(c.clubId, newLeagueKey, region);
         const clubs = getCompetitionClubs(newLeagueKey, region, c.localDivision);
         c.fixtures = generateFixtures(clubs);
         c.ladder = blankLadder(clubs);
@@ -389,7 +389,9 @@ function finishSeason(c, league) {
       c.ladder = blankLadder(clubs);
     }
   } else if (league.tier === 3) {
-    const div = c.localDivision ?? localDivisionForClub(c.clubId, c.leagueKey);
+    const K = tier3DivisionCount(c.leagueKey, region);
+    let div = c.localDivision ?? localDivisionForClub(c.clubId, c.leagueKey, region);
+    div = Math.max(1, Math.min(K, div));
     c.localDivision = div;
     if (champion) {
       if (div > 1) {
