@@ -47,6 +47,79 @@ function mergeRefs(...refs) {
   };
 }
 
+/**
+ * AFL club–style card: circular “headshot”, white nameplate overlapping below with [#] + name.
+ * `compact` tightens sizes for the 5×3 grid inside the oval.
+ */
+function ClubPlayerCardBody({ player, stitch, compact, onSelectPlayer, dragProps }) {
+  const { listeners, attributes } = dragProps;
+  const num = squadNumberDisplay(player);
+
+  const circle = compact
+    ? "w-8 h-8 sm:w-9 sm:h-9 min-w-0 min-h-0 max-w-[2.6rem] max-h-[2.6rem]"
+    : "w-12 h-12 sm:w-14 sm:h-14";
+  const iniSz = compact ? "text-[9px] sm:text-[10px]" : "text-xs sm:text-sm";
+  const plateText = compact ? "text-[6px] sm:text-[7px] leading-[1.15]" : "text-[8px] sm:text-[10px] leading-snug";
+  const numBox = compact ? "w-[1.125rem] min-w-[1.125rem] text-[7px] sm:text-[8px]" : "w-6 sm:w-7 text-[9px] sm:text-[10px]";
+  const overlap = compact ? "-mt-1.5" : "-mt-2";
+
+  if (stitch) {
+    return (
+      <button
+        type="button"
+        className="w-full min-w-0 h-full max-h-full flex flex-col items-center justify-center py-0.5 cursor-grab active:cursor-grabbing text-left"
+        {...listeners}
+        {...attributes}
+        onClick={() => onSelectPlayer?.(player)}
+      >
+        <div
+          className={`relative z-[1] rounded-full border-2 border-[rgba(200,255,61,0.55)] shadow-md flex items-center justify-center bg-gradient-to-b from-[#1a2820] to-[#0d1510] ${circle}`}
+        >
+          <span className={`font-black text-[rgba(200,255,61,0.95)] tracking-wide ${iniSz}`}>{initials(player)}</span>
+        </div>
+        <div
+          className={`relative z-[2] w-full min-w-0 max-w-[6.25rem] ${overlap} rounded-md border border-[rgba(200,255,61,0.35)] bg-[rgba(10,14,10,0.92)] shadow-md flex overflow-hidden`}
+        >
+          <span
+            className={`shrink-0 flex items-center justify-center bg-[rgba(90,60,120,0.98)] font-black text-white ${numBox}`}
+          >
+            {num}
+          </span>
+          <span className={`flex-1 min-w-0 px-0.5 py-0.5 font-semibold text-white/95 ${plateText}`}>
+            <span className="line-clamp-2 break-words [overflow-wrap:anywhere]">{shortName(player)}</span>
+          </span>
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="w-full min-w-0 h-full max-h-full flex flex-col items-center justify-center py-0.5 cursor-grab active:cursor-grabbing text-left"
+      {...listeners}
+      {...attributes}
+      onClick={() => onSelectPlayer?.(player)}
+    >
+      <div
+        className={`relative z-[1] rounded-full border-2 border-white shadow-md flex items-center justify-center bg-gradient-to-b from-[#f1f5f9] to-[#cbd5e1] ${circle}`}
+      >
+        <span className={`font-black text-slate-700 tracking-wide ${iniSz}`}>{initials(player)}</span>
+      </div>
+      <div
+        className={`relative z-[2] w-full min-w-0 max-w-[6.25rem] ${overlap} rounded-md border border-slate-200/90 bg-white shadow-sm flex overflow-hidden`}
+      >
+        <span className={`shrink-0 flex items-center justify-center bg-[#3d1f4d] font-black text-white ${numBox}`}>
+          {num}
+        </span>
+        <span className={`flex-1 min-w-0 px-0.5 py-0.5 font-semibold text-slate-900 ${plateText}`}>
+          <span className="line-clamp-2 break-words [overflow-wrap:anywhere]">{shortName(player)}</span>
+        </span>
+      </div>
+    </button>
+  );
+}
+
 function EmptyLineupSlot({ slotIndex, stitch, compact }) {
   const dropId = `lineup-slot-${slotIndex}`;
   const { setNodeRef, isOver } = useDroppable({ id: dropId });
@@ -56,20 +129,27 @@ function EmptyLineupSlot({ slotIndex, stitch, compact }) {
       : "border-[rgba(200,255,61,0.35)]"
     : isOver
       ? "border-aaccent ring-2 ring-aaccent/35"
-      : "border-aline/60";
-  const h = compact ? "min-h-[62px]" : "min-h-[72px]";
+      : "border-white/35";
+
+  const circle = compact
+    ? "w-8 h-8 sm:w-9 sm:h-9 min-w-0 min-h-0 max-w-[2.6rem] max-h-[2.6rem]"
+    : "w-12 h-12 sm:w-14 sm:h-14";
+
   return (
     <div
       ref={setNodeRef}
-      className={`${h} min-w-0 max-w-full rounded-lg border-2 ${border} touch-manipulation flex flex-col justify-center items-center ${
-        stitch ? "bg-[rgba(8,12,8,0.55)]" : "bg-[var(--A-panel-2)]"
+      className={`min-w-0 max-w-full h-full max-h-full flex flex-col items-center justify-center py-0.5 touch-manipulation rounded-lg border-2 border-dashed ${border} ${
+        stitch ? "bg-[rgba(0,0,0,0.12)]" : "bg-white/10"
       }`}
     >
-      <span
-        className={`text-[9px] font-black uppercase tracking-wide ${stitch ? "text-[rgba(200,255,61,0.45)]" : "text-atext-mute"}`}
+      <div className={`rounded-full border-2 border-dashed opacity-50 ${stitch ? "border-[rgba(200,255,61,0.35)]" : "border-white/50"} ${circle}`} />
+      <div
+        className={`w-full max-w-[6.25rem] -mt-1.5 rounded-md border border-dashed px-0.5 py-1 text-center ${
+          stitch ? "border-[rgba(200,255,61,0.25)] text-[rgba(200,255,61,0.45)]" : "border-white/35 text-white/70"
+        }`}
       >
-        Empty
-      </span>
+        <span className="text-[7px] font-bold uppercase tracking-wide">Add</span>
+      </div>
     </div>
   );
 }
@@ -82,77 +162,26 @@ function FilledLineupSlot({ slotIndex, player, stitch, onSelectPlayer, compact }
 
   const border = stitch
     ? isOver
-      ? "border-[rgba(200,255,61,0.65)] shadow-[0_0_12px_rgba(200,255,61,0.2)]"
-      : "border-[rgba(200,255,61,0.45)]"
+      ? "ring-2 ring-[rgba(200,255,61,0.55)] border-[rgba(200,255,61,0.55)]"
+      : "border-[rgba(200,255,61,0.25)]"
     : isOver
-      ? "border-aaccent ring-2 ring-aaccent/35"
-      : "border-aline/70";
+      ? "ring-2 ring-aaccent border-white/60"
+      : "border-white/25";
 
-  const num = squadNumberDisplay(player);
-  const dragging = isDragging ? "opacity-55 scale-[0.98]" : "";
+  const dragging = isDragging ? "opacity-60" : "";
 
-  const nameCell = (
-    <span
-      className={`flex-1 min-w-0 self-stretch py-0.5 font-semibold leading-tight text-left border-l flex ${
-        compact ? "px-0.5 items-start pt-0.5 text-[8px] sm:text-[9px] min-h-[2.25rem] sm:min-h-[2.5rem]" : "items-center px-1.5 sm:px-2 py-1 sm:py-1.5 text-[10px] sm:text-[11px] min-h-[34px] sm:min-h-[36px]"
-      } ${stitch ? "text-white/95 border-[rgba(200,255,61,0.2)]" : "text-slate-900 border-aline/20"}`}
-    >
-      <span className="line-clamp-2 break-words hyphens-auto w-full [overflow-wrap:anywhere]">{shortName(player)}</span>
-    </span>
-  );
-
-  if (stitch) {
-    const headH = compact ? "h-9" : "h-11";
-    const numW = compact ? "w-6 text-[9px]" : "w-8 text-[10px]";
-    return (
-      <div
-        ref={setRefs}
-        className={`min-w-0 max-w-full rounded-lg border-2 ${border} overflow-hidden shadow-inner touch-manipulation ${dragging} bg-[rgba(12,18,12,0.95)]`}
-      >
-        <button
-          type="button"
-          className="w-full min-w-0 cursor-grab active:cursor-grabbing text-left overflow-hidden"
-          {...listeners}
-          {...attributes}
-          onClick={() => onSelectPlayer?.(player)}
-        >
-          <div
-            className={`${headH} flex items-center justify-center bg-[rgba(25,35,28,0.9)] border-b border-[rgba(200,255,61,0.2)]`}
-          >
-            <span className={`font-black text-white tracking-wide ${compact ? "text-xs" : "text-sm"}`}>{initials(player)}</span>
-          </div>
-          <div className="flex items-stretch min-w-0">
-            <span
-              className={`${numW} flex-shrink-0 flex items-center justify-center bg-[rgba(90,60,120,0.95)] font-black text-white border-r border-[rgba(200,255,61,0.25)]`}
-            >
-              {num}
-            </span>
-            {nameCell}
-          </div>
-        </button>
-      </div>
-    );
-  }
-
-  const headH = compact ? "h-10" : "h-12";
-  const numW = compact ? "w-7 text-[10px]" : "w-9 text-[11px]";
   return (
-    <div ref={setRefs} className={`min-w-0 max-w-full rounded-lg border ${border} overflow-hidden bg-white shadow-sm touch-manipulation ${dragging}`}>
-      <button
-        type="button"
-        className="w-full min-w-0 cursor-grab active:cursor-grabbing text-left overflow-hidden"
-        {...listeners}
-        {...attributes}
-        onClick={() => onSelectPlayer?.(player)}
-      >
-        <div className={`${headH} flex items-center justify-center bg-gradient-to-b from-[#e8eef2] to-[#d4dde6] border-b border-aline/40`}>
-          <span className={`font-black text-slate-700 tracking-wide ${compact ? "text-xs" : "text-sm"}`}>{initials(player)}</span>
-        </div>
-        <div className="flex items-stretch min-w-0 bg-white">
-          <span className={`${numW} flex-shrink-0 flex items-center justify-center bg-[#3d1f4d] font-black text-white`}>{num}</span>
-          {nameCell}
-        </div>
-      </button>
+    <div
+      ref={setRefs}
+      className={`min-w-0 max-w-full h-full min-h-0 flex rounded-lg border bg-transparent ${border} overflow-hidden touch-manipulation ${dragging}`}
+    >
+      <ClubPlayerCardBody
+        player={player}
+        stitch={stitch}
+        compact={compact}
+        onSelectPlayer={onSelectPlayer}
+        dragProps={{ listeners, attributes }}
+      />
     </div>
   );
 }
@@ -176,8 +205,8 @@ function LineupSlotCell({ slotIndex, player, stitch, onSelectPlayer }) {
 function SectionHeading({ children, stitch }) {
   return (
     <h4
-      className={`text-xs sm:text-sm font-black tracking-wide mb-2 ${
-        stitch ? "text-[rgba(200,255,61,0.95)]" : "text-aaccent"
+      className={`text-xs sm:text-sm font-black tracking-wide mb-2 pb-1 border-b ${
+        stitch ? "text-[rgba(200,255,61,0.95)] border-[rgba(200,255,61,0.2)]" : "text-aaccent border-aaccent/25"
       }`}
     >
       {children}
@@ -186,8 +215,8 @@ function SectionHeading({ children, stitch }) {
 }
 
 /**
- * Club-style layout: 15 on oval (B→F top→bottom) + 3 followers + 5 interchange.
- * Draggable ids `lineup-slot-0` … `lineup-slot-22`.
+ * Club-style layout: 15 on oval (B→F) + 3 followers + 5 interchange.
+ * Oval interior uses proportional row heights so cards stay inside the ellipse.
  */
 export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
   const map = useMemo(() => new Map((squad || []).map((p) => [p.id, p])), [squad]);
@@ -201,8 +230,6 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
     [lineupIds, map],
   );
 
-  const zoneBg = stitch ? "bg-[rgba(5,8,5,0.55)]" : "bg-[rgba(0,24,32,0.55)]";
-
   return (
     <div
       className={`relative w-full max-w-6xl mx-auto mb-5 rounded-2xl p-3 sm:p-4 md:p-5 touch-manipulation ${stitch ? "stitch-neon-card" : ""}`}
@@ -213,8 +240,8 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           <h3 className={`${css.h1} text-base md:text-lg tracking-wide`}>GROUND MAP</h3>
           <p className="text-[11px] text-atext-dim mt-1 max-w-lg leading-snug">
             <span className="text-atext font-semibold">15</span> on the oval (B · HB · C · HF · F),{" "}
-            <span className="text-atext font-semibold">3 followers</span> underneath, then{" "}
-            <span className="text-atext font-semibold">5 interchange</span>. Drag or tap slots to build your side.
+            <span className="text-atext font-semibold">3 followers</span>, then{" "}
+            <span className="text-atext font-semibold">5 interchange</span> — same layout as a club team sheet.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[10px] font-mono uppercase text-atext-dim shrink-0">
@@ -256,26 +283,27 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           <line x1="186" y1="58" x2="186" y2="72" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" />
         </svg>
 
-        <div className={`absolute inset-[3%] flex flex-col gap-1 md:gap-1.5 pointer-events-auto ${zoneBg} max-md:overflow-y-auto`}>
+        <div className="absolute inset-[4.5%] flex flex-col gap-0.5 sm:gap-1 min-h-0 overflow-hidden pointer-events-auto">
           {ROWS_BACK_TO_FWD.map((row, r) => (
-            <div
-              key={row.key}
-              className="grid grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-1 sm:gap-1.5 items-stretch"
-            >
-              <div
-                className={`flex items-center justify-center rounded text-[10px] font-black uppercase tracking-tight ${
-                  stitch ? "bg-white/10 text-[rgba(200,255,61,0.95)]" : "bg-white/20 text-white"
-                }`}
-              >
-                {row.label}
+            <div key={row.key} className="flex-1 min-h-0 flex flex-col">
+              <div className="grid grid-cols-[minmax(1.25rem,1.5rem)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-x-1 gap-y-0 flex-1 min-h-0">
+                <div
+                  className={`flex items-center justify-center rounded-md text-[8px] sm:text-[9px] font-black uppercase tracking-tight self-center min-h-[1.5rem] ${
+                    stitch ? "bg-[rgba(255,255,255,0.12)] text-[rgba(200,255,61,0.95)]" : "bg-white/25 text-white shadow-sm"
+                  }`}
+                >
+                  {row.label}
+                </div>
+                {[0, 1, 2].map((col) => {
+                  const idx = r * 3 + col;
+                  const p = slotPlayer(idx);
+                  return (
+                    <div key={idx} className="min-h-0 min-w-0 h-full max-h-full flex">
+                      <LineupSlotCell slotIndex={idx} player={p} stitch={stitch} onSelectPlayer={onSelectPlayer} />
+                    </div>
+                  );
+                })}
               </div>
-              {[0, 1, 2].map((col) => {
-                const idx = r * 3 + col;
-                const p = slotPlayer(idx);
-                return (
-                  <LineupSlotCell key={idx} slotIndex={idx} player={p} stitch={stitch} onSelectPlayer={onSelectPlayer} />
-                );
-              })}
             </div>
           ))}
         </div>
@@ -289,12 +317,14 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
 
       <div className={`mt-4 border-t ${stitch ? "border-[rgba(200,255,61,0.25)]" : "border-aline"} pt-3`}>
         <SectionHeading stitch={stitch}>Followers</SectionHeading>
-        <div className="grid grid-cols-3 gap-1.5 md:gap-2">
+        <div className="grid grid-cols-3 gap-2 md:gap-3 min-h-[7rem]">
           {[0, 1, 2].map((k) => {
             const idx = LINEUP_OVAL_SLOT_COUNT + k;
             const p = slotPlayer(idx);
             return (
-              <LineupSlotCell key={idx} slotIndex={idx} player={p} stitch={stitch} onSelectPlayer={onSelectPlayer} />
+              <div key={idx} className="min-h-[6.5rem] flex">
+                <LineupSlotCell slotIndex={idx} player={p} stitch={stitch} onSelectPlayer={onSelectPlayer} />
+              </div>
             );
           })}
         </div>
@@ -302,12 +332,14 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
 
       <div className={`mt-4 border-t ${stitch ? "border-[rgba(200,255,61,0.25)]" : "border-aline"} pt-3`}>
         <SectionHeading stitch={stitch}>Interchange</SectionHeading>
-        <div className="grid grid-cols-5 gap-1.5 md:gap-2">
+        <div className="grid grid-cols-5 gap-1.5 md:gap-2 min-h-[6rem]">
           {[0, 1, 2, 3, 4].map((j) => {
             const idx = LINEUP_FIELD_COUNT + j;
             const p = slotPlayer(idx);
             return (
-              <LineupSlotCell key={idx} slotIndex={idx} player={p} stitch={stitch} onSelectPlayer={onSelectPlayer} />
+              <div key={idx} className="min-h-[5.5rem] flex">
+                <LineupSlotCell slotIndex={idx} player={p} stitch={stitch} onSelectPlayer={onSelectPlayer} />
+              </div>
             );
           })}
         </div>
