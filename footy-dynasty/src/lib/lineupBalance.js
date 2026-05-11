@@ -10,6 +10,12 @@ function primaryBucket(pos) {
   return 'mid';
 }
 
+/** @param {string|undefined} pos @returns {'fwd'|'mid'|'ruck'|'back'} */
+export function primaryLineBucket(pos) {
+  const b = primaryBucket(pos);
+  return b || 'mid';
+}
+
 /** @returns {Record<string, number>} */
 export function countLineBucketsFromLineup(squad, lineupIds) {
   const counts = { ruck: 0, fwd: 0, back: 0, mid: 0 };

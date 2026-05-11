@@ -1424,6 +1424,8 @@ export const ALL_CLUBS = Object.entries(PYRAMID).flatMap(([lkey, league]) =>
 
 export const findClub = (id) => ALL_CLUBS.find(c => c.id === id);
 
+export const findClubByShort = (short) => ALL_CLUBS.find((c) => c.short === short);
+
 export const findLeagueOf = (clubId) => {
   const c = findClub(clubId);
   return c ? PYRAMID[c.league] : null;

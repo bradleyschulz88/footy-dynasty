@@ -3,11 +3,13 @@ import { GripVertical, X } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   useDroppable,
   closestCorners,
+  pointerWithin,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -22,13 +24,30 @@ import {
   lineupPlayersOrdered,
   removeIdFromLineup,
   addIdToLineupAt,
+  addIdToLineupInBucket,
   dedupeLineup,
 } from "../lib/lineupHelpers.js";
 import { countLineBucketsFromLineup } from "../lib/lineupBalance.js";
 import { RatingDot, Pill, css } from "./primitives.jsx";
+import { LineupOvalField } from "./LineupOvalField.jsx";
 
 const XXII_TRAY_ID = "xxii-tray";
 const BENCH_TRAY_ID = "bench-tray";
+
+function ovalIdToBucket(oid) {
+  if (oid === "oval-mid-l" || oid === "oval-mid-r") return "mid";
+  if (oid === "oval-fwd") return "fwd";
+  if (oid === "oval-back") return "back";
+  if (oid === "oval-ruck") return "ruck";
+  return null;
+}
+
+/** Prefer pointer target (oval zones) then fall back to list sorting. */
+function lineupCollision(args) {
+  const pw = pointerWithin(args);
+  if (pw.length > 0) return pw;
+  return closestCorners(args);
+}
 
 function pName(p) {
   return p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || "Player");
@@ -39,7 +58,7 @@ function TrayDropArea({ id, label, isEmpty, stitch }) {
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-10 rounded-lg flex items-center justify-center text-[10px] font-mono uppercase tracking-wider transition-colors ${
+      className={`min-h-11 rounded-lg flex items-center justify-center text-[10px] font-mono uppercase tracking-wider transition-colors touch-manipulation ${
         stitch
           ? `border border-dashed border-[rgba(200,255,61,0.35)] ${isOver ? "bg-[rgba(200,255,61,0.12)]" : "bg-transparent text-atext-mute"}`
           : `border border-dashed border-aline ${isOver ? "bg-aaccent/10" : "text-atext-mute"}`
@@ -72,7 +91,7 @@ function SortablePlayerRow({
       <div
         ref={setNodeRef}
         style={style}
-        className={`stitch-mock-player-card mb-1.5 ${variant === "xxii" ? "" : "opacity-95"}`}
+        className={`stitch-mock-player-card mb-1.5 min-h-[48px] ${variant === "xxii" ? "" : "opacity-95"}`}
       >
         <div className="stitch-mock-player-rating">{player.overall}</div>
         <div className="flex items-center gap-2 flex-1 min-w-0 px-2 py-1.5">
@@ -134,7 +153,7 @@ function SortablePlayerRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="w-full flex items-center gap-1 px-2 py-2 rounded-xl border border-aline bg-apanel mb-1"
+      className="w-full flex items-center gap-1 px-2 py-2.5 min-h-[48px] rounded-xl border border-aline bg-apanel mb-1 touch-manipulation"
     >
       <button
         type="button"
@@ -213,8 +232,9 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
   const buckets = useMemo(() => countLineBucketsFromLineup(squad, lineup), [squad, lineup]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 10 },
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 8 },
     }),
   );
   const [activeId, setActiveId] = useState(null);
@@ -237,6 +257,19 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
     const oL = li.indexOf(oid);
     const iB = bIds.indexOf(aid);
     const oB = bIds.indexOf(oid);
+
+    const bucket = ovalIdToBucket(oid);
+    if (bucket) {
+      if (iB !== -1) {
+        if (li.length >= LINEUP_CAP) return;
+        updateCareer({ lineup: dedupeLineup(addIdToLineupInBucket(li, squad, aid, bucket)) });
+        return;
+      }
+      if (iL !== -1) {
+        updateCareer({ lineup: dedupeLineup(addIdToLineupInBucket(li, squad, aid, bucket)) });
+        return;
+      }
+    }
 
     if (iL !== -1 && oL !== -1) {
       updateCareer({ lineup: arrayMove(li, iL, oL) });
@@ -279,11 +312,17 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={lineupCollision}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragCancel={onDragCancel}
     >
+      <LineupOvalField
+        squad={squad}
+        lineupIds={lineup}
+        stitch={stitch}
+        onSelectPlayer={onSelectPlayer}
+      />
       <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5`}>
         <div
           className={`rounded-2xl p-4 ${stitch ? "stitch-neon-card" : ""}`}
@@ -382,7 +421,8 @@ export function LineupSortablePanel({ career, updateCareer, stitch }) {
   const players = useMemo(() => lineupPlayersOrdered(squad, lineup), [squad, lineup]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
   );
   const [activeId, setActiveId] = useState(null);
   const activePlayer = activeId ? squad.find((p) => p.id === activeId) : null;

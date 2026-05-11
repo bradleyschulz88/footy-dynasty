@@ -1,42 +1,27 @@
-import { describe, it, expect } from 'vitest';
-import {
-  LINEUP_CAP,
-  lineupPlayersOrdered,
-  removeIdFromLineup,
-  addIdToLineupAt,
-  moveLineupIndex,
-  dedupeLineup,
-} from '../lineupHelpers.js';
+import { describe, it, expect } from "vitest";
+import { addIdToLineupInBucket } from "../lineupHelpers.js";
 
-const squad = [
-  { id: 'a', overall: 80 },
-  { id: 'b', overall: 70 },
-  { id: 'c', overall: 90 },
-];
+describe("addIdToLineupInBucket", () => {
+  const squad = [
+    { id: "a", position: "KF" },
+    { id: "b", position: "RU" },
+    { id: "c", position: "C" },
+  ];
 
-describe('lineupHelpers', () => {
-  it('lineupPlayersOrdered preserves lineup order', () => {
-    expect(lineupPlayersOrdered(squad, ['c', 'a'])).toEqual([squad[2], squad[0]]);
-    expect(lineupPlayersOrdered(squad, ['missing', 'b'])).toEqual([squad[1]]);
+  it("inserts after the last player already in that line bucket", () => {
+    expect(addIdToLineupInBucket(["b", "a"], squad, "c", "fwd")).toEqual(["b", "a", "c"]);
   });
 
-  it('removeIdFromLineup', () => {
-    expect(removeIdFromLineup(['a', 'b', 'c'], 'b')).toEqual(['a', 'c']);
+  it("when bucket empty, orders before first line with higher bucket order", () => {
+    expect(addIdToLineupInBucket(["b", "a"], squad, "c", "mid")).toEqual(["c", "b", "a"]);
   });
 
-  it('addIdToLineupAt inserts and caps', () => {
-    const base = Array.from({ length: LINEUP_CAP }, (_, i) => `p${i}`);
-    expect(addIdToLineupAt(['a', 'b'], 'c', 1)).toEqual(['a', 'c', 'b']);
-    expect(addIdToLineupAt(base, 'new', 5, LINEUP_CAP)).toHaveLength(LINEUP_CAP);
-    expect(addIdToLineupAt(['a', 'b'], 'a', 0)).toEqual(['a', 'b']);
-  });
-
-  it('moveLineupIndex', () => {
-    expect(moveLineupIndex(['a', 'b', 'c'], 0, 2)).toEqual(['b', 'c', 'a']);
-    expect(moveLineupIndex(['a', 'b'], 5, 0)).toEqual(['a', 'b']);
-  });
-
-  it('dedupeLineup', () => {
-    expect(dedupeLineup(['a', 'b', 'a', 'c'])).toEqual(['a', 'b', 'c']);
+  it("moves an existing id to end of its line bucket among teammates", () => {
+    const sq = [
+      { id: "a1", position: "KF" },
+      { id: "a2", position: "HF" },
+      { id: "b", position: "RU" },
+    ];
+    expect(addIdToLineupInBucket(["b", "a1", "a2"], sq, "a1", "fwd")).toEqual(["b", "a2", "a1"]);
   });
 });

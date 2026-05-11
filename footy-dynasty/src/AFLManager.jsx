@@ -10,7 +10,7 @@ import {
   Landmark, GripVertical, LayoutDashboard, Wrench,
 } from "lucide-react";
 import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
-import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf } from './data/pyramid.js';
+import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf, findClubByShort } from './data/pyramid.js';
 import { pyramidNoteForLeague } from './data/pyramidMeta.js';
 import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from './lib/playerGen.js';
 import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET, TIER3_MIN_CLUBS_PER_DIVISION } from './lib/leagueEngine.js';
@@ -26,6 +26,7 @@ import {
 import { css, Bar, RatingDot, Pill, Stat, Jersey, GlobalStyle } from './components/primitives.jsx';
 import { SquadLineupBuilder, LineupSortablePanel } from './components/SquadLineupDnD.jsx';
 import TabNav from './components/TabNav.jsx';
+import { ClubBadge } from './components/ClubBadge.jsx';
 import GameOverScreen from './screens/GameOverScreen.jsx';
 import PostMatchSummary from './screens/PostMatchSummary.jsx';
 import SackingSequence from './screens/SackingSequence.jsx';
@@ -4500,6 +4501,40 @@ function StaffTab({ career, updateCareer }) {
 // ============================================================================
 // RECRUIT SCREEN — Trade / Draft / Youth / Local
 // ============================================================================
+function RecruitOffSeasonStrip({ career }) {
+  const tradeLive = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
+  const draftLive = (career.draftOrder || []).length > 0 && (career.draftPool || []).length > 0;
+  if (!tradeLive && !draftLive) return null;
+  return (
+    <div
+      className="mb-4 rounded-2xl border border-[var(--A-line)] p-4 flex flex-col gap-3"
+      style={{ background: 'var(--A-panel-2)' }}
+    >
+      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute">Off-season focus</div>
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+        {tradeLive && (
+          <div className="flex-1 min-w-[200px] rounded-xl border border-aline bg-apanel p-3 flex gap-3 items-center">
+            <div className="text-2xl" aria-hidden>🤝</div>
+            <div>
+              <div className="font-display text-sm text-aaccent uppercase tracking-wide">Trade period</div>
+              <div className="text-xs text-atext-dim mt-0.5">Player market and incoming offers — use large tiles below on phones.</div>
+            </div>
+          </div>
+        )}
+        {draftLive && (
+          <div className="flex-1 min-w-[200px] rounded-xl border border-aline bg-apanel p-3 flex gap-3 items-center">
+            <div className="text-2xl" aria-hidden>🎯</div>
+            <div>
+              <div className="font-display text-sm text-aaccent uppercase tracking-wide">National draft live</div>
+              <div className="text-xs text-atext-dim mt-0.5">Pick order bar shows club colours; draft board is card-first on small screens.</div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function RecruitScreen({ career, club, updateCareer, tab, setTab }) {
   const offerCount = (career.pendingTradeOffers || []).filter(o => o.status === 'pending').length;
   const inTradePeriod = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
@@ -4515,7 +4550,8 @@ function RecruitScreen({ career, club, updateCareer, tab, setTab }) {
     { key: "local", label: "Local Football", icon: Map },
   ];
   return (
-    <div className="anim-in">
+    <div className="anim-in touch-manipulation">
+      <RecruitOffSeasonStrip career={career} />
       <TabNav tabs={tabs} active={t} onChange={setTab} />
       {t === "offers" && <OffersTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "freeagents" && (inTradePeriod ? <FreeAgentsTab career={career} club={club} updateCareer={updateCareer} /> : (
@@ -4840,7 +4876,7 @@ function TradeTab({ career, updateCareer }) {
       <div className="flex gap-2 items-center flex-wrap">
         <span className="text-xs text-atext-dim uppercase tracking-wider">Position:</span>
         {["ALL", ...POSITIONS].map(pos => (
-          <button key={pos} onClick={()=>setFilter(pos)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${filter===pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
+          <button key={pos} type="button" onClick={()=>setFilter(pos)} className={`px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold touch-manipulation ${filter===pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
         ))}
         <label className="flex items-center gap-2 text-[11px] text-atext-dim cursor-pointer ml-2">
           <input type="checkbox" checked={capOnly} onChange={e => setCapOnly(e.target.checked)} className="rounded border-aline" />
@@ -4856,7 +4892,7 @@ function TradeTab({ career, updateCareer }) {
         </select>
       </div>
 
-      <div className="rounded-2xl overflow-x-auto" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
+      <div className="hidden xl:block rounded-2xl overflow-x-auto" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
         <div className="gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b grid min-w-[720px]" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}}>
           <div>Player</div>
           <div>Ps</div>
@@ -4871,6 +4907,7 @@ function TradeTab({ career, updateCareer }) {
         </div>
         <div className="max-h-[60vh] overflow-y-auto min-w-[720px]">
           {sorted.map(p => {
+            const sellerClub = findClubByShort(p.fromClub);
             const canAfford = career.finance.transferBudget >= p.value;
             const capRoom = wageCap - currentWages;
             const isNeg = negotiating?.playerId === p.id;
@@ -4887,7 +4924,10 @@ function TradeTab({ career, updateCareer }) {
                   <div className="text-sm text-center">{p.age}</div>
                   <div className="flex justify-center"><RatingDot value={p.overall} /></div>
                   <div className="text-sm text-center text-[#4AE89A]">{p.potential}</div>
-                  <div className="text-[10px] text-atext-dim truncate" title={p.fromClub}>{p.fromClub}</div>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {sellerClub ? <ClubBadge club={sellerClub} size="xs" /> : null}
+                    <span className="text-[10px] text-atext-dim truncate" title={p.fromClub}>{p.fromClub}</span>
+                  </div>
                   <div className="text-right text-sm font-mono font-bold" style={{color: canAfford ? "#4AE89A" : "#E84A6F"}}>{fmtK(p.value)}</div>
                   <div className="text-right text-xs font-mono text-atext-dim">{fmtK(p.wage)}</div>
                   <div className="flex justify-center">
@@ -4947,6 +4987,106 @@ function TradeTab({ career, updateCareer }) {
           })}
           {sorted.length === 0 && <div className="p-8 text-center text-sm text-atext-dim">No players match the filter. Try widening your search.</div>}
         </div>
+      </div>
+
+      <div className="xl:hidden space-y-3">
+        {sorted.map((p) => {
+          const sellerClub = findClubByShort(p.fromClub);
+          const canAfford = career.finance.transferBudget >= p.value;
+          const capRoom = wageCap - currentWages;
+          const isNeg = negotiating?.playerId === p.id;
+          const capBlock = negotiating && isNeg && currentWages + negotiating.wage > wageCap;
+          const fitsListWage = wageCap <= 0 || canAffordSigning(career, p.wage);
+          return (
+            <div key={p.id} className="rounded-2xl border border-[var(--A-line)] bg-[var(--A-panel)] p-4">
+              <div className="flex gap-3">
+                {sellerClub ? <ClubBadge club={sellerClub} size="md" /> : <div className="w-10 h-10 rounded-lg bg-apanel-2 flex items-center justify-center text-[10px] text-atext-mute">?</div>}
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-atext">{p.firstName} {p.lastName}</div>
+                  <div className="text-xs text-atext-dim mt-1">{formatPositionSlash(p)} · age {p.age} · {p.fromClub}</div>
+                  <div className="flex flex-wrap gap-2 mt-3 items-center">
+                    <RatingDot value={p.overall} size="sm" />
+                    <span className="text-xs text-[#4AE89A] font-bold">Pot {p.potential}</span>
+                    <span className="text-xs font-mono font-bold" style={{ color: canAfford ? "#4AE89A" : "#E84A6F" }}>{fmtK(p.value)}</span>
+                    <span className="text-xs font-mono text-atext-dim">{fmtK(p.wage)}/yr</span>
+                    {wageCap <= 0 ? (
+                      <Pill color="#64748B">—</Pill>
+                    ) : fitsListWage ? (
+                      <Pill color="#4AE89A">Cap OK</Pill>
+                    ) : (
+                      <Pill color="#E84A6F">Cap</Pill>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex justify-end gap-2">
+                {isNeg ? (
+                  <button type="button" onClick={() => setNegotiating(null)} className="text-xs text-atext-mute px-3 py-2 min-h-[44px] rounded-lg border border-aline">
+                    Close
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => (canAfford ? openNegotiation(p) : null)}
+                    disabled={!canAfford}
+                    className={
+                      canAfford
+                        ? `${css.btnPrimary} text-xs px-4 py-2.5 min-h-[44px]`
+                        : "px-4 py-2.5 min-h-[44px] rounded-lg text-xs bg-apanel-2 text-atext-mute"
+                    }
+                  >
+                    {canAfford ? "Negotiate" : "Too dear"}
+                  </button>
+                )}
+              </div>
+              {isNeg && (
+                <div className="mt-3 rounded-xl p-4" style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
+                  <div className="text-xs font-bold text-[#166534] mb-2">📋 {p.firstName} {p.lastName}&apos;s demands</div>
+                  <div className="flex flex-wrap gap-4 mb-3">
+                    <div>
+                      <div className="text-[10px] text-atext-dim uppercase tracking-wider">Wage demand</div>
+                      <div className="font-display text-xl text-atext">
+                        {fmtK(negotiating.wage)}
+                        <span className="text-sm font-sans">/yr</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-atext-dim uppercase tracking-wider">Contract length</div>
+                      <div className="font-display text-xl text-atext">
+                        {negotiating.years}
+                        <span className="text-sm font-sans"> yr</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] text-atext-dim uppercase tracking-wider">Cap room after</div>
+                      <div className={`font-display text-xl ${capBlock ? "text-[#E84A6F]" : "text-[#4AE89A]"}`}>{fmtK(capRoom - negotiating.wage)}</div>
+                    </div>
+                  </div>
+                  {capBlock && <div className="text-xs text-[#E84A6F] mb-2">⚠️ Signing this player would exceed your salary cap.</div>}
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => acceptDeal(p)} disabled={capBlock} className={capBlock ? "px-4 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute min-h-[44px]" : `${css.btnPrimary} text-xs px-4 py-2 min-h-[44px]`}>
+                      Accept deal
+                    </button>
+                    {!negotiating.counterUsed && (
+                      <button type="button" onClick={() => counterOffer(p)} className="px-4 py-2 rounded-lg text-xs font-bold border min-h-[44px]" style={{ background: "rgba(255,179,71,0.10)", color: "var(--A-accent-2)", borderColor: "rgba(255,179,71,0.30)" }}>
+                        Counter (−12%)
+                      </button>
+                    )}
+                    {negotiating.counterUsed && <span className="px-2 py-2 text-xs text-atext-mute self-center">Counter used</span>}
+                    <button type="button" onClick={() => setNegotiating(null)} className="px-4 py-2 rounded-lg text-xs font-bold bg-apanel-2 text-atext-dim hover:bg-aline min-h-[44px]">
+                      Walk away
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {sorted.length === 0 && (
+          <div className="p-8 text-center text-sm text-atext-dim rounded-2xl border border-[var(--A-line)] bg-[var(--A-panel)]">
+            No players match the filter. Try widening your search.
+          </div>
+        )}
       </div>
     </div>
   );
@@ -5067,15 +5207,21 @@ function DraftTab({ career, club, updateCareer }) {
               const isMe = d.clubId === career.clubId;
               const onClock = !d.used && d.clubId === draftOrder.find(x => !x.used)?.clubId;
               return (
-                <div key={d.pick} className={`flex-shrink-0 px-3 py-2 rounded-lg text-xs ${d.used ? 'opacity-40' : ''}`}
+                <div key={d.pick} className={`flex-shrink-0 px-2 py-2 rounded-lg text-xs touch-manipulation ${d.used ? 'opacity-40' : ''}`}
                   style={{
                     background: isMe ? 'rgba(0,224,255,0.12)' : 'var(--A-panel-2)',
                     border: `1px solid ${onClock ? 'var(--A-accent)' : 'var(--A-line)'}`,
-                    minWidth: 96,
+                    minWidth: 112,
+                    minHeight: 76,
                   }}>
-                  <div className="font-mono text-[9px] text-atext-mute">#{d.pick}</div>
-                  <div className={`font-display text-sm ${isMe ? 'text-aaccent' : 'text-atext'}`}>{c?.short || d.clubId}</div>
-                  {d.used && d.prospectName && <div className="text-[9px] text-atext-dim truncate mt-0.5">{d.prospectName} ({d.prospectOverall})</div>}
+                  <div className="flex items-start gap-2">
+                    {c ? <ClubBadge club={c} size="sm" /> : <div className="w-9 h-9 rounded-lg bg-apanel shrink-0" />}
+                    <div className="min-w-0">
+                      <div className="font-mono text-[9px] text-atext-mute">#{d.pick}</div>
+                      <div className={`font-display text-sm leading-tight ${isMe ? 'text-aaccent' : 'text-atext'}`}>{c?.short || d.clubId}</div>
+                      {d.used && d.prospectName && <div className="text-[9px] text-atext-dim truncate mt-0.5 max-w-[7rem]">{d.prospectName} ({d.prospectOverall})</div>}
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -5086,7 +5232,7 @@ function DraftTab({ career, club, updateCareer }) {
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs text-atext-dim uppercase tracking-wider">Position:</span>
         {["ALL", ...POSITIONS].map(pos => (
-          <button key={pos} type="button" onClick={() => setPosFilter(pos)} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${posFilter === pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
+          <button key={pos} type="button" onClick={() => setPosFilter(pos)} className={`px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold touch-manipulation ${posFilter === pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
         ))}
         <span className="ml-3 text-xs text-atext-dim uppercase tracking-wider">Sort pool:</span>
         <select value={poolSort} onChange={e => setPoolSort(e.target.value)} className="bg-apanel-2 border border-aline rounded-lg px-3 py-1.5 text-xs text-atext">
@@ -5096,7 +5242,7 @@ function DraftTab({ career, club, updateCareer }) {
         </select>
       </div>
 
-      <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
+      <div className="hidden xl:block rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
         <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
           <div className="col-span-1">#</div>
           <div className="col-span-4">Prospect</div>
@@ -5125,12 +5271,45 @@ function DraftTab({ career, club, updateCareer }) {
                   <span className="text-[10px] text-atext-dim block">est. rookie</span>
                 </div>
                 <div className="col-span-1 flex justify-end">
-                  <button onClick={()=>draftPlayer(p)} className={`${css.btnPrimary} text-xs px-3 py-1.5`}>{isMyTurn ? 'Draft' : 'Sim →'}</button>
+                  <button type="button" onClick={()=>draftPlayer(p)} className={`${css.btnPrimary} text-xs px-4 py-2.5 min-h-[44px] touch-manipulation`}>{isMyTurn ? 'Draft' : 'Sim →'}</button>
                 </div>
               </div>
             );
           })}
         </div>
+      </div>
+
+      <div className="xl:hidden space-y-3">
+        {basePool.slice(0, 50).map((p, i) => {
+          const rw = rookieDraftWage(p.overall, dTier);
+          const capOk = canAffordSigning(career, rw);
+          return (
+            <div key={p.id} className="rounded-2xl border border-[var(--A-line)] bg-[var(--A-panel)] p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-bold text-aaccent text-sm">Pool #{i + 1}</div>
+                  <div className="font-semibold text-atext mt-1">{p.firstName} {p.lastName}</div>
+                  <div className="text-[10px] text-atext-dim">Draft age ~17–19</div>
+                </div>
+                <Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill>
+              </div>
+              <div className="flex flex-wrap gap-3 mt-3 items-center">
+                <RatingDot value={p.overall} size="sm" />
+                <div className="font-bold text-[#4AE89A]">Pot {p.potential}</div>
+                <Bar value={p.potential} color="#4AE89A" small />
+                <span className="text-sm font-mono" style={{ color: capOk ? "#4AE89A" : "#E84A6F" }}>
+                  ${(rw / 1000).toFixed(0)}k
+                </span>
+                <span className="text-[10px] text-atext-dim">rookie est.</span>
+              </div>
+              <div className="mt-3 flex justify-end">
+                <button type="button" onClick={() => draftPlayer(p)} className={`${css.btnPrimary} text-xs px-4 py-2.5 min-h-[44px] touch-manipulation`}>
+                  {isMyTurn ? "Draft" : "Sim →"}
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
       <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
         <span className="text-aaccent font-bold">TIP:</span> Bottom-of-ladder clubs pick first. Hit "Sim →" to fast-forward AI selections to your slot. Higher potential = bigger growth ceiling but slower start.
