@@ -154,9 +154,9 @@ export const GlobalStyle = () => (
     body, html { background:var(--A-bg); margin:0; color:var(--A-text); }
     ::-webkit-scrollbar { width:5px; height:5px; }
     ::-webkit-scrollbar-track { background:var(--A-bg); }
-    ::-webkit-scrollbar-thumb { background:rgba(124,161,207,0.25); border-radius:4px; }
-    ::-webkit-scrollbar-thumb:hover { background:rgba(0,224,255,0.35); }
-    @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(0,224,255,0.25);}50%{box-shadow:0 0 14px 3px rgba(0,224,255,0.15);} }
+    ::-webkit-scrollbar-thumb { background:rgba(15,23,42,0.18); border-radius:4px; }
+    ::-webkit-scrollbar-thumb:hover { background:rgba(13,148,136,0.35); }
+    @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(13,148,136,0.2);}50%{box-shadow:0 0 14px 3px rgba(13,148,136,0.12);} }
     .glow { animation: pulseGlow 2.5s ease-in-out infinite; }
     @keyframes slideIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
     .anim-in { animation: slideIn 0.2s ease-out; }

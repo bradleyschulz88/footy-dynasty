@@ -43,7 +43,6 @@ import TutorialOverlay, {
 } from './components/TutorialOverlay.jsx';
 import SeasonStrip from './components/SeasonStrip.jsx';
 import MatchPreviewPanel from './components/MatchPreviewPanel.jsx';
-import StitchClubDashboard from './components/stitch/StitchClubDashboard.jsx';
 
 const ScheduleScreenLazy = lazy(() => import('./screens/ScheduleScreen.jsx'));
 
@@ -102,10 +101,8 @@ import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from 
 import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from './lib/gameDepth.js';
 import { lineupPlayersOrdered } from './lib/lineupHelpers.js';
 
-/** Visual theme: aligns with `.dirA` / `.dirB` / `.dirS` in tokens.css (Stitch mockups → dirS). */
-function themeWrapperClass(themeMode) {
-  if (themeMode === 'B') return 'dirB';
-  if (themeMode === 'S') return 'dirS';
+/** Single light UI — always `dirA` (see tokens.css `--A-*`). */
+function themeWrapperClass() {
   return 'dirA';
 }
 
@@ -118,18 +115,18 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.error) {
       return (
-        <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-8">
-          <div className="max-w-lg w-full rounded-2xl p-6" style={{background:'#1E293B', border:'1px solid #E84A6F44'}}>
+        <div className="dirA min-h-screen flex items-center justify-center p-8">
+          <div className="max-w-lg w-full rounded-2xl p-6 panel">
             <div className="text-3xl mb-3">💥</div>
-            <div className="font-display text-2xl text-[#E84A6F] mb-2">Something went wrong</div>
-            <pre className="text-xs text-atext-mute bg-[#0F172A] rounded-lg p-3 overflow-auto max-h-48 mb-4">{this.state.error?.message}{'\n'}{this.state.error?.stack}</pre>
+            <div className="font-display text-2xl text-aneg mb-2">Something went wrong</div>
+            <pre className="text-xs text-atext-dim rounded-lg p-3 overflow-auto max-h-48 mb-4" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>{this.state.error?.message}{'\n'}{this.state.error?.stack}</pre>
             <div className="flex gap-2">
               <button onClick={() => this.setState({ error: null })}
-                className="px-4 py-2 rounded-lg text-sm font-bold bg-aaccent text-white hover:bg-[#D07A2A]">
+                className="px-4 py-2 rounded-lg text-sm font-bold bg-aaccent text-white">
                 Try again
               </button>
-              <button onClick={() => { sessionStorage.removeItem('footy-dynasty-setup'); localStorage.removeItem('footy-dynasty-career'); this.setState({ error: null }); }}
-                className="px-4 py-2 rounded-lg text-sm font-bold bg-[#E84A6F] text-white hover:bg-[#F06070]">
+              <button onClick={() => { sessionStorage.removeItem('footy-dynasty-setup'); sessionStorage.removeItem('footy-dynasty-setup-v2'); localStorage.removeItem('footy-dynasty-career'); this.setState({ error: null }); }}
+                className="px-4 py-2 rounded-lg text-sm font-bold text-white bg-[#dc2626] hover:opacity-90">
                 Start new game
               </button>
             </div>
@@ -148,7 +145,7 @@ export default function AFLManager() {
   return <ErrorBoundary><AFLManagerInner /></ErrorBoundary>;
 }
 
-const SETUP_SS_KEY = 'footy-dynasty-setup';
+const SETUP_SS_KEY = 'footy-dynasty-setup-v2';
 
 function AFLManagerInner() {
   const [activeSlot, setActiveSlotState] = useState(() => getActiveSlot());
@@ -444,7 +441,7 @@ function AFLManagerInner() {
   // Drives the 5-step narrative, then a Job Market screen for the new club.
   if (career.isSacked) {
     return (
-      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
         {globalStyle}
         <SackingSequence
           career={career}
@@ -483,7 +480,7 @@ function AFLManagerInner() {
   // Legacy game-over (kept as a no-op fallback so older saves with gameOver but no isSacked don't crash)
   if (career.gameOver && !career.isSacked) {
     return (
-      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
         {globalStyle}
         <GameOverScreen
           career={career}
@@ -512,7 +509,7 @@ function AFLManagerInner() {
 
   if (career.showSeasonSummary && career.seasonSummary) {
     return (
-      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
         {globalStyle}
         <SeasonSummaryScreen
           summary={career.seasonSummary}
@@ -527,7 +524,7 @@ function AFLManagerInner() {
 
   if (career.inMatchDay && career.currentMatchResult) {
     return (
-      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
         {globalStyle}
         <MatchDayScreen
           result={career.currentMatchResult}
@@ -561,7 +558,7 @@ function AFLManagerInner() {
 
   if (career.boardCrisis?.phase === 'active') {
     return (
-      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
         {globalStyle}
         <VoteOfConfidenceFlow
           career={career}
@@ -588,7 +585,7 @@ function AFLManagerInner() {
 
   if (career.boardMeetingBlocking) {
     return (
-      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
         {globalStyle}
         <BoardMeetingScreen
           career={career}
@@ -610,7 +607,7 @@ function AFLManagerInner() {
 
   if (career.arrivalBriefing?.pending) {
     return (
-      <div className={`${themeWrapperClass(career.themeMode)} font-sans min-h-screen`}>
+      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
         {globalStyle}
         <ArrivalBriefingFlow
           career={career}
@@ -629,7 +626,7 @@ function AFLManagerInner() {
   }
 
   return (
-    <div className={`${themeWrapperClass(career.themeMode)} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
+    <div className={`${themeWrapperClass()} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
       {globalStyle}
       <Sidebar
         screen={screen}
@@ -749,7 +746,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
   const [leagueKey, _setLeagueKey] = useState(saved.leagueKey ?? null);
   const [clubId, _setClubId] = useState(saved.clubId ?? null);
   const [localDivision, _setLocalDivision] = useState(saved.localDivision ?? 5);
-  const [managerName, setManagerName] = useState(saved.managerName ?? "");
+  const [managerName, _setManagerName] = useState(saved.managerName ?? "");
   const [difficulty, _setDifficulty] = useState(saved.difficulty ?? 'contender');
   const [loading, setLoading] = useState(false);
   const [startError, setStartError] = useState(null);
@@ -760,6 +757,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
   const setTier       = (v) => { saveSetup({ tier: v });       _setTier(v); };
   const setLeagueKey  = (v) => { saveSetup({ leagueKey: v });  _setLeagueKey(v); };
   const setClubId     = (v) => { saveSetup({ clubId: v });     _setClubId(v); };
+  const setManagerName = (v) => { saveSetup({ managerName: v }); _setManagerName(v); };
   const setDifficulty = (v) => { saveSetup({ difficulty: v }); _setDifficulty(v); };
   const setLocalDivision = (v) => {
     saveSetup({ localDivision: v, clubId: null });
@@ -959,6 +957,13 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     }
   }
 
+  const setupLabels =
+    tier === 3
+      ? ['State', 'Coach', 'Tier', 'League', 'Division', 'Club']
+      : ['State', 'Coach', 'Tier', 'League', 'Club'];
+  const setupVisualStep =
+    tier === 3 ? step : step <= 3 ? step : step === 5 ? 4 : Math.min(step, 4);
+
   return (
     <div className="dirA min-h-screen font-sans text-atext flex flex-col">
       <style>{`
@@ -967,11 +972,11 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
         .fade-up { animation: fadeUp 0.4s ease-out; }
       `}</style>
       {/* Hero */}
-      <div className="relative overflow-hidden border-b border-aline" style={{ background: "radial-gradient(circle at 30% 20%, rgba(0, 224, 255, 0.10) 0%, transparent 65%)" }}>
-        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, var(--A-accent) 1px, transparent 0)", backgroundSize: "32px 32px" }} />
+      <div className="relative overflow-hidden border-b border-aline" style={{ background: 'radial-gradient(circle at 30% 20%, rgba(13, 148, 136, 0.12) 0%, transparent 65%)' }}>
+        <div className="absolute inset-0 opacity-[0.35]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, var(--A-line-2) 1px, transparent 0)', backgroundSize: '32px 32px' }} />
         <div className="max-w-5xl mx-auto px-8 py-12 relative">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background:"linear-gradient(135deg, var(--A-accent), #0098b0)"}}><Trophy className="w-6 h-6 text-[#001520]" /></div>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md" style={{ background: 'linear-gradient(135deg, var(--A-accent), #0f766e)' }}><Trophy className="w-6 h-6 text-white" /></div>
             <span className="text-[12px] uppercase tracking-[0.3em] text-aaccent font-mono font-bold">Manager 2026</span>
           </div>
           <h1 className="font-display text-7xl tracking-wider leading-none">FOOTY <span className="text-aaccent">DYNASTY</span></h1>
@@ -980,12 +985,12 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       </div>
       {/* Stepper */}
       <div className="flex-1 max-w-5xl mx-auto w-full px-8 py-8">
-        <div className="flex items-center gap-2 mb-8">
-          {["State", "Tier", "League", "Club", "You"].map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition ${step === i ? "bg-aaccent text-[#001520]" : i < step ? "bg-aaccent/15 text-aaccent border border-aaccent/40" : "bg-apanel text-atext-mute border border-aline"}`}>{i+1}</div>
-              <span className={`text-sm font-semibold ${step === i ? "text-atext" : "text-atext-mute"}`}>{s}</span>
-              {i < 4 && <ChevronRight className="w-4 h-4 text-atext-mute mx-1" />}
+        <div className="flex flex-wrap items-center gap-2 mb-8">
+          {setupLabels.map((label, i) => (
+            <div key={label} className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition ${setupVisualStep === i ? 'bg-aaccent text-white' : i < setupVisualStep ? 'bg-aaccent/15 text-aaccent border border-aaccent/40' : 'bg-apanel text-atext-mute border border-aline'}`}>{i + 1}</div>
+              <span className={`text-sm font-semibold ${setupVisualStep === i ? 'text-atext' : 'text-atext-mute'}`}>{label}</span>
+              {i < setupLabels.length - 1 && <ChevronRight className="w-4 h-4 text-atext-mute mx-1" />}
             </div>
           ))}
         </div>
@@ -1036,13 +1041,67 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
         )}
 
         {step === 1 && (
+          <div className="fade-up max-w-3xl">
+            <button type="button" onClick={() => setStep(0)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
+            <h2 className={`${css.h1} text-4xl mb-4`}>YOUR COACH</h2>
+            <p className="text-atext-dim mb-6">Name your manager and pick a starting difficulty. You can change difficulty later in Settings.</p>
+            <div className={`${css.panel} p-6 mb-4`}>
+              <label className={css.label}>Manager name</label>
+              <input
+                value={managerName}
+                onChange={(e) => setManagerName(e.target.value)}
+                placeholder="Bluey McGee"
+                className="w-full mt-2 bg-apanel border border-aline focus:border-aaccent outline-none rounded-lg px-4 py-3 text-atext"
+              />
+            </div>
+            <div className={`${css.panel} p-6 mb-6`}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`${css.h1} text-2xl`}>DIFFICULTY</h3>
+                <span className="text-[10px] text-atext-mute uppercase tracking-widest font-mono">Adjustable in Settings</span>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {DIFFICULTY_IDS.map((id) => {
+                  const meta = DIFFICULTY_META[id];
+                  const active = difficulty === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setDifficulty(id)}
+                      className={`text-left p-4 rounded-xl border transition-all ${active ? 'ring-2' : 'hover:border-aaccent/40'}`}
+                      style={{
+                        background: active ? `${meta.color}15` : 'var(--A-panel-2)',
+                        borderColor: active ? meta.color : 'var(--A-line)',
+                        ringColor: meta.color,
+                      }}
+                    >
+                      <div className="font-display text-2xl mb-1" style={{ color: meta.color }}>{meta.label.toUpperCase()}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-atext-mute mb-2 font-mono">{meta.audience}</div>
+                      <div className="text-xs text-atext-dim mb-3 leading-snug">{meta.summary}</div>
+                      <ul className="space-y-1">
+                        {meta.bullets.map((b, i) => (
+                          <li key={`${id}-${i}`} className="text-[11px] text-atext flex gap-1.5"><span style={{ color: meta.color }}>•</span><span>{b}</span></li>
+                        ))}
+                      </ul>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <button type="button" onClick={() => setStep(2)} className={`${css.btnPrimary} text-lg py-3 px-6`}>
+              Continue to pyramid →
+            </button>
+          </div>
+        )}
+
+        {step === 2 && (
           <div className="fade-up">
-            <button onClick={()=>setStep(0)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
-            <h2 className={`${css.h1} text-4xl mb-4`}>CHOOSE YOUR DIFFICULTY</h2>
-            <p className="text-atext-dim mb-8">Start at the top, the middle, or the bottom of the pyramid. Showing tiers available in <strong>{state}</strong>.</p>
+            <button type="button" onClick={() => setStep(1)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
+            <h2 className={`${css.h1} text-4xl mb-4`}>CHOOSE YOUR PYRAMID LEVEL</h2>
+            <p className="text-atext-dim mb-8">Start at the top, the middle, or the bottom. Tiers available in <strong>{state}</strong>.</p>
             <div className={`grid gap-4 ${tiersForState.length === 1 ? 'md:grid-cols-1 max-w-sm' : tiersForState.length === 2 ? 'md:grid-cols-2 max-w-2xl' : 'md:grid-cols-3'}`}>
               {tiersForState.includes(3) && (
-                <button onClick={() => { setTier(3); setLeagueKey(null); setClubId(null); setStep(2); }} className={`${css.panelHover} p-6 text-left`}>
+                <button type="button" onClick={() => { setTier(3); setLeagueKey(null); setClubId(null); setStep(3); }} className={`${css.panelHover} p-6 text-left`}>
                   <Pill color="#4ADBE8">Underdog</Pill>
                   <div className={`${css.h1} text-4xl mt-3`}>TIER 3</div>
                   <div className="text-sm text-atext font-semibold mt-1">Community / Local</div>
@@ -1051,7 +1110,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                 </button>
               )}
               {tiersForState.includes(2) && (
-                <button onClick={()=>{setTier(2); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+                <button type="button" onClick={() => { setTier(2); setLeagueKey(null); setClubId(null); setStep(3); }} className={`${css.panelHover} p-6 text-left`}>
                   <Pill color="var(--A-accent)">Established</Pill>
                   <div className={`${css.h1} text-4xl mt-3`}>TIER 2</div>
                   <div className="text-sm text-atext font-semibold mt-1">State League</div>
@@ -1060,7 +1119,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                 </button>
               )}
               {tiersForState.includes(1) && (
-                <button onClick={()=>{setTier(1); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+                <button type="button" onClick={() => { setTier(1); setLeagueKey(null); setClubId(null); setStep(3); }} className={`${css.panelHover} p-6 text-left`}>
                   <Pill color="#E84A6F">Big Time</Pill>
                   <div className={`${css.h1} text-4xl mt-3`}>TIER 1</div>
                   <div className="text-sm text-atext font-semibold mt-1">AFL</div>
@@ -1072,33 +1131,43 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <div className="fade-up">
-            <button onClick={()=>setStep(1)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
+            <button type="button" onClick={() => setStep(2)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>PICK A LEAGUE</h2>
             <p className="text-atext-dim mb-2">{state} • Tier {tier}</p>
             {tier === 3 && <SetupPyramidHint state={state} tier={tier} leagueKey={null} />}
             {availableLeagues.length === 0 ? (
-              <div className={`${css.panel} p-8 text-center text-atext-dim`}>No leagues at this tier in {state}. <button className="text-aaccent underline" onClick={()=>setStep(1)}>Pick a different tier</button>.</div>
+              <div className={`${css.panel} p-8 text-center text-atext-dim`}>No leagues at this tier in {state}. <button type="button" className="text-aaccent underline" onClick={() => setStep(2)}>Pick a different tier</button>.</div>
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {availableLeagues.map((l) => {
                   const tier3Divs = tier === 3 && state ? tier3DivisionCount(l.key, state) : 0;
                   const inState = state ? l.clubs.filter((c) => c.state === state).length : l.clubs.length;
                   return (
-                  <button key={l.key} onClick={() => { setLeagueKey(l.key); setClubId(null); if (tier===3 && state) setLocalDivision(tier3Divs); setStep(3); }} className={`${css.panelHover} p-5 text-left flex items-center justify-between`}>
-                    <div>
-                      <div className="text-xs text-atext-dim uppercase tracking-widest">Tier {l.tier}</div>
-                      <div className={`${css.h1} text-2xl mt-1`}>{l.short}</div>
-                      <div className="text-sm text-atext">{l.name}</div>
-                      <div className="text-[12px] text-atext-dim mt-1">
-                        {tier === 3 && state
-                          ? `${tier3Divs} local division${tier3Divs === 1 ? '' : 's'} · ${inState} clubs in ${state}`
-                          : `${l.clubs.length} clubs`}
+                    <button
+                      key={l.key}
+                      type="button"
+                      onClick={() => {
+                        setLeagueKey(l.key);
+                        setClubId(null);
+                        if (tier === 3 && state) setLocalDivision(tier3Divs);
+                        setStep(tier === 3 ? 4 : 5);
+                      }}
+                      className={`${css.panelHover} p-5 text-left flex items-center justify-between`}
+                    >
+                      <div>
+                        <div className="text-xs text-atext-dim uppercase tracking-widest">Tier {l.tier}</div>
+                        <div className={`${css.h1} text-2xl mt-1`}>{l.short}</div>
+                        <div className="text-sm text-atext">{l.name}</div>
+                        <div className="text-[12px] text-atext-dim mt-1">
+                          {tier === 3 && state
+                            ? `${tier3Divs} local division${tier3Divs === 1 ? '' : 's'} · ${inState} clubs in ${state}`
+                            : `${l.clubs.length} clubs`}
+                        </div>
                       </div>
-                    </div>
-                    <ChevronRight className="w-6 h-6 text-aaccent" />
-                  </button>
+                      <ChevronRight className="w-6 h-6 text-aaccent" />
+                    </button>
                   );
                 })}
               </div>
@@ -1106,26 +1175,31 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && tier === 3 && leagueKey && state && (
           <div className="fade-up">
-            <button onClick={()=>setStep(2)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
-            <h2 className={`${css.h1} text-4xl mb-4`}>CHOOSE YOUR CLUB</h2>
-            <p className="text-atext-dim mb-2">{PYRAMID[leagueKey].name}</p>
-            {tier === 3 && leagueKey && state && <SetupPyramidHint state={state} tier={tier} leagueKey={leagueKey} />}
-            {tier === 3 && leagueKey && state && (() => {
+            <button type="button" onClick={() => setStep(3)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
+            <h2 className={`${css.h1} text-4xl mb-4`}>LOCAL DIVISION</h2>
+            <p className="text-atext-dim mb-2">{PYRAMID[leagueKey]?.name}</p>
+            <SetupPyramidHint state={state} tier={tier} leagueKey={leagueKey} />
+            {(() => {
               const counts = tier3DivisionTeamCounts(leagueKey, state);
               const k = counts.length;
               if (k <= 1) {
                 return (
-                  <div className={`${css.panel} p-4 mb-6 text-[12px] text-atext-dim`}>
-                    Single local ladder — all <strong className="text-atext">{counts[0]}</strong> clubs in {state} play in one division this season.
+                  <div className="space-y-6">
+                    <div className={`${css.panel} p-4 text-[12px] text-atext-dim`}>
+                      Single local ladder — all <strong className="text-atext">{counts[0]}</strong> clubs in {state} play in one division this season.
+                    </div>
+                    <button type="button" onClick={() => setStep(5)} className={`${css.btnPrimary} text-lg py-3 px-6`}>
+                      Choose your club →
+                    </button>
                   </div>
                 );
               }
               return (
                 <div className={`${css.panel} p-4 mb-6`}>
                   <label className={css.label}>Choose your local division</label>
-                  <p className="text-[11px] text-atext-dim mt-1 mb-3">Lower division number = closer to promotion. You can pick any pool; each has a balanced club count.</p>
+                  <p className="text-[11px] text-atext-dim mt-1 mb-3">Lower division number = closer to promotion. Pick a pool to see clubs.</p>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {counts.map((count, i) => {
                       const d = i + 1;
@@ -1133,7 +1207,10 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                         <button
                           key={d}
                           type="button"
-                          onClick={() => setLocalDivision(d)}
+                          onClick={() => {
+                            setLocalDivision(d);
+                            setStep(5);
+                          }}
                           className={`px-3 py-2 rounded-lg border text-left min-w-[4.5rem] transition ${effectiveTier3Div === d ? 'border-aaccent bg-aaccent/15 text-aaccent' : 'border-aline hover:border-aaccent/40'}`}
                         >
                           <span className="block text-sm font-bold">Div {d}</span>
@@ -1145,9 +1222,52 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {step === 5 && leagueKey && (
+          <div className="fade-up max-w-5xl">
+            <button
+              type="button"
+              onClick={() => {
+                setClubId(null);
+                setStep(tier === 3 ? 4 : 3);
+              }}
+              disabled={loading}
+              className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"
+            >
+              <ChevronLeft className="w-4 h-4" />Back
+            </button>
+            <h2 className={`${css.h1} text-4xl mb-4`}>CHOOSE YOUR CLUB</h2>
+            <p className="text-atext-dim mb-2">{PYRAMID[leagueKey]?.name}</p>
+            {tier === 3 && leagueKey && state && <SetupPyramidHint state={state} tier={tier} leagueKey={leagueKey} />}
+            {(() => {
+              const dmeta = DIFFICULTY_META[difficulty] || DIFFICULTY_META.contender;
+              return (
+                <div className={`${css.panel} p-4 mb-6 text-[12px] text-atext-dim space-y-1`}>
+                  <div>
+                    <span className="text-atext-mute font-mono uppercase text-[10px]">Coach</span>{' '}
+                    <strong className="text-atext">{managerName || 'Coach'}</strong>
+                    {' · '}
+                    <span style={{ color: dmeta.color }}>{dmeta.label}</span>
+                  </div>
+                  <div>
+                    <span className="text-atext-mute font-mono uppercase text-[10px]">Path</span>{' '}
+                    <strong className="text-atext">{state}</strong>
+                    {' · '}Tier {tier}
+                    {tier === 3 && tier3K ? ` · Division ${effectiveTier3Div}` : ''}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="grid md:grid-cols-3 gap-4">
-              {availableClubs.map(c => (
-                <button key={c.id} onClick={()=>{setClubId(c.id); setStep(4);}} className={`${css.panelHover} p-5 text-left`}>
+              {availableClubs.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setClubId(c.id)}
+                  className={`${css.panelHover} p-5 text-left ring-2 transition ${clubId === c.id ? 'ring-aaccent' : 'ring-transparent'}`}
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-lg flex items-center justify-center font-display text-xl" style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})`, color: c.colors[2] }}>{c.short}</div>
                     <div>
@@ -1158,74 +1278,12 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                 </button>
               ))}
             </div>
-          </div>
-        )}
-
-        {step === 4 && clubId && leagueKey && findClub(clubId) && (
-          <div className="fade-up max-w-3xl">
-            <button type="button" onClick={()=>{ setClubId(null); setStep(3); }} disabled={loading} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
-            <h2 className={`${css.h1} text-4xl mb-4`}>YOUR DETAILS</h2>
-
-            <div className={`${css.panel} p-6 mb-4`}>
-              {(() => { const c = findClub(clubId); return (
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-xl flex items-center justify-center font-display text-2xl" style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})`, color: c.colors[2] }}>{c.short}</div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-atext-dim">Appointed at</div>
-                  <div className="font-bold text-xl">{c.name}</div>
-                  <div className="text-[12px] text-atext-dim">{PYRAMID[leagueKey].name}</div>
-                </div>
-              </div>
-              ); })()}
-              <label className={css.label}>Manager Name</label>
-              <input
-                value={managerName}
-                onChange={(e) => setManagerName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') start(e); }}
-                placeholder="Bluey McGee"
-                className="w-full mt-2 bg-apanel border border-aline focus:border-aaccent outline-none rounded-lg px-4 py-3 text-atext"
-                disabled={loading}
-              />
-            </div>
-
-            {/* Difficulty selector — Spec Section 2.6 */}
-            <div className={`${css.panel} p-6 mb-4`}>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className={`${css.h1} text-2xl`}>DIFFICULTY</h3>
-                <span className="text-[10px] text-atext-mute uppercase tracking-widest font-mono">Can change in Settings later</span>
-              </div>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {DIFFICULTY_IDS.map(id => {
-                  const meta = DIFFICULTY_META[id];
-                  const active = difficulty === id;
-                  return (
-                    <button key={id} type="button" onClick={() => setDifficulty(id)} disabled={loading}
-                      className={`text-left p-4 rounded-xl border transition-all ${active ? 'ring-2' : 'hover:border-aaccent/40'}`}
-                      style={{
-                        background: active ? `${meta.color}15` : 'var(--A-panel-2)',
-                        borderColor: active ? meta.color : 'var(--A-line)',
-                        ringColor: meta.color,
-                      }}>
-                      <div className="font-display text-2xl mb-1" style={{ color: meta.color }}>{meta.label.toUpperCase()}</div>
-                      <div className="text-[10px] uppercase tracking-widest text-atext-mute mb-2 font-mono">{meta.audience}</div>
-                      <div className="text-xs text-atext-dim mb-3 leading-snug">{meta.summary}</div>
-                      <ul className="space-y-1">
-                        {meta.bullets.map((b, i) => (
-                          <li key={i} className="text-[11px] text-atext flex gap-1.5"><span style={{ color: meta.color }}>•</span><span>{b}</span></li>
-                        ))}
-                      </ul>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {startError && (
               <div className="mb-3 p-3 rounded-xl text-sm text-aneg bg-aneg/10 border border-aneg/30">
                 ⚠️ {startError}
               </div>
             )}
-            <button type="button" onClick={start} disabled={loading} className={`${css.btnPrimary} w-full text-lg py-4 ${loading ? 'opacity-70' : 'glow'}`}>
+            <button type="button" onClick={start} disabled={loading || !clubId} className={`${css.btnPrimary} w-full text-lg py-4 mt-6 ${loading ? 'opacity-70' : 'glow'}`}>
               {loading ? '⏳ Starting career…' : 'START CAREER →'}
             </button>
           </div>
@@ -1260,8 +1318,8 @@ function Sidebar({ screen, onNavigate, club, league, career, myLadderPos, onNewG
       {/* Brand */}
       <div className="px-5 py-4 border-b border-aline hidden md:block">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{background:"linear-gradient(135deg, var(--A-accent), #0098b0)", boxShadow:"0 4px 12px rgba(0,224,255,0.25)"}}>
-            <Trophy className="w-5 h-5 text-[#001520]" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{background:"linear-gradient(135deg, var(--A-accent), #0f766e)", boxShadow:"0 4px 12px rgba(13,148,136,0.2)"}}>
+            <Trophy className="w-5 h-5 text-white" />
           </div>
           <div>
             <div className="font-display text-[26px] tracking-[0.1em] leading-none text-atext">DYNASTY</div>
@@ -1578,7 +1636,6 @@ function DifficultyMiniSummary({ career, cfg }) {
 }
 
 function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdvance }) {
-  const stitch = (career.themeMode || 'A') === 'S';
   const advanceCtx = getAdvanceContext(career, league);
   const sorted = sortedLadder(career.ladder);
   const top5 = sorted.slice(0, 5);
@@ -1597,19 +1654,6 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
 
   return (
     <div className="anim-in space-y-5">
-      {stitch ? (
-        <StitchClubDashboard
-          career={career}
-          club={club}
-          league={league}
-          myLadderPos={myLadderPos}
-          myRow={myRow}
-          setScreen={setScreen}
-          setTab={setTab}
-          onAdvance={onAdvance}
-        />
-      ) : (
-      <>
       {/* Hero Banner */}
       <div className="panel rounded-2xl overflow-hidden relative min-h-[160px] border border-aline">
         <div className="absolute inset-0 opacity-40" style={{background:`linear-gradient(135deg, ${club.colors[0]}33 0%, transparent 55%)`}} />
@@ -1645,13 +1689,11 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
           </div>
         </div>
       </div>
-      </>
-      )}
 
       {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
       <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} setTab={setTab} />
 
-      {!stitch && <MatchPreviewPanel career={career} league={league} />}
+      <MatchPreviewPanel career={career} league={league} />
 
       {/* Last Event Result Card */}
       {lastEv && (
@@ -1818,23 +1860,12 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
       )}
 
       {/* Stat Row */}
-      {stitch ? (
-        <div className="stitch-neon-card p-4 md:p-5">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users} />
-            <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="#4AE89A" icon={DollarSign} />
-            <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="#4ADBE8" icon={Handshake} />
-            <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.w||0}W / ${myRow?.l||0}L`} accent={posColor} icon={Trophy} />
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users} />
           <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="#4AE89A" icon={DollarSign} />
           <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="#4ADBE8" icon={Handshake} />
           <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.w||0}W / ${myRow?.l||0}L`} accent={posColor} icon={Trophy} />
-        </div>
-      )}
+      </div>
 
       <div className="grid md:grid-cols-5 gap-5">
         {/* Ladder */}
@@ -2400,8 +2431,6 @@ function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }
   const t = tab || (renewalCount > 0 ? "renewals" : "players");
   const tutStep = career.tutorialStep ?? 0;
   const squadTutorialTab = tutorialActive && (tutStep === 1 || tutStep === 2 || tutStep === 5) ? tutorialHighlightTab(tutStep) : null;
-  const stitch = (career.themeMode || 'A') === 'S';
-  const lineupN = (career.lineup || []).length;
   const tabs = [
     { key: "players", label: "Players", icon: Users },
     { key: "tactics", label: "Tactics", icon: Target },
@@ -2412,30 +2441,6 @@ function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }
   ];
   return (
     <div className="anim-in">
-      {stitch && (
-        <div className="stitch-mock-squad-head">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-xl border border-[rgba(200,255,61,0.35)] flex items-center justify-center flex-shrink-0 bg-[rgba(200,255,61,0.08)]">
-              <Jersey kit={career.kits.home} size={36} />
-            </div>
-            <div className="min-w-0">
-              <div className="font-display text-2xl md:text-3xl text-atext tracking-wide uppercase leading-tight truncate">
-                Team management
-              </div>
-              <div className="text-[10px] font-mono text-atext-mute uppercase tracking-widest mt-1">
-                {club.name} · {lineupN}/22 XXII
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="stitch-mock-btn-ghost"
-            onClick={() => setTab('tactics')}
-          >
-            Apply tactics
-          </button>
-        </div>
-      )}
       <TabNav
         tabs={tabs}
         active={t}
@@ -2575,9 +2580,8 @@ function PlayersTab({ career, updateCareer }) {
   const [filterPos, setFilterPos] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selected, setSelected] = useState(null);
-  const stitch = (career.themeMode || 'A') === 'S';
-  const rowHoverBg = stitch ? 'rgba(200,255,61,0.06)' : 'rgba(0,224,255,0.05)';
-  const rowSelectBg = stitch ? 'rgba(200, 255, 61, 0.1)' : 'rgba(0, 224, 255, 0.08)';
+  const rowHoverBg = 'rgba(13, 148, 136, 0.06)';
+  const rowSelectBg = 'rgba(13, 148, 136, 0.1)';
   const players = useMemo(() => {
     let arr = [...career.squad];
     if (filterPos !== "ALL") arr = arr.filter(p => playerHasPosition(p, filterPos));
@@ -2609,7 +2613,7 @@ function PlayersTab({ career, updateCareer }) {
         career={career}
         updateCareer={updateCareer}
         benchPlayerIds={benchPlayerIds}
-        stitch={stitch}
+        stitch={false}
         onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
       />
     <div className="flex flex-col lg:flex-row gap-5">
@@ -2620,7 +2624,7 @@ function PlayersTab({ career, updateCareer }) {
           {["ALL", ...POSITIONS].map(pos => (
             <button key={pos} onClick={()=>setFilterPos(pos)}
               className="text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all"
-              style={filterPos===pos ? {background:"var(--A-accent)", color:"#001520"} : {background:"var(--A-panel)", color:"var(--A-text-dim)", border:"1px solid var(--A-line)"}}>
+              style={filterPos===pos ? {background:"var(--A-accent)", color:"#ffffff"} : {background:"var(--A-panel)", color:"var(--A-text-dim)", border:"1px solid var(--A-line)"}}>
               {pos}
             </button>
           ))}
@@ -2654,46 +2658,7 @@ function PlayersTab({ career, updateCareer }) {
           </div>
         </div>
 
-        {/* Roster: data table (A/B) · Stitch cards (corrected_18 PNG) */}
-        {stitch ? (
-          <>
-            <div className="stitch-neon-card p-3 md:p-4 space-y-2 max-h-[65vh] overflow-y-auto">
-              {players.map((p) => {
-                const inLineup = career.lineup.includes(p.id);
-                const isSelected = selected?.id === p.id;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setSelected(isSelected ? null : p)}
-                    className={`stitch-mock-player-card ${isSelected ? 'stitch-mock-player-card-selected' : ''}`}
-                  >
-                    <div className="stitch-mock-player-rating">{p.overall}</div>
-                    <div className="flex items-center gap-3 flex-1 min-w-0 px-3 py-2">
-                      <div className="w-9 h-9 rounded-full border border-[rgba(200,255,61,0.25)] bg-apanel-2 flex items-center justify-center text-[10px] font-bold text-atext flex-shrink-0">
-                        {(p.firstName?.[0] || '')}{(p.lastName?.[0] || '')}
-                      </div>
-                      <div className="min-w-0 flex-1 text-left">
-                        <div className="text-[9px] font-mono text-atext-mute uppercase tracking-wider">
-                          {formatPositionSlash(p)}
-                          {inLineup && <span className="text-aaccent ml-2">· XXII</span>}
-                          {p.injured > 0 && <span className="text-aneg ml-1">· OUT {p.injured}w</span>}
-                        </div>
-                        <div className="font-bold text-sm text-atext truncate">{pName(p)}</div>
-                        <div className="flex gap-2 mt-1 text-[10px] font-mono text-atext-mute">
-                          <span>FIT {p.fitness}</span>
-                          <span>·</span>
-                          <span>FRM {p.form}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="stitch-mock-player-tab" aria-hidden />
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        ) : (
+        {/* Roster */}
         <>
         <div className="md:hidden space-y-2 max-h-[65vh] overflow-y-auto px-0.5">
           {players.map((p) => {
@@ -2791,7 +2756,6 @@ function PlayersTab({ career, updateCareer }) {
           </div>
         </div>
         </>
-        )}
         <div className="mt-2 text-[10px] text-atext-mute">{players.length} players · {career.lineup.length}/22 in XXII · {career.squad.length} total squad</div>
       </div>
 
@@ -2928,21 +2892,17 @@ const TACTIC_CARDS = [
 ];
 
 function TacticsTab({ career, updateCareer }) {
-  const stitch = (career.themeMode || 'A') === 'S';
   const lineup = lineupPlayersOrdered(career.squad, career.lineup);
   const byPos = POSITIONS.reduce((acc, p) => ({ ...acc, [p]: lineup.filter(pl => pl.position === p) }), {});
   const currentTactic = career.tacticChoice || 'balanced';
-  const fieldStroke = stitch ? 'rgba(200, 255, 61, 0.28)' : '#FFFFFF20';
-  const fieldStrokeHi = stitch ? 'rgba(200, 255, 61, 0.45)' : '#FFFFFF30';
-  const goalStroke = stitch ? 'rgba(200, 255, 61, 0.55)' : '#FFFFFF60';
+  const fieldStroke = '#FFFFFF20';
+  const fieldStrokeHi = '#FFFFFF30';
+  const goalStroke = '#FFFFFF60';
   return (
     <div className="space-y-4">
       <div className={`${css.panel} p-5`}>
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className={`${css.h1} text-2xl`}>MATCH-DAY APPROACH</h3>
-          {stitch && (
-            <span className="text-[10px] font-mono text-aaccent uppercase tracking-[0.2em] hidden sm:inline">Stitch · team_selection_tactics</span>
-          )}
           <Pill color="var(--A-accent)">Active: {TACTIC_CARDS.find(t => t.key === currentTactic)?.label || 'Balanced'}</Pill>
         </div>
         <p className="text-xs text-atext-dim mb-4">Sets shot rate, momentum gain and risk for every match. Switch tactics to suit the opposition.</p>
@@ -2970,10 +2930,9 @@ function TacticsTab({ career, updateCareer }) {
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>FORMATION (XXII)</h3>
         <div className="text-[11px] text-atext-dim mb-4">{lineup.length}/22 selected. AFL teams field 18 + 4 interchange.</div>
-        {/* SVG oval — Stitch: neon pitch lines per mock */}
-        <div className={`relative aspect-[5/4] rounded-2xl overflow-hidden ${stitch ? 'stitch-mock-field-wrap' : ''}`} style={{ background: stitch ? 'radial-gradient(ellipse at center, #0f1a14 0%, #0a120e 70%, #060a08 100%)' : 'radial-gradient(ellipse at center, #1B5E3F 0%, #0F4029 70%, #08251A 100%)' }}>
+        <div className="relative aspect-[5/4] rounded-2xl overflow-hidden" style={{ background: 'radial-gradient(ellipse at center, #1B5E3F 0%, #0F4029 70%, #08251A 100%)' }}>
           <svg viewBox="0 0 500 400" className="absolute inset-0">
-            <ellipse cx="250" cy="200" rx="240" ry="190" fill="none" stroke={fieldStroke} strokeWidth={stitch ? 2 : 2} />
+            <ellipse cx="250" cy="200" rx="240" ry="190" fill="none" stroke={fieldStroke} strokeWidth={2} />
             <ellipse cx="250" cy="200" rx="60" ry="60" fill="none" stroke={fieldStrokeHi} strokeWidth={1.5} />
             <line x1="250" y1="10" x2="250" y2="390" stroke={fieldStroke} strokeWidth={1} strokeDasharray="4,4" />
             <line x1="10" y1="170" x2="10" y2="230" stroke={goalStroke} strokeWidth={3} />
@@ -2994,11 +2953,11 @@ function TacticsTab({ career, updateCareer }) {
             ].map((sp, i) => {
               const players = byPos[sp.pos] || [];
               const filled = players.length > 0;
-              const dotStroke = stitch ? 'rgba(200, 255, 61, 0.5)' : (filled ? career.kits.home.accent : '#FFFFFF40');
+              const dotStroke = filled ? career.kits.home.accent : '#FFFFFF40';
               return (
                 <g key={i}>
-                  <circle cx={sp.x} cy={sp.y} r="14" fill={filled ? (stitch ? 'rgba(200,255,61,0.15)' : career.kits.home.primary) : (stitch ? 'rgba(200,255,61,0.08)' : '#FFFFFF20')} stroke={dotStroke} strokeWidth={stitch ? 2 : 2} />
-                  <text x={sp.x} y={sp.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill={stitch ? '#C8FF3D' : '#FFFFFF'} fontFamily={stitch ? 'JetBrains Mono, monospace' : 'Bebas Neue'}>{sp.pos}</text>
+                  <circle cx={sp.x} cy={sp.y} r="14" fill={filled ? career.kits.home.primary : '#FFFFFF20'} stroke={dotStroke} strokeWidth={2} />
+                  <text x={sp.x} y={sp.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#FFFFFF" fontFamily="Bebas Neue">{sp.pos}</text>
                 </g>
               );
             })}
@@ -3018,18 +2977,16 @@ function TacticsTab({ career, updateCareer }) {
         <div className="text-[11px] text-atext-dim mb-4">
           Drag the grip to reorder. Remove with ✕. Add or swap players from <span className="text-atext font-semibold">Squad → Players</span>.
         </div>
-        <LineupSortablePanel career={career} updateCareer={updateCareer} stitch={stitch} />
-        {stitch && (
-          <button
-            type="button"
-            className="stitch-mock-slant-btn mt-4"
-            onClick={() => updateCareer({
-              lineup: [...career.squad].sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p => p.id),
-            })}
-          >
-            <span>Auto-select XXII</span>
-          </button>
-        )}
+        <LineupSortablePanel career={career} updateCareer={updateCareer} stitch={false} />
+        <button
+          type="button"
+          className={`${css.btnGhost} mt-4 text-xs font-bold uppercase tracking-wider`}
+          onClick={() => updateCareer({
+            lineup: [...career.squad].sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p => p.id),
+          })}
+        >
+          Auto-select XXII (by rating)
+        </button>
       </div>
     </div>
     </div>
@@ -3684,41 +3641,20 @@ function RookieListTab({ career, updateCareer }) {
 }
 
 function SettingsTab({ career, updateCareer }) {
-  const themeMode = career.themeMode || 'A';
   const autosave = career.options?.autosave !== false;
-  const setTheme = (mode) => updateCareer({ themeMode: mode });
   const setAutosave = (v) => updateCareer({ options: { ...(career.options || {}), autosave: v } });
   return (
     <div className="space-y-4">
       <div>
         <div className={`${css.h1} text-3xl`}>SETTINGS</div>
-        <div className="text-xs text-atext-dim">Tune the game's look and persistence to suit your vibe.</div>
+        <div className="text-xs text-atext-dim">Persistence and game options.</div>
       </div>
 
       <div className={`${css.panel} p-5`}>
-        <h3 className={`${css.h1} text-2xl mb-3`}>VISUAL THEME</h3>
-        <p className="text-xs text-atext-dim mb-4">Choose a palette for the UI. Your choice persists with the save.</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[
-            { key: 'A', label: 'Broadcast Cinematic', sub: 'Warm cyan + slate. The default.' },
-            { key: 'B', label: 'Stadium Carbon',      sub: 'Cool monochrome with green pop.' },
-            { key: 'S', label: 'Stitch mockups',      sub: 'Neon lime on charcoal — Hub & Squad tuned to design refs.' },
-          ].map(t => {
-            const active = themeMode === t.key;
-            return (
-              <button key={t.key} onClick={() => setTheme(t.key)}
-                className={`text-left p-4 rounded-2xl border transition-all ${active ? 'ring-2 ring-aaccent' : 'hover:border-aaccent/40'}`}
-                style={{ background: active ? 'rgba(0,224,255,0.10)' : 'var(--A-panel-2)', borderColor: active ? 'var(--A-accent)' : 'var(--A-line)' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="font-display text-2xl tracking-wide">DIRECTION {t.key}</div>
-                  {active && <Pill color="var(--A-accent)">Active</Pill>}
-                </div>
-                <div className="font-semibold text-sm text-atext">{t.label}</div>
-                <div className="text-xs text-atext-dim">{t.sub}</div>
-              </button>
-            );
-          })}
-        </div>
+        <h3 className={`${css.h1} text-2xl mb-3`}>INTERFACE</h3>
+        <p className="text-xs text-atext-dim leading-relaxed">
+          Footy Dynasty uses one light interface for every screen. Theme variants have been retired so the layout and colours stay consistent.
+        </p>
       </div>
 
       <div className={`${css.panel} p-5`}>

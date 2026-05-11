@@ -9,7 +9,7 @@ import { migrateSaveBoardV8, migrateSaveBoardV9, migrateSaveBoardV10, migrateSav
 import { migrateSaveGameDepthV12 } from './gameDepth.js';
 import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 15;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
@@ -218,6 +218,11 @@ export function migrate(save) {
       const prev = s.localDivision ?? inferred;
       s.localDivision = Math.max(1, Math.min(K, prev));
     }
+  }
+
+  if (v < 15) {
+    s.saveVersion = 15;
+    s.themeMode = 'A';
   }
 
   return s;

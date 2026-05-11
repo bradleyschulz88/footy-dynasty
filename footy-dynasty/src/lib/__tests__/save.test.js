@@ -160,14 +160,14 @@ describe('migrate', () => {
     expect(m.facilities.gym).toMatchObject({ level: 2, max: 5 });
   });
 
-  it('does not clobber an existing themeMode', () => {
-    const m = migrate({ saveVersion: 1, themeMode: 'B' });
-    expect(m.themeMode).toBe('B');
+  it('normalizes themeMode to A at v15 (single light UI)', () => {
+    const m = migrate({ saveVersion: 14, themeMode: 'B' });
+    expect(m.themeMode).toBe('A');
   });
 
-  it('preserves themeMode S (Stitch)', () => {
-    const m = migrate({ saveVersion: 1, themeMode: 'S' });
-    expect(m.themeMode).toBe('S');
+  it('normalizes legacy Stitch themeMode to A at v15', () => {
+    const m = migrate({ saveVersion: 14, themeMode: 'S' });
+    expect(m.themeMode).toBe('A');
   });
 
   it('treats missing saveVersion as v1 and migrates to current version', () => {

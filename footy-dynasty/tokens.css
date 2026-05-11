@@ -1,6 +1,6 @@
-/* Footy Dynasty — Redesign Tokens
-   Two directions share the same data + structure but diverge on tokens.
-   Figma: mirror colour + number variables here and in design/tokens.json (JSON for plugins / handoff). */
+/* Footy Dynasty — design tokens
+   Default UI uses `dirA` with the `--A-*` palette (single light theme).
+   Legacy `.dirB` / `.dirS` blocks remain for reference; the app shell always uses `dirA`. */
 
 :root {
   /* ── Spacing (4px grid; Tailwind: space-token-*) ───────────── */
@@ -32,22 +32,22 @@
   --font-display-sm: 20px;
   --font-display: 32px;
 
-  /* Broadcast Cinematic (Direction A) */
-  --A-bg: #07101F;
-  --A-bg-2: #0C1828;
-  --A-panel: #101F33;
-  --A-panel-2: #0A1727;
-  --A-line: rgba(124, 161, 207, 0.14);
-  --A-line-2: rgba(124, 161, 207, 0.28);
-  --A-text: #EAF2FB;
-  --A-text-dim: #8AA3C2;
-  --A-text-mute: #4F6789;
-  --A-accent: #00E0FF;
-  --A-accent-2: #FFB347;   /* warm punch */
-  --A-pos: #2EE6A6;
-  --A-neg: #FF5577;
-  --A-club: #1B3B7A;       /* Balwyn navy */
-  --A-club-2: #FFD200;
+  /* Default UI — light, single palette (dirA) */
+  --A-bg: #f4f6fa;
+  --A-bg-2: #e8ecf4;
+  --A-panel: #ffffff;
+  --A-panel-2: #f0f3f9;
+  --A-line: rgba(15, 23, 42, 0.10);
+  --A-line-2: rgba(15, 23, 42, 0.18);
+  --A-text: #0f172a;
+  --A-text-dim: #475569;
+  --A-text-mute: #64748b;
+  --A-accent: #0d9488;
+  --A-accent-2: #d97706;
+  --A-pos: #059669;
+  --A-neg: #dc2626;
+  --A-club: #1e3a5f;
+  --A-club-2: #ca8a04;
 
   /* Stadium Carbon (Direction B) */
   --B-bg: #0A0A0A;
@@ -106,8 +106,8 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   content: "";
   position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse 60% 40% at 70% 0%, rgba(0, 224, 255, 0.07), transparent 60%),
-    radial-gradient(ellipse 80% 50% at 0% 100%, rgba(27, 59, 122, 0.18), transparent 70%);
+    radial-gradient(ellipse 60% 40% at 70% 0%, rgba(13, 148, 136, 0.07), transparent 60%),
+    radial-gradient(ellipse 80% 50% at 0% 100%, rgba(30, 58, 95, 0.05), transparent 72%);
   pointer-events: none;
 }
 .dirA .panel {
@@ -141,9 +141,9 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   padding: 3px 8px; border-radius: var(--radius-pill);
   font-family: "JetBrains Mono", monospace;
   font-size: var(--font-caption); letter-spacing: 0.12em; text-transform: uppercase;
-  background: rgba(0, 224, 255, 0.08);
+  background: rgba(13, 148, 136, 0.1);
   color: var(--A-accent);
-  border: 1px solid rgba(0, 224, 255, 0.22);
+  border: 1px solid rgba(13, 148, 136, 0.22);
 }
 .dirA .btn-ghost {
   background: transparent;
@@ -160,7 +160,7 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
 .dirA .btn-ghost:hover { border-color: var(--A-accent); color: var(--A-accent); }
 .dirA .btn-primary {
   background: var(--A-accent);
-  color: #001520;
+  color: #ffffff;
   padding: 10px 18px;
   border-radius: var(--radius-sm);
   font-family: "JetBrains Mono", monospace;
@@ -170,7 +170,7 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   text-transform: uppercase;
   border: 0;
   cursor: pointer;
-  box-shadow: 0 0 0 1px rgba(0, 224, 255, 0.2), 0 8px 24px rgba(0, 224, 255, 0.18);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 4px 14px rgba(13, 148, 136, 0.28);
 }
 .dirA .grid-bg {
   background-image:
