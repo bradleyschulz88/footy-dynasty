@@ -3,6 +3,8 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import {
   LINEUP_CAP,
   LINEUP_FIELD_COUNT,
+  LINEUP_FOLLOWERS_COUNT,
+  LINEUP_INTERCHANGE_COUNT,
   LINEUP_OVAL_SLOT_COUNT,
 } from "../lib/lineupHelpers.js";
 import { css } from "./primitives.jsx";
@@ -202,14 +204,23 @@ function LineupSlotCell({ slotIndex, player, stitch, onSelectPlayer }) {
   );
 }
 
-function SectionHeading({ children, stitch }) {
+function SectionHeading({ children, stitch, count }) {
   return (
     <h4
-      className={`text-xs sm:text-sm font-black tracking-wide mb-2 pb-1 border-b ${
+      className={`flex flex-wrap items-baseline gap-x-2 text-xs sm:text-sm font-black tracking-wide mb-2 pb-1 border-b ${
         stitch ? "text-[rgba(200,255,61,0.95)] border-[rgba(200,255,61,0.2)]" : "text-aaccent border-aaccent/25"
       }`}
     >
       {children}
+      {count != null && (
+        <span
+          className={`text-[10px] sm:text-xs font-mono font-bold tabular-nums ${
+            stitch ? "text-[rgba(200,255,61,0.7)]" : "text-aaccent/80"
+          }`}
+        >
+          ({count})
+        </span>
+      )}
     </h4>
   );
 }
@@ -240,8 +251,8 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           <h3 className={`${css.h1} text-base md:text-lg tracking-wide`}>GROUND MAP</h3>
           <p className="text-[11px] text-atext-dim mt-1 max-w-lg leading-snug">
             <span className="text-atext font-semibold">15</span> on the oval (B · HB · C · HF · F),{" "}
-            <span className="text-atext font-semibold">3 followers</span>, then{" "}
-            <span className="text-atext font-semibold">5 interchange</span> — same layout as a club team sheet.
+            <span className="text-atext font-semibold">{LINEUP_FOLLOWERS_COUNT} followers</span>, then{" "}
+            <span className="text-atext font-semibold">{LINEUP_INTERCHANGE_COUNT} interchange</span> — same layout as a club team sheet.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[10px] font-mono uppercase text-atext-dim shrink-0">
@@ -283,16 +294,21 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           <line x1="186" y1="58" x2="186" y2="72" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" />
         </svg>
 
-        <div className="absolute inset-[4.5%] flex flex-col gap-0.5 sm:gap-1 min-h-0 overflow-hidden pointer-events-auto">
+        <div className="absolute inset-x-[4%] top-[4%] bottom-[11%] flex flex-col gap-0.5 sm:gap-1 min-h-0 overflow-hidden pointer-events-auto">
           {ROWS_BACK_TO_FWD.map((row, r) => (
             <div key={row.key} className="flex-1 min-h-0 flex flex-col">
-              <div className="grid grid-cols-[minmax(1.25rem,1.5rem)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-x-1 gap-y-0 flex-1 min-h-0">
+              <div
+                className="grid flex-1 min-h-0 gap-x-1 sm:gap-x-1.5 gap-y-0 items-stretch"
+                style={{
+                  gridTemplateColumns: "2.125rem minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
+                }}
+              >
                 <div
-                  className={`flex items-center justify-center rounded-md text-[8px] sm:text-[9px] font-black uppercase tracking-tight self-center min-h-[1.5rem] ${
-                    stitch ? "bg-[rgba(255,255,255,0.12)] text-[rgba(200,255,61,0.95)]" : "bg-white/25 text-white shadow-sm"
+                  className={`flex min-h-0 min-w-0 items-center justify-center rounded-md px-0.5 text-center text-[8px] sm:text-[9px] font-black uppercase leading-none tracking-tight ${
+                    stitch ? "bg-[rgba(255,255,255,0.14)] text-[rgba(200,255,61,0.98)]" : "bg-white/30 text-white shadow-sm"
                   }`}
                 >
-                  {row.label}
+                  <span className="break-words [overflow-wrap:anywhere]">{row.label}</span>
                 </div>
                 {[0, 1, 2].map((col) => {
                   const idx = r * 3 + col;
@@ -307,16 +323,18 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
             </div>
           ))}
         </div>
-      </div>
 
-      <div className="flex justify-center mt-2">
-        <span className="text-[10px] font-black uppercase tracking-[0.35em] text-white/75 drop-shadow-sm px-3 py-1 rounded-full bg-black/35 border border-white/20">
-          Forward 50
-        </span>
+        <div className="pointer-events-none absolute inset-x-0 bottom-[3.5%] flex justify-center px-2">
+          <span className="text-[10px] font-black uppercase tracking-[0.35em] text-white/85 drop-shadow-sm px-3 py-1 rounded-full bg-black/40 border border-white/25">
+            Forward 50
+          </span>
+        </div>
       </div>
 
       <div className={`mt-4 border-t ${stitch ? "border-[rgba(200,255,61,0.25)]" : "border-aline"} pt-3`}>
-        <SectionHeading stitch={stitch}>Followers</SectionHeading>
+        <SectionHeading stitch={stitch} count={LINEUP_FOLLOWERS_COUNT}>
+          Followers
+        </SectionHeading>
         <div className="grid grid-cols-3 gap-2 md:gap-3 min-h-[7rem]">
           {[0, 1, 2].map((k) => {
             const idx = LINEUP_OVAL_SLOT_COUNT + k;
@@ -331,7 +349,9 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
       </div>
 
       <div className={`mt-4 border-t ${stitch ? "border-[rgba(200,255,61,0.25)]" : "border-aline"} pt-3`}>
-        <SectionHeading stitch={stitch}>Interchange</SectionHeading>
+        <SectionHeading stitch={stitch} count={LINEUP_INTERCHANGE_COUNT}>
+          Interchange
+        </SectionHeading>
         <div className="grid grid-cols-5 gap-1.5 md:gap-2 min-h-[6rem]">
           {[0, 1, 2, 3, 4].map((j) => {
             const idx = LINEUP_FIELD_COUNT + j;
