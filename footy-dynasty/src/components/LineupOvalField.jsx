@@ -47,7 +47,7 @@ function mergeRefs(...refs) {
   };
 }
 
-function EmptyLineupSlot({ slotIndex, stitch }) {
+function EmptyLineupSlot({ slotIndex, stitch, compact }) {
   const dropId = `lineup-slot-${slotIndex}`;
   const { setNodeRef, isOver } = useDroppable({ id: dropId });
   const border = stitch
@@ -57,10 +57,11 @@ function EmptyLineupSlot({ slotIndex, stitch }) {
     : isOver
       ? "border-aaccent ring-2 ring-aaccent/35"
       : "border-aline/60";
+  const h = compact ? "min-h-[62px]" : "min-h-[72px]";
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[72px] rounded-lg border-2 ${border} touch-manipulation flex flex-col justify-center items-center ${
+      className={`${h} min-w-0 max-w-full rounded-lg border-2 ${border} touch-manipulation flex flex-col justify-center items-center ${
         stitch ? "bg-[rgba(8,12,8,0.55)]" : "bg-[var(--A-panel-2)]"
       }`}
     >
@@ -73,7 +74,7 @@ function EmptyLineupSlot({ slotIndex, stitch }) {
   );
 }
 
-function FilledLineupSlot({ slotIndex, player, stitch, onSelectPlayer }) {
+function FilledLineupSlot({ slotIndex, player, stitch, onSelectPlayer, compact }) {
   const dropId = `lineup-slot-${slotIndex}`;
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dropId });
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({ id: String(player.id) });
@@ -90,49 +91,66 @@ function FilledLineupSlot({ slotIndex, player, stitch, onSelectPlayer }) {
   const num = squadNumberDisplay(player);
   const dragging = isDragging ? "opacity-55 scale-[0.98]" : "";
 
+  const nameCell = (
+    <span
+      className={`flex-1 min-w-0 self-stretch py-0.5 font-semibold leading-tight text-left border-l flex ${
+        compact ? "px-0.5 items-start pt-0.5 text-[8px] sm:text-[9px] min-h-[2.25rem] sm:min-h-[2.5rem]" : "items-center px-1.5 sm:px-2 py-1 sm:py-1.5 text-[10px] sm:text-[11px] min-h-[34px] sm:min-h-[36px]"
+      } ${stitch ? "text-white/95 border-[rgba(200,255,61,0.2)]" : "text-slate-900 border-aline/20"}`}
+    >
+      <span className="line-clamp-2 break-words hyphens-auto w-full [overflow-wrap:anywhere]">{shortName(player)}</span>
+    </span>
+  );
+
   if (stitch) {
+    const headH = compact ? "h-9" : "h-11";
+    const numW = compact ? "w-6 text-[9px]" : "w-8 text-[10px]";
     return (
-      <div ref={setRefs} className={`rounded-lg border-2 ${border} overflow-hidden shadow-inner touch-manipulation ${dragging} bg-[rgba(12,18,12,0.95)]`}>
+      <div
+        ref={setRefs}
+        className={`min-w-0 max-w-full rounded-lg border-2 ${border} overflow-hidden shadow-inner touch-manipulation ${dragging} bg-[rgba(12,18,12,0.95)]`}
+      >
         <button
           type="button"
-          className="w-full cursor-grab active:cursor-grabbing text-left"
+          className="w-full min-w-0 cursor-grab active:cursor-grabbing text-left overflow-hidden"
           {...listeners}
           {...attributes}
           onClick={() => onSelectPlayer?.(player)}
         >
-          <div className="h-11 flex items-center justify-center bg-[rgba(25,35,28,0.9)] border-b border-[rgba(200,255,61,0.2)]">
-            <span className="text-sm font-black text-white tracking-wide">{initials(player)}</span>
+          <div
+            className={`${headH} flex items-center justify-center bg-[rgba(25,35,28,0.9)] border-b border-[rgba(200,255,61,0.2)]`}
+          >
+            <span className={`font-black text-white tracking-wide ${compact ? "text-xs" : "text-sm"}`}>{initials(player)}</span>
           </div>
-          <div className="flex items-stretch min-h-[34px]">
-            <span className="w-8 flex-shrink-0 flex items-center justify-center bg-[rgba(90,60,120,0.95)] text-[10px] font-black text-white border-r border-[rgba(200,255,61,0.25)]">
+          <div className="flex items-stretch min-w-0">
+            <span
+              className={`${numW} flex-shrink-0 flex items-center justify-center bg-[rgba(90,60,120,0.95)] font-black text-white border-r border-[rgba(200,255,61,0.25)]`}
+            >
               {num}
             </span>
-            <span className="flex-1 px-1.5 py-1 text-[10px] font-bold text-white/95 leading-tight flex items-center">{shortName(player)}</span>
+            {nameCell}
           </div>
         </button>
       </div>
     );
   }
 
+  const headH = compact ? "h-10" : "h-12";
+  const numW = compact ? "w-7 text-[10px]" : "w-9 text-[11px]";
   return (
-    <div ref={setRefs} className={`rounded-lg border ${border} overflow-hidden bg-white shadow-sm touch-manipulation ${dragging}`}>
+    <div ref={setRefs} className={`min-w-0 max-w-full rounded-lg border ${border} overflow-hidden bg-white shadow-sm touch-manipulation ${dragging}`}>
       <button
         type="button"
-        className="w-full cursor-grab active:cursor-grabbing text-left"
+        className="w-full min-w-0 cursor-grab active:cursor-grabbing text-left overflow-hidden"
         {...listeners}
         {...attributes}
         onClick={() => onSelectPlayer?.(player)}
       >
-        <div className="h-12 flex items-center justify-center bg-gradient-to-b from-[#e8eef2] to-[#d4dde6] border-b border-aline/40">
-          <span className="text-sm font-black text-slate-700 tracking-wide">{initials(player)}</span>
+        <div className={`${headH} flex items-center justify-center bg-gradient-to-b from-[#e8eef2] to-[#d4dde6] border-b border-aline/40`}>
+          <span className={`font-black text-slate-700 tracking-wide ${compact ? "text-xs" : "text-sm"}`}>{initials(player)}</span>
         </div>
-        <div className="flex items-stretch min-h-[36px] bg-white">
-          <span className="w-9 flex-shrink-0 flex items-center justify-center bg-[#3d1f4d] text-[11px] font-black text-white">
-            {num}
-          </span>
-          <span className="flex-1 px-2 py-1.5 text-[11px] font-semibold text-slate-900 leading-tight flex items-center border-l border-aline/20">
-            {shortName(player)}
-          </span>
+        <div className="flex items-stretch min-w-0 bg-white">
+          <span className={`${numW} flex-shrink-0 flex items-center justify-center bg-[#3d1f4d] font-black text-white`}>{num}</span>
+          {nameCell}
         </div>
       </button>
     </div>
@@ -140,11 +158,18 @@ function FilledLineupSlot({ slotIndex, player, stitch, onSelectPlayer }) {
 }
 
 function LineupSlotCell({ slotIndex, player, stitch, onSelectPlayer }) {
+  const compact = slotIndex < LINEUP_OVAL_SLOT_COUNT;
   if (!player) {
-    return <EmptyLineupSlot slotIndex={slotIndex} stitch={stitch} />;
+    return <EmptyLineupSlot slotIndex={slotIndex} stitch={stitch} compact={compact} />;
   }
   return (
-    <FilledLineupSlot slotIndex={slotIndex} player={player} stitch={stitch} onSelectPlayer={onSelectPlayer} />
+    <FilledLineupSlot
+      slotIndex={slotIndex}
+      player={player}
+      stitch={stitch}
+      onSelectPlayer={onSelectPlayer}
+      compact={compact}
+    />
   );
 }
 
@@ -235,7 +260,7 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           {ROWS_BACK_TO_FWD.map((row, r) => (
             <div
               key={row.key}
-              className="grid grid-cols-[2rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-1.5 md:gap-2 items-stretch"
+              className="grid grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-1 sm:gap-1.5 items-stretch"
             >
               <div
                 className={`flex items-center justify-center rounded text-[10px] font-black uppercase tracking-tight ${
