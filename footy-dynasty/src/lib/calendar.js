@@ -140,8 +140,13 @@ function focusBoostFor(attr, focus) {
   return boost;
 }
 
+/** @public UI / preview — same multiplier as applyTraining uses for attribute gains */
+export function trainingAttrFocusBoost(attr, focus) {
+  return focusBoostFor(attr, focus);
+}
+
 // Intensity 20–100 acts as a multiplier on raw attribute gain (with diminishing returns above 80)
-function intensityScale(intensity) {
+export function intensityScale(intensity) {
   const i = Math.max(20, Math.min(100, intensity ?? 60));
   if (i <= 80) return 0.6 + (i - 20) * (0.6 / 60); // 20→0.6, 80→1.2
   return 1.2 + (i - 80) * 0.005;                   // 80→1.2, 100→1.3

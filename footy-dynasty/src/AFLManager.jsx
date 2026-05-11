@@ -16,7 +16,7 @@ import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, gen
 import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET, TIER3_MIN_CLUBS_PER_DIVISION } from './lib/leagueEngine.js';
 import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
-import { generateSeasonCalendar, TRAINING_INFO, formatDate } from './lib/calendar.js';
+import { generateSeasonCalendar, TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from './lib/calendar.js';
 import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from './lib/save.js';
 import {
   playerBlockedFromTrade,
@@ -3085,6 +3085,31 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
   );
 }
 
+/** SVG coordinates for Squad → Tactics formation (lineup order fills first free slot per position). */
+const TACTICS_FORMATION_SLOTS = [
+  { pos: "KF", x: 80, y: 200 },
+  { pos: "HF", x: 150, y: 130 },
+  { pos: "HF", x: 150, y: 270 },
+  { pos: "C", x: 250, y: 200 },
+  { pos: "WG", x: 250, y: 110 },
+  { pos: "WG", x: 250, y: 290 },
+  { pos: "RU", x: 200, y: 200 },
+  { pos: "R", x: 300, y: 200 },
+  { pos: "HB", x: 350, y: 130 },
+  { pos: "HB", x: 350, y: 270 },
+  { pos: "KB", x: 420, y: 200 },
+  { pos: "UT", x: 175, y: 52 },
+];
+
+function assignLineupToFormationSlots(lineupPlayers, slotDefs) {
+  const slots = slotDefs.map((s, i) => ({ ...s, si: i, player: null }));
+  for (const p of lineupPlayers) {
+    const slot = slots.find((s) => s.pos === p.position && !s.player);
+    if (slot) slot.player = p;
+  }
+  return slots;
+}
+
 const TACTIC_CARDS = [
   { key: 'defensive', label: 'Defensive', icon: ShieldCheck, color: '#4ADBE8',  desc: 'Lock down the contest. Lower scoring both ways.' },
   { key: 'flood',     label: 'Flood',     icon: Activity,    color: '#A78BFA',  desc: 'Pack defensive 50. Frustrates flair sides.' },
@@ -3096,13 +3121,18 @@ const TACTIC_CARDS = [
 
 function TacticsTab({ career, updateCareer }) {
   const lineup = lineupPlayersOrdered(career.squad, career.lineup);
+  const formationSlots = useMemo(
+    () => assignLineupToFormationSlots(lineup, TACTICS_FORMATION_SLOTS),
+    [lineup],
+  );
   const byPos = POSITIONS.reduce((acc, p) => ({ ...acc, [p]: lineup.filter(pl => pl.position === p) }), {});
   const currentTactic = career.tacticChoice || 'balanced';
-  const fieldStroke = '#FFFFFF20';
-  const fieldStrokeHi = '#FFFFFF30';
-  const goalStroke = '#FFFFFF60';
+  const homeKit = career.kits?.home ?? defaultKits(findClub(career.clubId)?.colors || ['#334155', '#0f172a']).home;
+  const fieldStroke = '#FFFFFF28';
+  const fieldStrokeHi = '#FFFFFF40';
+  const goalStroke = '#FFFFFF70';
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 touch-manipulation">
       <div className={`${css.panel} p-5`}>
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className={`${css.h1} text-2xl`}>MATCH-DAY APPROACH</h3>
@@ -3114,11 +3144,11 @@ function TacticsTab({ career, updateCareer }) {
             const Icon = t.icon;
             const active = currentTactic === t.key;
             return (
-              <button key={t.key} onClick={() => updateCareer({ tacticChoice: t.key })}
-                className={`text-left p-4 rounded-2xl border transition-all ${active ? 'ring-2 ring-aaccent' : 'hover:border-aaccent/40'}`}
+              <button key={t.key} type="button" onClick={() => updateCareer({ tacticChoice: t.key })}
+                className={`text-left p-4 rounded-2xl border transition-all min-h-[44px] ${active ? 'ring-2 ring-aaccent' : 'hover:border-aaccent/40'}`}
                 style={{ background: active ? `${t.color}15` : 'var(--A-panel)', borderColor: active ? t.color : 'var(--A-line)' }}>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${t.color}22`, color: t.color, border: `1px solid ${t.color}55` }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${t.color}22`, color: t.color, border: `1px solid ${t.color}55` }}>
                     <Icon className="w-4 h-4" />
                   </div>
                   <div className="font-display text-xl text-atext tracking-wide">{t.label.toUpperCase()}</div>
@@ -3132,34 +3162,28 @@ function TacticsTab({ career, updateCareer }) {
     <div className="grid md:grid-cols-2 gap-4">
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>FORMATION (XXII)</h3>
-        <div className="text-[11px] text-atext-dim mb-4">{lineup.length}/22 selected. AFL teams field 18 + 4 interchange.</div>
-        <div className="relative aspect-[5/4] rounded-2xl overflow-hidden" style={{ background: 'radial-gradient(ellipse at center, #1B5E3F 0%, #0F4029 70%, #08251A 100%)' }}>
-          <svg viewBox="0 0 500 400" className="absolute inset-0">
+        <div className="text-[11px] text-atext-dim mb-2">{lineup.length}/22 in best side. Each dot fills from your XXII list in order — two wings, half-forwards, etc. show different players when available.</div>
+        <p className="text-[10px] text-atext-mute mb-3">Tip: <span className="text-atext font-semibold">Utility (UT)</span> appears on the ground when selected in the 22.</p>
+        <div className="relative aspect-[5/4] rounded-2xl overflow-hidden ring-2 ring-white/10" style={{ background: 'radial-gradient(ellipse at center, #1B5E3F 0%, #0F4029 70%, #08251A 100%)' }}>
+          <svg viewBox="0 0 500 400" className="absolute inset-0 w-full h-full" role="img" aria-label="Formation positions">
             <ellipse cx="250" cy="200" rx="240" ry="190" fill="none" stroke={fieldStroke} strokeWidth={2} />
             <ellipse cx="250" cy="200" rx="60" ry="60" fill="none" stroke={fieldStrokeHi} strokeWidth={1.5} />
             <line x1="250" y1="10" x2="250" y2="390" stroke={fieldStroke} strokeWidth={1} strokeDasharray="4,4" />
+            <rect x="205" y="155" width="90" height="90" fill="none" stroke={fieldStrokeHi} strokeWidth="1" />
+            <path d="M 20 115 Q 250 55 480 115" fill="none" stroke={fieldStroke} strokeWidth="0.8" opacity="0.9" />
+            <path d="M 20 285 Q 250 345 480 285" fill="none" stroke={fieldStroke} strokeWidth="0.8" opacity="0.9" />
             <line x1="10" y1="170" x2="10" y2="230" stroke={goalStroke} strokeWidth={3} />
             <line x1="490" y1="170" x2="490" y2="230" stroke={goalStroke} strokeWidth={3} />
-            {/* Position dots */}
-            {[
-              { pos: "KF", x: 80, y: 200, lbl: "Full Forward" },
-              { pos: "HF", x: 150, y: 130, lbl: "Half Fwd" },
-              { pos: "HF", x: 150, y: 270, lbl: "Half Fwd" },
-              { pos: "C", x: 250, y: 200, lbl: "Centre" },
-              { pos: "WG", x: 250, y: 110, lbl: "Wing" },
-              { pos: "WG", x: 250, y: 290, lbl: "Wing" },
-              { pos: "RU", x: 200, y: 200, lbl: "Ruck" },
-              { pos: "R", x: 300, y: 200, lbl: "Rover" },
-              { pos: "HB", x: 350, y: 130, lbl: "Half Back" },
-              { pos: "HB", x: 350, y: 270, lbl: "Half Back" },
-              { pos: "KB", x: 420, y: 200, lbl: "Full Back" },
-            ].map((sp, i) => {
-              const players = byPos[sp.pos] || [];
-              const filled = players.length > 0;
-              const dotStroke = filled ? career.kits.home.accent : '#FFFFFF40';
+            <text x="250" y="28" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="11" fontWeight="700">FWD</text>
+            <text x="250" y="388" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="11" fontWeight="700">BACK</text>
+            {formationSlots.map((sp) => {
+              const filled = !!sp.player;
+              const dotStroke = filled ? homeKit.accent : '#FFFFFF45';
+              const label = sp.player ? `${sp.player.firstName} ${sp.player.lastName}` : `Vacant ${sp.pos}`;
               return (
-                <g key={i}>
-                  <circle cx={sp.x} cy={sp.y} r="14" fill={filled ? career.kits.home.primary : '#FFFFFF20'} stroke={dotStroke} strokeWidth={2} />
+                <g key={`${sp.pos}-${sp.si}`}>
+                  <title>{label}</title>
+                  <circle cx={sp.x} cy={sp.y} r="14" fill={filled ? homeKit.primary : '#FFFFFF18'} stroke={dotStroke} strokeWidth={2} />
                   <text x={sp.x} y={sp.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#FFFFFF" fontFamily="Bebas Neue">{sp.pos}</text>
                 </g>
               );
@@ -3183,7 +3207,7 @@ function TacticsTab({ career, updateCareer }) {
         <LineupSortablePanel career={career} updateCareer={updateCareer} stitch={false} />
         <button
           type="button"
-          className={`${css.btnGhost} mt-4 text-xs font-bold uppercase tracking-wider`}
+          className={`${css.btnGhost} mt-4 text-xs font-bold uppercase tracking-wider min-h-[44px]`}
           onClick={() => updateCareer({
             lineup: [...career.squad].sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p => p.id),
           })}
@@ -3198,69 +3222,182 @@ function TacticsTab({ career, updateCareer }) {
 
 function TrainingTab({ career, updateCareer }) {
   const t = career.training;
+  const focusSum = useMemo(() => Object.values(t.focus || {}).reduce((a, b) => a + b, 0), [t.focus]);
+
   const setIntensity = (v) => updateCareer({ training: { ...t, intensity: v } });
   const setFocus = (k, v) => {
-    const others = Object.keys(t.focus).filter(x => x !== k);
-    const remain = 100 - v;
+    const clamped = Math.max(5, Math.min(80, v));
+    const others = Object.keys(t.focus).filter((x) => x !== k);
+    const remain = 100 - clamped;
     const oldOthers = others.reduce((a, x) => a + t.focus[x], 0);
-    const newFocus = { [k]: v };
-    others.forEach(x => { newFocus[x] = oldOthers === 0 ? Math.round(remain / others.length) : Math.round((t.focus[x] / oldOthers) * remain); });
+    const newFocus = { [k]: clamped };
+    others.forEach((x) => {
+      newFocus[x] =
+        oldOthers === 0 ? Math.round(remain / others.length) : Math.round((t.focus[x] / oldOthers) * remain);
+    });
+    let sum = Object.values(newFocus).reduce((a, b) => a + b, 0);
+    let drift = 100 - sum;
+    if (drift !== 0 && others.length) {
+      newFocus[others[0]] = Math.max(5, Math.min(80, newFocus[others[0]] + drift));
+    }
+    sum = Object.values(newFocus).reduce((a, b) => a + b, 0);
+    drift = 100 - sum;
+    if (drift !== 0) newFocus[k] = Math.max(5, Math.min(80, newFocus[k] + drift));
     updateCareer({ training: { ...t, focus: newFocus } });
   };
+
+  const TRAINING_PRESETS = [
+    { key: "preseason", label: "Pre-season load", intensity: 82, focus: { skills: 32, fitness: 32, tactics: 23, recovery: 13 } },
+    { key: "balanced", label: "Balanced", intensity: 60, focus: { skills: 25, fitness: 25, tactics: 25, recovery: 25 } },
+    { key: "maintenance", label: "In-season taper", intensity: 48, focus: { skills: 22, fitness: 22, tactics: 22, recovery: 34 } },
+    { key: "youth", label: "Youth develop", intensity: 68, focus: { skills: 38, fitness: 28, tactics: 24, recovery: 10 } },
+  ];
+
+  const applyPreset = (preset) => {
+    updateCareer({ training: { ...t, intensity: preset.intensity, focus: { ...preset.focus } } });
+  };
+
+  const today = career.currentDate || `${career.season - 1}-12-01`;
+  const nextTraining = (career.eventQueue || []).find((e) => e.type === "training" && !e.completed && e.date >= today);
+  const nextTrainingInfo = nextTraining ? TRAINING_INFO[nextTraining.subtype] : null;
+
+  const intMul = intensityScale(t.intensity ?? 60);
+  const skillsBoost = trainingAttrFocusBoost("kicking", t.focus);
+  const fitnessBoost = trainingAttrFocusBoost("speed", t.focus);
+  const tacticsBoost = trainingAttrFocusBoost("decision", t.focus);
 
   const medLevel = career.facilities?.medical?.level ?? 1;
   const recoveryFocus = t.focus.recovery ?? 20;
   const intensity = t.intensity ?? 60;
-  // Mirror the formula in advanceToNextEvent for honesty
   const matchInjuryProb = clamp(0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001, 0.04, 0.28);
-  const trainingInjuryProb = Math.max(0, ((intensity - 50) * 0.0014) + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008);
+  const trainingInjuryProb = Math.max(
+    0,
+    (intensity - 50) * 0.0014 + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008,
+  );
 
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <div className={`${css.panel} p-5`}>
-        <h3 className={`${css.h1} text-2xl mb-3`}>TRAINING INTENSITY</h3>
-        <p className="text-xs text-atext-dim mb-4">Higher intensity boosts development but increases fatigue and injury risk.</p>
-        <div className="flex items-center gap-3 mb-2">
-          <div className={`${css.h1} text-5xl text-aaccent w-20 text-center`}>{t.intensity}</div>
-          <div className="flex-1">
-            <input type="range" min="20" max="100" value={t.intensity} onChange={(e)=>setIntensity(+e.target.value)} className="w-full accent-[var(--A-accent)]" />
-            <div className="flex justify-between text-[10px] text-atext-dim mt-1 uppercase tracking-widest"><span>Easy</span><span>Hard</span></div>
-          </div>
+    <div className="space-y-4 touch-manipulation">
+      <div className={`${css.panel} p-4 md:p-5`}>
+        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute mb-2">Quick presets</div>
+        <div className="flex flex-wrap gap-2">
+          {TRAINING_PRESETS.map((pr) => (
+            <button
+              key={pr.key}
+              type="button"
+              onClick={() => applyPreset(pr)}
+              className={`${css.btnGhost} text-xs px-3 py-2.5 min-h-[44px] font-semibold`}
+            >
+              {pr.label}
+            </button>
+          ))}
         </div>
-        <div className={`${css.inset} p-3 mt-4 space-y-2`}>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-atext-dim uppercase tracking-widest font-mono">Match-day injury risk</span>
-            <span className="font-display text-base" style={{ color: matchInjuryProb > 0.20 ? '#E84A6F' : matchInjuryProb > 0.13 ? 'var(--A-accent)' : '#4AE89A' }}>
-              {(matchInjuryProb * 100).toFixed(1)}%
-            </span>
+        {nextTraining && nextTrainingInfo && (
+          <div className="mt-3 text-[11px] text-atext-dim leading-snug rounded-xl border border-aline bg-apanel-2 px-3 py-2">
+            <span className="text-aaccent font-bold">Next session:</span> {nextTrainingInfo.icon} {nextTrainingInfo.name} on{" "}
+            <span className="text-atext font-medium">{formatDate(nextTraining.date)}</span> — targets {nextTrainingInfo.attrs?.join(", ") || "attributes"} (gains still scale with sliders below).
           </div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-atext-dim uppercase tracking-widest font-mono">Training-day injury risk</span>
-            <span className="font-display text-base" style={{ color: trainingInjuryProb > 0.04 ? '#E84A6F' : trainingInjuryProb > 0.02 ? 'var(--A-accent)' : '#4AE89A' }}>
-              {(trainingInjuryProb * 100).toFixed(2)}%
-            </span>
-          </div>
-          <div className="text-[10px] text-atext-mute leading-relaxed">
-            Medical Centre Lvl {medLevel} cuts injury rate{medLevel > 1 ? ` and recovery time by ${medLevel - 1}w` : ''}. Recovery focus ({recoveryFocus}%) further softens hits.
-          </div>
-        </div>
+        )}
       </div>
-      <div className={`${css.panel} p-5`}>
-        <h3 className={`${css.h1} text-2xl mb-3`}>TRAINING FOCUS</h3>
-        <p className="text-xs text-atext-dim mb-4">Distribution must total 100. Skills boosts kicking/marking/handball. Fitness boosts speed/endurance/strength. Tactics boosts decision/tackling. Recovery cuts injuries.</p>
-        {Object.entries(t.focus).map(([k, v]) => {
-          const colors = { skills: "var(--A-accent)", fitness: "#4ADBE8", tactics: "#E84A6F", recovery: "#4AE89A" };
-          const labels = { skills: "Skills", fitness: "Fitness", tactics: "Tactics", recovery: "Recovery" };
-          return (
-            <div key={k} className="mb-3">
-              <div className="flex justify-between mb-1">
-                <span className="text-sm capitalize font-semibold" style={{ color: colors[k] }}>{labels[k] || k}</span>
-                <span className="font-display text-lg">{v}%</span>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className={`${css.panel} p-5`}>
+          <h3 className={`${css.h1} text-2xl mb-3`}>TRAINING INTENSITY</h3>
+          <p className="text-xs text-atext-dim mb-4">
+            Intensity scales raw attribute gains on training days — multiplier ≈{" "}
+            <span className="text-atext font-mono font-bold">{intMul.toFixed(2)}×</span> (about 1.0 at intensity 60).
+          </p>
+          <div className="flex items-center gap-3 mb-2 py-1">
+            <div className={`${css.h1} text-5xl text-aaccent w-20 text-center`}>{t.intensity}</div>
+            <div className="flex-1 min-h-[48px] flex flex-col justify-center">
+              <input
+                type="range"
+                min="20"
+                max="100"
+                value={t.intensity}
+                onChange={(e) => setIntensity(+e.target.value)}
+                className="w-full h-3 accent-[var(--A-accent)] cursor-pointer"
+              />
+              <div className="flex justify-between text-[10px] text-atext-dim mt-1 uppercase tracking-widest">
+                <span>Easy</span>
+                <span>Hard</span>
               </div>
-              <input type="range" min="5" max="80" value={v} onChange={(e)=>setFocus(k, +e.target.value)} className="w-full" style={{ accentColor: colors[k] }} />
             </div>
-          );
-        })}
+          </div>
+          <div className={`${css.inset} p-3 mt-4 space-y-2`}>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-atext-dim uppercase tracking-widest font-mono">Match-day injury risk</span>
+              <span
+                className="font-display text-base"
+                style={{
+                  color: matchInjuryProb > 0.2 ? "#E84A6F" : matchInjuryProb > 0.13 ? "var(--A-accent)" : "#4AE89A",
+                }}
+              >
+                {(matchInjuryProb * 100).toFixed(1)}%
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-atext-dim uppercase tracking-widest font-mono">Training-day injury risk</span>
+              <span
+                className="font-display text-base"
+                style={{
+                  color: trainingInjuryProb > 0.04 ? "#E84A6F" : trainingInjuryProb > 0.02 ? "var(--A-accent)" : "#4AE89A",
+                }}
+              >
+                {(trainingInjuryProb * 100).toFixed(2)}%
+              </span>
+            </div>
+            <div className="text-[10px] text-atext-mute leading-relaxed">
+              Medical Centre Lvl {medLevel} cuts injury rate
+              {medLevel > 1 ? ` and recovery time by ${medLevel - 1}w` : ""}. Recovery focus ({recoveryFocus}%) further softens hits
+              and adds fitness restoration after sessions when ≥35%.
+            </div>
+          </div>
+        </div>
+        <div className={`${css.panel} p-5`}>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <h3 className={`${css.h1} text-2xl`}>TRAINING FOCUS</h3>
+            <Pill color={focusSum === 100 ? "#4AE89A" : "var(--A-accent-2)"}>Total {focusSum}%</Pill>
+          </div>
+          <p className="text-xs text-atext-dim mb-2">
+            Shares must total 100 — each slider redistributes the rest. Boost aligns with{" "}
+            <span className="text-atext font-medium">skills / fitness / tactics</span> attribute families on the next training day (see{" "}
+            <span className="font-mono">applyTraining</span>).
+          </p>
+          <div className={`${css.inset} p-3 mb-4 text-[11px] text-atext-dim space-y-1`}>
+            <div>
+              <span className="text-atext font-semibold">Skills</span> emphasis → ~×{skillsBoost.toFixed(2)} gain on kicking / marking / handball vs 25% baseline.
+            </div>
+            <div>
+              <span className="text-atext font-semibold">Fitness</span> emphasis → ~×{fitnessBoost.toFixed(2)} on speed / endurance / strength.
+            </div>
+            <div>
+              <span className="text-atext font-semibold">Tactics</span> emphasis → ~×{tacticsBoost.toFixed(2)} on decision / tackling.
+            </div>
+          </div>
+          {Object.entries(t.focus).map(([k, v]) => {
+            const colors = { skills: "var(--A-accent)", fitness: "#4ADBE8", tactics: "#E84A6F", recovery: "#4AE89A" };
+            const labels = { skills: "Skills", fitness: "Fitness", tactics: "Tactics", recovery: "Recovery" };
+            return (
+              <div key={k} className="mb-4 last:mb-0">
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm capitalize font-semibold" style={{ color: colors[k] }}>
+                    {labels[k] || k}
+                  </span>
+                  <span className="font-display text-lg">{v}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="5"
+                  max="80"
+                  value={v}
+                  onChange={(e) => setFocus(k, +e.target.value)}
+                  className="w-full h-3 cursor-pointer"
+                  style={{ accentColor: colors[k] }}
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -5482,13 +5619,27 @@ function LocalTab({ career, club, updateCareer }) {
     seedRng(Date.now() % 88888);
     const league = PYRAMID[leagueKey];
     const scoutPool = getCompetitionClubs(leagueKey, career.regionState ?? club.state, null);
-    const namePool = scoutPool.length ? scoutPool : league.clubs;
-    const found = Array.from({length: 6}, (_, i) => {
+    const poolRaw = scoutPool.length ? [...scoutPool] : [...league.clubs];
+    for (let i = poolRaw.length - 1; i > 0; i--) {
+      const j = rand(0, i);
+      const tmp = poolRaw[i];
+      poolRaw[i] = poolRaw[j];
+      poolRaw[j] = tmp;
+    }
+    const found = Array.from({ length: 6 }, (_, i) => {
+      const sourceClub = poolRaw[i % poolRaw.length];
+      const cid = sourceClub.id || `local:${leagueKey}:${i}`;
       const p = generatePlayer(league.tier, 13000 + i + Date.now() % 500, {
-        clubId: `local:${leagueKey}`,
+        clubId: cid,
         season: career.season,
       });
-      return { ...p, fromLocal: pick(namePool).short, scoutedOverall: scoutedOverall(p, career) };
+      const shortLabel = sourceClub.short || sourceClub.name?.slice(0, 4)?.toUpperCase() || "?";
+      return {
+        ...p,
+        fromLocal: shortLabel,
+        fromClubId: sourceClub.id || null,
+        scoutedOverall: scoutedOverall(p, career),
+      };
     });
     setScoutedPlayers(found);
     setScoutingLeague(leagueKey);
@@ -5514,7 +5665,7 @@ function LocalTab({ career, club, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>LOCAL FOOTBALL</div>
-          <div className="text-xs text-atext-dim">Scout grassroots and lower-tier {club.state} leagues for hidden gems.</div>
+          <div className="text-xs text-atext-dim">Scout lower-tier {club.state} leagues — each run cycles through local clubs so reports show names from rival sides, not just random noise.</div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Scout Cost" value="$30k" sub="per signing" accent="var(--A-accent)" />
@@ -5545,9 +5696,13 @@ function LocalTab({ career, club, updateCareer }) {
         </div>
 
         <div className={`${css.panel} p-5 lg:col-span-2`}>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2"><Target className="w-5 h-5 text-aaccent" /><div className="font-bold tracking-wide">Scouting Reports</div></div>
-            {scoutingLeague && <div className="text-xs text-atext-dim">{PYRAMID[scoutingLeague].short}</div>}
+            {scoutingLeague && (
+              <div className="text-[10px] text-atext-dim max-w-md text-right leading-snug">
+                {PYRAMID[scoutingLeague].short} · six prospects, round-robin from league clubs
+              </div>
+            )}
           </div>
           {scoutedPlayers.length === 0 ? (
             <div className="text-center py-12 text-sm text-atext-dim">Pick a league to dispatch your scouts.</div>
@@ -5560,11 +5715,15 @@ function LocalTab({ career, club, updateCareer }) {
                 const canCash = career.finance.cash >= fee;
                 const canCap  = canAffordSigning(career, wage);
                 const can     = canCash && canCap;
+                const sourceClubVisual = p.fromClubId ? findClub(p.fromClubId) : findClubByShort(p.fromLocal);
                 return (
                   <div key={p.id} className={`${css.inset} p-3 grid grid-cols-12 gap-2 items-center`}>
-                    <div className="col-span-4">
-                      <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
-                      <div className="text-[10px] text-atext-dim">From {p.fromLocal} · Age {p.age}</div>
+                    <div className="col-span-4 flex items-start gap-2 min-w-0">
+                      {sourceClubVisual ? <ClubBadge club={sourceClubVisual} size="sm" className="flex-shrink-0 mt-0.5" /> : null}
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
+                        <div className="text-[10px] text-atext-dim">From {p.fromLocal} · Age {p.age}</div>
+                      </div>
                     </div>
                     <div className="col-span-1"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
                     <div className="col-span-2"><RatingDot value={p.scoutedOverall ?? p.overall} /></div>
