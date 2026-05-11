@@ -13,7 +13,7 @@ import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf } from './data/pyramid.js';
 import { pyramidNoteForLeague } from './data/pyramidMeta.js';
 import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from './lib/playerGen.js';
-import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET } from './lib/leagueEngine.js';
+import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET, TIER3_MIN_CLUBS_PER_DIVISION } from './lib/leagueEngine.js';
 import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
 import { generateSeasonCalendar, TRAINING_INFO, formatDate } from './lib/calendar.js';
@@ -47,7 +47,7 @@ import MatchPreviewPanel from './components/MatchPreviewPanel.jsx';
 const ScheduleScreenLazy = lazy(() => import('./screens/ScheduleScreen.jsx'));
 
 // --- Gameplay systems spec (Sections 1-3) ---
-import { DIFFICULTY_IDS, DIFFICULTY_META, getDifficultyConfig, shouldShowTutorial } from './lib/difficulty.js';
+import { DIFFICULTY_IDS, DIFFICULTY_META, getDifficultyConfig, getDifficultyProfile, shouldShowTutorial } from './lib/difficulty.js';
 import {
   generateCommittee, getCommitteeMember, bumpCommitteeMood, committeeMoodAverage,
   committeeMessage, FOOTY_TRIP_OPTIONS, applyFootyTrip, postMatchFundraiser,
@@ -72,7 +72,8 @@ import {
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
   buildInitialSponsorOffers,
 } from './lib/finance/sponsors.js';
-import { applyRenewal, applyRenewalRejection, canAffordRenewal } from './lib/finance/contracts.js';
+import { proposeRenewal, applyRenewal, applyRenewalRejection, canAffordRenewal } from './lib/finance/contracts.js';
+import { applyStaffRenewalAccept, applyStaffRenewalReject, canAffordStaffRenewal } from './lib/staffRenewals.js';
 import { getAdvanceContext } from './lib/advanceContext.js';
 import {
   ensureCareerBoard,
@@ -359,6 +360,7 @@ function AFLManagerInner() {
       expiredSponsorsLastSeason:  [],
       pendingRenewals:            [],
       renewalsClosed:             false,
+      pendingStaffRenewals:       [],
       fundraisersUsed:            {},
       communityGrantUsed:         false,
       lastEosFinance:             null,
@@ -702,7 +704,9 @@ function SetupPyramidHint({ state, tier, leagueKey }) {
         <span className="font-mono text-[10px] text-aaccent uppercase tracking-widest">Pyramid</span>{' '}
         AFL nationally, then your state league, then local clubs. When a league has enough teams in your state, it
         spans up to <strong className="text-atext">{LOCAL_DIVISION_COUNT}</strong> parallel ladders (roughly one new ladder
-        per <strong className="text-atext">{TIER3_CLUBS_PER_DIVISION_TARGET}</strong> clubs). Division 1 is the promotion race;
+        per <strong className="text-atext">{TIER3_CLUBS_PER_DIVISION_TARGET}</strong> clubs, and never thinner than{' '}
+        <strong className="text-atext">{TIER3_MIN_CLUBS_PER_DIVISION}</strong> teams per ladder when the pool is large enough).
+        Division 1 is the promotion race;
         higher numbers are deeper suburban pools.
         {k != null && nInState > 0 ? (
           <>
@@ -920,6 +924,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       expiredSponsorsLastSeason:  [],
       pendingRenewals:            [],
       renewalsClosed:             false,
+      pendingStaffRenewals:       [],
       fundraisersUsed:            {},
       communityGrantUsed:         false,
       lastEosFinance:             null,
@@ -1061,7 +1066,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
               </div>
               <div className="grid sm:grid-cols-3 gap-3">
                 {DIFFICULTY_IDS.map((id) => {
-                  const meta = DIFFICULTY_META[id];
+                  const meta = getDifficultyProfile(id);
                   const active = difficulty === id;
                   return (
                     <button
@@ -1242,7 +1247,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
             <p className="text-atext-dim mb-2">{PYRAMID[leagueKey]?.name}</p>
             {tier === 3 && leagueKey && state && <SetupPyramidHint state={state} tier={tier} leagueKey={leagueKey} />}
             {(() => {
-              const dmeta = DIFFICULTY_META[difficulty] || DIFFICULTY_META.contender;
+              const dmeta = getDifficultyProfile(difficulty);
               return (
                 <div className={`${css.panel} p-4 mb-6 text-[12px] text-atext-dim space-y-1`}>
                   <div>
@@ -1624,12 +1629,12 @@ function CommitteeMiniSummary({ career, setScreen, setTab }) {
 }
 
 function DifficultyMiniSummary({ career, cfg }) {
-  const meta = DIFFICULTY_META[career.difficulty] || DIFFICULTY_META.contender;
+  const profile = getDifficultyProfile(career.difficulty);
   return (
     <div>
       <div className={css.label}>Difficulty</div>
-      <div className="font-display text-2xl" style={{ color: meta.color }}>{meta.label.toUpperCase()}</div>
-      <div className="text-[11px] text-atext-dim mb-2 leading-snug">{meta.summary}</div>
+      <div className="font-display text-2xl" style={{ color: profile.color }}>{profile.label.toUpperCase()}</div>
+      <div className="text-[11px] text-atext-dim mb-2 leading-snug">{profile.summary}</div>
       <div className="text-[10px] text-atext-mute">{cfg.boardPatienceSeasons} season{cfg.boardPatienceSeasons === 1 ? '' : 's'} of board patience · {cfg.injuryMultiplier}× injuries</div>
     </div>
   );
@@ -1692,6 +1697,38 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
 
       {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
       <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} setTab={setTab} />
+
+      {(() => {
+        const playerQ = (career.pendingRenewals || []).filter((r) => !r._handled).length;
+        const staffQ = (career.pendingStaffRenewals || []).filter((r) => !r._handled).length;
+        if (career.renewalsClosed || (!playerQ && !staffQ)) return null;
+        return (
+          <div className={`${css.panel} p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`} style={{ borderColor: '#FFB347', background: 'rgba(255,179,71,0.06)' }}>
+            <div className="flex items-start gap-3">
+              <FileText className="w-5 h-5 text-[#FFB347] flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="font-bold text-sm text-atext">Contract renewals waiting</div>
+                <div className="text-xs text-atext-dim mt-1">
+                  {playerQ > 0 && <span>{playerQ} player{playerQ === 1 ? '' : 's'} </span>}
+                  {playerQ > 0 && staffQ > 0 && <span>· </span>}
+                  {staffQ > 0 && <span>{staffQ} staff role{staffQ === 1 ? '' : 's'} </span>}
+                  — settle in pre-season (Club → Contracts or Squad → Renewals / Staff).
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setScreen('club');
+                setTab('contracts');
+              }}
+              className={`${css.btnPrimary} text-xs px-4 py-2 whitespace-nowrap`}
+            >
+              Open contracts →
+            </button>
+          </div>
+        );
+      })()}
 
       <MatchPreviewPanel career={career} league={league} />
 
@@ -2456,13 +2493,100 @@ function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }
   );
 }
 
+// ============================================================================
+// CONTRACTS — unified hub (Commercial → Contracts)
+// ============================================================================
+function StaffRenewalsPanel({ career, updateCareer, leagueTier, showHeading = true }) {
+  const queue = (career.pendingStaffRenewals || []).filter((r) => !r._handled);
+  const closed = career.renewalsClosed;
+  const accept = (proposal) => {
+    if (closed) return;
+    if (!canAffordStaffRenewal(career, proposal)) {
+      updateCareer({
+        news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot renew ${proposal.name} — would breach the salary cap` }, ...(career.news || [])].slice(0, 25),
+      });
+      return;
+    }
+    const patch = applyStaffRenewalAccept(career, proposal);
+    updateCareer({
+      ...patch,
+      pendingStaffRenewals: (career.pendingStaffRenewals || []).map((r) =>
+        r.staffId === proposal.staffId ? { ...r, _handled: 'accepted' } : r,
+      ),
+      news: [{ week: career.week, type: 'win', text: `✍️ Staff: re-signed ${proposal.name} (${proposal.role}) for ${proposal.proposedYears}y` }, ...(career.news || [])].slice(0, 25),
+    });
+  };
+  const reject = (proposal) => {
+    if (closed) return;
+    const patch = applyStaffRenewalReject(career, proposal, leagueTier);
+    updateCareer({
+      ...patch,
+      pendingStaffRenewals: (career.pendingStaffRenewals || []).map((r) =>
+        r.staffId === proposal.staffId ? { ...r, _handled: 'rejected' } : r,
+      ),
+      news: [{ week: career.week, type: 'info', text: `🔄 New ${proposal.role} hired in place of ${proposal.name}.` }, ...(career.news || [])].slice(0, 25),
+    });
+  };
+  if (queue.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      {showHeading && <div className={`${css.h1} text-2xl`}>STAFF RENEWALS</div>}
+      {closed && (
+        <div className={`${css.panel} p-3 text-[11px] text-atext-dim`} style={{ borderColor: '#FFB347' }}>
+          Renewal window closed for this season — finish these in pre-season next year, or they were auto-filled when the season started.
+        </div>
+      )}
+      <div className="grid md:grid-cols-2 gap-3">
+        {queue.map((r) => {
+          const canAfford = canAffordStaffRenewal(career, r);
+          return (
+            <div key={r.staffId} className={`${css.panel} p-4`}>
+              <div className="font-bold text-base">{r.name}</div>
+              <div className="text-[10px] text-atext-dim uppercase tracking-widest font-mono mb-2">{r.role}{r.volunteer ? ' · volunteer' : ''}</div>
+              <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
+                <div className="text-atext-mute">Demand</div>
+                <div className="text-right font-mono font-bold">{r.volunteer ? 'Volunteer' : `${fmtK(r.proposedWage)}/yr`}</div>
+                <div className="text-atext-mute">Years</div>
+                <div className="text-right font-mono">{r.proposedYears}y</div>
+              </div>
+              {!r.volunteer && !canAfford && (
+                <div className="text-[10px] text-[#E84A6F] mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Over salary cap</div>
+              )}
+              <div className="flex gap-2 justify-end">
+                <button type="button" onClick={() => reject(r)} disabled={closed} className={closed ? 'text-xs px-3 py-2 text-atext-mute' : 'text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10'}>Replace</button>
+                <button type="button" onClick={() => accept(r)} disabled={closed || !canAfford} className={!closed && canAfford ? `${css.btnPrimary} text-xs px-3 py-2` : 'px-3 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute'}>Re-Sign</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ContractsTab({ career, updateCareer }) {
+  const leagueTier = PYRAMID[career.leagueKey]?.tier ?? 1;
+  return (
+    <div className="space-y-8">
+      <div>
+        <div className={`${css.h1} text-3xl`}>CONTRACTS</div>
+        <div className="text-xs text-atext-dim">Player and staff renewals for the current pre-season. Cap maths match Squad → Renewals.</div>
+      </div>
+      <RenewalsTab career={career} updateCareer={updateCareer} />
+      <StaffRenewalsPanel career={career} updateCareer={updateCareer} leagueTier={leagueTier} />
+    </div>
+  );
+}
+
 function RenewalsTab({ career, updateCareer }) {
   const queue = (career.pendingRenewals || []).filter(r => !r._handled);
   const renewalsLeague = PYRAMID[career.leagueKey];
   const capLimit = effectiveWageCap(career);
   const wageBillAnnual = annualWageBill(career);
   const headroom = capHeadroom(career);
+  const closed = career.renewalsClosed;
   const accept = (proposal) => {
+    if (closed) return;
     if (!canAffordRenewal(career, proposal)) {
       updateCareer({
         news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot renew ${proposal.name} — would breach the salary cap` }, ...(career.news || [])].slice(0, 25),
@@ -2492,6 +2616,7 @@ function RenewalsTab({ career, updateCareer }) {
     });
   };
   const reject = (proposal) => {
+    if (closed) return;
     const patch = applyRenewalRejection(career, proposal);
     updateCareer({
       ...patch,
@@ -2525,6 +2650,11 @@ function RenewalsTab({ career, updateCareer }) {
           <div className="text-atext-dim leading-snug">Board reacts to wage discipline. Cap-smart deals please Football + Finance; big raises draw Treasury heat.</div>
         </div>
       </div>
+      {closed && queue.length > 0 && (
+        <div className={`${css.panel} p-3 text-[11px] text-[#FFB347]`} style={{ borderColor: '#FFB347' }}>
+          The formal renewal window closed when the season began. Any unfinished deals here still count at year-end — use Squad → Renewals to review history.
+        </div>
+      )}
       {queue.length === 0 ? (
         <div className={`${css.panel} p-12 text-center`}>
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-30 text-atext-mute" />
@@ -2563,8 +2693,8 @@ function RenewalsTab({ career, updateCareer }) {
                   <div className="text-[10px] text-[#E84A6F] mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Over salary cap</div>
                 )}
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => reject(r)} className="text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10">Let Walk</button>
-                  <button onClick={() => accept(r)} disabled={!canAfford} className={canAfford ? `${css.btnPrimary} text-xs px-3 py-2` : "px-3 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>Re-Sign</button>
+                  <button type="button" onClick={() => reject(r)} disabled={closed} className={closed ? 'text-xs px-3 py-2 text-atext-mute' : 'text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10'}>Let Walk</button>
+                  <button type="button" onClick={() => accept(r)} disabled={closed || !canAfford} className={canAfford && !closed ? `${css.btnPrimary} text-xs px-3 py-2` : "px-3 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>Re-Sign</button>
                 </div>
               </div>
             );
@@ -2778,13 +2908,40 @@ function PlayersTab({ career, updateCareer }) {
 function PlayerDetail({ player, career, updateCareer, onClose }) {
   const inLineup = career.lineup.includes(player.id);
   const pName = player.firstName ? player.firstName+" "+player.lastName : (player.name||"Player");
+  const renewalsLeague = PYRAMID[career.leagueKey];
   const toggleLineup = () => {
     if (inLineup) updateCareer({ lineup: career.lineup.filter(id => id !== player.id) });
     else if (career.lineup.length < 22) updateCareer({ lineup: [...career.lineup, player.id] });
   };
   const offerNewContract = () => {
-    const wageBump = Math.round(player.wage * 1.15);
-    updateCareer({ squad: career.squad.map(p => p.id === player.id ? {...p, contract:3, wage:wageBump, morale:clamp(p.morale+8,30,100)} : p) });
+    const proposal = proposeRenewal(player);
+    if (!proposal) return;
+    if (!canAffordRenewal(career, proposal)) {
+      updateCareer({
+        news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot extend ${pName} — would breach the salary cap` }, ...(career.news || [])].slice(0, 25),
+      });
+      return;
+    }
+    const patch = applyRenewal(career, proposal);
+    const merged = JSON.parse(JSON.stringify({ ...career, ...patch }));
+    ensureCareerBoard(merged, findClub(merged.clubId), renewalsLeague);
+    const wageDelta = proposal.proposedWage - (proposal.currentWage ?? 0);
+    if (wageDelta <= 0) {
+      applyMemberConfidenceDelta(merged, "Football Director", 2);
+      applyMemberConfidenceDelta(merged, "Finance Director", 1);
+    } else if (wageDelta >= 40_000) {
+      applyMemberConfidenceDelta(merged, "Finance Director", -2);
+      applyMemberConfidenceDelta(merged, "Football Director", 1);
+    } else {
+      applyMemberConfidenceDelta(merged, "Chairman", 1);
+    }
+    recalcBoardConfidence(merged);
+    updateCareer({
+      ...patch,
+      board: merged.board,
+      finance: merged.finance,
+      news: [{ week: career.week, type: 'win', text: `✍️ Extended ${pName}: +${proposal.proposedYears}y @ ${fmtK(proposal.proposedWage)}/yr (age/form weighted ask)` }, ...(career.news || [])].slice(0, 25),
+    });
   };
   const release = () => {
     updateCareer({ squad: career.squad.filter(p => p.id !== player.id), lineup: career.lineup.filter(id => id !== player.id) });
@@ -2873,7 +3030,7 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
         <button onClick={toggleLineup} className={`w-full text-sm font-bold py-2.5 rounded-xl transition-all ${inLineup ? css.btnDanger : css.btnPrimary}`}>
           {inLineup ? "Remove from XXII" : career.lineup.length >= 22 ? "XXII Full" : "Add to XXII"}
         </button>
-        <button onClick={offerNewContract} className={`w-full ${css.btnGhost} text-sm`}>Offer Contract Ext. (+15%)</button>
+        <button type="button" onClick={offerNewContract} className={`w-full ${css.btnGhost} text-sm`}>Offer contract extension (cap-checked)</button>
         <button onClick={release} className="w-full text-sm py-2.5 rounded-xl font-bold transition-all text-[#E84A6F] hover:bg-[#E84A6F]/10">
           Release Player
         </button>
@@ -3065,7 +3222,7 @@ function TrainingTab({ career, updateCareer }) {
 
 function clubLeafSection(leaf, showCommittee) {
   if (leaf === "overview") return "overview";
-  if (["finances", "board", "sponsors"].includes(leaf)) return "commercial";
+  if (["finances", "board", "sponsors", "contracts"].includes(leaf)) return "commercial";
   const ops = ["facilities", "staff"];
   if (showCommittee) ops.push("committee");
   if (ops.includes(leaf)) return "operations";
@@ -3121,10 +3278,10 @@ function ClubOverviewTab({ career, club, setTab }) {
       <div className="grid sm:grid-cols-2 gap-3">
         {tile(
           "Commercial",
-          [`Cash ${fmtK(cash)}`, `Board confidence ${boardConf}%`, `${sponsorsN} sponsor deals · ${fmtK(sponsorsAnnual)}/yr`],
+          [`Cash ${fmtK(cash)}`, `Board confidence ${boardConf}%`, `${sponsorsN} sponsors · contracts & cap`],
           Briefcase,
           "#4ADBE8",
-          () => setTab("finances"),
+          () => setTab("contracts"),
         )}
         {tile(
           "Operations",
@@ -3187,6 +3344,7 @@ function ClubScreen({ career, club, updateCareer, tab, setTab, tutorialActive })
   if (activePrimary === "commercial") {
     subTabs = [
       { key: "finances", label: "Finances", icon: DollarSign },
+      { key: "contracts", label: "Contracts", icon: FileText },
       { key: "board", label: "Board", icon: Landmark },
       { key: "sponsors", label: "Sponsors", icon: Handshake },
     ];
@@ -3254,6 +3412,7 @@ function ClubScreen({ career, club, updateCareer, tab, setTab, tutorialActive })
 
       {t === "overview" && <ClubOverviewTab career={career} club={club} setTab={setTab} />}
       {t === "finances" && <FinancesTab career={career} />}
+      {t === "contracts" && <ContractsTab career={career} updateCareer={updateCareer} />}
       {t === "board" && <BoardTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "sponsors" && <SponsorsTab career={career} updateCareer={updateCareer} />}
       {t === "kits" && <KitsTab career={career} club={club} updateCareer={updateCareer} />}
@@ -3648,6 +3807,33 @@ function SettingsTab({ career, updateCareer }) {
       <div>
         <div className={`${css.h1} text-3xl`}>SETTINGS</div>
         <div className="text-xs text-atext-dim">Persistence and game options.</div>
+      </div>
+
+      <div className={`${css.panel} p-5`}>
+        <h3 className={`${css.h1} text-2xl mb-3`}>DIFFICULTY</h3>
+        <p className="text-xs text-atext-dim mb-4">Matches the career wizard — cash, injuries, board patience, and tutorials all follow this profile.</p>
+        <div className="grid sm:grid-cols-3 gap-3">
+          {DIFFICULTY_IDS.map((id) => {
+            const profile = getDifficultyProfile(id);
+            const active = career.difficulty === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => updateCareer({ difficulty: id })}
+                className={`text-left p-4 rounded-xl border transition-all ${active ? 'ring-2' : 'hover:border-aaccent/40'}`}
+                style={{
+                  background: active ? `${profile.color}15` : 'var(--A-panel-2)',
+                  borderColor: active ? profile.color : 'var(--A-line)',
+                  ringColor: profile.color,
+                }}
+              >
+                <div className="font-display text-lg mb-1" style={{ color: profile.color }}>{profile.label}</div>
+                <div className="text-[11px] text-atext-dim leading-snug">{profile.summary}</div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className={`${css.panel} p-5`}>
@@ -4216,6 +4402,7 @@ function StaffTab({ career, updateCareer }) {
   const avgRating = Math.round(career.staff.reduce((a,s)=>a+s.rating,0) / career.staff.length);
   return (
     <div className="space-y-4">
+      <StaffRenewalsPanel career={career} updateCareer={updateCareer} leagueTier={leagueTier} />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>STAFF</div>

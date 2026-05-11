@@ -92,6 +92,12 @@ export function getDifficultyConfig(difficulty) {
   return configs[difficulty] || configs.contender;
 }
 
+/** UI + mechanics in one object (wizard, Settings, hub). */
+export function getDifficultyProfile(difficulty) {
+  const id = DIFFICULTY_IDS.includes(difficulty) ? difficulty : 'contender';
+  return { ...DIFFICULTY_META[id], ...getDifficultyConfig(id), id };
+}
+
 // Helper: should a tutorial run for this career?
 export function shouldShowTutorial(career) {
   const cfg = getDifficultyConfig(career?.difficulty);

@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { DIFFICULTY_IDS, getDifficultyConfig, shouldShowTutorial } from '../difficulty.js';
+import { DIFFICULTY_IDS, getDifficultyConfig, getDifficultyProfile, shouldShowTutorial } from '../difficulty.js';
+
+describe('getDifficultyProfile', () => {
+  it('merges display and mechanics for each id', () => {
+    DIFFICULTY_IDS.forEach((id) => {
+      const p = getDifficultyProfile(id);
+      expect(p.id).toBe(id);
+      expect(p.label).toBeTruthy();
+      expect(p.summary).toBeTruthy();
+      expect(typeof p.boardPatienceSeasons).toBe('number');
+      expect(p).toMatchObject(getDifficultyConfig(id));
+    });
+  });
+});
 
 describe('getDifficultyConfig', () => {
   it('returns a config for every known difficulty', () => {

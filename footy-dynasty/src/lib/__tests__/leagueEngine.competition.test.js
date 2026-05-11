@@ -7,6 +7,7 @@ import {
   tier3DivisionCount,
   tier3DivisionTeamCounts,
   TIER3_CLUBS_PER_DIVISION_TARGET,
+  TIER3_MIN_CLUBS_PER_DIVISION,
 } from '../leagueEngine.js';
 
 describe('tier3DivisionCount', () => {
@@ -15,7 +16,10 @@ describe('tier3DivisionCount', () => {
     expect(k).toBeGreaterThanOrEqual(1);
     expect(k).toBeLessThanOrEqual(LOCAL_DIVISION_COUNT);
     const all = getCompetitionClubs('AdelFL', 'SA', null);
-    const expected = Math.min(LOCAL_DIVISION_COUNT, Math.max(1, Math.ceil(all.length / TIER3_CLUBS_PER_DIVISION_TARGET)));
+    const n = all.length;
+    const kByTarget = Math.ceil(n / TIER3_CLUBS_PER_DIVISION_TARGET);
+    const kMaxForMinSize = Math.max(1, Math.floor(n / TIER3_MIN_CLUBS_PER_DIVISION));
+    const expected = Math.min(LOCAL_DIVISION_COUNT, Math.max(1, kByTarget), kMaxForMinSize);
     expect(k).toBe(expected);
   });
 });
@@ -54,6 +58,10 @@ describe('getCompetitionClubs', () => {
     const counts = tier3DivisionTeamCounts(leagueKey, region);
     expect(counts.length).toBe(K);
     expect(counts.reduce((a, b) => a + b, 0)).toBe(allLocal.length);
+    const minCount = Math.min(...counts);
+    if (K > 1 && allLocal.length >= TIER3_MIN_CLUBS_PER_DIVISION * 2) {
+      expect(minCount).toBeGreaterThanOrEqual(TIER3_MIN_CLUBS_PER_DIVISION);
+    }
     let total = 0;
     for (let d = 1; d <= K; d++) {
       const divClubs = getCompetitionClubs(leagueKey, region, d);

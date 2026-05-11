@@ -38,6 +38,7 @@ import {
   tickSponsorYears, proposalForRenewal, generateSponsorOffers,
 } from './finance/sponsors.js';
 import { buildRenewalQueue } from './finance/contracts.js';
+import { buildStaffRenewalQueue, flushUnhandledStaffRenewals } from './staffRenewals.js';
 import {
   INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, TICKET_PRICE, BASE_ATTENDANCE,
 } from './finance/constants.js';
@@ -502,6 +503,8 @@ function finishSeason(c, league) {
   });
   c.squad = survivors;
   c.retiredThisSeason = retiredThisYear;
+  c.staff = (c.staff || []).map((s) => ({ ...s, contract: Math.max(0, (s.contract ?? 0) - 1) }));
+  c.pendingStaffRenewals = buildStaffRenewalQueue(c.staff);
   c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier, c.season);
   seedRng(c.season * 999 + 17);
   c.draftPool = Array.from({ length: 60 }, (_, i) =>
@@ -723,6 +726,15 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
   const evIdx = (c.eventQueue || []).findIndex((e) => !e.completed);
   if (evIdx === -1) { setCareer(c); return; }
   const ev = c.eventQueue[evIdx];
+  if (ev.phase === 'season' && !c.renewalsClosed) {
+    c.renewalsClosed = true;
+    const flush = flushUnhandledStaffRenewals(c, league.tier);
+    c.staff = flush.staff;
+    c.pendingStaffRenewals = flush.pendingStaffRenewals;
+    if (flush.extraNews.length) {
+      c.news = [...flush.extraNews, ...(c.news || [])].slice(0, 25);
+    }
+  }
   c.currentDate = ev.date;
   c.phase = ev.phase || 'preseason';
   c.eventQueue[evIdx] = { ...ev, completed: true };

@@ -57,6 +57,7 @@ describe('migrate', () => {
     expect(m.sponsorOffers).toEqual([]);
     expect(m.expiredSponsorsLastSeason).toEqual([]);
     expect(m.pendingRenewals).toEqual([]);
+    expect(m.pendingStaffRenewals).toEqual([]);
     expect(m.fundraisersUsed).toEqual({});
     expect(m.communityGrantUsed).toBe(false);
     expect(m.lastEosFinance).toBe(null);

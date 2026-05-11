@@ -4,7 +4,10 @@ import { PYRAMID, findClub } from '../data/pyramid.js';
 export const LOCAL_DIVISION_COUNT = 5;
 
 /** ~This many clubs per ladder before adding another division (ceil(n / this), capped at LOCAL_DIVISION_COUNT). */
-export const TIER3_CLUBS_PER_DIVISION_TARGET = 5;
+export const TIER3_CLUBS_PER_DIVISION_TARGET = 10;
+
+/** Avoid splitting tier-3 pools so finely that a division would drop below this many clubs (when avoidable). */
+export const TIER3_MIN_CLUBS_PER_DIVISION = 4;
 
 /** Sorted club ids in this league that belong to `regionState` (deterministic split). */
 export function tier3RegionSortedIds(leagueKey, regionState) {
@@ -17,7 +20,9 @@ export function tier3RegionSortedIds(leagueKey, regionState) {
 export function tier3DivisionCount(leagueKey, regionState) {
   const n = tier3RegionSortedIds(leagueKey, regionState).length;
   if (n <= 0) return 1;
-  return Math.min(LOCAL_DIVISION_COUNT, Math.max(1, Math.ceil(n / TIER3_CLUBS_PER_DIVISION_TARGET)));
+  const kByTarget = Math.ceil(n / TIER3_CLUBS_PER_DIVISION_TARGET);
+  const kMaxForMinSize = Math.max(1, Math.floor(n / TIER3_MIN_CLUBS_PER_DIVISION));
+  return Math.min(LOCAL_DIVISION_COUNT, Math.max(1, kByTarget), kMaxForMinSize);
 }
 
 /** Team counts per division index [div1, div2, …] — useful for setup UI. */
