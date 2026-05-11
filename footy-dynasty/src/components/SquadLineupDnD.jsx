@@ -316,55 +316,70 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
       onDragEnd={onDragEnd}
       onDragCancel={onDragCancel}
     >
-      <LineupOvalField
-        squad={squad}
-        lineupIds={lineup}
-        stitch={stitch}
-        onSelectPlayer={onSelectPlayer}
-      />
-      <div className="mb-5 max-w-2xl mx-auto lg:max-w-none">
-        <div
-          className={`rounded-2xl p-4 ${stitch ? "stitch-neon-card" : ""}`}
-          style={stitch ? undefined : { border: "1px solid var(--A-line)", background: "var(--A-panel)" }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className={`${css.h1} text-lg tracking-wide`}>BENCH</h3>
-            <span className="text-[10px] text-atext-mute font-mono">{benchPlayers.length} available</span>
-          </div>
-          <p className="text-[11px] text-atext-dim mb-3">
-            Drag onto a map slot (max {LINEUP_CAP}). Drop on a bench player or the strip below to remove from the match
-            squad.
-          </p>
-          <SortableContext items={benchPlayerIds} strategy={verticalListSortingStrategy}>
-            <div className="max-h-[42vh] overflow-y-auto min-h-[120px] pr-1">
-              {benchPlayers.map((p) => (
-                <SortablePlayerRow
-                  key={p.id}
-                  player={p}
-                  stitch={stitch}
-                  onSelect={onSelectPlayer}
-                  variant="bench"
-                />
-              ))}
-              <TrayDropArea
-                id={BENCH_TRAY_ID}
-                label="Drop to remove from squad"
-                isEmpty={benchPlayers.length === 0}
-                stitch={stitch}
-              />
-            </div>
-          </SortableContext>
+      <div className="flex flex-col xl:flex-row xl:items-start gap-5 xl:gap-6">
+        <div className="flex-1 min-w-0">
+          <LineupOvalField
+            squad={squad}
+            lineupIds={lineup}
+            stitch={stitch}
+            onSelectPlayer={onSelectPlayer}
+          />
         </div>
-      </div>
 
-      <div className="flex justify-end mb-2">
-        <button
-          type="button"
-          onClick={autoSelect}
-          className={stitch ? "stitch-mock-slant-btn" : `${css.btnGhost} text-xs px-4 py-2`}
-        >
-          Auto-select match squad (by rating)
-        </button>
+        <aside className="w-full xl:w-[min(100%,19rem)] shrink-0 xl:sticky xl:top-4 space-y-3">
+          <div
+            className={`rounded-2xl p-4 ${stitch ? "stitch-neon-card" : ""}`}
+            style={stitch ? undefined : { border: "1px solid var(--A-line)", background: "var(--A-panel)" }}
+          >
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <h3 className={`${css.h1} text-base tracking-wide`}>Bench pool</h3>
+                <p className="text-[10px] text-atext-dim mt-0.5 leading-snug">
+                  Not in the {LINEUP_CAP}. Drag to a slot to add; drop here to remove from the 23.
+                </p>
+              </div>
+              <span className="text-[10px] text-atext-mute font-mono font-bold tabular-nums whitespace-nowrap shrink-0">
+                {benchPlayers.length}
+              </span>
+            </div>
+            <SortableContext items={benchPlayerIds} strategy={verticalListSortingStrategy}>
+              <div className="max-h-[min(52vh,28rem)] overflow-y-auto min-h-[100px] pr-0.5 [scrollbar-width:thin]">
+                {benchPlayers.length === 0 ? (
+                  <div className="text-[11px] text-atext-mute text-center py-6 px-2 rounded-xl border border-dashed border-aline/80 bg-apanel-2/30">
+                    Your full list is already in the match-day {LINEUP_CAP}.
+                  </div>
+                ) : (
+                  benchPlayers.map((p) => (
+                    <SortablePlayerRow
+                      key={p.id}
+                      player={p}
+                      stitch={stitch}
+                      onSelect={onSelectPlayer}
+                      variant="bench"
+                    />
+                  ))
+                )}
+                <TrayDropArea
+                  id={BENCH_TRAY_ID}
+                  label="Drop to remove from squad"
+                  isEmpty={benchPlayers.length === 0}
+                  stitch={stitch}
+                />
+              </div>
+            </SortableContext>
+          </div>
+          <button
+            type="button"
+            onClick={autoSelect}
+            className={
+              stitch
+                ? "w-full stitch-mock-slant-btn text-xs"
+                : `w-full ${css.btnGhost} text-xs py-2.5`
+            }
+          >
+            Auto-fill 23 (by rating)
+          </button>
+        </aside>
       </div>
 
       <DragOverlay>{activePlayer ? dragSummary(activePlayer) : null}</DragOverlay>

@@ -2508,7 +2508,14 @@ function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }
       : []),
   ];
   return (
-    <div className="anim-in">
+    <div className="anim-in space-y-6">
+      <header className="space-y-1">
+        <h2 className={`${css.h1} text-2xl md:text-3xl tracking-wide`}>Squad</h2>
+        <p className="text-sm text-atext-dim max-w-2xl leading-relaxed">
+          {club?.name ? `${club.name} · ` : ""}
+          List, match-day 23, tactics and training — everything you run week to week.
+        </p>
+      </header>
       <TabNav
         tabs={tabs}
         active={t}
@@ -2748,14 +2755,10 @@ function PlayersTab({ career, updateCareer }) {
   const [selected, setSelected] = useState(null);
   const rowHoverBg = 'rgba(13, 148, 136, 0.06)';
   const rowSelectBg = 'rgba(13, 148, 136, 0.1)';
-  const players = useMemo(() => {
-    let arr = [...career.squad];
-    if (filterPos !== "ALL") arr = arr.filter(p => playerHasPosition(p, filterPos));
-    if (filterStatus === "lineup") arr = arr.filter(p => lineupHasPlayer(career.lineup, p.id));
-    if (filterStatus === "bench") arr = arr.filter(p => !lineupHasPlayer(career.lineup, p.id));
-    if (filterStatus === "injured") arr = arr.filter(p => (p.injured || 0) > 0 || (p.suspended || 0) > 0);
-    if (filterStatus === "rookies") arr = arr.filter(p => p.rookie);
-    const name = p => p.firstName ? p.firstName+" "+p.lastName : (p.name||"");
+  const name = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || ""));
+
+  const sortedFullSquad = useMemo(() => {
+    const arr = [...(career.squad || [])];
     arr.sort((a, b) => {
       if (sort === "overall") return b.overall - a.overall;
       if (sort === "age") return a.age - b.age;
@@ -2766,67 +2769,124 @@ function PlayersTab({ career, updateCareer }) {
       return name(a).localeCompare(name(b));
     });
     return arr;
-  }, [career.squad, career.lineup, sort, filterPos, filterStatus]);
+  }, [career.squad, sort]);
+
+  const players = useMemo(() => {
+    let arr = [...sortedFullSquad];
+    if (filterPos !== "ALL") arr = arr.filter(p => playerHasPosition(p, filterPos));
+    if (filterStatus === "lineup") arr = arr.filter(p => lineupHasPlayer(career.lineup, p.id));
+    if (filterStatus === "bench") arr = arr.filter(p => !lineupHasPlayer(career.lineup, p.id));
+    if (filterStatus === "injured") arr = arr.filter(p => (p.injured || 0) > 0 || (p.suspended || 0) > 0);
+    if (filterStatus === "rookies") arr = arr.filter(p => p.rookie);
+    return arr;
+  }, [sortedFullSquad, career.lineup, filterPos, filterStatus]);
+
   const benchPlayerIds = useMemo(
-    () => players.filter((p) => !lineupHasPlayer(career.lineup, p.id)).map((p) => p.id),
-    [players, career.lineup],
+    () => sortedFullSquad.filter((p) => !lineupHasPlayer(career.lineup, p.id)).map((p) => p.id),
+    [sortedFullSquad, career.lineup],
   );
+
   const pName = p => p.firstName ? p.firstName+" "+p.lastName : (p.name||"Player");
+  const nLineup = lineupPlayerCount(career.lineup);
+
+  const filterChip = (active) =>
+    active
+      ? "bg-[linear-gradient(135deg,var(--A-accent),#0099b0)] text-[#001520] border-transparent shadow-[0_1px_6px_rgba(0,224,255,0.2)]"
+      : "bg-apanel border border-aline text-atext-dim hover:border-aaccent/35";
 
   return (
-    <div className="flex flex-col gap-5">
-      <SquadLineupBuilder
-        career={career}
-        updateCareer={updateCareer}
-        benchPlayerIds={benchPlayerIds}
-        stitch={false}
-        onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
-      />
-    <div className="flex flex-col lg:flex-row gap-5">
-      {/* Left: filters + table */}
-      <div className="flex-1 min-w-0">
-        {/* Filters */}
-        <div className="flex gap-2 mb-3 flex-wrap items-center">
-          {["ALL", ...POSITIONS].map(pos => (
-            <button key={pos} onClick={()=>setFilterPos(pos)}
-              className="text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all"
-              style={filterPos===pos ? {background:"var(--A-accent)", color:"#ffffff"} : {background:"var(--A-panel)", color:"var(--A-text-dim)", border:"1px solid var(--A-line)"}}>
-              {pos}
-            </button>
-          ))}
-          <span className="text-[10px] text-atext-mute uppercase font-bold ml-1">Status</span>
-          {[
-            { key: "ALL", label: "All" },
-            { key: "lineup", label: "Lineup" },
-            { key: "bench", label: "Bench" },
-            { key: "injured", label: "Out" },
-            { key: "rookies", label: "Rookies" },
-          ].map(({ key, label }) => (
-            <button key={key} type="button" onClick={() => setFilterStatus(key)}
-              className="text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all"
-              style={filterStatus === key ? { background: "rgba(74,219,232,0.2)", color: "var(--A-accent)", border: "1px solid var(--A-accent)" } : { background: "var(--A-panel)", color: "var(--A-text-dim)", border: "1px solid var(--A-line)" }}>
-              {label}
-            </button>
-          ))}
-          <div className="ml-auto flex items-center gap-2">
-            <span className={css.label}>Sort</span>
-            <select value={sort} onChange={e=>setSort(e.target.value)}
-              className="text-sm font-semibold rounded-lg px-3 py-1.5"
-              style={{background:"var(--A-panel)", border:"1px solid var(--A-line)", color:"var(--A-text)"}}>
-              <option value="overall">Rating</option>
-              <option value="potential">Potential</option>
-              <option value="age">Age</option>
-              <option value="form">Form</option>
-              <option value="wage">Wage</option>
-              <option value="contract">Contract (yrs left)</option>
-              <option value="name">Name</option>
-            </select>
+    <div className="flex flex-col gap-10">
+      <section className="space-y-4" aria-labelledby="match-day-title">
+        <div className="space-y-1">
+          <h3 id="match-day-title" className={`${css.h1} text-xl md:text-2xl tracking-wide`}>
+            Match-day {LINEUP_CAP}
+          </h3>
+          <p className="text-xs text-atext-dim max-w-2xl leading-relaxed">
+            Build the 23 on the map and bench pool. The roster table below is for browsing — it does not hide players from the bench list.
+          </p>
+        </div>
+        <SquadLineupBuilder
+          career={career}
+          updateCareer={updateCareer}
+          benchPlayerIds={benchPlayerIds}
+          stitch={false}
+          onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
+        />
+      </section>
+
+      <section className="space-y-4" aria-labelledby="roster-title">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div>
+            <h3 id="roster-title" className={`${css.h1} text-xl md:text-2xl tracking-wide`}>
+              Roster
+            </h3>
+            <p className="text-xs text-atext-dim mt-0.5">
+              {players.length} shown · {nLineup}/{LINEUP_CAP} in match-day · {(career.squad || []).length} total listed
+            </p>
           </div>
         </div>
 
-        {/* Roster */}
+        <div className="rounded-xl border border-aline bg-apanel-2/60 p-3 sm:p-4 space-y-3">
+          <div className="flex flex-col gap-3">
+            <div>
+              <div className={`${css.label} mb-1.5`}>Position</div>
+              <div className="flex flex-wrap gap-1.5">
+                {["ALL", ...POSITIONS].map((pos) => (
+                  <button
+                    key={pos}
+                    type="button"
+                    onClick={() => setFilterPos(pos)}
+                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(filterPos === pos)}`}
+                  >
+                    {pos}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className={`${css.label} mb-1.5`}>Status</div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { key: "ALL", label: "All" },
+                  { key: "lineup", label: "In 23" },
+                  { key: "bench", label: "Not in 23" },
+                  { key: "injured", label: "Out" },
+                  { key: "rookies", label: "Rookies" },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setFilterStatus(key)}
+                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(filterStatus === key)}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1 border-t border-aline/70">
+              <span className={css.label}>Sort</span>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="text-sm font-semibold rounded-lg px-3 py-2 w-full sm:w-auto max-w-xs border border-aline bg-apanel text-atext"
+              >
+                <option value="overall">Rating</option>
+                <option value="potential">Potential</option>
+                <option value="age">Age</option>
+                <option value="form">Form</option>
+                <option value="wage">Wage</option>
+                <option value="contract">Contract (yrs left)</option>
+                <option value="name">Name</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+    <div className="flex flex-col lg:flex-row gap-5 lg:gap-6">
+      <div className="flex-1 min-w-0">
         <>
-        <div className="md:hidden space-y-2 max-h-[65vh] overflow-y-auto px-0.5">
+        <div className="md:hidden space-y-2 max-h-[65vh] overflow-y-auto px-0.5 [scrollbar-width:thin]">
           {players.map((p) => {
             const inLineup = lineupHasPlayer(career.lineup, p.id);
             const isSelected = selected?.id === p.id;
@@ -2836,7 +2896,7 @@ function PlayersTab({ career, updateCareer }) {
                 key={p.id}
                 type="button"
                 onClick={() => setSelected(isSelected ? null : p)}
-                className="w-full text-left rounded-xl p-3 border transition-all"
+                className="w-full text-left rounded-xl p-3 border transition-all touch-manipulation"
                 style={{
                   borderColor: isSelected ? "var(--A-accent)" : "var(--A-line)",
                   background: isSelected ? rowSelectBg : "var(--A-panel)",
@@ -2852,21 +2912,21 @@ function PlayersTab({ career, updateCareer }) {
                 <div className="flex flex-wrap items-center gap-2 mt-2 text-[10px]">
                   <span className="font-bold" style={{ color: formColor }}>Form {p.form}</span>
                   <span className="text-atext-mute">Fitness {p.fitness}</span>
-                  {inLineup && <Pill color="#4AE89A">XI</Pill>}
+                  {inLineup && <Pill color="#4AE89A">23</Pill>}
                   {p.injured > 0 && <Pill color="#E84A6F">{p.injured}w</Pill>}
                 </div>
               </button>
             );
           })}
         </div>
-        <div className="hidden md:block rounded-2xl overflow-hidden" style={{ border: "1px solid var(--A-line)" }}>
+        <div className="hidden md:block rounded-2xl overflow-hidden border border-aline shadow-sm">
           <div className="overflow-x-auto">
           <div className="grid px-4 py-3 min-w-[720px]" style={{gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
             {["#","Player","Pos","Age","OVR","Form","Fitness","Wage","Status"].map((h,i)=>(
               <div key={h} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${i>1?"text-center":""} ${i===7?"text-right":""}`}>{h}</div>
             ))}
           </div>
-          <div className="max-h-[65vh] overflow-y-auto min-w-[820px]" style={{background:"var(--A-panel)"}}>
+          <div className="max-h-[65vh] overflow-y-auto min-w-[820px] [scrollbar-width:thin]" style={{background:"var(--A-panel)"}}>
             {players.map((p, i) => {
               const inLineup = lineupHasPlayer(career.lineup, p.id);
               const isSelected = selected?.id === p.id;
@@ -2874,7 +2934,8 @@ function PlayersTab({ career, updateCareer }) {
               const fitColor  = p.fitness >= 80 ? "#4AE89A" : p.fitness >= 60 ? "var(--A-accent)" : "#E84A6F";
               return (
                 <button key={p.id} onClick={()=>setSelected(isSelected ? null : p)}
-                  className="w-full grid px-4 py-3 transition-all"
+                  type="button"
+                  className="w-full grid px-4 py-3 transition-all text-left"
                   style={{
                     gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem",
                     borderBottom:"1px solid var(--A-line)",
@@ -2912,7 +2973,7 @@ function PlayersTab({ career, updateCareer }) {
                       : p.injured > 0
                         ? <Pill color="#E84A6F">{p.injured}w</Pill>
                         : inLineup
-                          ? <Pill color="#4AE89A">XI</Pill>
+                          ? <Pill color="#4AE89A">23</Pill>
                           : <span className="text-atext-mute text-xs">—</span>}
                   </div>
                 </button>
@@ -2922,21 +2983,23 @@ function PlayersTab({ career, updateCareer }) {
           </div>
         </div>
         </>
-        <div className="mt-2 text-[10px] text-atext-mute">{players.length} players · {lineupPlayerCount(career.lineup)}/{LINEUP_CAP} match squad · {career.squad.length} total squad</div>
       </div>
 
-      {/* Right: player detail */}
-      <div className="w-full lg:w-72 flex-shrink-0">
+      <div className="w-full lg:w-80 xl:w-72 flex-shrink-0">
         {selected ? (
           <PlayerDetail player={selected} career={career} updateCareer={updateCareer} onClose={()=>setSelected(null)} />
         ) : (
-          <div className="rounded-2xl p-8 text-center" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)"}}>
-            <Users className="w-10 h-10 mx-auto mb-3 text-aline-2" />
-            <div className="text-sm text-atext-mute font-medium">Click a player to view their profile</div>
+          <div className="rounded-2xl p-8 text-center border border-aline bg-apanel-2/50 lg:sticky lg:top-20">
+            <Users className="w-10 h-10 mx-auto mb-3 text-aline-2 opacity-80" />
+            <div className="text-sm text-atext-mute font-medium">Select a player</div>
+            <p className="text-[11px] text-atext-mute mt-2 leading-snug">
+              Tap a row or a map slot to open their profile and contract actions.
+            </p>
           </div>
         )}
       </div>
     </div>
+      </section>
     </div>
   );
 }
@@ -3009,13 +3072,23 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
               {player.contract <= 1 && <Pill color="#FFB347">Renew soon</Pill>}
             </div>
           </div>
-          <div className="flex flex-col items-center gap-1.5">
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-atext-mute hover:text-atext hover:bg-apanel-2 border border-transparent hover:border-aline transition-colors touch-manipulation"
+              aria-label="Close profile"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="flex flex-col items-center gap-1.5">
             <RatingDot value={player.overall} size="lg" />
             {player.trueRating && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{background:"#4ADBE814",color:"#4ADBE8",border:"1px solid #4ADBE830"}}>
                 Scout {player.trueRating}
               </span>
             )}
+            </div>
           </div>
         </div>
         {/* Form / Fitness / Morale row */}
@@ -3140,7 +3213,7 @@ function TacticsTab({ career, updateCareer }) {
   const fieldStrokeHi = '#FFFFFF40';
   const goalStroke = '#FFFFFF70';
   return (
-    <div className="space-y-4 touch-manipulation">
+    <div className="space-y-6 touch-manipulation">
       <div className={`${css.panel} p-5`}>
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className={`${css.h1} text-2xl`}>MATCH-DAY APPROACH</h3>
@@ -3284,7 +3357,7 @@ function TrainingTab({ career, updateCareer }) {
   );
 
   return (
-    <div className="space-y-4 touch-manipulation">
+    <div className="space-y-6 touch-manipulation">
       <div className={`${css.panel} p-4 md:p-5`}>
         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute mb-2">Quick presets</div>
         <div className="flex flex-wrap gap-2">

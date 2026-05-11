@@ -245,21 +245,21 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
 
   return (
     <div
-      className={`relative w-full max-w-6xl mx-auto mb-5 rounded-2xl p-3 sm:p-4 md:p-5 touch-manipulation ${stitch ? "stitch-neon-card" : ""}`}
+      className={`relative w-full max-w-6xl mx-auto mb-0 sm:mb-1 rounded-2xl p-3 sm:p-4 md:p-5 touch-manipulation ${stitch ? "stitch-neon-card" : ""}`}
       style={stitch ? undefined : { border: "1px solid var(--A-line)", background: "var(--A-panel)" }}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-3">
         <div>
-          <h3 className={`${css.h1} text-base md:text-lg tracking-wide`}>GROUND MAP</h3>
-          <p className="text-[11px] text-atext-dim mt-1 max-w-lg leading-snug">
-            <span className="text-atext font-semibold">15</span> on the oval (backs toward scoring end behind them,{" "}
-            <span className="text-atext font-semibold">forwards</span> toward the other — B · HB · C · HF · F),{" "}
-            <span className="text-atext font-semibold">{LINEUP_FOLLOWERS_COUNT} followers</span>, then{" "}
-            <span className="text-atext font-semibold">{LINEUP_INTERCHANGE_COUNT} interchange</span> — schematic like a club team sheet, not kick-in positions.
+          <h3 className={`${css.h1} text-base md:text-lg tracking-wide`}>Ground map</h3>
+          <p className="text-[11px] text-atext-dim mt-1 max-w-xl leading-snug">
+            <span className="text-atext font-semibold">15</span> on the oval (B–F),{" "}
+            <span className="text-atext font-semibold">{LINEUP_FOLLOWERS_COUNT} followers</span>,{" "}
+            <span className="text-atext font-semibold">{LINEUP_INTERCHANGE_COUNT} interchange</span>. Schematic team sheet — drag players
+            into place.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[10px] font-mono uppercase text-atext-dim shrink-0">
-          <span className="rounded-md border border-aline px-2 py-1 bg-apanel-2">Slots {LINEUP_CAP}</span>
+          <span className="rounded-md border border-aline px-2 py-1 bg-apanel-2">{LINEUP_CAP} slots</span>
           <span className="rounded-md border border-aline px-2 py-1 bg-apanel-2">Hold · drag</span>
         </div>
       </div>
@@ -394,14 +394,12 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 justify-center text-[10px] text-atext-dim">
-        <span>
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400/80 mr-1 align-middle" /> Grass = playing surface
-        </span>
-        <span>
-          <span className="inline-block w-2 h-2 rounded-full border-2 border-white/50 mr-1 align-middle" /> White = boundary, centre, 50s, goals
-        </span>
-        <span>Oval is tall so goal-to-goal matches B (top) → F (bottom).</span>
+      <div
+        className={`mt-2 pt-2 border-t text-[10px] text-atext-mute text-center ${
+          stitch ? "border-[rgba(200,255,61,0.2)]" : "border-aline/60"
+        }`}
+      >
+        Markings follow goal-to-goal (backs top, forwards bottom).
       </div>
     </div>
   );
