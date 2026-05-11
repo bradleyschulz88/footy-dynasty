@@ -10,7 +10,7 @@ function initials(p) {
   return (a + b || "?").toUpperCase();
 }
 
-function OvalDropZone({ id, title, subtitle, stitch, zoneClass, zoneBg }) {
+function OvalDropZone({ id, title, subtitle, stitch, zoneClass, zoneBg, children }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const border = stitch
     ? isOver
