@@ -13,7 +13,7 @@ import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf } from './data/pyramid.js';
 import { pyramidNoteForLeague } from './data/pyramidMeta.js';
 import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from './lib/playerGen.js';
-import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague } from './lib/leagueEngine.js';
+import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, competitionClubsForCareer } from './lib/leagueEngine.js';
 import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
 import { generateSeasonCalendar, TRAINING_INFO, formatDate } from './lib/calendar.js';
@@ -247,9 +247,12 @@ function AFLManagerInner() {
         cfg.moraleFloor, 100),
       traits: rollPlayerTrait() ? [rollPlayerTrait()] : [],
     }));
-    const newFixtures = generateFixtures(newLeague.clubs);
+    const newRegionState = newClub.state;
+    const newLocalDivision = newLeague.tier === 3 ? localDivisionForClub(newClub.id, offer.leagueKey) : null;
+    const compClubsNew = getCompetitionClubs(offer.leagueKey, newRegionState, newLocalDivision);
+    const newFixtures = generateFixtures(compClubsNew);
     const SEASON = career.season + 1;
-    const eventQueue = generateSeasonCalendar(SEASON, newLeague.clubs, newFixtures, newClub.id);
+    const eventQueue = generateSeasonCalendar(SEASON, compClubsNew, newFixtures, newClub.id);
     const interviewBump = offer.interviewStartingBoardBonus ?? 0;
     const startingBoard = clamp(
       ((career.coachReputation ?? 30) >= 60 ? 65 : 55) + interviewBump,
@@ -257,7 +260,7 @@ function AFLManagerInner() {
       78,
     );
     const newFinance = makeStartingFinance(newLeague.tier, career.difficulty, startingBoard);
-    const newLadder = blankLadder(newLeague.clubs);
+    const newLadder = blankLadder(compClubsNew);
     const squadForCap = scaledSquadToFitCap({
       clubId: newClub.id,
       leagueKey: offer.leagueKey,
@@ -298,6 +301,8 @@ function AFLManagerInner() {
       // New club state
       clubId:    newClub.id,
       leagueKey: offer.leagueKey,
+      regionState: newRegionState,
+      localDivision: newLocalDivision,
       season:    SEASON,
       week:      0,
       winStreak: 0,
@@ -701,6 +706,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
   const [tier, _setTier] = useState(saved.tier ?? null);
   const [leagueKey, _setLeagueKey] = useState(saved.leagueKey ?? null);
   const [clubId, _setClubId] = useState(saved.clubId ?? null);
+  const [localDivision, _setLocalDivision] = useState(saved.localDivision ?? 5);
   const [managerName, setManagerName] = useState(saved.managerName ?? "");
   const [difficulty, _setDifficulty] = useState(saved.difficulty ?? 'contender');
   const [loading, setLoading] = useState(false);
@@ -713,9 +719,16 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
   const setLeagueKey  = (v) => { saveSetup({ leagueKey: v });  _setLeagueKey(v); };
   const setClubId     = (v) => { saveSetup({ clubId: v });     _setClubId(v); };
   const setDifficulty = (v) => { saveSetup({ difficulty: v }); _setDifficulty(v); };
+  const setLocalDivision = (v) => {
+    saveSetup({ localDivision: v, clubId: null });
+    _setLocalDivision(v);
+    _setClubId(null);
+  };
 
   const availableLeagues = state ? LEAGUES_BY_STATE(state).filter(l => tier ? l.tier === tier : true) : [];
-  const availableClubs = leagueKey ? PYRAMID[leagueKey].clubs : [];
+  const availableClubs = leagueKey
+    ? getCompetitionClubs(leagueKey, state, tier === 3 ? localDivision : null)
+    : [];
   const tiersForState = state ? [1, 2, 3].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t)) : [1, 2, 3];
 
   function start(e) {
@@ -731,7 +744,9 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     const SEASON = 2026;
     const cfg = getDifficultyConfig(difficulty);
     const tunedFinance = makeStartingFinance(league.tier, difficulty, 55);
-    const ladder0 = blankLadder(league.clubs);
+    const compClubs = getCompetitionClubs(leagueKey, state, league.tier === 3 ? localDivision : null);
+    if (!compClubs.some((row) => row.id === clubId)) throw new Error('Selected club is not in this competition pool.');
+    const ladder0 = blankLadder(compClubs);
     const squadRaw = generateSquad(clubId, league.tier, 32, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
     const squad = scaledSquadToFitCap({
       clubId,
@@ -741,8 +756,8 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       squad: squadRaw,
     });
     const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
-    const fixtures = generateFixtures(league.clubs);
-    const eventQueue = generateSeasonCalendar(SEASON, league.clubs, fixtures, clubId);
+    const fixtures = generateFixtures(compClubs);
+    const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId);
     const facilities = DEFAULT_FACILITIES();
     const clubGround = getClubGround(club, facilities.stadium.level, league.tier);
     const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
@@ -757,6 +772,8 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       managerName: managerName || "Coach",
       clubId,
       leagueKey,
+      regionState: state,
+      localDivision: league.tier === 3 ? localDivision : null,
       season: SEASON,
       week: 0,
       currentDate: `${SEASON - 1}-12-01`,
@@ -973,7 +990,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
             <p className="text-atext-dim mb-8">Start at the top, the middle, or the bottom of the pyramid. Showing tiers available in <strong>{state}</strong>.</p>
             <div className={`grid gap-4 ${tiersForState.length === 1 ? 'md:grid-cols-1 max-w-sm' : tiersForState.length === 2 ? 'md:grid-cols-2 max-w-2xl' : 'md:grid-cols-3'}`}>
               {tiersForState.includes(3) && (
-                <button onClick={()=>{setTier(3); setLeagueKey(null); setClubId(null); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
+                <button onClick={()=>{setTier(3); setLeagueKey(null); setClubId(null); setLocalDivision(5); setStep(2);}} className={`${css.panelHover} p-6 text-left`}>
                   <Pill color="#4ADBE8">Underdog</Pill>
                   <div className={`${css.h1} text-4xl mt-3`}>TIER 3</div>
                   <div className="text-sm text-atext font-semibold mt-1">Community / Local</div>
@@ -1013,7 +1030,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
             ) : (
               <div className="grid md:grid-cols-2 gap-4">
                 {availableLeagues.map(l => (
-                  <button key={l.key} onClick={()=>{setLeagueKey(l.key); setClubId(null); setStep(3);}} className={`${css.panelHover} p-5 text-left flex items-center justify-between`}>
+                  <button key={l.key} onClick={()=>{setLeagueKey(l.key); setClubId(null); if (tier===3) setLocalDivision(5); setStep(3);}} className={`${css.panelHover} p-5 text-left flex items-center justify-between`}>
                     <div>
                       <div className="text-xs text-atext-dim uppercase tracking-widest">Tier {l.tier}</div>
                       <div className={`${css.h1} text-2xl mt-1`}>{l.short}</div>
@@ -1033,6 +1050,23 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
             <button onClick={()=>setStep(2)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>CHOOSE YOUR CLUB</h2>
             <p className="text-atext-dim mb-8">{PYRAMID[leagueKey].name}</p>
+            {tier === 3 && (
+              <div className={`${css.panel} p-4 mb-6`}>
+                <label className={css.label}>Local division (1 = strongest pool · 5 = suburban)</label>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {[1, 2, 3, 4, 5].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setLocalDivision(d)}
+                      className={`px-4 py-2 rounded-lg border text-sm font-bold transition ${localDivision === d ? 'border-aaccent bg-aaccent/15 text-aaccent' : 'border-aline hover:border-aaccent/40'}`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="grid md:grid-cols-3 gap-4">
               {availableClubs.map(c => (
                 <button key={c.id} onClick={()=>{setClubId(c.id); setStep(4);}} className={`${css.panelHover} p-5 text-left`}>
@@ -5017,12 +5051,14 @@ function LocalTab({ career, club, updateCareer }) {
   const scout = (leagueKey) => {
     seedRng(Date.now() % 88888);
     const league = PYRAMID[leagueKey];
+    const scoutPool = getCompetitionClubs(leagueKey, career.regionState ?? club.state, null);
+    const namePool = scoutPool.length ? scoutPool : league.clubs;
     const found = Array.from({length: 6}, (_, i) => {
       const p = generatePlayer(league.tier, 13000 + i + Date.now() % 500, {
         clubId: `local:${leagueKey}`,
         season: career.season,
       });
-      return { ...p, fromLocal: pick(league.clubs).short, scoutedOverall: scoutedOverall(p, career) };
+      return { ...p, fromLocal: pick(namePool).short, scoutedOverall: scoutedOverall(p, career) };
     });
     setScoutedPlayers(found);
     setScoutingLeague(leagueKey);

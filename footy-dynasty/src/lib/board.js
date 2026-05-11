@@ -2,7 +2,7 @@
 import { pick, rand, rng } from "./rng.js";
 import { FIRST_NAMES, LAST_NAMES } from "./playerGen.js";
 import { clamp } from "./format.js";
-import { sortedLadder } from "./leagueEngine.js";
+import { sortedLadder, competitionClubsForCareer } from "./leagueEngine.js";
 import { findClub, PYRAMID } from "../data/pyramid.js";
 import { getDifficultyConfig } from "./difficulty.js";
 
@@ -491,7 +491,8 @@ export function generateSeasonObjectives(career, league) {
   if (!league?.clubs?.length) return;
   ensureCareerBoard(career, findClub(career.clubId), league);
   const season = career.season;
-  const n = league.clubs.length;
+  const nPool = competitionClubsForCareer(career);
+  const n = nPool.length || league.clubs.length;
   const seasonsManaged = career.coachStats?.seasonsManaged || 1;
   /** @type {object[]} */
   const raw = [];

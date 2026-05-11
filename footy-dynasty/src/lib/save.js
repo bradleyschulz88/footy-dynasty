@@ -7,8 +7,9 @@ import { getClubGround } from '../data/grounds.js';
 
 import { migrateSaveBoardV8, migrateSaveBoardV9, migrateSaveBoardV10, migrateSaveBoardV11 } from './board.js';
 import { migrateSaveGameDepthV12 } from './gameDepth.js';
+import { localDivisionForClub } from './leagueEngine.js';
 
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
@@ -194,6 +195,18 @@ export function migrate(save) {
   if (v < 12) {
     s.saveVersion = 12;
     migrateSaveGameDepthV12(s);
+  }
+
+  if (v < 13) {
+    s.saveVersion = 13;
+    const cl = s.clubId ? findClub(s.clubId) : null;
+    s.regionState = s.regionState ?? cl?.state ?? null;
+    const tier = (s.leagueKey && PYRAMID[s.leagueKey]?.tier) ?? null;
+    if (tier === 3 && s.leagueKey && s.clubId) {
+      s.localDivision = s.localDivision ?? localDivisionForClub(s.clubId, s.leagueKey);
+    } else {
+      s.localDivision = s.localDivision ?? null;
+    }
   }
 
   return s;

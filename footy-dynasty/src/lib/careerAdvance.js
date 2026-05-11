@@ -5,7 +5,7 @@ import { seedRng, rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred, generatePlayer } from './playerGen.js';
 import { teamRating, simMatch, simMatchWithQuarters, aiClubRating } from './matchEngine.js';
-import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague } from './leagueEngine.js';
+import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub } from './leagueEngine.js';
 import { generateTradePool } from './defaults.js';
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
@@ -346,35 +346,79 @@ function finishSeason(c, league) {
   const oldLeagueKey = c.leagueKey;
   const oldLeagueName = PYRAMID[oldLeagueKey]?.name || '';
   const oldLeagueShort = PYRAMID[oldLeagueKey]?.short || '';
+  const endedTier = league.tier;
+  const region = c.regionState ?? findClub(c.clubId)?.state;
 
-  if (league.tier > 1) {
+  if (league.tier === 1) {
+    c.fixtures = generateFixtures(league.clubs);
+    c.ladder = blankLadder(league.clubs);
+  } else if (league.tier === 2) {
     if (myPos === 1) {
       promoted = true;
       const newLeagueKey = pickPromotionLeague(league);
       if (newLeagueKey) {
         const newLeague = PYRAMID[newLeagueKey];
         c.leagueKey = newLeagueKey;
-        c.fixtures = generateFixtures(newLeague.clubs);
-        c.ladder = blankLadder(newLeague.clubs);
+        c.localDivision = null;
+        const clubs = newLeague.tier === 1 ? [...newLeague.clubs] : getCompetitionClubs(newLeagueKey, region, null);
+        c.fixtures = generateFixtures(clubs);
+        c.ladder = blankLadder(clubs);
+      } else {
+        const clubs = getCompetitionClubs(c.leagueKey, region, null);
+        c.fixtures = generateFixtures(clubs);
+        c.ladder = blankLadder(clubs);
       }
     } else if (myPos === sorted.length) {
       relegated = true;
-      if (league.tier < 3) {
-        const newLeagueKey = pickRelegationLeague(league);
+      const newLeagueKey = pickRelegationLeague(league);
+      if (newLeagueKey) {
+        const newLeague = PYRAMID[newLeagueKey];
+        c.leagueKey = newLeagueKey;
+        c.localDivision = localDivisionForClub(c.clubId, newLeagueKey);
+        const clubs = getCompetitionClubs(newLeagueKey, region, c.localDivision);
+        c.fixtures = generateFixtures(clubs);
+        c.ladder = blankLadder(clubs);
+      } else {
+        const clubs = getCompetitionClubs(c.leagueKey, region, null);
+        c.fixtures = generateFixtures(clubs);
+        c.ladder = blankLadder(clubs);
+      }
+    } else {
+      const clubs = getCompetitionClubs(c.leagueKey, region, null);
+      c.fixtures = generateFixtures(clubs);
+      c.ladder = blankLadder(clubs);
+    }
+  } else if (league.tier === 3) {
+    const div = c.localDivision ?? localDivisionForClub(c.clubId, c.leagueKey);
+    c.localDivision = div;
+    if (champion) {
+      if (div > 1) {
+        promoted = true;
+        c.localDivision = div - 1;
+        const clubs = getCompetitionClubs(c.leagueKey, region, c.localDivision);
+        c.fixtures = generateFixtures(clubs);
+        c.ladder = blankLadder(clubs);
+      } else {
+        promoted = true;
+        const newLeagueKey = pickPromotionLeague(league);
         if (newLeagueKey) {
           const newLeague = PYRAMID[newLeagueKey];
           c.leagueKey = newLeagueKey;
-          c.fixtures = generateFixtures(newLeague.clubs);
-          c.ladder = blankLadder(newLeague.clubs);
+          c.localDivision = null;
+          const clubs = getCompetitionClubs(newLeagueKey, region, null);
+          c.fixtures = generateFixtures(clubs);
+          c.ladder = blankLadder(clubs);
+        } else {
+          const clubs = getCompetitionClubs(c.leagueKey, region, div);
+          c.fixtures = generateFixtures(clubs);
+          c.ladder = blankLadder(clubs);
         }
       }
     } else {
-      c.fixtures = generateFixtures(league.clubs);
-      c.ladder = blankLadder(league.clubs);
+      const clubs = getCompetitionClubs(c.leagueKey, region, div);
+      c.fixtures = generateFixtures(clubs);
+      c.ladder = blankLadder(clubs);
     }
-  } else {
-    c.fixtures = generateFixtures(league.clubs);
-    c.ladder = blankLadder(league.clubs);
   }
 
   c.seasonSummary = {
@@ -462,8 +506,9 @@ function finishSeason(c, league) {
     generatePlayer(2, 9000 + i + c.season * 100, { clubId: 'draft', season: c.season }),
   );
   c.tradePool = generateTradePool(c.leagueKey, c.season);
-  const newLeague = PYRAMID[c.leagueKey];
-  const draftOrder = sortedLadder(c.ladder.length ? c.ladder : blankLadder(newLeague.clubs))
+  const compClubsDraft = competitionClubsForCareer(c);
+  const draftBase = compClubsDraft.length ? compClubsDraft : (PYRAMID[c.leagueKey]?.clubs || []);
+  const draftOrder = sortedLadder(c.ladder.length ? c.ladder : blankLadder(draftBase))
     .slice().reverse().map((r) => r.id);
   c.draftOrder = draftOrder.map((clubId, i) => ({ pick: i + 1, clubId, used: false }));
 
@@ -583,9 +628,20 @@ function finishSeason(c, league) {
     c.news = [{ week: 0, type: 'info', text: `🏁 ${r.name} ${r.reason === 'retired' ? `retires at ${r.age}` : 'released after contract expired'} (${r.career.gamesPlayed} games, ${r.career.goals} goals)` }, ...(c.news || [])].slice(0, 20);
   });
 
+  let eosHeadline;
+  if (relegated) eosHeadline = `⬇️ Relegated. Finished ${myPos}/${sorted.length}.`;
+  else if (promoted) {
+    const nowLeague = PYRAMID[c.leagueKey];
+    if (endedTier === 3 && champion && nowLeague?.tier === 3 && c.localDivision != null) {
+      eosHeadline = `🏆 Premiers! Up to Division ${c.localDivision}.`;
+    } else if (endedTier === 3 && champion && nowLeague?.tier === 2) {
+      eosHeadline = `🏆 Premiers! Promoted to ${nowLeague?.name || 'state league'}.`;
+    } else {
+      eosHeadline = `🏆 Promoted! Finished ${myPos} in ${league.short}.`;
+    }
+  } else eosHeadline = `Season complete: finished ${myPos}/${sorted.length}`;
   c.news = [
-    { week: 0, type: promoted ? 'win' : relegated ? 'loss' : 'draw',
-      text: promoted ? `🏆 Promoted! Finished ${myPos}st in ${league.short}.` : relegated ? `⬇️ Relegated. Finished ${myPos}/${sorted.length}.` : `Season complete: finished ${myPos}/${sorted.length}` },
+    { week: 0, type: promoted ? 'win' : relegated ? 'loss' : 'draw', text: eosHeadline },
     ...c.news,
   ].slice(0, 20);
   if (brownlowWinner) {
@@ -598,7 +654,9 @@ function finishSeason(c, league) {
   const regGround = getClubGround(seasonClub, c.facilities?.stadium?.level ?? 1, nextLeagueForCal.tier);
   c.clubGround = regGround;
   c.groundName = regGround.shortName;
-  c.eventQueue = generateSeasonCalendar(c.season, nextLeagueForCal.clubs, c.fixtures, c.clubId);
+  const calPool = competitionClubsForCareer(c);
+  const calClubs = calPool.length ? calPool : nextLeagueForCal.clubs;
+  c.eventQueue = generateSeasonCalendar(c.season, calClubs, c.fixtures, c.clubId);
   ensureCareerBoard(c, seasonClub, nextLeagueForCal);
   generateSeasonObjectives(c, nextLeagueForCal);
   planSeasonBoardMeetings(c);
@@ -787,7 +845,8 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
   if (ev.type === 'key_event') {
     const extraNews = [];
     if (ev.name === 'Transfer Window Opens') {
-      const aiClubs = (league.clubs || []).filter((cl) => cl.id !== c.clubId).slice(0, 4);
+      const comp = competitionClubsForCareer(c);
+      const aiClubs = (comp.length ? comp : (league.clubs || [])).filter((cl) => cl.id !== c.clubId).slice(0, 4);
       aiClubs.forEach((cl) => {
         const pool = c.tradePool || [];
         const target = pool[rand(0, Math.max(0, pool.length - 1))];
@@ -796,7 +855,8 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 
       const tradableSquad = c.squad.filter((p) => p.contract > 0 && p.overall >= 65 && !c.lineup.slice(0, 5).includes(p.id) && !playerBlockedFromTrade(p, c.season));
       const offerCount = Math.min(tradableSquad.length, rand(2, 4));
-      const offerClubs = (league.clubs || []).filter((cl) => cl.id !== c.clubId);
+      const offerPool = competitionClubsForCareer(c);
+      const offerClubs = (offerPool.length ? offerPool : (league.clubs || [])).filter((cl) => cl.id !== c.clubId);
       const offers = [];
       for (let i = 0; i < offerCount; i++) {
         const targetPlayer = pick(tradableSquad);
@@ -837,7 +897,8 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         extraNews.push({ week: c.week, type: 'info', text: `📨 ${stale.length} trade offer${stale.length > 1 ? 's' : ''} expired with the window.` });
       }
       c.pendingTradeOffers = (c.pendingTradeOffers || []).filter((o) => o.status !== 'pending');
-      const aiClubs2 = (league.clubs || []).filter((cl) => cl.id !== c.clubId).slice(0, 3);
+      const pool2 = competitionClubsForCareer(c);
+      const aiClubs2 = (pool2.length ? pool2 : (league.clubs || [])).filter((cl) => cl.id !== c.clubId).slice(0, 3);
       aiClubs2.forEach((cl) => {
         extraNews.push({ week: c.week, type: 'info', text: `✍️ ${cl.name} complete their pre-season recruitment` });
       });

@@ -2,7 +2,7 @@
 import { seedRng, rand, rng, pick } from './rng.js';
 import { generatePlayer } from './playerGen.js';
 import { generateTradePool } from './defaults.js';
-import { sortedLadder } from './leagueEngine.js';
+import { sortedLadder, competitionClubsForCareer } from './leagueEngine.js';
 
 export const TRADE_PERIOD_DAYS = 14;
 export const FREE_AGENCY_END_DAY = 8;
@@ -18,7 +18,8 @@ function seedAiTradeOffers(c, league) {
       p.receivedInTrade !== c.season,
   );
   const offerCount = Math.min(tradableSquad.length, rand(1, 3));
-  const offerClubs = (league.clubs || []).filter((cl) => cl.id !== c.clubId);
+  const pool = competitionClubsForCareer(c);
+  const offerClubs = (pool.length ? pool : (league.clubs || [])).filter((cl) => cl.id !== c.clubId);
   const offers = [];
   for (let i = 0; i < offerCount; i++) {
     const targetPlayer = pick(tradableSquad);
@@ -82,7 +83,12 @@ export function buildDraftPickBank(c, league) {
   const y0 = c.season;
   const years = [y0, y0 + 1, y0 + 2];
   const bank = {};
-  const ladderRows = sortedLadder(c.ladder?.length ? c.ladder : league.clubs.map((cl) => ({ id: cl.id, W: 0, L: 0, D: 0, pts: 0, pct: 0, F: 0, A: 0 })));
+  const ladderClubRows = (() => {
+    const pool = competitionClubsForCareer(c);
+    const rows = pool.length ? pool : (league.clubs || []);
+    return rows.map((cl) => ({ id: cl.id, W: 0, L: 0, D: 0, pts: 0, pct: 0, F: 0, A: 0 }));
+  })();
+  const ladderRows = sortedLadder(c.ladder?.length ? c.ladder : ladderClubRows);
   const myPos = Math.max(1, ladderRows.findIndex((r) => r.id === clubId) + 1);
   const approxR1 = myPos;
   const approxR2 = Math.min(18, myPos + 6);

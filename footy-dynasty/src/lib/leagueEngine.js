@@ -1,3 +1,44 @@
+import { PYRAMID, findClub } from '../data/pyramid.js';
+
+/** How many parallel ladders exist in tier-3 (local) leagues. */
+export const LOCAL_DIVISION_COUNT = 5;
+
+/** Stable bucket 1..LOCAL_DIVISION_COUNT for suburban draw splitting (no pyramid data edits). */
+export function localDivisionForClub(clubId, leagueKey) {
+  let h = 0;
+  const s = `${leagueKey}\0${clubId}`;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
+  return (Math.abs(h) % LOCAL_DIVISION_COUNT) + 1;
+}
+
+/**
+ * Clubs that share a season ladder / fixture with the player.
+ * Tier 1: full national league. Tier 2–3: same `club.state` as `regionState`; tier 3 also same local division.
+ */
+export function getCompetitionClubs(leagueKey, regionState, localDivision) {
+  const league = PYRAMID[leagueKey];
+  if (!league?.clubs) return [];
+  if (league.tier === 1) return [...league.clubs];
+  if (!regionState) return [...league.clubs];
+  let clubs = league.clubs.filter((c) => c.state === regionState);
+  if (league.tier === 3 && localDivision != null) {
+    const d = Math.max(1, Math.min(LOCAL_DIVISION_COUNT, Number(localDivision) || 1));
+    clubs = clubs.filter((c) => localDivisionForClub(c.id, leagueKey) === d);
+  }
+  return clubs;
+}
+
+/** Uses career.regionState, career.localDivision, and PYRAMID tiers. */
+export function competitionClubsForCareer(c) {
+  const league = PYRAMID[c.leagueKey];
+  if (!league) return [];
+  const region = c.regionState ?? findClub(c.clubId)?.state;
+  const div = league.tier === 3
+    ? (c.localDivision ?? localDivisionForClub(c.clubId, c.leagueKey))
+    : null;
+  return getCompetitionClubs(c.leagueKey, region, div);
+}
+
 export function generateFixtures(leagueClubs) {
   const ids = leagueClubs.map(c => c.id);
   const rounds = [];

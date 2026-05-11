@@ -4,6 +4,7 @@
 import { generateSquad, generatePlayer } from './playerGen.js';
 import { rand, rng, TIER_SCALE } from './rng.js';
 import { selectBalancedLineup } from './lineupBalance.js';
+import { competitionClubsForCareer } from './leagueEngine.js';
 
 const SQUAD_SIZE = 32;
 
@@ -11,7 +12,9 @@ const SQUAD_SIZE = 32;
 export function ensureSquadsForLeague(career, league) {
   const out = { ...(career.aiSquads || {}) };
   let changed = false;
-  for (const c of (league.clubs || [])) {
+  const pool = competitionClubsForCareer(career);
+  const iter = pool.length ? pool : (league.clubs || []);
+  for (const c of iter) {
     if (c.id === career.clubId) continue;
     if (!out[c.id] || out[c.id].length === 0) {
       out[c.id] = generateSquad(c.id, league.tier, SQUAD_SIZE, career.season || 2026);
