@@ -31,11 +31,11 @@ function OvalDropZone({ id, title, subtitle, stitch, zoneClass, zoneBg, children
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-xl flex flex-col min-h-[72px] sm:min-h-[80px] border-2 ${border} ${bg} backdrop-blur-[2px] ${zoneClass || ""} touch-manipulation transition-colors shadow-inner`}
+      className={`rounded-xl flex flex-col min-h-[88px] sm:min-h-[100px] md:min-h-[118px] border-2 ${border} ${bg} backdrop-blur-[2px] ${zoneClass || ""} touch-manipulation transition-colors shadow-inner`}
     >
       <div className="px-2 pt-1.5 pb-1 flex items-center justify-between gap-1">
         <span
-          className={`text-[10px] font-black uppercase tracking-widest ${stitch ? "text-[rgba(200,255,61,0.95)]" : "text-white/90"}`}
+          className={`text-[11px] md:text-xs font-black uppercase tracking-widest ${stitch ? "text-[rgba(200,255,61,0.95)]" : "text-white/90"}`}
         >
           {title}
         </span>
@@ -47,7 +47,7 @@ function OvalDropZone({ id, title, subtitle, stitch, zoneClass, zoneBg, children
           </span>
         )}
       </div>
-      <div className="flex-1 px-1.5 pb-2 flex flex-wrap content-start gap-1.5 justify-start">{children}</div>
+      <div className="flex-1 px-2 pb-2.5 pt-0.5 flex flex-wrap content-start gap-2 justify-start">{children}</div>
     </div>
   );
 }
@@ -92,7 +92,7 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
 
   return (
     <div
-      className={`relative w-full max-w-xl mx-auto mb-5 rounded-2xl p-3 md:p-4 touch-manipulation ${stitch ? "stitch-neon-card" : ""}`}
+      className={`relative w-full max-w-6xl mx-auto mb-5 rounded-2xl p-3 sm:p-4 md:p-5 touch-manipulation ${stitch ? "stitch-neon-card" : ""}`}
       style={stitch ? undefined : { border: "1px solid var(--A-line)", background: "var(--A-panel)" }}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-3">
@@ -117,11 +117,8 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
       </div>
 
       <div
-        className="relative w-full mx-auto rounded-[50%] overflow-hidden ring-2 ring-white/15"
+        className="relative w-full mx-auto rounded-[50%] overflow-hidden ring-2 ring-white/15 aspect-[1.55/1] max-h-[min(76vh,720px)] min-h-[280px] sm:min-h-[340px] md:min-h-[400px] lg:min-h-[460px]"
         style={{
-          aspectRatio: "1.55 / 1",
-          maxHeight: "min(48vh, 400px)",
-          minHeight: "220px",
           background:
             "linear-gradient(178deg, rgba(52,140,72,0.55) 0%, rgba(28,100,48,0.75) 38%, rgba(22,78,40,0.8) 62%, rgba(18,70,38,0.72) 100%)",
           boxShadow: "inset 0 0 0 3px rgba(255,255,255,0.12), 0 12px 36px rgba(0,0,0,0.35)",
@@ -146,14 +143,14 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           <line x1="186" y1="58" x2="186" y2="72" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" />
         </svg>
 
-        <div className="absolute inset-[4%] flex flex-col gap-1.5 pointer-events-auto">
+        <div className="absolute inset-[3%] flex flex-col gap-2 md:gap-2.5 pointer-events-auto">
           <OvalDropZone id="oval-fwd" title="Forwards" subtitle={groups.fwd.length} stitch={stitch} zoneBg={zoneBg} zoneClass="flex-shrink-0">
             {groups.fwd.map((p) => (
               <Chip key={p.id} player={p} stitch={stitch} onSelect={onSelectPlayer} />
             ))}
           </OvalDropZone>
 
-          <div className="grid grid-cols-3 gap-1.5 flex-1 min-h-0">
+          <div className="grid grid-cols-3 gap-2 md:gap-2.5 flex-1 min-h-[120px] md:min-h-[160px]">
             <OvalDropZone
               id="oval-mid-l"
               title="Mid L"
