@@ -9,3 +9,16 @@ body {
   background: var(--A-bg);
   color: var(--A-text);
 }
+
+html[data-ui-density="compact"] {
+  font-size: 14px;
+}
+
+html[data-ui-density="comfortable"],
+html:not([data-ui-density]) {
+  font-size: 16px;
+}
+
+html[data-reduce-motion="1"] .anim-in {
+  animation: none !important;
+}

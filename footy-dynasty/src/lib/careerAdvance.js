@@ -99,6 +99,7 @@ function applyMatchStreaks(c, won, drew, isHome) {
 }
 
 export function triggerSackState(c, clubName, round) {
+  if (c.gameMode === 'sandbox') return;
   c.isSacked = true;
   c.sackingStep = 0;
   c.boardCrisis = null;
@@ -1206,6 +1207,10 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 
     const inBoardCrisis = c.boardCrisis?.phase === 'active';
     const sackPatience = cfg.boardPatienceSeasons === 1 ? 1 : 2;
+    const sandbox = c.gameMode === 'sandbox';
+    if (sandbox) {
+      c.boardWarning = 0;
+    } else {
     if (!inBoardCrisis) {
       if (c.finance.boardConfidence <= 0) {
         c.boardWarning = sackPatience;
@@ -1232,6 +1237,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       c.boardWarning = 0;
     } else if (!inBoardCrisis && c.finance.boardConfidence <= 20) {
       c.news = [{ week: ev.round, type: 'loss', text: '⚠️ Board confidence is critical — your job is on the line.' }, ...(c.news || [])].slice(0, 20);
+    }
     }
 
     c.week = ev.round;

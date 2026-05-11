@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
   UserCog,   Repeat, Sprout, BarChart3, Calendar, ChevronRight, ChevronLeft,
@@ -6,7 +6,7 @@ import {
   Star, Zap, Heart, Target, Activity, Flame, Sparkles, Crown,
   TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
   Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
-  Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus,
+  Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus, FileDown, Upload,
   Landmark, GripVertical, LayoutDashboard, Wrench,
 } from "lucide-react";
 import { seedRng, rand, pick, rng, TIER_SCALE } from '../../lib/rng.js';
@@ -178,7 +178,7 @@ function ClubOverviewTab({ career, club, setTab }) {
 // ============================================================================
 // CLUB SCREEN — grouped navigation + overview hub
 // ============================================================================
-export default function ClubScreen({ career, club, updateCareer, tab, setTab, tutorialActive }) {
+export default function ClubScreen({ career, club, updateCareer, tab, setTab, tutorialActive, activeSlot = null, onExportCareer, onImportCareerFile }) {
   const t = clubEffectiveTab(tab);
   const tutStep = career.tutorialStep ?? 0;
   const clubTutorialTab = tutorialActive && (tutStep === 3 || tutStep === 4) ? tutorialHighlightTab(tutStep) : null;
@@ -238,6 +238,20 @@ export default function ClubScreen({ career, club, updateCareer, tab, setTab, tu
 
   return (
     <div className="anim-in">
+      {(career.gameMode === 'sandbox' || career.gameMode === 'challenge') && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          <span
+            className="text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-1 rounded-lg border"
+            style={{
+              borderColor: career.gameMode === 'sandbox' ? '#4AE89A' : '#E84A6F',
+              color: career.gameMode === 'sandbox' ? '#4AE89A' : '#E84A6F',
+              background: career.gameMode === 'sandbox' ? 'rgba(74,232,154,0.12)' : 'rgba(232,74,111,0.1)',
+            }}
+          >
+            {career.gameMode === 'sandbox' ? 'Sandbox mode' : `Challenge${career.challengeId ? ` · ${String(career.challengeId).replace(/_/g, ' ')}` : ''}`}
+          </span>
+        </div>
+      )}
       <div
         className="flex flex-wrap gap-2 p-1 rounded-xl mb-3"
         style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}
@@ -294,7 +308,15 @@ export default function ClubScreen({ career, club, updateCareer, tab, setTab, tu
       {t === "committee" && showCommittee && <CommitteeTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "honours" && <HonoursTab career={career} club={club} />}
       {t === "rookies" && <RookieListTab career={career} updateCareer={updateCareer} />}
-      {t === "settings" && <SettingsTab career={career} updateCareer={updateCareer} />}
+      {t === "settings" && (
+        <SettingsTab
+          career={career}
+          updateCareer={updateCareer}
+          activeSlot={activeSlot}
+          onExportCareer={onExportCareer}
+          onImportCareerFile={onImportCareerFile}
+        />
+      )}
     </div>
   );
 }
@@ -672,14 +694,22 @@ function RookieListTab({ career, updateCareer }) {
   );
 }
 
-function SettingsTab({ career, updateCareer }) {
-  const autosave = career.options?.autosave !== false;
-  const setAutosave = (v) => updateCareer({ options: { ...(career.options || {}), autosave: v } });
+function SettingsTab({ career, updateCareer, activeSlot, onExportCareer, onImportCareerFile }) {
+  const importRef = useRef(null);
+  const opts = career.options || {};
+  const patchOpts = (p) => updateCareer({ options: { ...opts, ...p } });
+  const autosave = opts.autosave !== false;
+  const setAutosave = (v) => patchOpts({ autosave: v });
+  const uiDensity = opts.uiDensity === 'compact' ? 'compact' : 'comfortable';
+  const reduceMotion = !!opts.reduceMotion;
+  const skipDestructiveConfirms = opts.confirmBeforeNewCareer === false && opts.confirmBeforeDeleteSlot === false;
+  const slotLabel = opts.slotLabel ?? '';
+
   return (
     <div className="space-y-4">
       <div>
         <div className={`${css.h1} text-3xl`}>SETTINGS</div>
-        <div className="text-xs text-atext-dim">Persistence and game options.</div>
+        <div className="text-xs text-atext-dim">Persistence, display, and saves.</div>
       </div>
 
       <div className={`${css.panel} p-5`}>
@@ -709,28 +739,159 @@ function SettingsTab({ career, updateCareer }) {
         </div>
       </div>
 
-      <div className={`${css.panel} p-5`}>
-        <h3 className={`${css.h1} text-2xl mb-3`}>INTERFACE</h3>
-        <p className="text-xs text-atext-dim leading-relaxed">
-          Footy Dynasty uses one light interface for every screen. Theme variants have been retired so the layout and colours stay consistent.
-        </p>
+      <div className={`${css.panel} p-5 space-y-4`}>
+        <h3 className={`${css.h1} text-2xl`}>DISPLAY</h3>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-bold text-sm">UI density</div>
+            <div className="text-[11px] text-atext-dim">Comfortable or compact base sizing.</div>
+          </div>
+          <div className="flex rounded-lg overflow-hidden border border-aline">
+            {(['comfortable', 'compact']).map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => patchOpts({ uiDensity: d })}
+                className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${uiDensity === d ? 'bg-aaccent text-[#001520]' : 'bg-apanel-2 text-atext-dim'}`}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-bold text-sm">Reduce motion</div>
+            <div className="text-[11px] text-atext-dim">Cuts UI transitions where supported.</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => patchOpts({ reduceMotion: !reduceMotion })}
+            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition`}
+            style={{
+              background: reduceMotion ? 'rgba(74,232,154,0.15)' : 'var(--A-panel-2)',
+              color: reduceMotion ? '#4AE89A' : 'var(--A-text-dim)',
+              border: `1px solid ${reduceMotion ? 'rgba(74,232,154,0.4)' : 'var(--A-line)'}`,
+            }}
+          >
+            {reduceMotion ? 'On' : 'Off'}
+          </button>
+        </div>
+      </div>
+
+      <div className={`${css.panel} p-5 space-y-4`}>
+        <h3 className={`${css.h1} text-2xl`}>CONFIRMATIONS</h3>
+        <p className="text-xs text-atext-dim">Destructive actions only. Keep on unless you really trust your clicks.</p>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-bold text-sm">Skip double-checks</div>
+            <div className="text-[11px] text-atext-dim">New career from sidebar and deleting a save slot — no browser confirm.</div>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              patchOpts({
+                confirmBeforeNewCareer: skipDestructiveConfirms ? true : false,
+                confirmBeforeDeleteSlot: skipDestructiveConfirms ? true : false,
+              })
+            }
+            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition`}
+            style={{
+              background: skipDestructiveConfirms ? 'rgba(232,74,111,0.12)' : 'var(--A-panel-2)',
+              color: skipDestructiveConfirms ? '#E84A6F' : 'var(--A-text-dim)',
+              border: `1px solid ${skipDestructiveConfirms ? 'rgba(232,74,111,0.35)' : 'var(--A-line)'}`,
+            }}
+          >
+            {skipDestructiveConfirms ? 'Restore prompts' : 'Skip prompts'}
+          </button>
+        </div>
+      </div>
+
+      <div className={`${css.panel} p-5 space-y-4`}>
+        <h3 className={`${css.h1} text-2xl`}>ACTIVE SAVE SLOT</h3>
+        <div>
+          <div className={css.label}>Label (optional)</div>
+          <input
+            value={slotLabel}
+            onChange={(e) => patchOpts({ slotLabel: e.target.value })}
+            placeholder={`Slot ${activeSlot || '?'} — nickname this career`}
+            className="w-full mt-2 bg-apanel border border-aline focus:border-aaccent outline-none rounded-lg px-3 py-2 text-sm text-atext"
+          />
+          <p className="text-[11px] text-atext-dim mt-2">Shown on the title screen and slot picker. Saves with your career.</p>
+        </div>
+      </div>
+
+      <div className={`${css.panel} p-5 space-y-4`}>
+        <h3 className={`${css.h1} text-2xl`}>SAVE DATA</h3>
+        <p className="text-xs text-atext-dim">Backup or move careers between browsers. Imported careers run through the same migration as loading a slot.</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={!activeSlot || typeof onExportCareer !== 'function'}
+            onClick={() => onExportCareer && onExportCareer()}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest ${activeSlot && onExportCareer ? `${css.btnPrimary}` : 'opacity-40 cursor-not-allowed bg-apanel-2'}`}
+          >
+            <FileDown className="w-4 h-4" /> Export JSON
+          </button>
+          <button
+            type="button"
+            disabled={typeof onImportCareerFile !== 'function'}
+            onClick={() => importRef.current?.click()}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest border border-aline bg-apanel-2 hover:border-aaccent/40 ${!onImportCareerFile ? 'opacity-40 cursor-not-allowed' : ''}`}
+          >
+            <Upload className="w-4 h-4" /> Import JSON
+          </button>
+          <input
+            ref={importRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f && onImportCareerFile) onImportCareerFile(f);
+              e.target.value = '';
+            }}
+          />
+        </div>
+      </div>
+
+      <div className={`${css.panel} p-5 space-y-4`}>
+        <h3 className={`${css.h1} text-2xl`}>TUTORIAL</h3>
+        <button
+          type="button"
+          onClick={() => {
+            const cfg = getDifficultyConfig(career.difficulty);
+            const show = cfg.tutorialPolicy !== 'never';
+            updateCareer({
+              tutorialStep: show ? 0 : 6,
+              tutorialComplete: !show,
+            });
+          }}
+          className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest border border-aline bg-apanel-2 hover:border-aaccent/40 text-atext"
+        >
+          Reset tutorial walkthrough
+        </button>
+        <p className="text-[11px] text-atext-dim">Difficulty policy may skip tutorials entirely — same rule as a new career.</p>
       </div>
 
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>SAVE</h3>
-        <p className="text-xs text-atext-dim mb-4">Autosave runs every event. Disable if you'd rather control saves manually from the sidebar.</p>
+        <p className="text-xs text-atext-dim mb-4">Autosave runs after advances and when you hide this tab (browser permitting). Turn off to save only from the sidebar.</p>
         <div className="flex items-center justify-between">
           <div>
             <div className="font-bold text-sm">Autosave on advance</div>
-            <div className="text-[11px] text-atext-dim">Saves the active slot after every event tick.</div>
+            <div className="text-[11px] text-atext-dim">Writes the active slot after event ticks.</div>
           </div>
-          <button onClick={() => setAutosave(!autosave)}
+          <button
+            type="button"
+            onClick={() => setAutosave(!autosave)}
             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition`}
             style={{
               background: autosave ? 'rgba(74,232,154,0.15)' : 'var(--A-panel-2)',
               color: autosave ? '#4AE89A' : 'var(--A-text-dim)',
               border: `1px solid ${autosave ? 'rgba(74,232,154,0.4)' : 'var(--A-line)'}`,
-            }}>
+            }}
+          >
             {autosave ? 'On' : 'Off'}
           </button>
         </div>

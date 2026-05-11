@@ -15,7 +15,8 @@ import {
 } from "../lib/leagueEngine.js";
 import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits } from "../lib/defaults.js";
 import { generateSeasonCalendar } from "../lib/calendar.js";
-import { SAVE_VERSION, SLOT_IDS } from "../lib/save.js";
+import { SAVE_VERSION, SLOT_IDS, getLatestSavedSlot } from "../lib/save.js";
+import { getPlayerPrefs, setPlayerPrefs } from "../lib/playerPrefs.js";
 import { DIFFICULTY_IDS, getDifficultyConfig, getDifficultyProfile } from "../lib/difficulty.js";
 import { generateCommittee, generateJournalist, rollPlayerTrait } from "../lib/community.js";
 import { makeStartingFinance, scaledSquadToFitCap } from "../lib/finance/engine.js";
@@ -83,8 +84,19 @@ function saveSetup(patch) {
   try { sessionStorage.setItem(SETUP_SS_KEY, JSON.stringify({ ...loadSetup(), ...patch })); } catch {}
 }
 
+function fmtSavedAt(iso) {
+  if (!iso) return '';
+  try {
+    return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  } catch {
+    return '';
+  }
+}
+
 export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
   const saved = loadSetup();
+  const [gameMode, setGameMode] = useState(saved.gameMode ?? 'normal'); // normal | sandbox | challenge
+  const [prefsUi, setPrefsUi] = useState(() => getPlayerPrefs());
   const [step, _setStep] = useState(saved.step ?? 0);
   const [state, _setSelState] = useState(saved.state ?? null);
   const [tier, _setTier] = useState(saved.tier ?? null);
@@ -108,6 +120,10 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     saveSetup({ localDivision: v, clubId: null });
     _setLocalDivision(v);
     _setClubId(null);
+  };
+  const setGameModePersist = (v) => {
+    saveSetup({ gameMode: v });
+    setGameMode(v);
   };
 
   useEffect(() => {
@@ -136,7 +152,20 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     if (!league) throw new Error(`League not found: ${leagueKey}`);
     const SEASON = 2026;
     const cfg = getDifficultyConfig(difficulty);
-    const tunedFinance = makeStartingFinance(league.tier, difficulty, 55);
+    let tunedFinance = makeStartingFinance(league.tier, difficulty, 55);
+    if (gameMode === 'sandbox') {
+      tunedFinance = {
+        ...tunedFinance,
+        cash: Math.round(tunedFinance.cash * 2),
+        boardConfidence: Math.min(95, (tunedFinance.boardConfidence ?? 55) + 18),
+      };
+    } else if (gameMode === 'challenge') {
+      tunedFinance = {
+        ...tunedFinance,
+        cash: Math.round(tunedFinance.cash * 0.72),
+        boardConfidence: Math.max(38, (tunedFinance.boardConfidence ?? 55) - 14),
+      };
+    }
     const tier3KStart = league.tier === 3 ? tier3DivisionCount(leagueKey, state) : 0;
     const startDiv = league.tier === 3 ? Math.min(localDivision, tier3KStart) : null;
     const compClubs = getCompetitionClubs(leagueKey, state, startDiv);
@@ -201,6 +230,12 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       news: [
         { week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` },
         { week: 0, type: "info", text: "🤝 No sponsors locked in yet — visit Club → Sponsors to choose from incoming offers." },
+        ...(gameMode === 'sandbox'
+          ? [{ week: 0, type: 'info', text: '🧪 Sandbox: boosted treasury & board patience — sacks and confidence votes are disabled.' }]
+          : []),
+        ...(gameMode === 'challenge'
+          ? [{ week: 0, type: 'board', text: '🔥 Challenge — Under the pump: leaner cash and a jumpy board from day one.' }]
+          : []),
       ],
       weeklyHistory: [],
       inFinals: false,
@@ -219,11 +254,19 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       boardWarning: 0,
       gameOver: null,
       themeMode: 'A',
-      options: { autosave: true },
+      options: {
+        autosave: true,
+        confirmBeforeNewCareer: true,
+        confirmBeforeDeleteSlot: true,
+        uiDensity: 'comfortable',
+        reduceMotion: false,
+      },
       pendingTradeOffers: [],
       retiredThisSeason: [],
       // v3 additions — Gameplay Systems Spec
       difficulty,
+      gameMode,
+      challengeId: gameMode === 'challenge' ? 'under_the_pump' : null,
       tutorialStep: isFirstCareer && cfg.tutorialPolicy !== 'never' ? 0 : 6,
       tutorialComplete: !(isFirstCareer && cfg.tutorialPolicy !== 'never'),
       isFirstCareer,
@@ -341,6 +384,73 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
           ))}
         </div>
 
+        {step === 0 && (
+          <div className="fade-up mb-8 space-y-4">
+            <div>
+              <h2 className={`${css.h1} text-2xl mb-2`}>GAME MODE</h2>
+              <p className="text-atext-dim text-sm mb-3">
+                For <strong className="text-atext">new</strong> careers only. Resuming a save ignores this.
+              </p>
+              <div className="grid md:grid-cols-3 gap-3">
+                {[
+                  { id: 'normal', title: 'Career', sub: 'Standard rules — full board pressure and sacks.', color: 'var(--A-accent)' },
+                  { id: 'sandbox', title: 'Sandbox', sub: 'Extra cash and steadier board. No sacks or confidence votes.', color: '#4AE89A' },
+                  { id: 'challenge', title: 'Challenge', sub: 'Lean cash and nervous board — Under the pump.', color: '#E84A6F' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setGameModePersist(m.id)}
+                    className={`${css.panelHover} p-4 text-left rounded-xl border-2 transition`}
+                    style={{
+                      borderColor: gameMode === m.id ? m.color : 'var(--A-line)',
+                      boxShadow: gameMode === m.id ? `0 0 0 2px ${m.color}44` : undefined,
+                    }}
+                  >
+                    <div className="font-bold text-atext">{m.title}</div>
+                    <div className="text-[11px] text-atext-dim mt-2 leading-snug">{m.sub}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className={`flex items-start gap-3 cursor-pointer ${css.panel} p-4 rounded-xl`}>
+              <input
+                type="checkbox"
+                className="mt-1 accent-teal-600"
+                checked={!!prefsUi.skipSetupContinueLast}
+                onChange={(e) => {
+                  const next = setPlayerPrefs({ skipSetupContinueLast: e.target.checked });
+                  setPrefsUi(next);
+                }}
+              />
+              <div>
+                <div className="font-bold text-sm text-atext">Skip title when saves exist</div>
+                <div className="text-[11px] text-atext-dim mt-1 leading-relaxed">
+                  Next visit loads your active slot, or the most recently saved slot, straight into the game.
+                </div>
+              </div>
+            </label>
+          </div>
+        )}
+
+        {step === 0 && slotsWithSaves.length > 0 && (() => {
+          const latest = getLatestSavedSlot(existingSlots);
+          return latest ? (
+            <div className="fade-up mb-6">
+              <button
+                type="button"
+                onClick={() => onResume && onResume(latest)}
+                className={`${css.btnPrimary} w-full md:w-auto text-lg py-4 px-8`}
+              >
+                <span className="block">Continue last save · Slot {latest}</span>
+                <span className="block text-[11px] font-normal opacity-90 mt-1 font-mono">
+                  {fmtSavedAt(existingSlots[latest]?.savedAt)}
+                </span>
+              </button>
+            </div>
+          ) : null;
+        })()}
+
         {step === 0 && slotsWithSaves.length > 0 && (
           <div className="fade-up mb-8">
             <h2 className={`${css.h1} text-3xl mb-3`}>RESUME A CAREER</h2>
@@ -351,13 +461,20 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                 const c = findClub(meta.clubId);
                 return (
                   <button key={slot} onClick={() => onResume && onResume(slot)} className={`${css.panelHover} p-4 text-left`}>
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-aaccent">SLOT {slot}</span>
+                      {meta.slotLabel ? (
+                        <span className="text-[10px] text-atext truncate max-w-[10rem]" title={meta.slotLabel}>{meta.slotLabel}</span>
+                      ) : null}
                       <span className="text-[10px] text-atext-mute">·</span>
                       <span className="text-[10px] text-atext-mute">Season {meta.season}{meta.week ? ` · R${meta.week}` : ''}</span>
                     </div>
+                    <div className="text-[10px] font-mono text-atext-mute mb-1">{fmtSavedAt(meta.savedAt)}</div>
                     <div className="font-bold text-atext truncate">{meta.managerName || 'Coach'}</div>
                     <div className="text-xs text-atext-dim truncate">{c?.name || meta.clubId}</div>
+                    {meta.gameMode && meta.gameMode !== 'normal' && (
+                      <div className="text-[10px] text-aaccent mt-1 font-mono uppercase">{meta.gameMode}</div>
+                    )}
                     {meta.premiership && <div className="text-[10px] text-aaccent mt-2 font-mono">🏆 {meta.premiership}</div>}
                   </button>
                 );

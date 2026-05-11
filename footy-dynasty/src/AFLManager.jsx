@@ -18,6 +18,7 @@ import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, gener
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
 import { generateSeasonCalendar, TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from './lib/calendar.js';
 import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from './lib/save.js';
+import { computeInitialCareerBoot } from './lib/bootCareer.js';
 import {
   playerBlockedFromTrade,
   TRADE_PERIOD_DAYS,
@@ -119,19 +120,12 @@ export default function AFLManager() {
 
 
 function AFLManagerInner() {
-  const [activeSlot, setActiveSlotState] = useState(() => getActiveSlot());
+  const bootRef = useMemo(() => computeInitialCareerBoot(), []);
+  const [activeSlot, setActiveSlotState] = useState(() => bootRef.activeSlot);
   const [showSlotPicker, setShowSlotPicker] = useState(false);
   const [slotMetaTick, setSlotMetaTick] = useState(0);
   const [showPostMatch, setShowPostMatch] = useState(false);
-  const [career, setCareer] = useState(() => {
-    const slot = getActiveSlot();
-    if (slot) {
-      const fromSlot = readSlot(slot);
-      if (fromSlot) return fromSlot;
-    }
-    // Try legacy key migration
-    return migrateLegacy();
-  });
+  const [career, setCareer] = useState(() => bootRef.career);
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
 
@@ -157,8 +151,79 @@ function AFLManagerInner() {
     setCareer((c) => ({ ...c, tutorialStep: next, tutorialComplete: isDone }));
   }, [career, career?.tutorialStep, career?.tutorialComplete, career?.sponsors, screen, tab]);
 
+  useEffect(() => {
+    if (!career) {
+      delete document.documentElement.dataset.uiDensity;
+      delete document.documentElement.dataset.reduceMotion;
+      return undefined;
+    }
+    const density = career.options?.uiDensity === 'compact' ? 'compact' : 'comfortable';
+    document.documentElement.dataset.uiDensity = density;
+    document.documentElement.dataset.reduceMotion = career.options?.reduceMotion ? '1' : '0';
+    return () => {
+      delete document.documentElement.dataset.uiDensity;
+      delete document.documentElement.dataset.reduceMotion;
+    };
+  }, [career?.options?.uiDensity, career?.options?.reduceMotion, career]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== 'hidden' || !career || !activeSlot) return;
+      if (career.options?.autosave === false) return;
+      writeSlot(activeSlot, career);
+      setSlotMetaTick((t) => t + 1);
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [career, activeSlot]);
+
+  function handleExportCareer() {
+    if (!career || !activeSlot) return;
+    const payload = {
+      game: 'footy-dynasty',
+      exportedAt: new Date().toISOString(),
+      saveVersion: SAVE_VERSION,
+      slot: activeSlot,
+      career,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `footy-dynasty-${activeSlot}-season-${career.season}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleImportCareerFile(file) {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      const raw = data.career ?? data;
+      if (!raw || typeof raw !== 'object') throw new Error('Invalid save file structure.');
+      const migrated = migrateSave(raw);
+      if (!migrated?.clubId) throw new Error('Missing club — not a Footy Dynasty career.');
+      const suggested = activeSlot && SLOT_IDS.includes(activeSlot) ? activeSlot : 'A';
+      const slotAns = window.prompt(`Import into slot A, B, or C?`, suggested);
+      const slot = String(slotAns || '').trim().toUpperCase();
+      if (!SLOT_IDS.includes(slot)) return;
+      if (!window.confirm(`Overwrite slot ${slot} with this imported career? This cannot be undone.`)) return;
+      writeSlot(slot, migrated);
+      setActiveSlot(slot);
+      setActiveSlotState(slot);
+      setCareer(migrated);
+      setScreen('hub');
+      setTab(null);
+      setSlotMetaTick((t) => t + 1);
+    } catch (e) {
+      window.alert(e?.message || 'Could not import save.');
+    }
+  }
+
   function handleNewGame() {
-    if (!window.confirm('Abandon your current career and start a new game?')) return;
+    if (career?.options?.confirmBeforeNewCareer !== false) {
+      if (!window.confirm('Abandon your current career and start a new game?')) return;
+    }
     sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
     sessionStorage.removeItem(SETUP_SS_KEY);
     setActiveSlot(null);
@@ -190,7 +255,9 @@ function AFLManagerInner() {
   }
 
   function handleDeleteSlot(slot) {
-    if (!window.confirm(`Delete save in slot ${slot}? This cannot be undone.`)) return;
+    if (career?.options?.confirmBeforeDeleteSlot !== false) {
+      if (!window.confirm(`Delete save in slot ${slot}? This cannot be undone.`)) return;
+    }
     deleteSlot(slot);
     if (slot === activeSlot) {
       setActiveSlot(null);
@@ -372,7 +439,18 @@ function AFLManagerInner() {
       }
       setActiveSlot(slot);
       setActiveSlotState(slot);
-      const initialised = { ...c, saveVersion: SAVE_VERSION, options: c.options || { autosave: true } };
+      const initialised = {
+        ...c,
+        saveVersion: SAVE_VERSION,
+        options: {
+          autosave: true,
+          confirmBeforeNewCareer: true,
+          confirmBeforeDeleteSlot: true,
+          uiDensity: 'comfortable',
+          reduceMotion: false,
+          ...(c.options || {}),
+        },
+      };
       writeSlot(slot, initialised);
       sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
       sessionStorage.removeItem(SETUP_SS_KEY);
@@ -549,8 +627,16 @@ function AFLManagerInner() {
               updateCareer(next);
             } else {
               const next = JSON.parse(JSON.stringify(career));
-              triggerSackState(next, club.name, career.week);
-              updateCareer(next);
+              if (next.gameMode === 'sandbox') {
+                next.boardCrisis = null;
+                next.boardWarning = 0;
+                next.finance = { ...next.finance, boardConfidence: Math.max(next.finance.boardConfidence ?? 0, 48) };
+                next.news = [{ week: next.week, type: 'info', text: '🧪 Sandbox: board vote waived — confidence steadied.' }, ...(next.news || [])].slice(0, 20);
+                updateCareer(next);
+              } else {
+                triggerSackState(next, club.name, career.week);
+                updateCareer(next);
+              }
             }
           }}
         />
@@ -644,7 +730,17 @@ function AFLManagerInner() {
           )}
           {screen === "club" && (
             <Suspense fallback={<div className="anim-in py-16 text-center text-atext-dim font-mono text-sm">Loading club…</div>}>
-              <ClubScreenLazy career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} tutorialActive={tutorialActive} />
+              <ClubScreenLazy
+                career={career}
+                club={club}
+                updateCareer={updateCareer}
+                tab={tab}
+                setTab={setTab}
+                tutorialActive={tutorialActive}
+                activeSlot={activeSlot}
+                onExportCareer={handleExportCareer}
+                onImportCareerFile={handleImportCareerFile}
+              />
             </Suspense>
           )}
           {screen === "recruit" && (

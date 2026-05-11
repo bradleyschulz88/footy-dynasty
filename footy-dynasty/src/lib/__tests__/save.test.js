@@ -33,7 +33,14 @@ describe('migrate', () => {
     expect(m.history).toEqual([]);
     expect(m.brownlow).toEqual({});
     expect(m.themeMode).toBe('A');
-    expect(m.options).toEqual({ autosave: true });
+    expect(m.options).toMatchObject({
+      autosave: true,
+      confirmBeforeNewCareer: true,
+      confirmBeforeDeleteSlot: true,
+      uiDensity: 'comfortable',
+      reduceMotion: false,
+    });
+    expect(m.gameMode).toBe('normal');
     // v2 -> v3 fields (Gameplay Systems Spec)
     expect(m.difficulty).toBe('contender');
     expect(m.committee).toEqual([]);

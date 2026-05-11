@@ -9,13 +9,28 @@ import { migrateSaveBoardV8, migrateSaveBoardV9, migrateSaveBoardV10, migrateSav
 import { migrateSaveGameDepthV12 } from './gameDepth.js';
 import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 
-export const SAVE_VERSION = 16;
+export const SAVE_VERSION = 17;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
 const ACTIVE_SLOT_KEY = 'footy-dynasty-active-slot';
 
 export const SLOT_IDS = ['A', 'B', 'C'];
+
+/** Slot id with the newest `savedAt` in meta, or null. */
+export function getLatestSavedSlot(meta = readSlotMeta()) {
+  let best = null;
+  let bestTime = '';
+  for (const id of SLOT_IDS) {
+    const m = meta[id];
+    if (!m?.savedAt) continue;
+    if (!best || m.savedAt > bestTime) {
+      best = id;
+      bestTime = m.savedAt;
+    }
+  }
+  return best;
+}
 
 export function migrate(save) {
   if (!save) return save;
@@ -237,6 +252,17 @@ export function migrate(save) {
     }
   }
 
+  if (v < 17) {
+    s.saveVersion = 17;
+    s.gameMode = s.gameMode ?? 'normal';
+    if (s.gameMode === 'challenge' && !s.challengeId) s.challengeId = 'under_the_pump';
+    if (!s.options || typeof s.options !== 'object') s.options = {};
+    if (s.options.confirmBeforeNewCareer === undefined) s.options.confirmBeforeNewCareer = true;
+    if (s.options.confirmBeforeDeleteSlot === undefined) s.options.confirmBeforeDeleteSlot = true;
+    if (!s.options.uiDensity) s.options.uiDensity = 'comfortable';
+    if (s.options.reduceMotion === undefined) s.options.reduceMotion = false;
+  }
+
   return s;
 }
 
@@ -278,6 +304,8 @@ export function readSlotMeta() {
 export function bumpSlotMeta(slot, save) {
   try {
     const meta = readSlotMeta();
+    const prev = meta[slot] || {};
+    const label = save.options?.slotLabel;
     meta[slot] = {
       managerName: save.managerName,
       clubId: save.clubId,
@@ -288,6 +316,8 @@ export function bumpSlotMeta(slot, save) {
       currentDate: save.currentDate,
       premiership: save.premiership,
       savedAt: save.savedAt || new Date().toISOString(),
+      slotLabel: label != null && String(label).trim() !== '' ? String(label).trim() : (prev.slotLabel ?? null),
+      gameMode: save.gameMode ?? prev.gameMode ?? null,
     };
     localStorage.setItem(SLOT_META_KEY, JSON.stringify(meta));
   } catch {}
