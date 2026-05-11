@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    maxWorkers: 4,
+    // More throughput locally; keep CI predictable (GitHub Actions sets CI=true).
+    maxWorkers: process.env.CI ? 4 : '75%',
   },
 })

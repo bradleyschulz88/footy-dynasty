@@ -17,7 +17,7 @@ import {
   clearPostSeasonTransient,
   playerBlockedFromTrade,
 } from './tradePeriod.js';
-import { TUTORIAL_STEPS } from '../components/TutorialOverlay.jsx';
+import { TUTORIAL_STEPS } from './tutorialConstants.js';
 import { getDifficultyConfig } from './difficulty.js';
 import {
   committeeMessage, bumpCommitteeMood, postMatchFundraiser,
@@ -40,18 +40,6 @@ import {
 } from './finance/sponsors.js';
 import { buildRenewalQueue } from './finance/contracts.js';
 import { buildStaffRenewalQueue, flushUnhandledStaffRenewals } from './staffRenewals.js';
-
-/** First day of the home-and-away season: formal renewal window closes; auto-fill staff gaps. */
-export function applySeasonRenewalDeadline(c, league) {
-  if (c.renewalsClosed) return;
-  c.renewalsClosed = true;
-  const flush = flushUnhandledStaffRenewals(c, league.tier);
-  c.staff = flush.staff;
-  c.pendingStaffRenewals = flush.pendingStaffRenewals;
-  if (flush.extraNews.length) {
-    c.news = [...flush.extraNews, ...(c.news || [])].slice(0, 25);
-  }
-}
 import {
   INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, TICKET_PRICE, BASE_ATTENDANCE,
 } from './finance/constants.js';
@@ -80,6 +68,18 @@ import {
   applyCaptainWeeklyEffect,
   bumpClubCulture,
 } from './gameDepth.js';
+
+/** First day of the home-and-away season: formal renewal window closes; auto-fill staff gaps. */
+export function applySeasonRenewalDeadline(c, league) {
+  if (c.renewalsClosed) return;
+  c.renewalsClosed = true;
+  const flush = flushUnhandledStaffRenewals(c, league.tier);
+  c.staff = flush.staff;
+  c.pendingStaffRenewals = flush.pendingStaffRenewals;
+  if (flush.extraNews.length) {
+    c.news = [...flush.extraNews, ...(c.news || [])].slice(0, 25);
+  }
+}
 
 /** Home / form streaks for dynamic home-ground advantage (community.js). */
 function applyMatchStreaks(c, won, drew, isHome) {
