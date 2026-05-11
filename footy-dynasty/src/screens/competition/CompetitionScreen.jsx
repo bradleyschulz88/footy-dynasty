@@ -18,7 +18,7 @@ import { css, Pill } from "../../components/primitives.jsx";
 // ============================================================================
 // COMPETITION SCREEN — Ladder / Fixtures / Pyramid
 // ============================================================================
-export function CompetitionScreen({ career, club, league, tab, setTab }) {
+export default function CompetitionScreen({ career, club, league, tab, setTab }) {
   const t = tab || "ladder";
   const tabs = [
     { key: "ladder", label: "Ladder", icon: BarChart3 },
