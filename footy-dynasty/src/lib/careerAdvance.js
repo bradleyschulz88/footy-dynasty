@@ -33,12 +33,25 @@ import {
   cashCrisisLevel, applyPrizeMoney, applyPromotionRipple,
   effectiveInjuryRate, annualNetProjection,
   refillTransferBudget,
+  effectiveWageCap, currentPlayerWageBill,
 } from './finance/engine.js';
 import {
   tickSponsorYears, proposalForRenewal, generateSponsorOffers,
 } from './finance/sponsors.js';
 import { buildRenewalQueue } from './finance/contracts.js';
 import { buildStaffRenewalQueue, flushUnhandledStaffRenewals } from './staffRenewals.js';
+
+/** First day of the home-and-away season: formal renewal window closes; auto-fill staff gaps. */
+export function applySeasonRenewalDeadline(c, league) {
+  if (c.renewalsClosed) return;
+  c.renewalsClosed = true;
+  const flush = flushUnhandledStaffRenewals(c, league.tier);
+  c.staff = flush.staff;
+  c.pendingStaffRenewals = flush.pendingStaffRenewals;
+  if (flush.extraNews.length) {
+    c.news = [...flush.extraNews, ...(c.news || [])].slice(0, 25);
+  }
+}
 import {
   INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, TICKET_PRICE, BASE_ATTENDANCE,
 } from './finance/constants.js';
@@ -726,14 +739,8 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
   const evIdx = (c.eventQueue || []).findIndex((e) => !e.completed);
   if (evIdx === -1) { setCareer(c); return; }
   const ev = c.eventQueue[evIdx];
-  if (ev.phase === 'season' && !c.renewalsClosed) {
-    c.renewalsClosed = true;
-    const flush = flushUnhandledStaffRenewals(c, league.tier);
-    c.staff = flush.staff;
-    c.pendingStaffRenewals = flush.pendingStaffRenewals;
-    if (flush.extraNews.length) {
-      c.news = [...flush.extraNews, ...(c.news || [])].slice(0, 25);
-    }
+  if (ev.phase === 'season') {
+    applySeasonRenewalDeadline(c, league);
   }
   c.currentDate = ev.date;
   c.phase = ev.phase || 'preseason';
@@ -1245,6 +1252,17 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       const comms = maybeEnqueueBoardMessage(c, league);
       if (comms) {
         c.news = [{ week: ev.round, type: 'board', text: comms }, ...(c.news || [])].slice(0, 20);
+      }
+    }
+
+    if (ev.phase === 'season' && myResult && !c.isSacked) {
+      const cap = effectiveWageCap(c);
+      const wages = currentPlayerWageBill(c);
+      if (cap > 0 && wages > cap && (c.capBreachedBoardNoteSeason ?? null) !== c.season) {
+        c.capBreachedBoardNoteSeason = c.season;
+        ensureCareerBoard(c, findClub(c.clubId), league);
+        applyBoardConfidenceDelta(c, -2);
+        c.news = [{ week: ev.round, type: 'board', text: '⚖️ Player wages are above the effective salary cap. The board wants a tighter list or discipline on renewals.' }, ...(c.news || [])].slice(0, 25);
       }
     }
 

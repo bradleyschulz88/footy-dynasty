@@ -39,7 +39,7 @@ export const TUTORIAL_STEPS = [
     step: 3,
     title: "CHECK YOUR FINANCES",
     intro: "Know your numbers.",
-    instruction: "Open Club in the side nav. Choose Commercial (top row), then Finances (second row). This is what you can spend and what flows in and out.",
+    instruction: "Open Club in the side nav. Under Commercial pick Finances for cashflow, or Contracts after season roll for player & staff renewals. You'll come back for sponsors next.",
     targetScreen: "club",
     targetTab: "finances",
     advanceWithNext: false,
@@ -77,8 +77,10 @@ export const TUTORIAL_STEPS = [
 
 /** Effective Squad sub-tab (matches SquadScreen default). */
 export function squadEffectiveTab(career, tab) {
-  const renewalCount = (career.pendingRenewals || []).filter((r) => !r._handled).length;
-  return tab || (renewalCount > 0 ? "renewals" : "players");
+  const playerR = (career.pendingRenewals || []).filter((r) => !r._handled).length;
+  const staffR = (career.pendingStaffRenewals || []).filter((r) => !r._handled).length;
+  const total = playerR + staffR;
+  return tab || (total > 0 ? 'renewals' : 'players');
 }
 
 /** Club screen default when `tab` is unset — Overview hub ( Finances / Sponsors are explicit for tutorial steps). */

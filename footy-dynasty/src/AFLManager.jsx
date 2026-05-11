@@ -72,7 +72,7 @@ import {
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
   buildInitialSponsorOffers,
 } from './lib/finance/sponsors.js';
-import { proposeRenewal, applyRenewal, applyRenewalRejection, canAffordRenewal } from './lib/finance/contracts.js';
+import { proposeRenewal, renewalExtensionStableKey, applyRenewal, applyRenewalRejection, canAffordRenewal } from './lib/finance/contracts.js';
 import { applyStaffRenewalAccept, applyStaffRenewalReject, canAffordStaffRenewal } from './lib/staffRenewals.js';
 import { getAdvanceContext } from './lib/advanceContext.js';
 import {
@@ -1314,7 +1314,7 @@ function Sidebar({ screen, onNavigate, club, league, career, myLadderPos, onNewG
     { key: "hub",      label: "Hub",        icon: Home,      desc: "Overview" },
     { key: "squad",    label: "Squad",       icon: Users,     desc: "Players & Tactics" },
     { key: "schedule", label: "Schedule",    icon: Calendar,  desc: "Calendar & Fixtures" },
-    { key: "club",     label: "Club",        icon: Building2, desc: "Finances & Ops" },
+    { key: "club",     label: "Club",        icon: Building2, desc: "Contracts, ops & board" },
     { key: "recruit",  label: "Recruit",     icon: Repeat,    desc: "Trade & Draft" },
     { key: "compete",  label: "Competition", icon: Trophy,    desc: "Ladder & Fixtures" },
   ];
@@ -1656,6 +1656,9 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
 
   // Last event display
   const lastEv = career.lastEvent;
+  const cap = effectiveWageCap(career);
+  const playerWagesHub = currentPlayerWageBill(career);
+  const capPctHub = cap > 0 ? Math.round((playerWagesHub / cap) * 100) : 0;
 
   return (
     <div className="anim-in space-y-5">
@@ -1695,6 +1698,25 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
         </div>
       </div>
 
+      {cap > 0 && (
+        <div className="flex flex-wrap items-center gap-2 px-0.5">
+          <button
+            type="button"
+            onClick={() => { setScreen('club'); setTab('finances'); }}
+            className="text-left"
+          >
+            <Pill color={capPctHub >= 100 ? '#E84A6F' : capPctHub >= 90 ? '#FFB347' : '#64748B'}>
+              Player cap {capPctHub}% · {fmtK(playerWagesHub)} / {fmtK(cap)}
+            </Pill>
+          </button>
+          {capPctHub >= 88 && (
+            <span className="text-[11px] text-atext-dim leading-snug max-w-xl">
+              {capPctHub >= 100 ? 'Over the effective cap — expect board pressure after matches until you trim wages.' : 'Cap is tight — plan trades and renewals before offers blow the list up.'}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
       <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} setTab={setTab} />
 
@@ -1707,12 +1729,14 @@ function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdv
             <div className="flex items-start gap-3">
               <FileText className="w-5 h-5 text-[#FFB347] flex-shrink-0 mt-0.5" />
               <div>
-                <div className="font-bold text-sm text-atext">Contract renewals waiting</div>
-                <div className="text-xs text-atext-dim mt-1">
+                <div className="font-bold text-sm text-atext">Renewals need you</div>
+                <div className="text-xs text-atext-dim mt-1 leading-relaxed">
                   {playerQ > 0 && <span>{playerQ} player{playerQ === 1 ? '' : 's'} </span>}
                   {playerQ > 0 && staffQ > 0 && <span>· </span>}
                   {staffQ > 0 && <span>{staffQ} staff role{staffQ === 1 ? '' : 's'} </span>}
-                  — settle in pre-season (Club → Contracts or Squad → Renewals / Staff).
+                  <span className="block sm:inline sm:mt-0 mt-1">
+                    Pre-season only for the formal queue — Club → Contracts or Squad → Renewals. Week-to-week you can still extend individuals from their player card (cap-checked).
+                  </span>
                 </div>
               </div>
             </div>
@@ -2464,16 +2488,22 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
 // SQUAD SCREEN — players, tactics, training
 // ============================================================================
 function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }) {
-  const renewalCount = (career.pendingRenewals || []).filter(r => !r._handled).length;
+  const playerRenewals = (career.pendingRenewals || []).filter(r => !r._handled).length;
+  const staffRenewals = (career.pendingStaffRenewals || []).filter((r) => !r._handled).length;
+  const renewalCount = playerRenewals + staffRenewals;
   const t = tab || (renewalCount > 0 ? "renewals" : "players");
   const tutStep = career.tutorialStep ?? 0;
   const squadTutorialTab = tutorialActive && (tutStep === 1 || tutStep === 2 || tutStep === 5) ? tutorialHighlightTab(tutStep) : null;
+  const renewalTabLabel =
+    renewalCount > 0
+      ? `Renewals${playerRenewals && staffRenewals ? ` (${playerRenewals}p/${staffRenewals}s)` : ` (${renewalCount})`}`
+      : 'Renewals';
   const tabs = [
     { key: "players", label: "Players", icon: Users },
     { key: "tactics", label: "Tactics", icon: Target },
     { key: "training", label: "Training", icon: Dumbbell },
-    ...(renewalCount > 0 || (career.pendingRenewals?.length ?? 0) > 0
-      ? [{ key: "renewals", label: `Renewals${renewalCount ? ` (${renewalCount})` : ''}`, icon: FileText }]
+    ...(renewalCount > 0 || (career.pendingRenewals?.length ?? 0) > 0 || (career.pendingStaffRenewals?.length ?? 0) > 0
+      ? [{ key: "renewals", label: renewalTabLabel, icon: FileText }]
       : []),
   ];
   return (
@@ -2570,7 +2600,10 @@ function ContractsTab({ career, updateCareer }) {
     <div className="space-y-8">
       <div>
         <div className={`${css.h1} text-3xl`}>CONTRACTS</div>
-        <div className="text-xs text-atext-dim">Player and staff renewals for the current pre-season. Cap maths match Squad → Renewals.</div>
+        <div className="text-xs text-atext-dim max-w-2xl leading-relaxed">
+          One place for cap-backed renewals. Player queue matches Squad → Renewals; staff sit below or under Club → Operations → Staff.
+          In pre-season, resolve these before the first home-and-away round — the window locks when the season starts.
+        </div>
       </div>
       <RenewalsTab career={career} updateCareer={updateCareer} />
       <StaffRenewalsPanel career={career} updateCareer={updateCareer} leagueTier={leagueTier} />
@@ -2629,7 +2662,9 @@ function RenewalsTab({ career, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>CONTRACT RENEWALS</div>
-          <div className="text-xs text-atext-dim">Players whose contracts are about to expire. Re-sign before pre-season ends or they walk.</div>
+          <div className="text-xs text-atext-dim max-w-xl leading-relaxed">
+            Players on an expiring deal. Same maths as Club → Commercial → Contracts. Staff with expiring deals live under Operations → Staff or in Contracts.
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Cap Headroom" value={fmtK(headroom)} accent={headroom > 0 ? '#4AE89A' : '#E84A6F'} />
@@ -2909,12 +2944,17 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
   const inLineup = career.lineup.includes(player.id);
   const pName = player.firstName ? player.firstName+" "+player.lastName : (player.name||"Player");
   const renewalsLeague = PYRAMID[career.leagueKey];
+  const extensionStableKey = renewalExtensionStableKey(career, player.id);
+  const extensionPreview = useMemo(
+    () => proposeRenewal(player, { stableKey: extensionStableKey }),
+    [extensionStableKey, player.id, player.wage, player.age, player.form, player.contract, player.overall, player.position],
+  );
   const toggleLineup = () => {
     if (inLineup) updateCareer({ lineup: career.lineup.filter(id => id !== player.id) });
     else if (career.lineup.length < 22) updateCareer({ lineup: [...career.lineup, player.id] });
   };
   const offerNewContract = () => {
-    const proposal = proposeRenewal(player);
+    const proposal = proposeRenewal(player, { stableKey: extensionStableKey });
     if (!proposal) return;
     if (!canAffordRenewal(career, proposal)) {
       updateCareer({
@@ -3030,6 +3070,11 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
         <button onClick={toggleLineup} className={`w-full text-sm font-bold py-2.5 rounded-xl transition-all ${inLineup ? css.btnDanger : css.btnPrimary}`}>
           {inLineup ? "Remove from XXII" : career.lineup.length >= 22 ? "XXII Full" : "Add to XXII"}
         </button>
+        {extensionPreview && (
+          <div className="text-[10px] text-atext-dim text-center leading-snug px-1">
+            Ask this week: ~{fmtK(extensionPreview.proposedWage)}/yr · {extensionPreview.proposedYears}y (age + form weighted; stable until the round advances)
+          </div>
+        )}
         <button type="button" onClick={offerNewContract} className={`w-full ${css.btnGhost} text-sm`}>Offer contract extension (cap-checked)</button>
         <button onClick={release} className="w-full text-sm py-2.5 rounded-xl font-bold transition-all text-[#E84A6F] hover:bg-[#E84A6F]/10">
           Release Player
@@ -3934,6 +3979,11 @@ function FinancesTab({ career }) {
              wagePct >= 80  ? 'Cap tightening — plan ahead' :
                               `${fmtK(wageCap - playerWages)} of cap headroom available`}
           </div>
+          {wagePct >= 88 && wagePct < 100 && (
+            <div className="mt-3 p-3 rounded-xl text-[11px] leading-relaxed border border-[#FFB347]/40 bg-[#FFB347]/08 text-atext-dim">
+              <span className="font-semibold text-atext">Tip:</span> Renewals and player-card extensions share this cap. Use <span className="text-atext font-medium">Club → Contracts</span> in pre-season so the queue does not surprise you when Round 1 starts.
+            </div>
+          )}
         </div>
       )}
 

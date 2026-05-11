@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  proposeRenewal, buildRenewalQueue, applyRenewal, applyRenewalRejection, canAffordRenewal,
+  proposeRenewal, renewalExtensionStableKey, buildRenewalQueue, applyRenewal, applyRenewalRejection, canAffordRenewal,
 } from '../finance/contracts.js';
 import { seedRng } from '../rng.js';
 
@@ -33,6 +33,21 @@ describe('proposeRenewal', () => {
 
   it('returns null for null input', () => {
     expect(proposeRenewal(null)).toBe(null);
+  });
+
+  it('stableKey makes in-season extension offers repeatable until the week changes', () => {
+    const career = { season: 2026, week: 3 };
+    const p = { id: 'p9', firstName: 'A', lastName: 'B', age: 24, position: 'C', overall: 75, wage: 100_000, form: 72 };
+    const k = renewalExtensionStableKey(career, p.id);
+    seedRng(999);
+    const a = proposeRenewal(p, { stableKey: k });
+    seedRng(1);
+    const b = proposeRenewal(p, { stableKey: k });
+    expect(a.proposedWage).toBe(b.proposedWage);
+    expect(a.proposedYears).toBe(b.proposedYears);
+    const k2 = renewalExtensionStableKey({ ...career, week: 4 }, p.id);
+    const c = proposeRenewal(p, { stableKey: k2 });
+    expect(typeof c.proposedWage).toBe('number');
   });
 });
 

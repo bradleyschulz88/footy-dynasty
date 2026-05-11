@@ -2,7 +2,7 @@
 // Player contract renewals — at season end, players with contract === 1 enter
 // the renewal queue. Demand scales with age and form.
 // ---------------------------------------------------------------------------
-import { rng, rand } from '../rng.js';
+import { rng, rand, seedRng, SEED } from '../rng.js';
 import { RENEWAL_AGE_CURVE, formRenewalMultiplier } from './constants.js';
 import { canAffordSigning } from './engine.js';
 
@@ -14,8 +14,20 @@ function ageBand(age) {
   return 'twilight';
 }
 
-// Build a renewal proposal for a single player. Pure function — does not mutate.
-export function proposeRenewal(player) {
+/** Deterministic seed for in-season extension offers (stable until season/week changes). */
+export function renewalExtensionStableKey(career, playerId) {
+  const season = career?.season ?? 2026;
+  const week = career?.week ?? 0;
+  const pid = String(playerId ?? '');
+  let h = 2166136261;
+  for (const ch of `${pid}|${season}|${week}`) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function buildProposalFromCurrentRng(player) {
   if (!player) return null;
   const band = ageBand(player.age ?? 24);
   const curve = RENEWAL_AGE_CURVE[band];
@@ -36,12 +48,30 @@ export function proposeRenewal(player) {
   };
 }
 
+/**
+ * Build a renewal proposal for a single player. Pure function — does not mutate.
+ * Pass `{ stableKey }` (e.g. from renewalExtensionStableKey) so UI extensions don’t
+ * re-roll on every click; omit for EOS queue randomness.
+ */
+export function proposeRenewal(player, options = {}) {
+  if (!player) return null;
+  const sk = options.stableKey;
+  if (sk != null && sk !== '') {
+    const prev = SEED;
+    seedRng(Number(sk) >>> 0);
+    const out = buildProposalFromCurrentRng(player);
+    seedRng(prev);
+    return out;
+  }
+  return buildProposalFromCurrentRng(player);
+}
+
 // Build the renewal queue for the whole squad at season end.
 // Players with contract <= 1 (will expire next season) get a proposal.
 export function buildRenewalQueue(career) {
   return (career.squad || [])
     .filter(p => (p.contract ?? 0) <= 1)
-    .map(proposeRenewal)
+    .map(p => proposeRenewal(p))
     .filter(Boolean);
 }
 
