@@ -1,28 +1,85 @@
 import { primaryLineBucket } from "./lineupBalance.js";
 
-/** Max players in match-day XXII. */
-export const LINEUP_CAP = 22;
+/** Match-day squad (18 on field + 5 interchange). */
+export const LINEUP_CAP = 23;
 
-/** Map career.lineup ids to squad players in that order (drops missing ids). */
-export function lineupPlayersOrdered(squad, lineupIds) {
-  const map = new Map((squad || []).map((p) => [p.id, p]));
-  return (lineupIds || []).map((id) => map.get(id)).filter(Boolean);
+/** On-field starters — rows on the ground map before interchange. */
+export const LINEUP_FIELD_COUNT = 18;
+
+/** Interchange / bench positions (slots 18–22). */
+export const LINEUP_INTERCHANGE_COUNT = 5;
+
+/** How many players are selected in the lineup (non-empty slots). */
+export function lineupPlayerCount(lineup) {
+  return (lineup || []).filter((id) => id != null && id !== "").length;
 }
 
-/** Remove one id from lineup. */
+export function lineupHasPlayer(lineup, playerId) {
+  const s = String(playerId);
+  return (lineup || []).some((id) => id != null && String(id) === s);
+}
+
+/** @returns {boolean} */
+export function isLineupSlotId(overId) {
+  return /^lineup-slot-\d+$/.test(String(overId || ""));
+}
+
+/** @returns {number | null} */
+export function lineupSlotIndexFromId(overId) {
+  const m = String(overId || "").match(/^lineup-slot-(\d+)$/);
+  return m ? Number(m[1]) : null;
+}
+
+/** Map career.lineup ids to squad players in order (drops empty slots). */
+export function lineupPlayersOrdered(squad, lineupIds) {
+  const map = new Map((squad || []).map((p) => [p.id, p]));
+  return (lineupIds || [])
+    .filter((id) => id != null && id !== "")
+    .map((id) => map.get(id))
+    .filter(Boolean);
+}
+
+/** Remove one id from lineup (clears any slot that held it; trims trailing empties). */
 export function removeIdFromLineup(lineup, id) {
-  return (lineup || []).filter((pid) => pid !== id);
+  const bid = String(id);
+  const L = (lineup || []).map((pid) => (pid != null && String(pid) === bid ? null : pid));
+  let end = L.length;
+  while (end > 0 && (L[end - 1] == null || L[end - 1] === "")) end--;
+  return L.slice(0, end);
 }
 
 /**
- * Insert id at index (0-based), removing any prior occurrence. Result capped at `cap`.
- * @returns {string[]}
+ * Dense list insert: remove `id` if present, insert at `index` (clamped to current length), cap length.
+ * Use for list-order operations (bucket insert, drop onto a player row).
  */
 export function addIdToLineupAt(lineup, id, index, cap = LINEUP_CAP) {
-  const L = [...(lineup || [])].filter((pid) => pid !== id);
+  const bid = String(id);
+  const L = [...(lineup || [])].filter((pid) => pid != null && String(pid) !== bid);
   const i = Math.max(0, Math.min(index, L.length));
-  L.splice(i, 0, id);
+  L.splice(i, 0, bid);
   return L.slice(0, cap);
+}
+
+/**
+ * Ground-map slot: fixed indices 0..cap-1; shift players at/ after `slotIndex`; trim trailing empties.
+ */
+export function insertIdAtLineupSlot(lineup, id, slotIndex, cap = LINEUP_CAP) {
+  const bid = String(id);
+  const slots = new Array(cap).fill(null);
+  const old = lineup || [];
+  for (let j = 0; j < Math.min(old.length, cap); j++) {
+    const v = old[j];
+    slots[j] = v != null && v !== "" ? String(v) : null;
+  }
+  for (let j = 0; j < cap; j++) {
+    if (slots[j] != null && String(slots[j]) === bid) slots[j] = null;
+  }
+  const target = Math.max(0, Math.min(slotIndex, cap - 1));
+  for (let j = cap - 1; j > target; j--) slots[j] = slots[j - 1];
+  slots[target] = bid;
+  let end = cap;
+  while (end > 0 && (slots[end - 1] == null || slots[end - 1] === "")) end--;
+  return slots.slice(0, end);
 }
 
 /** Field order for inserting an empty positional bucket into the lineup (presentation only). */
@@ -35,13 +92,14 @@ function bucketOfId(squad, id) {
 
 /**
  * Insert or move a player so they sit after the last teammate in the same line bucket.
- * Does not change match simulation — only lineup order / XXII UX.
+ * Does not change match simulation — only lineup order / squad UX.
  * @param {string} bucket — 'fwd' | 'mid' | 'ruck' | 'back'
  */
 export function addIdToLineupInBucket(lineup, squad, playerId, bucket, cap = LINEUP_CAP) {
   const bid = String(playerId);
   const bKey = String(bucket);
-  const L = [...(lineup || [])].filter((pid) => String(pid) !== bid);
+  const compact = (lineup || []).filter((pid) => pid != null && pid !== "");
+  const L = compact.filter((pid) => String(pid) !== bid);
   const idxInBucket = [];
   for (let i = 0; i < L.length; i++) {
     if (bucketOfId(squad, L[i]) === bKey) idxInBucket.push(i);
@@ -54,12 +112,12 @@ export function addIdToLineupInBucket(lineup, squad, playerId, bucket, cap = LIN
     const found = L.findIndex((pid) => BUCKET_ORDER[bucketOfId(squad, pid)] > target);
     insertAt = found === -1 ? L.length : found;
   }
-  return addIdToLineupAt(L, bid, insertAt, cap);
+  return addIdToLineupAt(compact, bid, insertAt, cap);
 }
 
 /** Move element from `from` to `to` index (both in range of current length). */
 export function moveLineupIndex(lineup, from, to) {
-  const L = [...(lineup || [])];
+  const L = [...(lineup || [])].filter((id) => id != null && id !== "");
   if (from < 0 || from >= L.length || to < 0 || from === to) return L;
   const clampedTo = Math.min(to, L.length - 1);
   const [removed] = L.splice(from, 1);
@@ -69,9 +127,13 @@ export function moveLineupIndex(lineup, from, to) {
 
 export function dedupeLineup(lineup) {
   const seen = new Set();
-  return (lineup || []).filter((id) => {
-    if (seen.has(id)) return false;
+  const L = (lineup || []).map((id) => {
+    if (id == null || id === "") return null;
+    if (seen.has(id)) return null;
     seen.add(id);
-    return true;
+    return id;
   });
+  let end = L.length;
+  while (end > 0 && (L[end - 1] == null || L[end - 1] === "")) end--;
+  return L.slice(0, end);
 }

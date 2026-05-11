@@ -126,7 +126,7 @@ describe('ageAiSquads', () => {
 });
 
 describe('selectAiLineup', () => {
-  it('returns 22 players and usually includes a ruck when the squad has one', () => {
+  it('returns 23 players and usually includes a ruck when the squad has one', () => {
     const squad = Array.from({ length: 30 }, (_, i) => ({
       id: `p${i}`,
       overall: 50 + i,
@@ -136,13 +136,13 @@ describe('selectAiLineup', () => {
       position: i === 0 ? 'RU' : 'C',
     }));
     const lineup = selectAiLineup(squad);
-    expect(lineup.length).toBe(22);
+    expect(lineup.length).toBe(23);
     expect(lineup.some((p) => p.position === 'RU')).toBe(true);
   });
 
-  it('prefers fit, uninjured players when at least 22 are available', () => {
+  it('prefers fit, uninjured players when at least 23 are available', () => {
     const squad = [
-      ...Array.from({ length: 22 }, (_, i) => ({ id: `f${i}`, overall: 70, trueRating: 70, fitness: 90, injured: 0 })),
+      ...Array.from({ length: 23 }, (_, i) => ({ id: `f${i}`, overall: 70, trueRating: 70, fitness: 90, injured: 0 })),
       ...Array.from({ length: 8  }, (_, i) => ({ id: `i${i}`, overall: 99, trueRating: 99, fitness: 60, injured: 5 })),
     ];
     const lineup = selectAiLineup(squad);

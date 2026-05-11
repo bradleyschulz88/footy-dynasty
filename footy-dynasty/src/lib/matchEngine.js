@@ -2,6 +2,7 @@ import { rand, randNorm, rng, pick } from './rng.js';
 import { findClub } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred } from './playerGen.js';
 import { lineupStructureModifier } from './lineupBalance.js';
+import { LINEUP_CAP, LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 
 export const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
@@ -28,18 +29,27 @@ export function playerEffectiveMatchRating(player, quarter = null) {
  * @param {number|null|undefined} quarter  AFL quarter 1–4; if set, applies in-game fatigue in Q3–Q4 (fitness-dependent).
  */
 export function teamRating(squad, lineup, training, facilitiesAvg, staffAvg, quarter = null) {
-  const top22 = lineup && lineup.length
-    ? lineup.map(id => squad.find(p => p.id === id)).filter(Boolean)
-    : squad.slice().sort((a, b) => b.overall - a.overall).slice(0, 22);
-  if (top22.length === 0) return 50;
-  const lineupIds = top22.map((p) => p.id);
+  const starterIds =
+    lineup && lineup.length
+      ? lineup.slice(0, LINEUP_FIELD_COUNT).filter((id) => id != null && id !== '')
+      : [];
+  const topStarters =
+    starterIds.length > 0
+      ? starterIds.map((id) => squad.find((p) => p.id === id)).filter(Boolean)
+      : squad
+          .slice()
+          .sort((a, b) => b.overall - a.overall)
+          .slice(0, LINEUP_FIELD_COUNT);
+  if (topStarters.length === 0) return 50;
+  const lineupIdsForStructure = starterIds.length > 0 ? starterIds : topStarters.map((p) => p.id);
   const trainingBoost = (training.intensity - 50) * 0.04;
-  const avgEff = top22.reduce((a, p) => a + playerEffectiveMatchRating(p, quarter), 0) / top22.length;
+  const avgEff =
+    topStarters.reduce((a, p) => a + playerEffectiveMatchRating(p, quarter), 0) / topStarters.length;
   return avgEff
     + trainingBoost
     + (facilitiesAvg - 1) * 1.2
     + (staffAvg - 60) * 0.15
-    + lineupStructureModifier(squad, lineupIds);
+    + lineupStructureModifier(squad, lineupIdsForStructure);
 }
 
 // Tactic adjustments (defense, balance, attack)
@@ -391,7 +401,7 @@ export function aiClubRating(clubId, tier) {
 // Compute a rating from a full AI squad (tier-2 fallback when no squad available)
 export function aiSquadRating(squad) {
   if (!squad || squad.length === 0) return 60;
-  const top22 = [...squad].sort((a, b) => (b.trueRating || b.overall) - (a.trueRating || a.overall)).slice(0, 22);
-  const avg = top22.reduce((a, b) => a + (b.trueRating || b.overall), 0) / top22.length;
+  const top = [...squad].sort((a, b) => (b.trueRating || b.overall) - (a.trueRating || a.overall)).slice(0, LINEUP_CAP);
+  const avg = top.reduce((a, b) => a + (b.trueRating || b.overall), 0) / top.length;
   return avg;
 }

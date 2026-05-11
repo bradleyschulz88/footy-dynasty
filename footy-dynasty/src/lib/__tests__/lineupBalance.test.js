@@ -5,8 +5,8 @@ import { teamRating } from '../matchEngine.js';
 const training = () => ({ intensity: 60, focus: {} });
 
 describe('lineupStructureModifier', () => {
-  it('penalises a best-22 with no ruck', () => {
-    const allMids = Array.from({ length: 22 }, (_, i) => ({
+  it('penalises a best side with no ruck', () => {
+    const allMids = Array.from({ length: 23 }, (_, i) => ({
       id: `m${i}`,
       overall: 72,
       trueRating: 72,
@@ -35,22 +35,22 @@ describe('selectBalancedLineup', () => {
         position: 'C',
       })),
     ];
-    const pick = selectBalancedLineup(squad, 22);
+    const pick = selectBalancedLineup(squad, 23);
     expect(pick.some((p) => p.position === 'RU')).toBe(true);
   });
 });
 
 describe('teamRating + structure', () => {
-  it('rates an imbalanced 22 lower than a balanced one at the same averages', () => {
+  it('rates an imbalanced on-field group lower than a balanced one at similar averages', () => {
     const base = { overall: 70, trueRating: 70, form: 70, fitness: 90 };
-    const allC = Array.from({ length: 22 }, (_, i) => ({ ...base, id: `c${i}`, position: 'C' }));
+    const allC = Array.from({ length: 23 }, (_, i) => ({ ...base, id: `c${i}`, position: 'C' }));
     const mixed = [
       { ...base, id: 'ru', position: 'RU' },
       ...Array.from({ length: 4 }, (_, i) => ({ ...base, id: `b${i}`, position: 'KB' })),
       ...Array.from({ length: 4 }, (_, i) => ({ ...base, id: `f${i}`, position: 'KF' })),
       ...Array.from({ length: 6 }, (_, i) => ({ ...base, id: `m${i}`, position: 'C' })),
-      ...Array.from({ length: 7 }, (_, i) => ({ ...base, id: `x${i}`, position: 'HB' })),
-    ].slice(0, 22);
+      ...Array.from({ length: 8 }, (_, i) => ({ ...base, id: `x${i}`, position: 'HB' })),
+    ].slice(0, 23);
     const rIm = teamRating(allC, allC.map((p) => p.id), training(), 1, 60);
     const rBal = teamRating(mixed, mixed.map((p) => p.id), training(), 1, 60);
     expect(rBal).toBeGreaterThan(rIm);

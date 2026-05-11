@@ -101,7 +101,7 @@ import {
 import { getClubGround } from './data/grounds.js';
 import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from './lib/careerAdvance.js';
 import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from './lib/gameDepth.js';
-import { lineupPlayersOrdered } from './lib/lineupHelpers.js';
+import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, LINEUP_FIELD_COUNT, removeIdFromLineup } from './lib/lineupHelpers.js';
 
 /** Single light UI — always `dirA` (see tokens.css `--A-*`). */
 function themeWrapperClass() {
@@ -267,7 +267,7 @@ function AFLManagerInner() {
       finance: newFinance,
       squad: newSquad,
     });
-    const newLineup = squadForCap.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p => p.id);
+    const newLineup = squadForCap.slice().sort((a,b)=>b.overall-a.overall).slice(0, LINEUP_CAP).map(p => p.id);
     const initialOffers = buildInitialSponsorOffers({
       leagueTier: newLeague.tier,
       difficulty: career.difficulty,
@@ -810,7 +810,7 @@ function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       finance: tunedFinance,
       squad: squadRaw,
     });
-    const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p=>p.id);
+    const lineup = squad.slice().sort((a,b)=>b.overall-a.overall).slice(0, LINEUP_CAP).map(p=>p.id);
     const fixtures = generateFixtures(compClubs);
     const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId);
     const facilities = DEFAULT_FACILITIES();
@@ -2751,8 +2751,8 @@ function PlayersTab({ career, updateCareer }) {
   const players = useMemo(() => {
     let arr = [...career.squad];
     if (filterPos !== "ALL") arr = arr.filter(p => playerHasPosition(p, filterPos));
-    if (filterStatus === "lineup") arr = arr.filter(p => career.lineup.includes(p.id));
-    if (filterStatus === "bench") arr = arr.filter(p => !career.lineup.includes(p.id));
+    if (filterStatus === "lineup") arr = arr.filter(p => lineupHasPlayer(career.lineup, p.id));
+    if (filterStatus === "bench") arr = arr.filter(p => !lineupHasPlayer(career.lineup, p.id));
     if (filterStatus === "injured") arr = arr.filter(p => (p.injured || 0) > 0 || (p.suspended || 0) > 0);
     if (filterStatus === "rookies") arr = arr.filter(p => p.rookie);
     const name = p => p.firstName ? p.firstName+" "+p.lastName : (p.name||"");
@@ -2768,7 +2768,7 @@ function PlayersTab({ career, updateCareer }) {
     return arr;
   }, [career.squad, career.lineup, sort, filterPos, filterStatus]);
   const benchPlayerIds = useMemo(
-    () => players.filter((p) => !career.lineup.includes(p.id)).map((p) => p.id),
+    () => players.filter((p) => !lineupHasPlayer(career.lineup, p.id)).map((p) => p.id),
     [players, career.lineup],
   );
   const pName = p => p.firstName ? p.firstName+" "+p.lastName : (p.name||"Player");
@@ -2828,7 +2828,7 @@ function PlayersTab({ career, updateCareer }) {
         <>
         <div className="md:hidden space-y-2 max-h-[65vh] overflow-y-auto px-0.5">
           {players.map((p) => {
-            const inLineup = career.lineup.includes(p.id);
+            const inLineup = lineupHasPlayer(career.lineup, p.id);
             const isSelected = selected?.id === p.id;
             const formColor = p.form >= 75 ? "#4AE89A" : p.form >= 55 ? "var(--A-accent)" : "#E84A6F";
             return (
@@ -2868,7 +2868,7 @@ function PlayersTab({ career, updateCareer }) {
           </div>
           <div className="max-h-[65vh] overflow-y-auto min-w-[820px]" style={{background:"var(--A-panel)"}}>
             {players.map((p, i) => {
-              const inLineup = career.lineup.includes(p.id);
+              const inLineup = lineupHasPlayer(career.lineup, p.id);
               const isSelected = selected?.id === p.id;
               const formColor = p.form >= 75 ? "#4AE89A" : p.form >= 55 ? "var(--A-accent)" : "#E84A6F";
               const fitColor  = p.fitness >= 80 ? "#4AE89A" : p.fitness >= 60 ? "var(--A-accent)" : "#E84A6F";
@@ -2922,7 +2922,7 @@ function PlayersTab({ career, updateCareer }) {
           </div>
         </div>
         </>
-        <div className="mt-2 text-[10px] text-atext-mute">{players.length} players · {career.lineup.length}/22 in XXII · {career.squad.length} total squad</div>
+        <div className="mt-2 text-[10px] text-atext-mute">{players.length} players · {lineupPlayerCount(career.lineup)}/{LINEUP_CAP} match squad · {career.squad.length} total squad</div>
       </div>
 
       {/* Right: player detail */}
@@ -2942,7 +2942,7 @@ function PlayersTab({ career, updateCareer }) {
 }
 
 function PlayerDetail({ player, career, updateCareer, onClose }) {
-  const inLineup = career.lineup.includes(player.id);
+  const inLineup = lineupHasPlayer(career.lineup, player.id);
   const pName = player.firstName ? player.firstName+" "+player.lastName : (player.name||"Player");
   const renewalsLeague = PYRAMID[career.leagueKey];
   const extensionStableKey = renewalExtensionStableKey(career, player.id);
@@ -2951,8 +2951,8 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
     [extensionStableKey, player.id, player.wage, player.age, player.form, player.contract, player.overall, player.position],
   );
   const toggleLineup = () => {
-    if (inLineup) updateCareer({ lineup: career.lineup.filter(id => id !== player.id) });
-    else if (career.lineup.length < 22) updateCareer({ lineup: [...career.lineup, player.id] });
+    if (inLineup) updateCareer({ lineup: removeIdFromLineup(career.lineup, player.id) });
+    else if (lineupPlayerCount(career.lineup) < LINEUP_CAP) updateCareer({ lineup: [...(career.lineup || []), player.id] });
   };
   const offerNewContract = () => {
     const proposal = proposeRenewal(player, { stableKey: extensionStableKey });
@@ -2985,7 +2985,7 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
     });
   };
   const release = () => {
-    updateCareer({ squad: career.squad.filter(p => p.id !== player.id), lineup: career.lineup.filter(id => id !== player.id) });
+    updateCareer({ squad: career.squad.filter(p => p.id !== player.id), lineup: removeIdFromLineup(career.lineup, player.id) });
     onClose();
   };
   const ATTR_COLORS = { kicking:"#4ADBE8", marking:"#4AE89A", handball:"#A78BFA", tackling:"#E84A6F", speed:"var(--A-accent)", endurance:"#4AE89A", strength:"#E84A6F", decision:"#4ADBE8" };
@@ -3069,7 +3069,7 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
       {/* Actions */}
       <div className="p-4 space-y-2" style={{borderTop:"1px solid var(--A-line)"}}>
         <button onClick={toggleLineup} className={`w-full text-sm font-bold py-2.5 rounded-xl transition-all ${inLineup ? css.btnDanger : css.btnPrimary}`}>
-          {inLineup ? "Remove from XXII" : career.lineup.length >= 22 ? "XXII Full" : "Add to XXII"}
+          {inLineup ? "Remove from match squad" : lineupPlayerCount(career.lineup) >= LINEUP_CAP ? "Match squad full" : "Add to match squad"}
         </button>
         {extensionPreview && (
           <div className="text-[10px] text-atext-dim text-center leading-snug px-1">
@@ -3120,10 +3120,18 @@ const TACTIC_CARDS = [
 ];
 
 function TacticsTab({ career, updateCareer }) {
-  const lineup = lineupPlayersOrdered(career.squad, career.lineup);
+  const squad = career.squad || [];
+  const rawLineup = career.lineup || [];
+  const lineup = lineupPlayersOrdered(squad, rawLineup);
+  const startersForFormation = useMemo(() => {
+    return rawLineup
+      .slice(0, LINEUP_FIELD_COUNT)
+      .map((id) => (id ? squad.find((p) => p.id === id) : null))
+      .filter(Boolean);
+  }, [rawLineup, squad]);
   const formationSlots = useMemo(
-    () => assignLineupToFormationSlots(lineup, TACTICS_FORMATION_SLOTS),
-    [lineup],
+    () => assignLineupToFormationSlots(startersForFormation, TACTICS_FORMATION_SLOTS),
+    [startersForFormation],
   );
   const byPos = POSITIONS.reduce((acc, p) => ({ ...acc, [p]: lineup.filter(pl => pl.position === p) }), {});
   const currentTactic = career.tacticChoice || 'balanced';
@@ -3161,9 +3169,9 @@ function TacticsTab({ career, updateCareer }) {
       </div>
     <div className="grid md:grid-cols-2 gap-4">
       <div className={`${css.panel} p-5`}>
-        <h3 className={`${css.h1} text-2xl mb-3`}>FORMATION (XXII)</h3>
-        <div className="text-[11px] text-atext-dim mb-2">{lineup.length}/22 in best side. Each dot fills from your XXII list in order — two wings, half-forwards, etc. show different players when available.</div>
-        <p className="text-[10px] text-atext-mute mb-3">Tip: <span className="text-atext font-semibold">Utility (UT)</span> appears on the ground when selected in the 22.</p>
+        <h3 className={`${css.h1} text-2xl mb-3`}>FORMATION (18 ON FIELD)</h3>
+        <div className="text-[11px] text-atext-dim mb-2">{lineupPlayerCount(rawLineup)}/{LINEUP_CAP} in match squad. Dots use your first {LINEUP_FIELD_COUNT} ground-map slots (forward 50 → back 50). Two wings, half-forwards, etc. fill in list order when available.</div>
+        <p className="text-[10px] text-atext-mute mb-3">Tip: <span className="text-atext font-semibold">Utility (UT)</span> appears on the ground when selected in the 23.</p>
         <div className="relative aspect-[5/4] rounded-2xl overflow-hidden ring-2 ring-white/10" style={{ background: 'radial-gradient(ellipse at center, #1B5E3F 0%, #0F4029 70%, #08251A 100%)' }}>
           <svg viewBox="0 0 500 400" className="absolute inset-0 w-full h-full" role="img" aria-label="Formation positions">
             <ellipse cx="250" cy="200" rx="240" ry="190" fill="none" stroke={fieldStroke} strokeWidth={2} />
@@ -3200,7 +3208,7 @@ function TacticsTab({ career, updateCareer }) {
         </div>
       </div>
       <div className={`${css.panel} p-5`}>
-        <h3 className={`${css.h1} text-2xl mb-3`}>SELECTED XXII</h3>
+        <h3 className={`${css.h1} text-2xl mb-3`}>SELECTED SQUAD (ORDER)</h3>
         <div className="text-[11px] text-atext-dim mb-4">
           Drag the grip to reorder. Remove with ✕. Add or swap players from <span className="text-atext font-semibold">Squad → Players</span>.
         </div>
@@ -3209,10 +3217,10 @@ function TacticsTab({ career, updateCareer }) {
           type="button"
           className={`${css.btnGhost} mt-4 text-xs font-bold uppercase tracking-wider min-h-[44px]`}
           onClick={() => updateCareer({
-            lineup: [...career.squad].sort((a,b)=>b.overall-a.overall).slice(0, 22).map(p => p.id),
+            lineup: [...career.squad].sort((a,b)=>b.overall-a.overall).slice(0, LINEUP_CAP).map(p => p.id),
           })}
         >
-          Auto-select XXII (by rating)
+          Auto-select match squad (by rating)
         </button>
       </div>
     </div>

@@ -21,26 +21,19 @@ import { CSS } from "@dnd-kit/utilities";
 import { formatPositionSlash } from "../lib/playerGen.js";
 import {
   LINEUP_CAP,
-  lineupPlayersOrdered,
+  lineupPlayerCount,
+  lineupHasPlayer,
+  lineupSlotIndexFromId,
   removeIdFromLineup,
   addIdToLineupAt,
-  addIdToLineupInBucket,
+  insertIdAtLineupSlot,
   dedupeLineup,
 } from "../lib/lineupHelpers.js";
 import { countLineBucketsFromLineup } from "../lib/lineupBalance.js";
 import { RatingDot, Pill, css } from "./primitives.jsx";
 import { LineupOvalField } from "./LineupOvalField.jsx";
 
-const XXII_TRAY_ID = "xxii-tray";
 const BENCH_TRAY_ID = "bench-tray";
-
-function ovalIdToBucket(oid) {
-  if (oid === "oval-mid-l" || oid === "oval-mid-r") return "mid";
-  if (oid === "oval-fwd") return "fwd";
-  if (oid === "oval-back") return "back";
-  if (oid === "oval-ruck") return "ruck";
-  return null;
-}
 
 /** Prefer pointer target (oval zones) then fall back to list sorting. */
 function lineupCollision(args) {
@@ -134,7 +127,7 @@ function SortablePlayerRow({
             <button
               type="button"
               className="p-1 rounded-md text-[#E84A6F] hover:bg-[#E84A6F]/15 flex-shrink-0"
-              aria-label="Remove from XXII"
+              aria-label="Remove from match squad"
               onClick={(e) => {
                 e.stopPropagation();
                 onRemove(player);
@@ -191,7 +184,7 @@ function SortablePlayerRow({
         <button
           type="button"
           className="p-1 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10"
-          aria-label="Remove from XXII"
+          aria-label="Remove from match squad"
           onClick={(e) => {
             e.stopPropagation();
             onRemove(player);
@@ -219,12 +212,12 @@ function dragSummary(activePlayer) {
 
 
 /**
- * Two-zone bench ↔ XXII builder for Squad → Players tab.
+ * Bench ↔ match squad (18 + 5) builder for Squad → Players tab.
  */
 export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitch, onSelectPlayer }) {
   const lineup = career.lineup || [];
   const squad = career.squad || [];
-  const xxiiPlayers = useMemo(() => lineupPlayersOrdered(squad, lineup), [squad, lineup]);
+  const selectedCount = lineupPlayerCount(lineup);
   const benchPlayers = useMemo(
     () => benchPlayerIds.map((id) => squad.find((p) => p.id === id)).filter(Boolean),
     [benchPlayerIds, squad],
@@ -253,44 +246,42 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
     const li = [...lineup];
     const bIds = [...benchPlayerIds];
 
-    const iL = li.indexOf(aid);
-    const oL = li.indexOf(oid);
+    const iL = li.findIndex((x) => x != null && String(x) === aid);
+    const oL = li.findIndex((x) => x != null && String(x) === oid);
     const iB = bIds.indexOf(aid);
     const oB = bIds.indexOf(oid);
 
-    const bucket = ovalIdToBucket(oid);
-    if (bucket) {
+    const destSlot = lineupSlotIndexFromId(oid);
+    if (destSlot != null) {
+      const count = lineupPlayerCount(li);
       if (iB !== -1) {
-        if (li.length >= LINEUP_CAP) return;
-        updateCareer({ lineup: dedupeLineup(addIdToLineupInBucket(li, squad, aid, bucket)) });
+        if (count >= LINEUP_CAP && !lineupHasPlayer(li, aid)) return;
+        updateCareer({ lineup: dedupeLineup(insertIdAtLineupSlot(li, aid, destSlot)) });
         return;
       }
       if (iL !== -1) {
-        updateCareer({ lineup: dedupeLineup(addIdToLineupInBucket(li, squad, aid, bucket)) });
+        updateCareer({ lineup: dedupeLineup(insertIdAtLineupSlot(li, aid, destSlot)) });
         return;
       }
     }
 
     if (iL !== -1 && oL !== -1) {
-      updateCareer({ lineup: arrayMove(li, iL, oL) });
+      const to = li.findIndex((x) => x != null && String(x) === oid);
+      if (to >= 0) updateCareer({ lineup: dedupeLineup(addIdToLineupAt(li, aid, to)) });
       return;
     }
     if (iB !== -1 && oB !== -1) {
       return;
     }
     if (iB !== -1 && oL !== -1) {
-      if (li.length >= LINEUP_CAP) return;
-      const next = addIdToLineupAt(li, aid, oL);
-      updateCareer({ lineup: dedupeLineup(next) });
+      const to = li.findIndex((x) => x != null && String(x) === oid);
+      if (to < 0) return;
+      if (lineupPlayerCount(li) >= LINEUP_CAP && !lineupHasPlayer(li, aid)) return;
+      updateCareer({ lineup: dedupeLineup(addIdToLineupAt(li, aid, to)) });
       return;
     }
     if (iL !== -1 && oB !== -1) {
       updateCareer({ lineup: removeIdFromLineup(li, aid) });
-      return;
-    }
-    if (iB !== -1 && oid === XXII_TRAY_ID) {
-      if (li.length >= LINEUP_CAP) return;
-      updateCareer({ lineup: dedupeLineup(addIdToLineupAt(li, aid, li.length)) });
       return;
     }
     if (iL !== -1 && oid === BENCH_TRAY_ID) {
@@ -329,12 +320,17 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
           style={stitch ? undefined : { border: "1px solid var(--A-line)", background: "var(--A-panel)" }}
         >
           <div className="flex items-center justify-between mb-2 gap-2">
-            <h3 className={`${css.h1} text-lg tracking-wide`}>MATCH XXII</h3>
-            <Pill color={lineup.length >= LINEUP_CAP ? "#4AE89A" : "var(--A-accent)"}>
-              {lineup.length}/{LINEUP_CAP}
+            <h3 className={`${css.h1} text-lg tracking-wide`}>MATCH SQUAD</h3>
+            <Pill color={selectedCount >= LINEUP_CAP ? "#4AE89A" : "var(--A-accent)"}>
+              {selectedCount}/{LINEUP_CAP}
             </Pill>
           </div>
-          <div className="flex flex-wrap gap-1.5 mb-3 text-[9px] font-mono text-atext-dim uppercase">
+          <p className="text-[11px] text-atext-dim mb-3 leading-snug">
+            Ground map: <span className="text-atext font-semibold">18</span> on-field slots +{" "}
+            <span className="text-atext font-semibold">5 interchange</span>. Drag from the bench onto a slot, or move
+            chips between slots.
+          </p>
+          <div className="flex flex-wrap gap-1.5 text-[9px] font-mono text-atext-dim uppercase">
             <span>Fwd {buckets.fwd}</span>
             <span>·</span>
             <span>Mid {buckets.mid}</span>
@@ -343,25 +339,6 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
             <span>·</span>
             <span>Ruck {buckets.ruck}</span>
           </div>
-          <SortableContext items={lineup} strategy={verticalListSortingStrategy}>
-            <div className="max-h-[42vh] overflow-y-auto min-h-[120px] pr-1">
-              {xxiiPlayers.map((p) => (
-                <SortablePlayerRow
-                  key={p.id}
-                  player={p}
-                  stitch={stitch}
-                  onSelect={onSelectPlayer}
-                  variant="xxii"
-                />
-              ))}
-              <TrayDropArea
-                id={XXII_TRAY_ID}
-                label="Drop squad players here"
-                isEmpty={lineup.length === 0}
-                stitch={stitch}
-              />
-            </div>
-          </SortableContext>
         </div>
 
         <div
@@ -373,7 +350,7 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
             <span className="text-[10px] text-atext-mute font-mono">{benchPlayers.length} available</span>
           </div>
           <p className="text-[11px] text-atext-dim mb-3">
-            Drag into XXII (max {LINEUP_CAP}). Drag back here to remove from the XXII.
+            Drag onto a map slot (max {LINEUP_CAP}). Drag back here to remove from the match squad.
           </p>
           <SortableContext items={benchPlayerIds} strategy={verticalListSortingStrategy}>
             <div className="max-h-[42vh] overflow-y-auto min-h-[120px] pr-1">
@@ -388,7 +365,7 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
               ))}
               <TrayDropArea
                 id={BENCH_TRAY_ID}
-                label="Drop to remove from XXII"
+                label="Drop to remove from squad"
                 isEmpty={benchPlayers.length === 0}
                 stitch={stitch}
               />
@@ -403,7 +380,7 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
           onClick={autoSelect}
           className={stitch ? "stitch-mock-slant-btn" : `${css.btnGhost} text-xs px-4 py-2`}
         >
-          Auto-select XXII (by rating)
+          Auto-select match squad (by rating)
         </button>
       </div>
 
@@ -416,9 +393,13 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
  * Reorder-only sortable list for Tactics tab (same lineup order as career).
  */
 export function LineupSortablePanel({ career, updateCareer, stitch }) {
-  const lineup = career.lineup || [];
+  const full = career.lineup || [];
   const squad = career.squad || [];
-  const players = useMemo(() => lineupPlayersOrdered(squad, lineup), [squad, lineup]);
+  const lineupIds = useMemo(() => full.filter((id) => id != null && id !== ""), [full]);
+  const players = useMemo(
+    () => lineupIds.map((id) => squad.find((p) => p.id === id)).filter(Boolean),
+    [lineupIds, squad],
+  );
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -430,7 +411,7 @@ export function LineupSortablePanel({ career, updateCareer, stitch }) {
   function onDragEnd({ active, over }) {
     setActiveId(null);
     if (!over || active.id === over.id) return;
-    const li = [...lineup];
+    const li = [...lineupIds];
     const oldI = li.indexOf(String(active.id));
     const newI = li.indexOf(String(over.id));
     if (oldI === -1 || newI === -1) return;
@@ -446,7 +427,7 @@ export function LineupSortablePanel({ career, updateCareer, stitch }) {
       onDragCancel={() => setActiveId(null)}
     >
       <div className={`space-y-1.5 max-h-[60vh] overflow-y-auto ${stitch ? "pr-1" : ""}`}>
-        <SortableContext items={lineup} strategy={verticalListSortingStrategy}>
+        <SortableContext items={lineupIds} strategy={verticalListSortingStrategy}>
           {players.length === 0 && (
             <div className="text-sm text-atext-dim text-center py-12">No players selected.</div>
           )}
@@ -457,9 +438,7 @@ export function LineupSortablePanel({ career, updateCareer, stitch }) {
               stitch={stitch}
               variant="xxii"
               onSelect={null}
-              onRemove={(pl) =>
-                updateCareer({ lineup: removeIdFromLineup(lineup, pl.id) })
-              }
+              onRemove={(pl) => updateCareer({ lineup: removeIdFromLineup(full, pl.id) })}
             />
           ))}
         </SortableContext>

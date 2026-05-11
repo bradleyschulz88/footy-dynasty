@@ -5,6 +5,7 @@ import { generateSquad, generatePlayer } from './playerGen.js';
 import { rand, rng, TIER_SCALE } from './rng.js';
 import { selectBalancedLineup } from './lineupBalance.js';
 import { competitionClubsForCareer } from './leagueEngine.js';
+import { LINEUP_CAP } from './lineupHelpers.js';
 
 const SQUAD_SIZE = 32;
 
@@ -27,10 +28,10 @@ export function ensureSquadsForLeague(career, league) {
 // Compute an AI club's match-day rating from its real squad
 export function aiClubRatingFromSquad(squad) {
   if (!squad || squad.length === 0) return null;
-  const top22 = [...squad].sort((a, b) => (b.trueRating || b.overall) - (a.trueRating || a.overall)).slice(0, 22);
-  const avgOverall = top22.reduce((a, b) => a + (b.trueRating || b.overall), 0) / top22.length;
-  const avgForm    = top22.reduce((a, b) => a + (b.form ?? 70), 0) / top22.length;
-  const avgFitness = top22.reduce((a, b) => a + (b.fitness ?? 90), 0) / top22.length;
+  const topForClub = [...squad].sort((a, b) => (b.trueRating || b.overall) - (a.trueRating || a.overall)).slice(0, LINEUP_CAP);
+  const avgOverall = topForClub.reduce((a, b) => a + (b.trueRating || b.overall), 0) / topForClub.length;
+  const avgForm    = topForClub.reduce((a, b) => a + (b.form ?? 70), 0) / topForClub.length;
+  const avgFitness = topForClub.reduce((a, b) => a + (b.fitness ?? 90), 0) / topForClub.length;
   return avgOverall + (avgForm - 70) * 0.10 + (avgFitness - 90) * 0.06;
 }
 
@@ -90,7 +91,7 @@ export function ageAiSquads(aiSquads, newLeagueTier, season = 2026) {
   return out;
 }
 
-// AI clubs rotate their lineup of 22 each round (balanced primary lines, then rating)
+// AI clubs rotate their match squad (23) each round (balanced primary lines, then rating)
 export function selectAiLineup(squad) {
-  return selectBalancedLineup(squad, 22);
+  return selectBalancedLineup(squad, LINEUP_CAP);
 }

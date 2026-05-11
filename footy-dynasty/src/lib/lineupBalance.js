@@ -19,7 +19,7 @@ export function primaryLineBucket(pos) {
 /** @returns {Record<string, number>} */
 export function countLineBucketsFromLineup(squad, lineupIds) {
   const counts = { ruck: 0, fwd: 0, back: 0, mid: 0 };
-  const ids = new Set(lineupIds || []);
+  const ids = new Set((lineupIds || []).filter((id) => id != null && id !== ""));
   for (const p of squad || []) {
     if (!ids.has(p.id)) continue;
     const b = primaryBucket(p.position);
@@ -46,7 +46,7 @@ export function lineupStructureModifier(squad, lineupIds) {
 }
 
 /** Pick player ids: fill structural slots then by trueRating/overall. */
-export function selectBalancedLineup(squad, size = 22) {
+export function selectBalancedLineup(squad, size = 23) {
   const eligible = [...(squad || [])]
     .filter((p) => (p.injured ?? 0) === 0 && (p.fitness ?? 90) > 45)
     .sort((a, b) => (b.trueRating || b.overall || 0) - (a.trueRating || a.overall || 0));

@@ -46,7 +46,7 @@ describe('teamRating', () => {
     expect(strongR).toBeGreaterThan(weakR);
   });
 
-  it('uses the top 22 from squad when lineup is empty', () => {
+  it('uses the top 18 from squad when lineup is empty', () => {
     const squad = makeSquad(30, 70);
     const r = teamRating(squad, [], defaultTraining(), 1, 60);
     expect(r).toBeGreaterThan(0);

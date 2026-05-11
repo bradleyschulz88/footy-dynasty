@@ -181,7 +181,7 @@ describe('round simulation with AI squads', () => {
   it('a stronger player squad beats a much weaker AI club more often', () => {
     seedRng(2026);
     const career  = initialCareer();
-    const lineup  = career.squad.slice(0, 22).map(p => p.id);
+    const lineup  = career.squad.slice(0, 23).map(p => p.id);
     const playerStrength = teamRating(career.squad, lineup, career.training, 1, 70);
     let wins = 0;
     const RUNS = 60;
@@ -191,19 +191,19 @@ describe('round simulation with AI squads', () => {
         { rating: 50 },
         true,
         playerStrength,
-        { playerLineup: career.squad.slice(0, 22), tactic: 'balanced' },
+        { playerLineup: career.squad.slice(0, 23), tactic: 'balanced' },
       );
       if (r.winner === 'home') wins++;
     }
     expect(wins / RUNS).toBeGreaterThan(0.6);
   });
 
-  it('selectAiLineup returns 22 players each round and tickAiSquads keeps invariants', () => {
+  it('selectAiLineup returns 23 players each round and tickAiSquads keeps invariants', () => {
     const career = initialCareer();
     const league = fakeLeague();
     const ai = ensureSquadsForLeague(career, league);
     const lineup = selectAiLineup(ai.gee);
-    expect(lineup.length).toBe(22);
+    expect(lineup.length).toBe(23);
     const ticked = tickAiSquads(ai);
     expect(Object.keys(ticked)).toEqual(Object.keys(ai));
     Object.values(ticked).forEach(squad => {
@@ -271,10 +271,10 @@ describe('mini-season loop', () => {
         const isPlayerHome     = home === PLAYER_CLUB_ID;
 
         const homeRating = home === PLAYER_CLUB_ID
-          ? teamRating(career.squad, career.squad.slice(0, 22).map(p => p.id), career.training, 1, 70)
+          ? teamRating(career.squad, career.squad.slice(0, 23).map(p => p.id), career.training, 1, 70)
           : aiClubRatingFromSquad(aiSquads[home]) ?? aiClubRating(home, 1);
         const awayRating = away === PLAYER_CLUB_ID
-          ? teamRating(career.squad, career.squad.slice(0, 22).map(p => p.id), career.training, 1, 70)
+          ? teamRating(career.squad, career.squad.slice(0, 23).map(p => p.id), career.training, 1, 70)
           : aiClubRatingFromSquad(aiSquads[away]) ?? aiClubRating(away, 1);
 
         const result = simMatchWithQuarters(
@@ -282,7 +282,7 @@ describe('mini-season loop', () => {
           { rating: awayRating },
           isPlayerHome,
           isPlayerInvolved ? homeRating : 70,
-          isPlayerInvolved ? { playerLineup: career.squad.slice(0, 22), tactic: 'balanced' } : {},
+          isPlayerInvolved ? { playerLineup: career.squad.slice(0, 23), tactic: 'balanced' } : {},
         );
 
         expect(result.winner).toMatch(/home|away|draw/);

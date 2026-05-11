@@ -11,7 +11,7 @@ describe('simMatchEvents', () => {
   beforeEach(() => seedRng(2024));
 
   it('returns the expected shape', () => {
-    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22), tactic: 'balanced' });
+    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23), tactic: 'balanced' });
     expect(r).toMatchObject({
       homeGoals: expect.any(Number),
       homeBehinds: expect.any(Number),
@@ -31,12 +31,12 @@ describe('simMatchEvents', () => {
   });
 
   it('always produces 4 quarters', () => {
-    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22) });
+    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23) });
     expect(r.quarters.length).toBe(4);
   });
 
   it('quarter sums equal totals', () => {
-    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22) });
+    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23) });
     const hG = r.quarters.reduce((a, q) => a + q.homeGoals, 0);
     const aG = r.quarters.reduce((a, q) => a + q.awayGoals, 0);
     const hB = r.quarters.reduce((a, q) => a + q.homeBehinds, 0);
@@ -48,14 +48,14 @@ describe('simMatchEvents', () => {
   });
 
   it('homeTotal/awayTotal match the AFL formula', () => {
-    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22) });
+    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23) });
     expect(r.homeTotal).toBe(r.homeGoals * 6 + r.homeBehinds);
     expect(r.awayTotal).toBe(r.awayGoals * 6 + r.awayBehinds);
   });
 
   it('attribution sums to player-side scoreboard when player is home', () => {
     seedRng(7);
-    const ll = lineup(22);
+    const ll = lineup(23);
     const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: ll });
     const totalGoals   = Object.values(r.goalAttribution).reduce((a, v) => a + v.goals, 0);
     const totalBehinds = Object.values(r.goalAttribution).reduce((a, v) => a + v.behinds, 0);
@@ -65,7 +65,7 @@ describe('simMatchEvents', () => {
 
   it('attribution sums to player-side scoreboard when player is away', () => {
     seedRng(11);
-    const ll = lineup(22);
+    const ll = lineup(23);
     const r = simMatchEvents({ rating: 70 }, { rating: 70 }, false, 70, { playerLineup: ll });
     const totalGoals   = Object.values(r.goalAttribution).reduce((a, v) => a + v.goals, 0);
     const totalBehinds = Object.values(r.goalAttribution).reduce((a, v) => a + v.behinds, 0);
@@ -75,7 +75,7 @@ describe('simMatchEvents', () => {
 
   it('produces between 0 and 3 votes, all referencing real player ids', () => {
     seedRng(3);
-    const ll = lineup(22);
+    const ll = lineup(23);
     const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: ll });
     expect(r.votes.length).toBeLessThanOrEqual(3);
     const ids = new Set(ll.map(p => p.id));
@@ -89,9 +89,9 @@ describe('simMatchEvents', () => {
     let defensivePlayerScore = 0;
     for (let i = 0; i < 25; i++) {
       seedRng(1000 + i);
-      const a = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22), tactic: 'attack', oppTactic: 'balanced' });
+      const a = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23), tactic: 'attack', oppTactic: 'balanced' });
       seedRng(1000 + i);
-      const d = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22), tactic: 'defensive', oppTactic: 'balanced' });
+      const d = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23), tactic: 'defensive', oppTactic: 'balanced' });
       attackPlayerScore    += a.homeTotal;
       defensivePlayerScore += d.homeTotal;
     }
@@ -100,7 +100,7 @@ describe('simMatchEvents', () => {
 
   it('momentum stays in [-1, 1] across all quarters', () => {
     seedRng(5);
-    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22) });
+    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23) });
     r.quarters.forEach(q => {
       expect(q.momentumEnd).toBeGreaterThanOrEqual(-1);
       expect(q.momentumEnd).toBeLessThanOrEqual(1);
@@ -109,14 +109,14 @@ describe('simMatchEvents', () => {
 
   it('events flat list equals the concatenated quarter events', () => {
     seedRng(6);
-    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22) });
+    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23) });
     const concat = r.quarters.flatMap(q => q.events);
     expect(r.events.length).toBe(concat.length);
   });
 
   it('all event minutes are within their quarter window', () => {
     seedRng(8);
-    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22) });
+    const r = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23) });
     r.events.forEach(ev => {
       const lo = (ev.q - 1) * 25;
       const hi = (ev.q - 1) * 25 + 24;
@@ -127,9 +127,9 @@ describe('simMatchEvents', () => {
 
   it('is deterministic for the same seed', () => {
     seedRng(2024);
-    const a = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22) });
+    const a = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23) });
     seedRng(2024);
-    const b = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22) });
+    const b = simMatchEvents({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23) });
     expect(a.homeTotal).toBe(b.homeTotal);
     expect(a.awayTotal).toBe(b.awayTotal);
     expect(a.events.length).toBe(b.events.length);
@@ -148,7 +148,7 @@ describe('simMatchEvents', () => {
 
   it('with playerLineup, simMatchWithQuarters routes through simMatchEvents', () => {
     seedRng(40);
-    const r = simMatchWithQuarters({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(22), tactic: 'balanced' });
+    const r = simMatchWithQuarters({ rating: 70 }, { rating: 70 }, true, 70, { playerLineup: lineup(23), tactic: 'balanced' });
     expect(Array.isArray(r.events)).toBe(true);
     expect(r.votes).toBeDefined();
   });
