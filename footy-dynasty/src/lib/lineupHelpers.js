@@ -45,10 +45,12 @@ export function lineupPlayersOrdered(squad, lineupIds) {
     .filter(Boolean);
 }
 
-/** Remove one id from lineup (clears any slot that held it; trims trailing empties). */
+/** Remove one id from lineup (splices that index out so fixed map slots stay contiguous). */
 export function removeIdFromLineup(lineup, id) {
   const bid = String(id);
-  const L = (lineup || []).map((pid) => (pid != null && String(pid) === bid ? null : pid));
+  const L = [...(lineup || [])];
+  const idx = L.findIndex((pid) => pid != null && String(pid) === bid);
+  if (idx !== -1) L.splice(idx, 1);
   let end = L.length;
   while (end > 0 && (L[end - 1] == null || L[end - 1] === "")) end--;
   return L.slice(0, end);

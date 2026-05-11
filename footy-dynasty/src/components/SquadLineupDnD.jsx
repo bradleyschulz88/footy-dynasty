@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { GripVertical, X } from "lucide-react";
 import {
   DndContext,
@@ -29,18 +29,10 @@ import {
   insertIdAtLineupSlot,
   dedupeLineup,
 } from "../lib/lineupHelpers.js";
-import { countLineBucketsFromLineup } from "../lib/lineupBalance.js";
-import { RatingDot, Pill, css } from "./primitives.jsx";
+import { RatingDot, css } from "./primitives.jsx";
 import { LineupOvalField } from "./LineupOvalField.jsx";
 
 const BENCH_TRAY_ID = "bench-tray";
-
-/** Prefer pointer target (oval zones) then fall back to list sorting. */
-function lineupCollision(args) {
-  const pw = pointerWithin(args);
-  if (pw.length > 0) return pw;
-  return closestCorners(args);
-}
 
 function pName(p) {
   return p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || "Player");
@@ -217,12 +209,28 @@ function dragSummary(activePlayer) {
 export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitch, onSelectPlayer }) {
   const lineup = career.lineup || [];
   const squad = career.squad || [];
-  const selectedCount = lineupPlayerCount(lineup);
   const benchPlayers = useMemo(
     () => benchPlayerIds.map((id) => squad.find((p) => p.id === id)).filter(Boolean),
     [benchPlayerIds, squad],
   );
-  const buckets = useMemo(() => countLineBucketsFromLineup(squad, lineup), [squad, lineup]);
+
+  /** Prefer pointer targets; when dragging a match-squad player, prefer bench tray over overlapping bench rows so drops register as remove. */
+  const lineupCollision = useCallback(
+    (args) => {
+      const pw = pointerWithin(args);
+      if (pw.length > 0) {
+        const aid = String(args.active.id);
+        const inMatchSquad = (lineup || []).some((x) => x != null && String(x) === aid);
+        if (inMatchSquad) {
+          const tray = pw.find((c) => c.id === BENCH_TRAY_ID);
+          if (tray) return [tray];
+        }
+        return pw;
+      }
+      return closestCorners(args);
+    },
+    [lineup],
+  );
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
@@ -231,7 +239,7 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
     }),
   );
   const [activeId, setActiveId] = useState(null);
-  const activePlayer = activeId ? squad.find((p) => p.id === activeId) : null;
+  const activePlayer = activeId ? squad.find((p) => String(p.id) === String(activeId)) : null;
 
   function onDragStart({ active }) {
     setActiveId(active.id);
@@ -248,8 +256,8 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
 
     const iL = li.findIndex((x) => x != null && String(x) === aid);
     const oL = li.findIndex((x) => x != null && String(x) === oid);
-    const iB = bIds.indexOf(aid);
-    const oB = bIds.indexOf(oid);
+    const iB = bIds.findIndex((x) => x != null && String(x) === aid);
+    const oB = bIds.findIndex((x) => x != null && String(x) === oid);
 
     const destSlot = lineupSlotIndexFromId(oid);
     if (destSlot != null) {
@@ -281,11 +289,11 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
       return;
     }
     if (iL !== -1 && oB !== -1) {
-      updateCareer({ lineup: removeIdFromLineup(li, aid) });
+      updateCareer({ lineup: dedupeLineup(removeIdFromLineup(li, aid)) });
       return;
     }
     if (iL !== -1 && oid === BENCH_TRAY_ID) {
-      updateCareer({ lineup: removeIdFromLineup(li, aid) });
+      updateCareer({ lineup: dedupeLineup(removeIdFromLineup(li, aid)) });
       return;
     }
   }
@@ -314,33 +322,7 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
         stitch={stitch}
         onSelectPlayer={onSelectPlayer}
       />
-      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5`}>
-        <div
-          className={`rounded-2xl p-4 ${stitch ? "stitch-neon-card" : ""}`}
-          style={stitch ? undefined : { border: "1px solid var(--A-line)", background: "var(--A-panel)" }}
-        >
-          <div className="flex items-center justify-between mb-2 gap-2">
-            <h3 className={`${css.h1} text-lg tracking-wide`}>MATCH SQUAD</h3>
-            <Pill color={selectedCount >= LINEUP_CAP ? "#4AE89A" : "var(--A-accent)"}>
-              {selectedCount}/{LINEUP_CAP}
-            </Pill>
-          </div>
-          <p className="text-[11px] text-atext-dim mb-3 leading-snug">
-            Ground map: <span className="text-atext font-semibold">15 + 3</span> on-field (oval + followers) +{" "}
-            <span className="text-atext font-semibold">5 interchange</span>. Drag from the bench onto a slot, or move
-            chips between slots.
-          </p>
-          <div className="flex flex-wrap gap-1.5 text-[9px] font-mono text-atext-dim uppercase">
-            <span>Fwd {buckets.fwd}</span>
-            <span>·</span>
-            <span>Mid {buckets.mid}</span>
-            <span>·</span>
-            <span>Back {buckets.back}</span>
-            <span>·</span>
-            <span>Ruck {buckets.ruck}</span>
-          </div>
-        </div>
-
+      <div className="mb-5 max-w-2xl mx-auto lg:max-w-none">
         <div
           className={`rounded-2xl p-4 ${stitch ? "stitch-neon-card" : ""}`}
           style={stitch ? undefined : { border: "1px solid var(--A-line)", background: "var(--A-panel)" }}
@@ -350,7 +332,8 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
             <span className="text-[10px] text-atext-mute font-mono">{benchPlayers.length} available</span>
           </div>
           <p className="text-[11px] text-atext-dim mb-3">
-            Drag onto a map slot (max {LINEUP_CAP}). Drag back here to remove from the match squad.
+            Drag onto a map slot (max {LINEUP_CAP}). Drop on a bench player or the strip below to remove from the match
+            squad.
           </p>
           <SortableContext items={benchPlayerIds} strategy={verticalListSortingStrategy}>
             <div className="max-h-[42vh] overflow-y-auto min-h-[120px] pr-1">
@@ -406,7 +389,7 @@ export function LineupSortablePanel({ career, updateCareer, stitch }) {
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
   );
   const [activeId, setActiveId] = useState(null);
-  const activePlayer = activeId ? squad.find((p) => p.id === activeId) : null;
+  const activePlayer = activeId ? squad.find((p) => String(p.id) === String(activeId)) : null;
 
   function onDragEnd({ active, over }) {
     setActiveId(null);
