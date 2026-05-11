@@ -61,34 +61,36 @@ function ClubPlayerCardBody({ player, stitch, compact, onSelectPlayer, dragProps
     ? "w-8 h-8 sm:w-9 sm:h-9 min-w-0 min-h-0 max-w-[2.6rem] max-h-[2.6rem]"
     : "w-12 h-12 sm:w-14 sm:h-14";
   const iniSz = compact ? "text-[9px] sm:text-[10px]" : "text-xs sm:text-sm";
-  const plateText = compact ? "text-[6px] sm:text-[7px] leading-[1.15]" : "text-[8px] sm:text-[10px] leading-snug";
-  const numBox = compact ? "w-[1.125rem] min-w-[1.125rem] text-[7px] sm:text-[8px]" : "w-6 sm:w-7 text-[9px] sm:text-[10px]";
+  const plateText = compact ? "text-[7px] sm:text-[8px] leading-[1.2]" : "text-[8px] sm:text-[10px] leading-snug";
+  const numBox = compact ? "w-[1.25rem] min-w-[1.25rem] text-[7px] sm:text-[8px]" : "w-6 sm:w-7 text-[9px] sm:text-[10px]";
   const overlap = compact ? "-mt-1.5" : "-mt-2";
+  const plateWidth = compact ? "w-full max-w-none" : "w-full max-w-[6.25rem]";
+  const nameLine = compact ? "break-words [overflow-wrap:anywhere] leading-snug" : "line-clamp-2 break-words [overflow-wrap:anywhere]";
 
   if (stitch) {
     return (
       <button
         type="button"
-        className="w-full min-w-0 h-full max-h-full flex flex-col items-center justify-center py-0.5 cursor-grab active:cursor-grabbing text-left"
+        className={`w-full min-w-0 h-full flex flex-col items-center ${compact ? "justify-start pt-0.5 pb-0.5" : "justify-center py-0.5"} cursor-grab active:cursor-grabbing text-left`}
         {...listeners}
         {...attributes}
         onClick={() => onSelectPlayer?.(player)}
       >
         <div
-          className={`relative z-[1] rounded-full border-2 border-[rgba(200,255,61,0.55)] shadow-md flex items-center justify-center bg-gradient-to-b from-[#1a2820] to-[#0d1510] ${circle}`}
+          className={`relative z-[1] shrink-0 rounded-full border-2 border-[rgba(200,255,61,0.55)] shadow-md flex items-center justify-center bg-gradient-to-b from-[#1a2820] to-[#0d1510] ${circle}`}
         >
           <span className={`font-black text-[rgba(200,255,61,0.95)] tracking-wide ${iniSz}`}>{initials(player)}</span>
         </div>
         <div
-          className={`relative z-[2] w-full min-w-0 max-w-[6.25rem] ${overlap} rounded-md border border-[rgba(200,255,61,0.35)] bg-[rgba(10,14,10,0.92)] shadow-md flex overflow-hidden`}
+          className={`relative z-[2] ${plateWidth} min-w-0 ${overlap} rounded-md border border-[rgba(200,255,61,0.35)] bg-[rgba(10,14,10,0.92)] shadow-md flex overflow-hidden`}
         >
           <span
-            className={`shrink-0 flex items-center justify-center bg-[rgba(90,60,120,0.98)] font-black text-white ${numBox}`}
+            className={`shrink-0 flex items-center justify-center self-stretch bg-[rgba(90,60,120,0.98)] font-black text-white ${numBox}`}
           >
             {num}
           </span>
           <span className={`flex-1 min-w-0 px-0.5 py-0.5 font-semibold text-white/95 ${plateText}`}>
-            <span className="line-clamp-2 break-words [overflow-wrap:anywhere]">{shortName(player)}</span>
+            <span className={nameLine}>{shortName(player)}</span>
           </span>
         </div>
       </button>
@@ -98,24 +100,24 @@ function ClubPlayerCardBody({ player, stitch, compact, onSelectPlayer, dragProps
   return (
     <button
       type="button"
-      className="w-full min-w-0 h-full max-h-full flex flex-col items-center justify-center py-0.5 cursor-grab active:cursor-grabbing text-left"
+      className={`w-full min-w-0 h-full flex flex-col items-center ${compact ? "justify-start pt-0.5 pb-0.5" : "justify-center py-0.5"} cursor-grab active:cursor-grabbing text-left`}
       {...listeners}
       {...attributes}
       onClick={() => onSelectPlayer?.(player)}
     >
       <div
-        className={`relative z-[1] rounded-full border-2 border-white shadow-md flex items-center justify-center bg-gradient-to-b from-[#f1f5f9] to-[#cbd5e1] ${circle}`}
+        className={`relative z-[1] shrink-0 rounded-full border-2 border-white shadow-md flex items-center justify-center bg-gradient-to-b from-[#f1f5f9] to-[#cbd5e1] ${circle}`}
       >
         <span className={`font-black text-slate-700 tracking-wide ${iniSz}`}>{initials(player)}</span>
       </div>
       <div
-        className={`relative z-[2] w-full min-w-0 max-w-[6.25rem] ${overlap} rounded-md border border-slate-200/90 bg-white shadow-sm flex overflow-hidden`}
+        className={`relative z-[2] ${plateWidth} min-w-0 ${overlap} rounded-md border border-slate-200/90 bg-white shadow-sm flex overflow-hidden`}
       >
-        <span className={`shrink-0 flex items-center justify-center bg-[#3d1f4d] font-black text-white ${numBox}`}>
+        <span className={`shrink-0 flex items-center justify-center self-stretch bg-[#3d1f4d] font-black text-white ${numBox}`}>
           {num}
         </span>
         <span className={`flex-1 min-w-0 px-0.5 py-0.5 font-semibold text-slate-900 ${plateText}`}>
-          <span className="line-clamp-2 break-words [overflow-wrap:anywhere]">{shortName(player)}</span>
+          <span className={nameLine}>{shortName(player)}</span>
         </span>
       </div>
     </button>
@@ -146,7 +148,7 @@ function EmptyLineupSlot({ slotIndex, stitch, compact }) {
     >
       <div className={`rounded-full border-2 border-dashed opacity-50 ${stitch ? "border-[rgba(200,255,61,0.35)]" : "border-white/50"} ${circle}`} />
       <div
-        className={`w-full max-w-[6.25rem] -mt-1.5 rounded-md border border-dashed px-0.5 py-1 text-center ${
+        className={`w-full ${compact ? "max-w-none" : "max-w-[6.25rem]"} -mt-1.5 rounded-md border border-dashed px-0.5 py-1 text-center ${
           stitch ? "border-[rgba(200,255,61,0.25)] text-[rgba(200,255,61,0.45)]" : "border-white/35 text-white/70"
         }`}
       >
@@ -175,7 +177,7 @@ function FilledLineupSlot({ slotIndex, player, stitch, onSelectPlayer, compact }
   return (
     <div
       ref={setRefs}
-      className={`min-w-0 max-w-full h-full min-h-0 flex rounded-lg border bg-transparent ${border} overflow-hidden touch-manipulation ${dragging}`}
+      className={`min-w-0 max-w-full h-full min-h-0 flex rounded-lg border bg-transparent ${border} ${compact ? "overflow-visible" : "overflow-hidden"} touch-manipulation ${dragging}`}
     >
       <ClubPlayerCardBody
         player={player}
@@ -269,7 +271,7 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
       </div>
 
       <div
-        className="relative w-full max-w-[min(92vw,26rem)] mx-auto rounded-[50%] overflow-hidden ring-2 ring-white/15 aspect-[0.62/1] max-h-[min(78vh,640px)] min-h-[280px] sm:min-h-[340px] md:min-h-[400px]"
+        className="relative w-full max-w-[min(92vw,26rem)] mx-auto rounded-[50%] overflow-hidden ring-2 ring-white/15 aspect-[0.62/1] max-h-[min(82vh,720px)] min-h-[320px] sm:min-h-[400px] md:min-h-[460px]"
         style={{
           background:
             "linear-gradient(180deg, rgba(52,140,72,0.52) 0%, rgba(32,110,58,0.72) 22%, rgba(28,100,48,0.78) 50%, rgba(24,92,44,0.74) 78%, rgba(18,70,38,0.68) 100%)",
@@ -321,16 +323,13 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           </g>
         </svg>
 
-        <div
-          className="absolute inset-x-[6%] top-[6%] bottom-[12%] flex flex-col gap-0.5 sm:gap-1 min-h-0 overflow-hidden pointer-events-auto"
-          style={{ clipPath: "ellipse(48% 47% at 50% 48%)" }}
-        >
+        <div className="absolute inset-x-[5%] top-[5%] bottom-[11%] flex flex-col gap-0.5 sm:gap-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pointer-events-auto [scrollbar-width:thin]">
           {ROWS_BACK_TO_FWD.map((row, r) => (
-            <div key={row.key} className="flex-1 min-h-0 flex flex-col">
+            <div key={row.key} className="flex-1 min-h-min flex flex-col min-w-0">
               <div
-                className="grid flex-1 min-h-0 gap-x-1 sm:gap-x-1.5 gap-y-0 items-stretch"
+                className="grid flex-1 min-h-min gap-x-1 sm:gap-x-1.5 gap-y-0 items-stretch"
                 style={{
-                  gridTemplateColumns: "2.125rem minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
+                  gridTemplateColumns: "2rem minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
                 }}
               >
                 <div
@@ -344,7 +343,7 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
                   const idx = r * 3 + col;
                   const p = slotPlayer(idx);
                   return (
-                    <div key={idx} className="min-h-0 min-w-0 h-full max-h-full flex">
+                    <div key={idx} className="min-h-min min-w-0 flex">
                       <LineupSlotCell slotIndex={idx} player={p} stitch={stitch} onSelectPlayer={onSelectPlayer} />
                     </div>
                   );
