@@ -250,9 +250,10 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
         <div>
           <h3 className={`${css.h1} text-base md:text-lg tracking-wide`}>GROUND MAP</h3>
           <p className="text-[11px] text-atext-dim mt-1 max-w-lg leading-snug">
-            <span className="text-atext font-semibold">15</span> on the oval (B · HB · C · HF · F),{" "}
+            <span className="text-atext font-semibold">15</span> on the oval (backs toward scoring end behind them,{" "}
+            <span className="text-atext font-semibold">forwards</span> toward the other — B · HB · C · HF · F),{" "}
             <span className="text-atext font-semibold">{LINEUP_FOLLOWERS_COUNT} followers</span>, then{" "}
-            <span className="text-atext font-semibold">{LINEUP_INTERCHANGE_COUNT} interchange</span> — same layout as a club team sheet.
+            <span className="text-atext font-semibold">{LINEUP_INTERCHANGE_COUNT} interchange</span> — schematic like a club team sheet, not kick-in positions.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[10px] font-mono uppercase text-atext-dim shrink-0">
@@ -263,38 +264,67 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
 
       <div className="flex justify-center mb-1">
         <span className="text-[10px] font-black uppercase tracking-[0.35em] text-white/80 drop-shadow-sm px-3 py-1 rounded-full bg-black/35 border border-white/20">
-          Back 50
+          Scoring end behind backs · Back 50
         </span>
       </div>
 
       <div
-        className="relative w-full mx-auto rounded-[50%] overflow-hidden ring-2 ring-white/15 aspect-[1.55/1] max-h-[min(76vh,720px)] min-h-[260px] sm:min-h-[320px] md:min-h-[380px] lg:min-h-[440px]"
+        className="relative w-full max-w-[min(92vw,26rem)] mx-auto rounded-[50%] overflow-hidden ring-2 ring-white/15 aspect-[0.62/1] max-h-[min(78vh,640px)] min-h-[280px] sm:min-h-[340px] md:min-h-[400px]"
         style={{
           background:
-            "linear-gradient(178deg, rgba(52,140,72,0.55) 0%, rgba(28,100,48,0.75) 38%, rgba(22,78,40,0.8) 62%, rgba(18,70,38,0.72) 100%)",
+            "linear-gradient(180deg, rgba(52,140,72,0.52) 0%, rgba(32,110,58,0.72) 22%, rgba(28,100,48,0.78) 50%, rgba(24,92,44,0.74) 78%, rgba(18,70,38,0.68) 100%)",
           boxShadow: "inset 0 0 0 3px rgba(255,255,255,0.12), 0 12px 36px rgba(0,0,0,0.35)",
           border: stitch ? "2px solid rgba(200,255,61,0.35)" : "2px solid rgba(0,0,0,0.35)",
         }}
       >
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 200 130" preserveAspectRatio="none" aria-hidden>
+        {/* Goal-to-goal = vertical: B row top (back), F row bottom (forward). Same axis as white markings. */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 160" preserveAspectRatio="none" aria-hidden>
           <defs>
-            <linearGradient id="lineGlowLm" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="rgba(255,255,255,0.45)" />
-              <stop offset="100%" stopColor="rgba(255,255,255,0.15)" />
+            <linearGradient id="lineGlowLm" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.2)" />
+              <stop offset="50%" stopColor="rgba(255,255,255,0.45)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.2)" />
             </linearGradient>
           </defs>
-          <ellipse cx="100" cy="65" rx="96" ry="58" fill="none" stroke="url(#lineGlowLm)" strokeWidth="1.8" opacity="0.95" />
-          <line x1="100" y1="8" x2="100" y2="122" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" />
-          <rect x="78" y="48" width="44" height="34" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="0.9" rx="1" />
-          <ellipse cx="100" cy="65" rx="14" ry="14" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="0.9" />
-          <ellipse cx="100" cy="65" rx="6" ry="6" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="0.8" />
-          <path d="M 12 38 Q 100 18 188 38" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="0.85" />
-          <path d="M 12 92 Q 100 112 188 92" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="0.85" />
-          <line x1="14" y1="58" x2="14" y2="72" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" />
-          <line x1="186" y1="58" x2="186" y2="72" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" />
+          {/* Boundary (major axis vertical — typical preference shape) */}
+          <ellipse cx="50" cy="80" rx="46" ry="74" fill="none" stroke="url(#lineGlowLm)" strokeWidth="1.35" opacity="0.96" />
+          {/* Centre line: parallel to goal lines, halves ground along goal-to-goal axis */}
+          <line x1="6" y1="80" x2="94" y2="80" stroke="rgba(255,255,255,0.38)" strokeWidth="1" strokeLinecap="round" />
+          {/* Centre square (schematic) */}
+          <rect x="38" y="70" width="24" height="20" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="0.85" rx="0.5" />
+          {/* Centre circle + spot */}
+          <ellipse cx="50" cy="80" rx="11" ry="11" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="0.85" />
+          <ellipse cx="50" cy="80" rx="3.2" ry="3.2" fill="rgba(255,255,255,0.35)" stroke="none" />
+          {/* 50 m arcs toward each scoring end (concave toward centre) */}
+          <path
+            d="M 10 34 Q 50 44 90 34"
+            fill="none"
+            stroke="rgba(255,255,255,0.24)"
+            strokeWidth="0.75"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 10 126 Q 50 116 90 126"
+            fill="none"
+            stroke="rgba(255,255,255,0.24)"
+            strokeWidth="0.75"
+            strokeLinecap="round"
+          />
+          {/* Goal posts + crossbars — top (back) and bottom (forward) */}
+          <g stroke="rgba(255,255,255,0.48)" strokeLinecap="round">
+            <line x1="44" y1="6" x2="44" y2="12" strokeWidth="1.35" />
+            <line x1="56" y1="6" x2="56" y2="12" strokeWidth="1.35" />
+            <line x1="42" y1="9.5" x2="58" y2="9.5" strokeWidth="1" />
+            <line x1="44" y1="148" x2="44" y2="154" strokeWidth="1.35" />
+            <line x1="56" y1="148" x2="56" y2="154" strokeWidth="1.35" />
+            <line x1="42" y1="150.5" x2="58" y2="150.5" strokeWidth="1" />
+          </g>
         </svg>
 
-        <div className="absolute inset-x-[4%] top-[4%] bottom-[11%] flex flex-col gap-0.5 sm:gap-1 min-h-0 overflow-hidden pointer-events-auto">
+        <div
+          className="absolute inset-x-[6%] top-[6%] bottom-[12%] flex flex-col gap-0.5 sm:gap-1 min-h-0 overflow-hidden pointer-events-auto"
+          style={{ clipPath: "ellipse(48% 47% at 50% 48%)" }}
+        >
           {ROWS_BACK_TO_FWD.map((row, r) => (
             <div key={row.key} className="flex-1 min-h-0 flex flex-col">
               <div
@@ -326,7 +356,7 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
 
         <div className="pointer-events-none absolute inset-x-0 bottom-[3.5%] flex justify-center px-2">
           <span className="text-[10px] font-black uppercase tracking-[0.35em] text-white/85 drop-shadow-sm px-3 py-1 rounded-full bg-black/40 border border-white/25">
-            Forward 50
+            Forward 50 · scoring end ahead
           </span>
         </div>
       </div>
@@ -370,8 +400,9 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-400/80 mr-1 align-middle" /> Grass = playing surface
         </span>
         <span>
-          <span className="inline-block w-2 h-2 rounded-full border-2 border-white/50 mr-1 align-middle" /> White = boundary / centre
+          <span className="inline-block w-2 h-2 rounded-full border-2 border-white/50 mr-1 align-middle" /> White = boundary, centre, 50s, goals
         </span>
+        <span>Oval is tall so goal-to-goal matches B (top) → F (bottom).</span>
       </div>
     </div>
   );
