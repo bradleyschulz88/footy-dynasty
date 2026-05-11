@@ -101,7 +101,7 @@ import {
 import { getClubGround } from './data/grounds.js';
 import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from './lib/careerAdvance.js';
 import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from './lib/gameDepth.js';
-import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, LINEUP_FIELD_COUNT, removeIdFromLineup } from './lib/lineupHelpers.js';
+import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, LINEUP_FIELD_COUNT, LINEUP_OVAL_SLOT_COUNT, removeIdFromLineup } from './lib/lineupHelpers.js';
 
 /** Single light UI — always `dirA` (see tokens.css `--A-*`). */
 function themeWrapperClass() {
@@ -3170,7 +3170,7 @@ function TacticsTab({ career, updateCareer }) {
     <div className="grid md:grid-cols-2 gap-4">
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>FORMATION (18 ON FIELD)</h3>
-        <div className="text-[11px] text-atext-dim mb-2">{lineupPlayerCount(rawLineup)}/{LINEUP_CAP} in match squad. Dots use your first {LINEUP_FIELD_COUNT} ground-map slots (forward 50 → back 50). Two wings, half-forwards, etc. fill in list order when available.</div>
+        <div className="text-[11px] text-atext-dim mb-2">{lineupPlayerCount(rawLineup)}/{LINEUP_CAP} in match squad. Dots use your <span className="text-atext font-semibold">first {LINEUP_OVAL_SLOT_COUNT}</span> oval slots (B→F), then <span className="text-atext font-semibold">{LINEUP_FIELD_COUNT - LINEUP_OVAL_SLOT_COUNT} followers</span>, in list order — wings and lines fill when available.</div>
         <p className="text-[10px] text-atext-mute mb-3">Tip: <span className="text-atext font-semibold">Utility (UT)</span> appears on the ground when selected in the 23.</p>
         <div className="relative aspect-[5/4] rounded-2xl overflow-hidden ring-2 ring-white/10" style={{ background: 'radial-gradient(ellipse at center, #1B5E3F 0%, #0F4029 70%, #08251A 100%)' }}>
           <svg viewBox="0 0 500 400" className="absolute inset-0 w-full h-full" role="img" aria-label="Formation positions">

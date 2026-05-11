@@ -326,7 +326,7 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
             </Pill>
           </div>
           <p className="text-[11px] text-atext-dim mb-3 leading-snug">
-            Ground map: <span className="text-atext font-semibold">18</span> on-field slots +{" "}
+            Ground map: <span className="text-atext font-semibold">15 + 3</span> on-field (oval + followers) +{" "}
             <span className="text-atext font-semibold">5 interchange</span>. Drag from the bench onto a slot, or move
             chips between slots.
           </p>

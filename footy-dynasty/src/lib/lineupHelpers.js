@@ -3,10 +3,16 @@ import { primaryLineBucket } from "./lineupBalance.js";
 /** Match-day squad (18 on field + 5 interchange). */
 export const LINEUP_CAP = 23;
 
-/** On-field starters — rows on the ground map before interchange. */
-export const LINEUP_FIELD_COUNT = 18;
+/** Slots 0–14: five rows of three on the oval (B → HB → C → HF → F, defence top). */
+export const LINEUP_OVAL_SLOT_COUNT = 15;
 
-/** Interchange / bench positions (slots 18–22). */
+/** Slots 15–17: followers row directly under the oval. */
+export const LINEUP_FOLLOWERS_COUNT = 3;
+
+/** On-field only (oval + followers), before interchange. */
+export const LINEUP_FIELD_COUNT = LINEUP_OVAL_SLOT_COUNT + LINEUP_FOLLOWERS_COUNT;
+
+/** Interchange / bench (slots 18–22). */
 export const LINEUP_INTERCHANGE_COUNT = 5;
 
 /** How many players are selected in the lineup (non-empty slots). */
