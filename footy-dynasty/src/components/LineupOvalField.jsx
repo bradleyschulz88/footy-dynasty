@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { LINEUP_CAP, LINEUP_INTERCHANGE_COUNT } from "../lib/lineupHelpers.js";
+import { LINEUP_CAP, LINEUP_FIELD_COUNT, LINEUP_INTERCHANGE_COUNT } from "../lib/lineupHelpers.js";
 import { css } from "./primitives.jsx";
 
 /** Visual row keys top→bottom (forward 50 at top). */
