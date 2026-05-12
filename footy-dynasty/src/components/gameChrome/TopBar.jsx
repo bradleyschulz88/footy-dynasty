@@ -84,7 +84,13 @@ export function TopBar({ career, club, league, myLadderPos, onAdvance, advanceDi
           ].map(({ label, value, color, bar, hideBelow }) => {
             const cls = hideBelow === 'lg' ? 'hidden lg:flex' : hideBelow === 'md' ? 'hidden md:flex' : hideBelow === 'sm' ? 'hidden sm:flex' : 'flex';
             return (
-              <div key={label} className={`${cls} items-center px-3 md:px-4 h-full border-r border-aline last:border-r-0 flex-shrink-0`}>
+              <motion.div
+                key={`${timeTick}-${label}`}
+                className={`${cls} items-center px-3 md:px-4 h-full border-r border-aline last:border-r-0 flex-shrink-0`}
+                initial={{ opacity: 0.45, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.26, ease: tickEase }}
+              >
                 <div>
                   <div className="text-[11px] font-mono font-bold uppercase tracking-[0.18em] text-atext-mute">{label}</div>
                   {bar ? (
@@ -98,7 +104,7 @@ export function TopBar({ career, club, league, myLadderPos, onAdvance, advanceDi
                     <div className="font-display text-lg md:text-xl leading-tight" style={{color}}>{value}</div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>

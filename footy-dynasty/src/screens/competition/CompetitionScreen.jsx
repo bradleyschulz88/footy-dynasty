@@ -18,7 +18,7 @@ import { css, Pill } from "../../components/primitives.jsx";
 // ============================================================================
 // COMPETITION SCREEN — Ladder / Fixtures / Pyramid
 // ============================================================================
-export default function CompetitionScreen({ career, club, league, tab, setTab }) {
+export default function CompetitionScreen({ career, club, league, tab, setTab, onOpenCalendar }) {
   const t = tab || "ladder";
   const tabs = [
     { key: "ladder", label: "Ladder", icon: BarChart3 },
@@ -26,7 +26,18 @@ export default function CompetitionScreen({ career, club, league, tab, setTab })
     { key: "pyramid", label: "Pyramid", icon: Trophy },
   ];
   return (
-    <div className="anim-in">
+    <div className="anim-in space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] text-atext-dim max-w-xl leading-relaxed">
+          <span className="text-atext font-semibold">Schedule</span> is your month view and event queue.{" "}
+          <span className="text-atext font-semibold">Competition</span> is ladder, fixture list, and pyramid context.
+        </p>
+        {typeof onOpenCalendar === "function" && (
+          <button type="button" onClick={() => onOpenCalendar()} className={`${css.btnGhost} text-[11px] px-3 py-2 whitespace-nowrap shrink-0`}>
+            ← Season calendar
+          </button>
+        )}
+      </div>
       <TabNav tabs={tabs} active={t} onChange={setTab} />
       {t === "ladder"   && <LadderTab career={career} club={club} league={league} />}
       {t === "fixtures" && <FixturesTab career={career} club={club} league={league} />}

@@ -245,17 +245,21 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
 
   return (
     <div
+      role="region"
+      aria-labelledby="lineup-ground-map-heading"
       className={`relative w-full max-w-6xl mx-auto mb-0 sm:mb-1 rounded-2xl p-3 sm:p-4 md:p-5 touch-manipulation ${stitch ? "stitch-neon-card" : ""}`}
       style={stitch ? undefined : { border: "1px solid var(--A-line)", background: "var(--A-panel)" }}
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-3">
         <div>
-          <h3 className={`${css.h1} text-base md:text-lg tracking-wide`}>Ground map</h3>
+          <h3 id="lineup-ground-map-heading" className={`${css.h1} text-base md:text-lg tracking-wide`}>
+            Ground map
+          </h3>
           <p className="text-[11px] text-atext-dim mt-1 max-w-xl leading-snug">
             <span className="text-atext font-semibold">15</span> on the oval (B–F),{" "}
             <span className="text-atext font-semibold">{LINEUP_FOLLOWERS_COUNT} followers</span>,{" "}
             <span className="text-atext font-semibold">{LINEUP_INTERCHANGE_COUNT} interchange</span>. Schematic team sheet — drag players
-            into place.
+            into place. If drag-and-drop is awkward, use the squad list view where available.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[10px] font-mono uppercase text-atext-dim shrink-0">

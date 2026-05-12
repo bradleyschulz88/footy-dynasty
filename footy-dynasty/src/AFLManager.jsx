@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { AnimatePresence, motion, MotionConfig, useReducedMotion } from "motion/react";
 import {
   Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
@@ -18,7 +18,7 @@ import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotion
 import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
 import { generateSeasonCalendar, TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from './lib/calendar.js';
-import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from './lib/save.js';
+import { SAVE_VERSION, SLOT_IDS, LAST_EXPORT_STORAGE_KEY, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from './lib/save.js';
 import { computeInitialCareerBoot } from './lib/bootCareer.js';
 import {
   playerBlockedFromTrade,
@@ -42,6 +42,13 @@ import AppErrorBoundary from './components/AppErrorBoundary.jsx';
 import { CareerSetup } from './screens/CareerSetupScreen.jsx';
 import { Sidebar } from './components/gameChrome/Sidebar.jsx';
 import { TopBar } from './components/gameChrome/TopBar.jsx';
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.jsx';
+import {
+  useCareerAutosaveEffect,
+  useCareerVisibilityFlushEffect,
+  useCareerHtmlDatasetEffect,
+} from './hooks/useCareerChromeEffects.js';
+import { useGameHotkeys } from './hooks/useGameHotkeys.js';
 import { TUTORIAL_STEPS } from './lib/tutorialConstants.js';
 import { SETUP_SS_KEY, SETUP_SS_KEY_LEGACY } from './lib/setupConstants.js';
 
@@ -151,17 +158,36 @@ function AFLManagerInner() {
   const [career, setCareer] = useState(() => bootRef.career);
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  // Autosave on career change to active slot
+  const bumpSlotMeta = useCallback(() => setSlotMetaTick((t) => t + 1), []);
+
+  const advanceShellRef = useRef({ career: null, setCareer, setScreen });
   useEffect(() => {
-    if (!career || !activeSlot) return;
-    const opts = career.options || { autosave: true };
-    if (!opts.autosave) return;
-    writeSlot(activeSlot, career);
-    sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
-    sessionStorage.removeItem(SETUP_SS_KEY);
-    setSlotMetaTick(t => t + 1);
-  }, [career, activeSlot]);
+    advanceShellRef.current = { career, setCareer, setScreen };
+  }, [career, setCareer, setScreen]);
+
+  const advanceToNextEvent = useCallback(() => {
+    const { career: c, setCareer: sc, setScreen: ss } = advanceShellRef.current;
+    if (!c?.clubId) return;
+    const advClub = findClub(c.clubId);
+    const advLeague = PYRAMID[c.leagueKey];
+    advanceCareerNextEvent({ career: c, league: advLeague, club: advClub, setCareer: sc, setScreen: ss });
+  }, []);
+
+  const navCareerRef = useRef(null);
+  useEffect(() => {
+    navCareerRef.current = career;
+  }, [career]);
+
+  const onNavScreen = useCallback((key) => {
+    const c = navCareerRef.current;
+    if (c && !c.tutorialComplete && !tutorialAllowsNavigation(c.tutorialStep ?? 0, key)) return;
+    setScreen(key);
+    setTab(null);
+  }, []);
+
+  useCareerAutosaveEffect(career, activeSlot, bumpSlotMeta);
 
   // Tutorial mid-step auto-advance (must run before any early return — Rules of Hooks)
   useEffect(() => {
@@ -174,34 +200,37 @@ function AFLManagerInner() {
     setCareer((c) => ({ ...c, tutorialStep: next, tutorialComplete: isDone }));
   }, [career, career?.tutorialStep, career?.tutorialComplete, career?.sponsors, screen, tab]);
 
-  useEffect(() => {
-    if (!career) {
-      delete document.documentElement.dataset.uiDensity;
-      delete document.documentElement.dataset.reduceMotion;
-      return undefined;
-    }
-    const density = career.options?.uiDensity === 'compact' ? 'compact' : 'comfortable';
-    document.documentElement.dataset.uiDensity = density;
-    document.documentElement.dataset.reduceMotion = career.options?.reduceMotion ? '1' : '0';
-    return () => {
-      delete document.documentElement.dataset.uiDensity;
-      delete document.documentElement.dataset.reduceMotion;
-    };
-  }, [career?.options?.uiDensity, career?.options?.reduceMotion, career]);
+  useCareerHtmlDatasetEffect(career);
 
   const systemReducedMotion = useReducedMotion();
   const motionReduced = !!(systemReducedMotion || career?.options?.reduceMotion);
 
+  useCareerVisibilityFlushEffect(career, activeSlot, bumpSlotMeta);
+
+  const hotkeysShellActive = !!(
+    career &&
+    !career.isSacked &&
+    !(career.gameOver && !career.isSacked) &&
+    !career.showSeasonSummary &&
+    !career.inMatchDay &&
+    career.boardCrisis?.phase !== 'active' &&
+    !career.boardMeetingBlocking &&
+    !career.arrivalBriefing?.pending
+  );
+
   useEffect(() => {
-    const onVis = () => {
-      if (document.visibilityState !== 'hidden' || !career || !activeSlot) return;
-      if (career.options?.autosave === false) return;
-      writeSlot(activeSlot, career);
-      setSlotMetaTick((t) => t + 1);
-    };
-    document.addEventListener('visibilitychange', onVis);
-    return () => document.removeEventListener('visibilitychange', onVis);
-  }, [career, activeSlot]);
+    if (!hotkeysShellActive) setShortcutsOpen(false);
+  }, [hotkeysShellActive]);
+
+  useGameHotkeys({
+    enabled: hotkeysShellActive,
+    advanceDisabled: career ? tutorialLocksAdvanceButton(career) : true,
+    onAdvance: advanceToNextEvent,
+    onOpenShortcuts: () => setShortcutsOpen(true),
+    onNavigateScreen: onNavScreen,
+    tutorialStep: career?.tutorialStep,
+    tutorialComplete: career?.tutorialComplete,
+  });
 
   function handleExportCareer() {
     if (!career || !activeSlot) return;
@@ -219,6 +248,12 @@ function AFLManagerInner() {
     a.download = `footy-dynasty-${activeSlot}-season-${career.season}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    try {
+      localStorage.setItem(LAST_EXPORT_STORAGE_KEY, String(Date.now()));
+    } catch (_) {
+      /* ignore quota / private mode */
+    }
+    bumpSlotMeta();
   }
 
   async function handleImportCareerFile(file) {
@@ -493,23 +528,11 @@ function AFLManagerInner() {
   const league = PYRAMID[career.leagueKey];
   const myLineup = career.lineup;
 
-  function advanceToNextEvent() {
-    advanceCareerNextEvent({ career, league, club, setCareer, setScreen });
-  }
-
   // ============== UPDATER ==============
   const updateCareer = (patch) => setCareer(c => ({ ...c, ...patch }));
   const updateField = (field, value) => setCareer(c => ({ ...c, [field]: value }));
 
   const tutorialActive = career && !career.tutorialComplete;
-
-  const onNavScreen = (key) => {
-    if (career && !career.tutorialComplete && !tutorialAllowsNavigation(career.tutorialStep ?? 0, key)) {
-      return;
-    }
-    setScreen(key);
-    setTab(null);
-  };
 
   const myLadderPos = (() => {
     const s = sortedLadder(career.ladder);
@@ -633,8 +656,6 @@ function AFLManagerInner() {
         {showPostMatch && career.lastMatchSummary && (
           <PostMatchSummary
             summary={career.lastMatchSummary}
-            career={career}
-            club={club}
             onReview={() => setShowPostMatch(false)}
             onContinue={() => {
               setShowPostMatch(false);
@@ -763,7 +784,7 @@ function AFLManagerInner() {
               )}
               {screen === "schedule" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading calendar…" />}>
-                  <ScheduleScreenLazy career={career} club={club} league={league} />
+                  <ScheduleScreenLazy career={career} club={club} league={league} onOpenCompetition={() => onNavScreen("compete")} />
                 </Suspense>
               )}
               {screen === "club" && (
@@ -785,7 +806,7 @@ function AFLManagerInner() {
               )}
               {screen === "compete" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading competition…" />}>
-                  <CompetitionScreenLazy career={career} club={club} league={league} tab={tab} setTab={setTab} />
+                  <CompetitionScreenLazy career={career} club={club} league={league} tab={tab} setTab={setTab} onOpenCalendar={() => onNavScreen("schedule")} />
                 </Suspense>
               )}
               {screen === "settings" && (
@@ -824,6 +845,7 @@ function AFLManagerInner() {
           onSkip={() => updateCareer({ tutorialStep: TUTORIAL_STEPS.length, tutorialComplete: true })}
         />
       )}
+      <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
     </AppMotionConfig>
   );

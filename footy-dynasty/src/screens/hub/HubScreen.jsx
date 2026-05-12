@@ -29,6 +29,7 @@ import {
   stadiumDescription,
   committeeMoodAverage,
 } from "../../lib/community.js";
+import { boardObjectiveUiStatus, youthSeniorGameCount } from "../../lib/board.js";
 import { css, Pill, Stat, Jersey } from "../../components/primitives.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 
@@ -148,7 +149,9 @@ function DifficultyMiniSummary({ career, cfg }) {
       <div className={css.label}>Difficulty</div>
       <div className="font-display text-2xl" style={{ color: profile.color }}>{profile.label.toUpperCase()}</div>
       <div className="text-[11px] text-atext-dim mb-2 leading-snug">{profile.summary}</div>
-      <div className="text-[10px] text-atext-mute">{cfg.boardPatienceSeasons} season{cfg.boardPatienceSeasons === 1 ? '' : 's'} of board patience · {cfg.injuryMultiplier}× injuries</div>
+      <div className="text-[10px] text-atext-mute mb-2">
+        {cfg.boardPatienceSeasons} season{cfg.boardPatienceSeasons === 1 ? "" : "s"} of board patience · {cfg.injuryMultiplier}× injuries · cash and expectations scale with this profile.
+      </div>
     </div>
   );
 }
@@ -172,6 +175,29 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
   const cap = effectiveWageCap(career);
   const playerWagesHub = currentPlayerWageBill(career);
   const capPctHub = cap > 0 ? Math.round((playerWagesHub / cap) * 100) : 0;
+
+  const boardObjectiveRows = React.useMemo(() => {
+    const objs = career.board?.objectives;
+    if (!objs?.length) return [];
+    const order = sorted.findIndex((r) => r.id === career.clubId) + 1;
+    const youthN = youthSeniorGameCount(career.squad);
+    return objs.map((obj) => {
+      let current = obj.current;
+      if (obj.met == null) {
+        if (obj.type === "ladder_position") current = order;
+        else if (obj.type === "budget_discipline") current = career.finance?.cash ?? 0;
+        else if (obj.type === "youth_promoted") current = youthN;
+        else if (obj.type === "premiership") current = career.premiership === career.season ? 1 : 0;
+      }
+      const synthetic = { ...obj, current };
+      return {
+        id: obj.id,
+        description: obj.description,
+        setBy: obj.setBy,
+        status: boardObjectiveUiStatus(synthetic, career),
+      };
+    });
+  }, [career, sorted]);
 
   return (
     <motion.div className="space-y-5" variants={hubContainer} initial="hidden" animate="show">
@@ -234,6 +260,50 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
       <motion.div variants={hubItem}>
         <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} setTab={setTab} />
       </motion.div>
+
+      {boardObjectiveRows.length > 0 && (
+        <motion.div variants={hubItem} className={`${css.panel} p-4`}>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 className="font-display text-lg text-atext tracking-wide">BOARD OBJECTIVES</h3>
+            <button
+              type="button"
+              onClick={() => {
+                setScreen("club");
+                setTab?.("board");
+              }}
+              className={`${css.btnGhost} text-[10px] py-1.5 px-2.5`}
+            >
+              Open board tab →
+            </button>
+          </div>
+          <ul className="space-y-2">
+            {boardObjectiveRows.map((row) => (
+              <li
+                key={row.id}
+                className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-aline bg-apanel-2/80 px-3 py-2"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-atext-mute">{row.setBy}</div>
+                  <div className="text-sm text-atext leading-snug">{row.description}</div>
+                </div>
+                <span
+                  className={`text-[10px] font-black font-mono uppercase tracking-wider shrink-0 px-2 py-1 rounded-md border border-aline ${
+                    row.status === "ON TRACK"
+                      ? "text-[#4AE89A]"
+                      : row.status === "AT RISK" || row.status === "MISSED"
+                        ? "text-[#E84A6F]"
+                        : row.status === "MET"
+                          ? "text-[#4AE89A]"
+                          : "text-atext-dim"
+                  }`}
+                >
+                  {row.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </motion.div>
+      )}
 
       {(() => {
         const playerQ = (career.pendingRenewals || []).filter((r) => !r._handled).length;

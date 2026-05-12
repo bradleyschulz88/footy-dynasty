@@ -28,7 +28,6 @@ import { SquadLineupBuilder, LineupSortablePanel } from '../../components/SquadL
 import TabNav from '../../components/TabNav.jsx';
 import { ClubBadge } from '../../components/ClubBadge.jsx';
 import GameOverScreen from '../../screens/GameOverScreen.jsx';
-import PostMatchSummary from '../../screens/PostMatchSummary.jsx';
 import SackingSequence from '../../screens/SackingSequence.jsx';
 import VoteOfConfidenceFlow from '../../screens/VoteOfConfidenceFlow.jsx';
 import BoardMeetingScreen from '../../screens/BoardMeetingScreen.jsx';

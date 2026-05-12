@@ -29,7 +29,6 @@ import TabNav from '../../components/TabNav.jsx';
 import { ClubBadge } from '../../components/ClubBadge.jsx';
 import { ContractsTab, StaffRenewalsPanel } from '../contracts/ContractRenewals.jsx';
 import GameOverScreen from '../../screens/GameOverScreen.jsx';
-import PostMatchSummary from '../../screens/PostMatchSummary.jsx';
 import SackingSequence from '../../screens/SackingSequence.jsx';
 import VoteOfConfidenceFlow from '../../screens/VoteOfConfidenceFlow.jsx';
 import BoardMeetingScreen from '../../screens/BoardMeetingScreen.jsx';
@@ -67,7 +66,6 @@ import {
   resetExecutiveBoard,
   applyBoardConfidenceDelta,
   generateSeasonObjectives,
-  updateBoardObjectiveProgress,
   resolveBoardObjectivesAtSeasonEnd,
   youthSeniorGameCount,
   boardObjectiveUiStatus,

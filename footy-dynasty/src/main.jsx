@@ -8,3 +8,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <AFLManager />
   </React.StrictMode>,
 )
+
+if (import.meta.env.PROD) {
+  import('virtual:pwa-register').then(({ registerSW }) => {
+    registerSW({ immediate: true })
+  }).catch(() => {})
+}

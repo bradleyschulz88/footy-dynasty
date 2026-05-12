@@ -22,13 +22,13 @@ export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos 
   const tutStep = career?.tutorialStep ?? 0;
   const highlightNav = tutorialOn ? tutorialHighlightScreen(tutStep) : null;
   const items = [
-    { key: "hub",      label: "Hub",         icon: Home,      desc: "Overview" },
-    { key: "squad",    label: "Squad",       icon: Users,     desc: "Players & Tactics" },
-    { key: "schedule", label: "Schedule",    icon: Calendar,  desc: "Calendar & Fixtures" },
-    { key: "club",     label: "Club",        icon: Building2, desc: "Contracts, ops & board" },
-    { key: "recruit",  label: "Recruit",     icon: Repeat,    desc: "Trade & Draft" },
-    { key: "compete",  label: "Competition", icon: Trophy,    desc: "Ladder & Fixtures" },
-    { key: "settings", label: "Settings",    icon: Settings,   desc: "Save & preferences" },
+    { key: "hub",      label: "Hub",         icon: Home,      desc: "Dashboard & match preview" },
+    { key: "squad",    label: "Squad",       icon: Users,     desc: "Line-up & player lists" },
+    { key: "schedule", label: "Schedule",    icon: Calendar,  desc: "Month calendar & upcoming queue" },
+    { key: "club",     label: "Club",        icon: Building2, desc: "Contracts, finances & board" },
+    { key: "recruit",  label: "Recruit",     icon: Repeat,    desc: "Trade period & draft" },
+    { key: "compete",  label: "Competition", icon: Trophy,    desc: "Ladder, fixtures & pyramid" },
+    { key: "settings", label: "Settings",    icon: Settings,   desc: "Save slots & preferences" },
   ];
   return (
     <aside className="w-full md:w-64 md:flex flex-col md:sticky md:top-0 md:h-screen shrink-0 bg-apanel border-b md:border-b-0 md:border-r border-aline">
@@ -80,7 +80,11 @@ export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos 
           const navLocked = tutorialOn && !tutorialAllowsNavigation(tutStep, it.key);
           const spotlight = tutorialOn && highlightNav === it.key;
           return (
-            <button key={it.key} type="button" disabled={navLocked} onClick={() => { if (!navLocked) onNavigate(it.key); }}
+            <button
+              key={it.key}
+              type="button"
+              aria-current={active ? "page" : undefined}
+              disabled={navLocked} onClick={() => { if (!navLocked) onNavigate(it.key); }}
               title={navLocked ? 'Complete the current tutorial step or skip the tutorial.' : undefined}
               className={`flex items-center gap-2 md:gap-3 px-3 py-2 md:py-3 rounded-xl transition-all group border whitespace-nowrap md:w-full ${spotlight ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${navLocked ? "opacity-35 cursor-not-allowed border-transparent" : ""} ${active ? "bg-aaccent/10 border-aaccent/40 text-aaccent" : !navLocked ? "border-transparent text-atext-dim hover:bg-aaccent/5 hover:text-atext" : "border-transparent text-atext-mute"}`}>
               <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${active ? "bg-aaccent/15 text-aaccent" : "text-atext-mute"}`}>

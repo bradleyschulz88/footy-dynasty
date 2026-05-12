@@ -1,13 +1,36 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
+
+const testing = process.env.npm_lifecycle_event === 'test'
 
 export default defineConfig({
-  // npm sets npm_lifecycle_event=test for `npm test`. Skipping the React plugin avoids Vitest worker OOM.
-  plugins: process.env.npm_lifecycle_event === 'test' ? [] : [react()],
+  plugins: testing
+    ? []
+    : [
+        react(),
+        VitePWA({
+          registerType: 'autoUpdate',
+          devOptions: { enabled: false },
+          manifest: {
+            name: 'Footy Dynasty',
+            short_name: 'Footy Dynasty',
+            description: 'Australian rules football dynasty manager — climb the pyramid.',
+            theme_color: '#0b1220',
+            background_color: '#0b1220',
+            display: 'standalone',
+            orientation: 'any',
+            start_url: '/',
+            scope: '/',
+          },
+          workbox: {
+            globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+          },
+        }),
+      ],
   test: {
     environment: 'node',
     globals: true,
-    // More throughput locally; keep CI predictable (GitHub Actions sets CI=true).
     maxWorkers: process.env.CI ? 4 : '75%',
   },
 })

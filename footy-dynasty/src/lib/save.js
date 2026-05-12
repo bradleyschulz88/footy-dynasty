@@ -17,6 +17,9 @@ const ACTIVE_SLOT_KEY = 'footy-dynasty-active-slot';
 
 export const SLOT_IDS = ['A', 'B', 'C'];
 
+/** Updated when the player exports JSON — used for backup reminders in Settings. */
+export const LAST_EXPORT_STORAGE_KEY = 'footy-dynasty-last-export-at';
+
 /** Slot id with the newest `savedAt` in meta, or null. */
 export function getLatestSavedSlot(meta = readSlotMeta()) {
   let best = null;

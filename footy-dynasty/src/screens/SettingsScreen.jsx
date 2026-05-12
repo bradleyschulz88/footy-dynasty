@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 import { Save, ChevronsUp, RefreshCw, FileDown, Upload } from "lucide-react";
 import { css } from "../components/primitives.jsx";
 import { DIFFICULTY_IDS, getDifficultyConfig, getDifficultyProfile } from "../lib/difficulty.js";
-import { SLOT_IDS } from "../lib/save.js";
+import { SLOT_IDS, LAST_EXPORT_STORAGE_KEY } from "../lib/save.js";
 import { findClub } from "../data/pyramid.js";
 
 // ============================================================================
@@ -227,6 +227,31 @@ export default function SettingsScreen({
       <div className={`${css.panel} p-5 space-y-4`}>
         <h3 className={`${css.h1} text-2xl`}>SAVE DATA</h3>
         <p className="text-xs text-atext-dim">Backup or move careers between browsers. Imported careers run through the same migration as loading a slot.</p>
+        {(() => {
+          let daysSinceExport = null;
+          try {
+            const raw = typeof localStorage !== "undefined" ? localStorage.getItem(LAST_EXPORT_STORAGE_KEY) : null;
+            if (raw != null && raw !== "") {
+              const ms = Number(raw);
+              if (Number.isFinite(ms)) daysSinceExport = (Date.now() - ms) / 86400000;
+            }
+          } catch (_) {
+            /* ignore */
+          }
+          const stale = daysSinceExport == null || daysSinceExport > 14;
+          if (!stale) return null;
+          return (
+            <div
+              className="rounded-xl border border-[#FFB347]/45 p-3 text-[11px] text-atext-dim leading-relaxed"
+              style={{ background: "rgba(255,179,71,0.08)" }}
+            >
+              <span className="font-bold text-atext">Backup reminder:</span>{" "}
+              {daysSinceExport == null
+                ? "You have not exported this browser session recently. Download JSON occasionally so a cleared cache does not cost you a career."
+                : `Last export was about ${Math.floor(daysSinceExport)} days ago — consider another JSON backup.`}
+            </div>
+          );
+        })()}
         <div className="flex flex-wrap gap-2">
           <button
             type="button"

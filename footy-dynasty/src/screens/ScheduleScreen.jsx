@@ -15,7 +15,7 @@ import {
 import { css } from "../components/primitives.jsx";
 import { ClubBadge } from "../components/ClubBadge.jsx";
 
-export default function ScheduleScreen({ career, club, league }) {
+export default function ScheduleScreen({ career, club, league, onOpenCompetition }) {
   const startDate = career.currentDate || `${career.season - 1}-12-01`;
   const [viewDate, setViewDate] = React.useState(startOfMonth(startDate));
 
@@ -78,6 +78,12 @@ export default function ScheduleScreen({ career, club, league }) {
     <div className="anim-in space-y-5 touch-manipulation">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className={`${css.h1} text-3xl`}>SEASON CALENDAR</h1>
+        <div className="flex flex-wrap items-center gap-2 justify-end">
+          {typeof onOpenCompetition === "function" && (
+            <button type="button" onClick={() => onOpenCompetition()} className={`${css.btnGhost} text-[11px] px-3 py-2 whitespace-nowrap`}>
+              Standings & ladder →
+            </button>
+          )}
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -98,6 +104,7 @@ export default function ScheduleScreen({ career, club, league }) {
           >
             <ChevronRight className="w-5 h-5" />
           </button>
+        </div>
         </div>
       </div>
 
