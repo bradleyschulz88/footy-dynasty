@@ -10,8 +10,9 @@ import { migrateSaveGameDepthV12 } from './gameDepth.js';
 import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { migrateDraftPoolScouting } from './draftScouting.js';
 import { pushManagerInboxBoardMirror, syncTradePeriodManagerInboxRow } from './inbox.js';
+import { DEFAULT_STAFF_TASKS } from './staffTasks.js';
 
-export const SAVE_VERSION = 19;
+export const SAVE_VERSION = 20;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
@@ -280,7 +281,38 @@ export function migrate(save) {
     for (const msg of s.board?.inbox || []) {
       pushManagerInboxBoardMirror(s, msg);
     }
-    syncTradePeriodManagerInboxRow(s);
+  }
+
+  if (v < 20) {
+    s.saveVersion = 20;
+    s.staffTasks =
+      s.staffTasks && typeof s.staffTasks === 'object'
+        ? {
+            recruitPriorityState:
+              s.staffTasks.recruitPriorityState == null || s.staffTasks.recruitPriorityState === ''
+                ? null
+                : String(s.staffTasks.recruitPriorityState),
+            matchPrepTier: [0, 1, 2].includes(Number(s.staffTasks.matchPrepTier))
+              ? Number(s.staffTasks.matchPrepTier)
+              : 0,
+            trainingLeadId:
+              s.staffTasks.trainingLeadId == null || s.staffTasks.trainingLeadId === ''
+                ? null
+                : String(s.staffTasks.trainingLeadId),
+          }
+        : DEFAULT_STAFF_TASKS();
+    const tier = (s.leagueKey && PYRAMID[s.leagueKey]?.tier) ?? null;
+    if (tier === 3 && Array.isArray(s.staff) && !s.staff.some((st) => st.id === 's6')) {
+      s.staff.push({
+        id: 's6',
+        role: 'Club medic / first aid (volunteer)',
+        name: 'Volunteer Medic',
+        rating: 58,
+        wage: 0,
+        volunteer: true,
+        contract: 2,
+      });
+    }
   }
 
   return s;

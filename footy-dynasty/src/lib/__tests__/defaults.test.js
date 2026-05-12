@@ -173,10 +173,10 @@ describe('generateSponsors', () => {
 describe('generateStaff', () => {
   beforeEach(() => seedRng(42));
 
-  it('tier 1 keeps a full department (10), tier 2 slimmer (7), tier 3 volunteer core (4)', () => {
+  it('tier 1 keeps a full department (10), tier 2 slimmer (7), tier 3 volunteer core + medic (5)', () => {
     expect(generateStaff(1)).toHaveLength(10);
     expect(generateStaff(2)).toHaveLength(7);
-    expect(generateStaff(3)).toHaveLength(4);
+    expect(generateStaff(3)).toHaveLength(5);
   });
 
   it('each staff member has the required shape', () => {
@@ -203,7 +203,8 @@ describe('generateStaff', () => {
     expect(t3.find(s => s.id === 's2').wage).toBe(0);
     expect(t3.find(s => s.id === 's4').wage).toBe(0);
     expect(t3.find(s => s.id === 's5').wage).toBe(0);
-    expect(t3.filter(s => s.volunteer).length).toBe(3);
+    expect(t3.find(s => s.id === 's6').wage).toBe(0);
+    expect(t3.filter(s => s.volunteer).length).toBe(4);
     const hc = t3.find(s => s.id === 's1');
     expect(hc.wage).toBeGreaterThan(0);
     expect(hc.wage).toBeLessThan(80_000);

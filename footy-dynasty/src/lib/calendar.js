@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { rng } from './rng.js';
+import { clamp } from './format.js';
 
 export function addDays(dateStr, n) {
   const y = parseInt(dateStr.slice(0, 4), 10);
@@ -163,8 +164,12 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
   const intScale  = intensityScale(intensity);
 
   const staffMember = (staff || []).find(s => s.id === info.staffId);
-  const staffRating = staffMember?.rating ?? 60;
+  let staffRating = staffMember?.rating ?? 60;
   const staffName   = staffMember?.name   ?? 'Unknown Coach';
+  const leadId = opts.trainingLeadId ?? null;
+  if (leadId && staffMember && leadId === info.staffId) {
+    staffRating = clamp(Number(staffRating) + 6, 35, 99);
+  }
   const baseScale   = staffRating / 75;
 
   const gains    = {};

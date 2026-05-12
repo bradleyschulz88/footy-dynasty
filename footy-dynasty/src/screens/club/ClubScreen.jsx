@@ -84,6 +84,7 @@ import {
 } from '../../lib/board.js';
 import { getClubGround } from '../../data/grounds.js';
 import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from '../../lib/careerAdvance.js';
+import { ensureStaffTasks } from '../../lib/staffTasks.js';
 import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from '../../lib/gameDepth.js';
 import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, LINEUP_FIELD_COUNT, LINEUP_OVAL_SLOT_COUNT, removeIdFromLineup } from '../../lib/lineupHelpers.js';
 import {
@@ -1344,6 +1345,9 @@ function FacilitiesTab({ career, updateCareer }) {
   );
 }
 
+/** Staff IDs that lead training sessions in calendar TRAINING_INFO — bonus applies when trainingLeadId matches session lead. */
+const TRAINING_SESSION_LEAD_IDS = ['s2', 's4', 's5'];
+
 // ============================================================================
 // STAFF TAB
 // ============================================================================
@@ -1373,6 +1377,15 @@ function StaffTab({ career, updateCareer }) {
   };
   const totalWage = career.staff.reduce((a,s)=>a+s.wage,0);
   const avgRating = Math.round(career.staff.reduce((a,s)=>a+s.rating,0) / career.staff.length);
+  const tasks = ensureStaffTasks(career);
+  const clubState = findClub(career.clubId)?.state ?? null;
+  const patchStaffTasks = (partial) =>
+    updateCareer({ staffTasks: { ...tasks, ...partial } });
+  const trainingLeadOptions = (career.staff || []).filter((s) =>
+    TRAINING_SESSION_LEAD_IDS.includes(s.id),
+  );
+  const hasAnalyst = (career.staff || []).some((s) => s.id === 's10');
+
   return (
     <div className="space-y-4">
       <StaffRenewalsPanel career={career} updateCareer={updateCareer} leagueTier={leagueTier} />
@@ -1384,6 +1397,84 @@ function StaffTab({ career, updateCareer }) {
         <div className="flex items-center gap-3">
           <Stat label="Avg Rating" value={avgRating} accent="#4AE89A" />
           <Stat label="Annual Wages" value={fmtK(totalWage)} accent="var(--A-accent)" />
+        </div>
+      </div>
+
+      <div className={`${css.panel} p-5 space-y-4`}>
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-atext-mute">Staff priorities</div>
+        <div className="text-xs text-atext-dim leading-snug">
+          Head recruiter shapes trade asks; senior scout trims interstate scouting fees and sharpens local reports. Assign a <span className="text-atext font-semibold">training session lead</span> for +6 effective coaching rating when that coach runs the drill. Match-day depth flavour scales with tier when a performance analyst is on staff.
+        </div>
+        <div className="grid md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Recruiting region focus</label>
+            <select
+              value={tasks.recruitPriorityState ?? ''}
+              onChange={(e) =>
+                patchStaffTasks({
+                  recruitPriorityState: e.target.value === '' ? null : e.target.value,
+                })
+              }
+              className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm"
+            >
+              <option value="">Balanced (no fee discount)</option>
+              {STATES.filter((s) => s !== 'NAT').map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                  {clubState && s === clubState ? ' (home)' : ''}
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-atext-dim mt-1">Cheaper interstate scout packs into this state + clearer reports there.</p>
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Training session lead</label>
+            <select
+              value={tasks.trainingLeadId ?? ''}
+              onChange={(e) =>
+                patchStaffTasks({
+                  trainingLeadId: e.target.value === '' ? null : e.target.value,
+                })
+              }
+              className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm"
+            >
+              <option value="">Rotate (no lead bonus)</option>
+              {trainingLeadOptions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} — {s.role}
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-atext-dim mt-1">Bonus applies on sessions that coach already leads (forwards, midfield, S&amp;C).</p>
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Match-prep depth</label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { tier: 0, label: 'Standard' },
+                { tier: 1, label: 'Extra tape' },
+                { tier: 2, label: 'Deep dive' },
+              ].map(({ tier, label }) => (
+                <button
+                  key={tier}
+                  type="button"
+                  onClick={() => patchStaffTasks({ matchPrepTier: tier })}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold border transition ${
+                    tasks.matchPrepTier === tier
+                      ? 'border-aaccent bg-aaccent/15 text-aaccent'
+                      : 'border-aline bg-apanel text-atext-dim hover:border-aline-2'
+                  }`}
+                  disabled={tier >= 2 && !hasAnalyst}
+                  title={tier >= 2 && !hasAnalyst ? 'Requires Performance Analyst (s10) on staff' : ''}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-atext-dim mt-1">
+              {hasAnalyst ? 'Analyst unlocks the deepest match-preview flavour.' : 'Hire a performance analyst to unlock Deep dive.'}
+            </p>
+          </div>
         </div>
       </div>
 

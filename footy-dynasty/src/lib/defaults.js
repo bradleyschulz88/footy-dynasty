@@ -83,11 +83,11 @@ const STAFF_BLUEPRINT = [
   { id: "s10", role: "Performance Analyst",             rating: [50, 80], wage: 100000 },
 ];
 
-// Tier 1 = full AFL department; tier 2 = state league skeleton (~7); tier 3 = volunteer club (~4, still covers training staff ids).
+// Tier 1 = full AFL department; tier 2 = state league skeleton (~7); tier 3 = volunteer club (~5 incl. medic).
 const STAFF_IDS_BY_TIER = {
   1: ["s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"],
   2: ["s1", "s2", "s4", "s5", "s6", "s7", "s8"],
-  3: ["s1", "s2", "s4", "s5"],
+  3: ["s1", "s2", "s4", "s5", "s6"],
 };
 
 export function generateStaff(tier) {
@@ -112,6 +112,10 @@ export function generateStaff(tier) {
       }
       if (id === "s5") {
         role = "Runner / fitness (volunteer)";
+        volunteer = true;
+      }
+      if (id === "s6") {
+        role = "Club medic / first aid (volunteer)";
         volunteer = true;
       }
     }

@@ -1,14 +1,31 @@
 /** Tactical / training flavour tied to coaching staff ratings (IDs from defaults.STAFF_BLUEPRINT). */
 
-/** Match-preview flavour line from midfield / tactics-linked roles (s4 = midfield coach blueprint id). */
-export function matchPrepStaffLine(staff) {
+/** Match-preview flavour from midfield coach + optional analyst depth (staffTasks.matchPrepTier). */
+export function matchPrepStaffLine(staff, career) {
   const row = (staff || []).find((s) => s.id === "s4");
-  if (!row) return null;
-  const r = Number(row.rating);
-  if (!Number.isFinite(r)) return null;
-  if (r >= 78) return "Staff prep: sharp midfield unit — structures hold under heavier contested loads.";
-  if (r >= 65) return "Staff prep: solid weekly planning vs typical opponents.";
-  return "Staff prep: lightweight midfield dept — harder to squeeze extra tactical upside.";
+  let mids = "";
+  if (row) {
+    const r = Number(row.rating);
+    if (Number.isFinite(r)) {
+      if (r >= 78) mids = "Staff prep: sharp midfield unit — structures hold under heavier contested loads.";
+      else if (r >= 65) mids = "Staff prep: solid weekly planning vs typical opponents.";
+      else mids = "Staff prep: lightweight midfield dept — harder to squeeze extra tactical upside.";
+    }
+  }
+  const tier = Number(career?.staffTasks?.matchPrepTier) || 0;
+  const analyst = (staff || []).find((s) => s.id === "s10");
+  const ar = analyst ? Number(analyst.rating) : 0;
+  let extra = "";
+  if (tier >= 2 && analyst && ar >= 58) {
+    extra =
+      " Analyst bundle: opponent tendencies tagged — midfield exits and fwd entries mapped on the whiteboard.";
+  } else if (tier >= 1 && analyst && ar >= 52) {
+    extra = " Analyst desk: baseline opponent tape cut-ups ready for match committee.";
+  } else if (tier >= 1) {
+    extra = " Match prep depth raised — analyst capacity is stretched; lean on coaches’ gut calls.";
+  }
+  const chunks = [mids.trim(), extra.trim()].filter(Boolean);
+  return chunks.length ? chunks.join(' ') : null;
 }
 
 /** Training-tab hint: how much staff quality amplifies the tactics slider narrative. */

@@ -16,7 +16,7 @@ import {
 } from "../lib/leagueEngine.js";
 import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits } from "../lib/defaults.js";
 import { generateSeasonCalendar } from "../lib/calendar.js";
-import { SAVE_VERSION, SLOT_IDS, getLatestSavedSlot } from "../lib/save.js";
+import { DEFAULT_STAFF_TASKS } from "../lib/staffTasks.js";
 import { getPlayerPrefs, setPlayerPrefs } from "../lib/playerPrefs.js";
 import { DIFFICULTY_IDS, getDifficultyConfig, getDifficultyProfile } from "../lib/difficulty.js";
 import { generateCommittee, generateJournalist, rollPlayerTrait } from "../lib/community.js";
@@ -214,6 +214,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       finance: tunedFinance,
       sponsors: [],
       staff: generateStaff(league.tier),
+      staffTasks: DEFAULT_STAFF_TASKS(),
       kits: defaultKits(club.colors),
       ladder: ladder0,
       fixtures,

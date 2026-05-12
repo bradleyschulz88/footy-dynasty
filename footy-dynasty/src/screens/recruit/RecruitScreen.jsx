@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
   UserCog,   Repeat, Sprout, BarChart3, Calendar, ChevronRight, ChevronLeft,
@@ -6,7 +6,7 @@ import {
   Star, Zap, Heart, Target, Activity, Flame, Sparkles, Crown,
   TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
   Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
-  Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus,
+  Map, Plane, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus,
   Landmark, GripVertical, LayoutDashboard, Wrench,
 } from "lucide-react";
 import { seedRng, rand, pick, rng, TIER_SCALE } from '../../lib/rng.js';
@@ -52,6 +52,14 @@ import {
   annualWageBill, leagueTierOf,
   scaledSquadToFitCap, rookieDraftWage,
 } from '../../lib/finance/engine.js';
+import {
+  tradeCapCheckListedWage,
+  tradeCapCheckMaxDemandWage,
+  negotiationDemandWage,
+  recruitFocusIncrementalBonus,
+  interstateScoutFee,
+  ensureStaffTasks,
+} from '../../lib/staffTasks.js';
 import {
   COMBINE_SCOUT_COST,
   displayDraftOverall,
@@ -408,16 +416,24 @@ function OffersTab({ career, club, updateCareer }) {
 function TradeTab({ career, updateCareer }) {
   const [filter, setFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("overall");
-  const [capOnly, setCapOnly] = useState(false);
+  /** off | listed | maxDemand — maxDemand uses upper-bound opening ask vs cap */
+  const [capFilter, setCapFilter] = useState("off");
   const [negotiating, setNegotiating] = useState(null); // { playerId, wage, years, counterUsed }
   const pool = career.tradePool || [];
   const wageCap = effectiveWageCap(career);
   const currentWages = currentPlayerWageBill(career);
   const headroom = Math.max(0, wageCap - currentWages);
 
+  const capCheckAmount = (p) => {
+    const listed = tradeCapCheckListedWage(p);
+    if (capFilter === 'listed') return listed;
+    if (capFilter === 'maxDemand') return tradeCapCheckMaxDemandWage(p, career.staff);
+    return 0;
+  };
+
   const filtered = pool.filter(p => {
     if (filter !== "ALL" && !playerHasPosition(p, filter)) return false;
-    if (capOnly && wageCap > 0 && !canAffordSigning(career, Number(p.wage ?? 0))) return false;
+    if (capFilter !== 'off' && wageCap > 0 && !canAffordSigning(career, capCheckAmount(p))) return false;
     return true;
   });
   const sorted = [...filtered].sort((a, b) => {
@@ -430,7 +446,7 @@ function TradeTab({ career, updateCareer }) {
   });
 
   const openNegotiation = (p) => {
-    const demandedWage  = Math.round(p.wage * (1.05 + rng() * 0.2));
+    const demandedWage = negotiationDemandWage(p.wage, career.staff);
     const demandedYears = rand(1, 3);
     setNegotiating({ playerId: p.id, wage: demandedWage, years: demandedYears, counterUsed: false });
   };
@@ -482,9 +498,17 @@ function TradeTab({ career, updateCareer }) {
         {["ALL", ...POSITIONS].map(pos => (
           <button key={pos} type="button" onClick={()=>setFilter(pos)} className={`px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold touch-manipulation ${filter===pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
         ))}
-        <label className="flex items-center gap-2 text-[11px] text-atext-dim cursor-pointer ml-2">
-          <input type="checkbox" checked={capOnly} onChange={e => setCapOnly(e.target.checked)} className="rounded border-aline" />
-          Fits cap (listed wage)
+        <label className="flex items-center gap-2 text-[11px] text-atext-dim ml-2">
+          <span className="uppercase tracking-wider shrink-0">Cap:</span>
+          <select
+            value={capFilter}
+            onChange={(e) => setCapFilter(e.target.value)}
+            className="bg-apanel-2 border border-aline rounded-lg px-2 py-1.5 text-xs text-atext max-w-[220px]"
+          >
+            <option value="off">Show all</option>
+            <option value="listed">Fits listed wage</option>
+            <option value="maxDemand">Fits worst-case opening ask</option>
+          </select>
         </label>
         <span className="ml-4 text-xs text-atext-dim uppercase tracking-wider">Sort:</span>
         <select value={sortBy} onChange={e=>setSortBy(e.target.value)} className="bg-apanel-2 border border-aline rounded-lg px-3 py-1.5 text-xs text-atext">
@@ -516,7 +540,15 @@ function TradeTab({ career, updateCareer }) {
             const capRoom = wageCap - currentWages;
             const isNeg = negotiating?.playerId === p.id;
             const capBlock = negotiating && isNeg && (currentWages + negotiating.wage > wageCap);
-            const fitsListWage = wageCap <= 0 || canAffordSigning(career, p.wage);
+            const lw = tradeCapCheckListedWage(p);
+            const maxAsk = tradeCapCheckMaxDemandWage(p, career.staff);
+            const okListed = wageCap <= 0 || canAffordSigning(career, lw);
+            const okMax = wageCap <= 0 || canAffordSigning(career, maxAsk);
+            let capPill;
+            if (wageCap <= 0) capPill = <Pill color="#64748B">—</Pill>;
+            else if (okMax) capPill = <Pill color="#4AE89A">OK</Pill>;
+            else if (okListed) capPill = <Pill color="#FFB347" title={`Worst-case opening ask ~${fmtK(maxAsk)}/yr — tighten recruiter staff or counter.`}>Listed</Pill>;
+            else capPill = <Pill color="#E84A6F" title={`Listed ${fmtK(lw)} · upper ask ~${fmtK(maxAsk)}/yr`}>No</Pill>;
             return (
               <div key={p.id}>
                 <div className="gap-2 px-4 py-3 items-center transition-colors grid min-w-[720px]" style={{borderBottom: isNeg ? "none" : "1px solid var(--A-line)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -535,13 +567,7 @@ function TradeTab({ career, updateCareer }) {
                   <div className="text-right text-sm font-mono font-bold" style={{color: canAfford ? "#4AE89A" : "#E84A6F"}}>{fmtK(p.value)}</div>
                   <div className="text-right text-xs font-mono text-atext-dim">{fmtK(p.wage)}</div>
                   <div className="flex justify-center">
-                    {wageCap <= 0 ? (
-                      <Pill color="#64748B">—</Pill>
-                    ) : fitsListWage ? (
-                      <Pill color="#4AE89A">OK</Pill>
-                    ) : (
-                      <Pill color="#E84A6F">No</Pill>
-                    )}
+                    {capPill}
                   </div>
                   <div className="flex justify-end">
                     {isNeg
@@ -600,7 +626,15 @@ function TradeTab({ career, updateCareer }) {
           const capRoom = wageCap - currentWages;
           const isNeg = negotiating?.playerId === p.id;
           const capBlock = negotiating && isNeg && currentWages + negotiating.wage > wageCap;
-          const fitsListWage = wageCap <= 0 || canAffordSigning(career, p.wage);
+          const lw = tradeCapCheckListedWage(p);
+          const maxAsk = tradeCapCheckMaxDemandWage(p, career.staff);
+          const okListed = wageCap <= 0 || canAffordSigning(career, lw);
+          const okMax = wageCap <= 0 || canAffordSigning(career, maxAsk);
+          let capMob;
+          if (wageCap <= 0) capMob = <Pill color="#64748B">—</Pill>;
+          else if (okMax) capMob = <Pill color="#4AE89A">Cap OK</Pill>;
+          else if (okListed) capMob = <Pill color="#FFB347">Listed only</Pill>;
+          else capMob = <Pill color="#E84A6F">Cap no</Pill>;
           return (
             <div key={p.id} className="rounded-2xl border border-[var(--A-line)] bg-[var(--A-panel)] p-4">
               <div className="flex gap-3">
@@ -613,13 +647,7 @@ function TradeTab({ career, updateCareer }) {
                     <span className="text-xs text-[#4AE89A] font-bold">Pot {p.potential}</span>
                     <span className="text-xs font-mono font-bold" style={{ color: canAfford ? "#4AE89A" : "#E84A6F" }}>{fmtK(p.value)}</span>
                     <span className="text-xs font-mono text-atext-dim">{fmtK(p.wage)}/yr</span>
-                    {wageCap <= 0 ? (
-                      <Pill color="#64748B">—</Pill>
-                    ) : fitsListWage ? (
-                      <Pill color="#4AE89A">Cap OK</Pill>
-                    ) : (
-                      <Pill color="#E84A6F">Cap</Pill>
-                    )}
+                    {capMob}
                   </div>
                 </div>
               </div>
@@ -1166,7 +1194,15 @@ function YouthTab({ career, club, updateCareer }) {
 function LocalTab({ career, club, updateCareer }) {
   const [scoutedPlayers, setScoutedPlayers] = useState([]);
   const [scoutingLeague, setScoutingLeague] = useState(null);
-  // Find tier-3 leagues in same state, or tier-2 if at tier-1
+  const homeState = club.state;
+  const otherStates = useMemo(() => STATES.filter((s) => s !== homeState), [homeState]);
+  const [interState, setInterState] = useState(() => otherStates[0] ?? 'VIC');
+
+  useEffect(() => {
+    const pool = STATES.filter((s) => s !== homeState);
+    setInterState((prev) => (pool.includes(prev) ? prev : (pool[0] ?? 'VIC')));
+  }, [homeState]);
+
   const myLeague = findLeagueOf(career.clubId);
   const localPool = LEAGUES_BY_STATE(club.state) || [];
   const localLeagues = !myLeague
@@ -1181,10 +1217,29 @@ function LocalTab({ career, club, updateCareer }) {
           return a.tier - b.tier;
         });
 
-  const scout = (leagueKey) => {
-    seedRng(Date.now() % 88888);
+  const interstateLeagues = useMemo(() => {
+    const pool = LEAGUES_BY_STATE(interState) || [];
+    return pool.slice().sort((a, b) => a.tier - b.tier || (a.short || '').localeCompare(b.short || ''));
+  }, [interState]);
+
+  const staffTasks = ensureStaffTasks(career);
+  const nextInterFee =
+    interState && interState !== homeState ? interstateScoutFee(career.staff, staffTasks, interState, homeState) : 0;
+
+  const runScout = (leagueKey, fromInterstate) => {
     const league = PYRAMID[leagueKey];
-    const scoutPool = getCompetitionClubs(leagueKey, career.regionState ?? club.state, null);
+    if (!league) return;
+    const leagueSt = league.state || homeState;
+    const isInter = !!fromInterstate || leagueSt !== homeState;
+    const fee = isInter ? interstateScoutFee(career.staff, staffTasks, leagueSt, homeState) : 0;
+    if (fee > 0 && (career.finance?.cash ?? 0) < fee) {
+      updateCareer({
+        news: [{ week: career.week, type: 'loss', text: `✈️ Interstate scouting blocked — need ${fmtK(fee)} cash for flights & comps.` }, ...(career.news || [])].slice(0, 15),
+      });
+      return;
+    }
+    seedRng(Date.now() % 88888);
+    const scoutPool = getCompetitionClubs(leagueKey, career.regionState ?? leagueSt, null);
     const poolRaw = scoutPool.length ? [...scoutPool] : [...league.clubs];
     for (let i = poolRaw.length - 1; i > 0; i--) {
       const j = rand(0, i);
@@ -1192,6 +1247,7 @@ function LocalTab({ career, club, updateCareer }) {
       poolRaw[i] = poolRaw[j];
       poolRaw[j] = tmp;
     }
+    const focusBonus = recruitFocusIncrementalBonus(staffTasks, { interstate: isInter, leagueState: leagueSt });
     const found = Array.from({ length: 6 }, (_, i) => {
       const sourceClub = poolRaw[i % poolRaw.length];
       const cid = sourceClub.id || `local:${leagueKey}:${i}`;
@@ -1204,11 +1260,17 @@ function LocalTab({ career, club, updateCareer }) {
         ...p,
         fromLocal: shortLabel,
         fromClubId: sourceClub.id || null,
-        scoutedOverall: scoutedOverall(p, career),
+        scoutedOverall: scoutedOverall(p, career, { focusBonus }),
       };
     });
     setScoutedPlayers(found);
     setScoutingLeague(leagueKey);
+    if (fee > 0) {
+      updateCareer({
+        finance: { ...career.finance, cash: career.finance.cash - fee },
+        news: [{ week: career.week, type: 'info', text: `✈️ Scout pack (${leagueSt} · ${league.short}) · −${fmtK(fee)}` }, ...(career.news || [])].slice(0, 15),
+      });
+    }
   };
 
   const sign = (p) => {
@@ -1255,7 +1317,7 @@ function LocalTab({ career, club, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>LOCAL FOOTBALL</div>
-          <div className="text-xs text-atext-dim">Scout other {club.state} competitions (same tier or neighbouring levels). Each run rotates source clubs so reports feel connected to real locals — not random noise.</div>
+          <div className="text-xs text-atext-dim">Scout other {club.state} competitions (same tier or neighbouring levels). Interstate packs charge a scout-travel fee (Senior Scout rating + recruiting priority trim costs); reports gain a small accuracy bump vs local-only runs.</div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Listed signing" value={feeLabel} sub="fee + wages" accent="var(--A-accent)" />
@@ -1264,26 +1326,73 @@ function LocalTab({ career, club, updateCareer }) {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
-        <div className={`${css.panel} p-5 lg:col-span-1`}>
-          <div className="flex items-center gap-2 mb-3"><Map className="w-5 h-5 text-aaccent" /><div className="font-bold tracking-wide">{club.state} leagues</div></div>
-          {localLeagues.length === 0 ? (
-            <div className="text-sm text-atext-dim py-4">No other leagues listed for {club.state} in the pyramid data.</div>
-          ) : (
-            <div className="space-y-2">
-              {localLeagues.map(l => (
-                <button key={l.key} onClick={()=>scout(l.key)} className={`w-full text-left p-3 rounded-lg border transition ${scoutingLeague===l.key ? "border-aaccent bg-aaccent/10" : "border-aline hover:border-aline-2 bg-apanel"}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-sm">{l.short}</div>
-                      <div className="text-[10px] text-atext-dim">{l.name}</div>
+        <div className="lg:col-span-1 space-y-4">
+          <div className={`${css.panel} p-5`}>
+            <div className="flex items-center gap-2 mb-3"><Map className="w-5 h-5 text-aaccent" /><div className="font-bold tracking-wide">{club.state} leagues</div></div>
+            {localLeagues.length === 0 ? (
+              <div className="text-sm text-atext-dim py-4">No other leagues listed for {club.state} in the pyramid data.</div>
+            ) : (
+              <div className="space-y-2">
+                {localLeagues.map(l => (
+                  <button key={l.key} type="button" onClick={()=>runScout(l.key, false)} className={`w-full text-left p-3 rounded-lg border transition ${scoutingLeague===l.key ? "border-aaccent bg-aaccent/10" : "border-aline hover:border-aline-2 bg-apanel"}`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-sm">{l.short}</div>
+                        <div className="text-[10px] text-atext-dim">{l.name}</div>
+                      </div>
+                      <Pill color="#4ADBE8">T{l.tier}</Pill>
                     </div>
-                    <Pill color="#4ADBE8">T{l.tier}</Pill>
-                  </div>
-                  <div className="text-[10px] text-atext-dim mt-1">{l.clubs.length} clubs · Scout for hidden talent</div>
-                </button>
-              ))}
+                    <div className="text-[10px] text-atext-dim mt-1">{l.clubs.length} clubs · No travel fee</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className={`${css.panel} p-5`}>
+            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Plane className="w-5 h-5 text-aaccent" aria-hidden />
+                <div className="font-bold tracking-wide">Interstate</div>
+              </div>
+              <div className="text-[10px] text-atext-dim font-mono">
+                Next pack ≈ {fmtK(nextInterFee)}
+              </div>
             </div>
-          )}
+            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">State</label>
+            <select
+              value={interState}
+              onChange={(e) => setInterState(e.target.value)}
+              className="w-full mb-3 rounded-lg border border-aline bg-apanel px-2 py-2 text-sm"
+            >
+              {otherStates.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            {interstateLeagues.length === 0 ? (
+              <div className="text-sm text-atext-dim py-2">No leagues in pyramid for {interState}.</div>
+            ) : (
+              <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+                {interstateLeagues.map((l) => (
+                  <button
+                    key={l.key}
+                    type="button"
+                    onClick={() => runScout(l.key, true)}
+                    className={`w-full text-left p-3 rounded-lg border transition ${scoutingLeague === l.key ? 'border-aaccent bg-aaccent/10' : 'border-aline hover:border-aline-2 bg-apanel'}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-sm">{l.short}</div>
+                        <div className="text-[10px] text-atext-dim">{l.name}</div>
+                      </div>
+                      <Pill color="#F59E0B">T{l.tier}</Pill>
+                    </div>
+                    <div className="text-[10px] text-atext-dim mt-1">{l.clubs.length} clubs · Fee {fmtK(interstateScoutFee(career.staff, staffTasks, interState, homeState))}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className={`${css.panel} p-5 lg:col-span-2`}>

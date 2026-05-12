@@ -16,6 +16,7 @@ import { pyramidNoteForLeague } from './data/pyramidMeta.js';
 import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from './lib/playerGen.js';
 import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET, TIER3_MIN_CLUBS_PER_DIVISION } from './lib/leagueEngine.js';
 import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
+import { DEFAULT_STAFF_TASKS } from './lib/staffTasks.js';
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
 import { generateSeasonCalendar, TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from './lib/calendar.js';
 import { SAVE_VERSION, SLOT_IDS, LAST_EXPORT_STORAGE_KEY, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from './lib/save.js';
@@ -418,6 +419,7 @@ function AFLManagerInner() {
       finance:   newFinance,
       sponsors:  [],
       staff:     generateStaff(newLeague.tier),
+      staffTasks: DEFAULT_STAFF_TASKS(),
       facilities: newFacilities,
       training:  DEFAULT_TRAINING(),
       // Reset round/match state

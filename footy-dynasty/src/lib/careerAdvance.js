@@ -70,6 +70,7 @@ import {
   applyCaptainWeeklyEffect,
   bumpClubCulture,
 } from './gameDepth.js';
+import { medicalStaffMitigation } from './staffTasks.js';
 
 /** First day of the home-and-away season: formal renewal window closes; auto-fill staff gaps. */
 export function applySeasonRenewalDeadline(c, league) {
@@ -812,19 +813,24 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
   if (ev.type === 'training') {
     const { squad, gains, staffName, staffRating, devNotes } = applyTraining(
       c.squad, c.lineup, ev.subtype, c.staff,
-      { focus: c.training?.focus, intensity: c.training?.intensity },
+      {
+        focus: c.training?.focus,
+        intensity: c.training?.intensity,
+        trainingLeadId: c.staffTasks?.trainingLeadId ?? null,
+      },
     );
     c.squad = squad;
 
     const intensity = c.training?.intensity ?? 60;
     const recoveryFocus = c.training?.focus?.recovery ?? 20;
     const medLevel = c.facilities?.medical?.level ?? 1;
+    const mit = medicalStaffMitigation(c.staff);
     const trainingInjuryProb = effectiveInjuryRate(c,
-      Math.max(0, ((intensity - 50) * 0.0014) + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008));
+      Math.max(0, ((intensity - 50) * 0.0014) + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008 - mit.probReduce));
     if (rng() < trainingInjuryProb && c.lineup.length > 0) {
       const injId = pick(c.lineup);
       const baseWeeks = rand(1, 2);
-      const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1));
+      const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
       c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
       const injPlayer = c.squad.find((p) => p.id === injId);
       if (injPlayer) {
@@ -1062,18 +1068,20 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         const intensity = c.training?.intensity ?? 60;
         const medLevel = c.facilities?.medical?.level ?? 1;
         const recoveryFocus = c.training?.focus?.recovery ?? 20;
-        const baseInjuryProb = 0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001;
+        const mit = medicalStaffMitigation(c.staff);
+        const baseInjuryProb =
+          0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001 - mit.probReduce;
         const injuryProb = effectiveInjuryRate(c, clamp(baseInjuryProb, 0.04, 0.28));
         (result.injuredPlayerIds || []).forEach((pid) => {
           if (!c.lineup.includes(pid)) return;
           const baseWeeks = rand(1, 4);
-          const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1));
+          const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
           c.squad = c.squad.map((p) => (p.id === pid ? { ...p, injured: weeks } : p));
         });
         if (rng() < injuryProb && c.lineup.length > 0) {
           const injId = pick(c.lineup);
           const baseWeeks = rand(1, 4);
-          const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1));
+          const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
           c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
         }
         (result.reportedPlayerIds || []).forEach((pid) => {

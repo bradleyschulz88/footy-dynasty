@@ -84,7 +84,7 @@ export default function MatchPreviewPanel({ career, league }) {
     const maxR = Math.max(myRating, oppRating, 1);
     const pct = (r) => Math.round((r / maxR) * 100);
 
-    const staffPrep = matchPrepStaffLine(career.staff);
+    const staffPrep = matchPrepStaffLine(career.staff, career);
 
     const factorRows = [
       { factor: "Match strength", you: myRating.toFixed(1), opp: oppRating.toFixed(1) },
