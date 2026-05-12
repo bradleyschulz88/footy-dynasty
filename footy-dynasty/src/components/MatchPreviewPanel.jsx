@@ -4,6 +4,7 @@ import { teamRating, aiClubRating } from "../lib/matchEngine.js";
 import { selectAiLineup, ensureSquadsForLeague } from "../lib/aiSquads.js";
 import { groundConditionBand } from "../lib/community.js";
 import { avgFacilities, avgStaff } from "../lib/format.js";
+import { matchPrepStaffLine } from "../lib/staffModifiers.js";
 import { turningPointRibbon } from "../lib/gameDepth.js";
 import { DataTable, css } from "./primitives.jsx";
 
@@ -83,6 +84,8 @@ export default function MatchPreviewPanel({ career, league }) {
     const maxR = Math.max(myRating, oppRating, 1);
     const pct = (r) => Math.round((r / maxR) * 100);
 
+    const staffPrep = matchPrepStaffLine(career.staff);
+
     const factorRows = [
       { factor: "Match strength", you: myRating.toFixed(1), opp: oppRating.toFixed(1) },
       {
@@ -91,6 +94,9 @@ export default function MatchPreviewPanel({ career, league }) {
         opp: TACTIC_LABEL[oppTacticKey] || TACTIC_LABEL.balanced,
       },
       { factor: "Deck / ground", you: condYou, opp: condOpp },
+      ...(staffPrep
+        ? [{ factor: "Staff prep", you: staffPrep, opp: "—" }]
+        : []),
     ];
 
     return { label, factorRows, barYou: pct(myRating), barOpp: pct(oppRating), extraTags };

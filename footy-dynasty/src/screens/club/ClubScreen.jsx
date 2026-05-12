@@ -324,6 +324,7 @@ function BoardTab({ career, club, updateCareer }) {
     if (!league) return;
     const draft = {
       ...career,
+      inbox: [...(career.inbox || [])],
       board: {
         ...career.board,
         members: (career.board?.members || []).map((m) => ({ ...m })),
@@ -337,6 +338,7 @@ function BoardTab({ career, club, updateCareer }) {
     updateCareer({
       board: draft.board,
       finance: draft.finance,
+      inbox: draft.inbox,
       news: result.newsLine
         ? [{ week: career.week, type: 'board', text: result.newsLine }, ...(career.news || [])].slice(0, 20)
         : career.news,

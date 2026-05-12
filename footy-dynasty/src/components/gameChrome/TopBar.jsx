@@ -10,7 +10,23 @@ import SeasonStrip from "../SeasonStrip.jsx";
 
 const tickEase = [0.22, 1, 0.36, 1];
 
-export function TopBar({ career, club, league, myLadderPos, onAdvance, advanceDisabled, tutorialSpotlightAdvance }) {
+/** Bar stats (board %, fans): round for display and clamp to 0–100. */
+function barStatPct(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+export function TopBar({
+  career,
+  club,
+  league,
+  myLadderPos,
+  onAdvance,
+  advanceDisabled,
+  advanceDisabledReason,
+  tutorialSpotlightAdvance,
+}) {
   const ctx = getAdvanceContext(career, league);
   const timeTick = advanceTimeFingerprint(career);
   const nextEv = (career.eventQueue || []).find(e => !e.completed);
@@ -79,8 +95,8 @@ export function TopBar({ career, club, league, myLadderPos, onAdvance, advanceDi
           {[
             { label: "Cash",     value: fmtK(career.finance.cash),           color: "var(--A-pos)",       hideBelow: 'sm' },
             { label: "Transfer", value: fmtK(career.finance.transferBudget), color: "var(--A-accent)",    hideBelow: 'lg' },
-            { label: "Board",    value: career.finance.boardConfidence,       color: "var(--A-accent-2)", bar: true, hideBelow: 'md' },
-            { label: "Fans",     value: career.finance.fanHappiness,          color: "#A78BFA",           bar: true, hideBelow: 'lg' },
+            { label: "Board",    value: barStatPct(career.finance.boardConfidence), color: "var(--A-accent-2)", bar: true, hideBelow: 'md' },
+            { label: "Fans",     value: barStatPct(career.finance.fanHappiness), color: "#A78BFA", bar: true, hideBelow: 'lg' },
           ].map(({ label, value, color, bar, hideBelow }) => {
             const cls = hideBelow === 'lg' ? 'hidden lg:flex' : hideBelow === 'md' ? 'hidden md:flex' : hideBelow === 'sm' ? 'hidden sm:flex' : 'flex';
             return (
@@ -128,7 +144,12 @@ export function TopBar({ career, club, league, myLadderPos, onAdvance, advanceDi
             type="button"
             onClick={onAdvance}
             disabled={advanceDisabled}
-            title={advanceDisabled ? "Finish the tutorial step in the card (or skip) before advancing time." : undefined}
+            title={
+              advanceDisabled
+                ? advanceDisabledReason ??
+                  "Finish the tutorial step in the card (or skip) before advancing time."
+                : undefined
+            }
             whileTap={advanceDisabled ? undefined : { scale: 0.94 }}
             transition={{ type: 'spring', stiffness: 520, damping: 28 }}
             className={`${css.btnPrimary} flex items-center gap-1.5 md:gap-2 glow text-[11px] md:text-xs px-3 md:px-5 ${tutorialSpotlightAdvance ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${advanceDisabled ? "opacity-45 cursor-not-allowed" : ""}`}

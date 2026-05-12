@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { addIdToLineupInBucket } from "../lineupHelpers.js";
+import { addIdToLineupInBucket, placeOrSwapLineupSlot, swapLineupSlots, lineupPlayerSlotIndex } from "../lineupHelpers.js";
 
 describe("addIdToLineupInBucket", () => {
   const squad = [
@@ -23,5 +23,24 @@ describe("addIdToLineupInBucket", () => {
       { id: "b", position: "RU" },
     ];
     expect(addIdToLineupInBucket(["b", "a1", "a2"], sq, "a1", "fwd")).toEqual(["b", "a2", "a1"]);
+  });
+});
+
+describe("placeOrSwapLineupSlot / swapLineupSlots", () => {
+  it("bench-style add replaces incumbent at slot without shifting others", () => {
+    const before = ["a", "b", "c", "d", "e"];
+    const next = placeOrSwapLineupSlot(before, "new", 2);
+    expect(next).toContain("new");
+    expect(next).not.toContain("c");
+    expect(next[2]).toBe("new");
+    expect(next.filter(Boolean).length).toBe(before.length);
+  });
+
+  it("swapLineupSlots exchanges two fixed indices", () => {
+    const li = ["a", "b", "c"];
+    const sw = swapLineupSlots(li, 0, 2);
+    expect(sw[0]).toBe("c");
+    expect(sw[2]).toBe("a");
+    expect(lineupPlayerSlotIndex(sw, "b")).toBe(1);
   });
 });

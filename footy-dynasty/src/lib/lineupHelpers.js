@@ -90,6 +90,61 @@ export function insertIdAtLineupSlot(lineup, id, slotIndex, cap = LINEUP_CAP) {
   return slots.slice(0, end);
 }
 
+/** Expand lineup to fixed-length slot array (null = empty). */
+export function lineupToFixedSlots(lineup, cap = LINEUP_CAP) {
+  const slots = new Array(cap).fill(null);
+  const old = lineup || [];
+  for (let j = 0; j < Math.min(old.length, cap); j++) {
+    const v = old[j];
+    slots[j] = v != null && v !== "" ? String(v) : null;
+  }
+  return slots;
+}
+
+/** Trim trailing empty slots to a dense lineup array. */
+export function fixedSlotsToLineup(slots) {
+  let end = slots.length;
+  while (end > 0 && (slots[end - 1] == null || slots[end - 1] === "")) end--;
+  return slots.slice(0, end).map((x) => x);
+}
+
+/** Slot index for this player in fixed grid order, or -1 if not in lineup. */
+export function lineupPlayerSlotIndex(lineup, playerId, cap = LINEUP_CAP) {
+  const slots = lineupToFixedSlots(lineup, cap);
+  const bid = String(playerId);
+  for (let j = 0; j < cap; j++) {
+    if (slots[j] != null && String(slots[j]) === bid) return j;
+  }
+  return -1;
+}
+
+/**
+ * Put player at slot without shifting other slots. Previous occupant is dropped from the lineup (→ bench).
+ * Removes duplicate instances of `playerId` elsewhere first.
+ */
+export function placeOrSwapLineupSlot(lineup, playerId, slotIndex, cap = LINEUP_CAP) {
+  const slots = lineupToFixedSlots(lineup, cap);
+  const bid = String(playerId);
+  const target = Math.max(0, Math.min(slotIndex, cap - 1));
+  for (let j = 0; j < cap; j++) {
+    if (slots[j] != null && String(slots[j]) === bid) slots[j] = null;
+  }
+  slots[target] = bid;
+  return dedupeLineup(fixedSlotsToLineup(slots));
+}
+
+/** Swap whoever is at two slot indices (players only move between those positions). */
+export function swapLineupSlots(lineup, idxA, idxB, cap = LINEUP_CAP) {
+  if (idxA === idxB) return dedupeLineup(lineup);
+  const slots = lineupToFixedSlots(lineup, cap);
+  const a = Math.max(0, Math.min(idxA, cap - 1));
+  const b = Math.max(0, Math.min(idxB, cap - 1));
+  const tmp = slots[a];
+  slots[a] = slots[b];
+  slots[b] = tmp;
+  return dedupeLineup(fixedSlotsToLineup(slots));
+}
+
 /** Field order for inserting an empty positional bucket into the lineup (presentation only). */
 const BUCKET_ORDER = { fwd: 0, mid: 1, ruck: 2, back: 3 };
 

@@ -24,9 +24,13 @@ import {
   lineupPlayerCount,
   lineupHasPlayer,
   lineupSlotIndexFromId,
+  lineupToFixedSlots,
+  lineupPlayerSlotIndex,
   removeIdFromLineup,
   addIdToLineupAt,
   insertIdAtLineupSlot,
+  placeOrSwapLineupSlot,
+  swapLineupSlots,
   dedupeLineup,
 } from "../lib/lineupHelpers.js";
 import { RatingDot, css } from "./primitives.jsx";
@@ -262,13 +266,21 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
     const destSlot = lineupSlotIndexFromId(oid);
     if (destSlot != null) {
       const count = lineupPlayerCount(li);
+      const slotArr = lineupToFixedSlots(li);
+      const destOccupied = slotArr[destSlot] != null && slotArr[destSlot] !== "";
       if (iB !== -1) {
         if (count >= LINEUP_CAP && !lineupHasPlayer(li, aid)) return;
-        updateCareer({ lineup: dedupeLineup(insertIdAtLineupSlot(li, aid, destSlot)) });
+        updateCareer({ lineup: placeOrSwapLineupSlot(li, aid, destSlot) });
         return;
       }
       if (iL !== -1) {
-        updateCareer({ lineup: dedupeLineup(insertIdAtLineupSlot(li, aid, destSlot)) });
+        const fromSlot = lineupPlayerSlotIndex(li, aid);
+        if (fromSlot < 0) return;
+        if (destOccupied) {
+          updateCareer({ lineup: swapLineupSlots(li, fromSlot, destSlot) });
+        } else {
+          updateCareer({ lineup: dedupeLineup(insertIdAtLineupSlot(li, aid, destSlot)) });
+        }
         return;
       }
     }

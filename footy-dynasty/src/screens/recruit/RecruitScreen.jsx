@@ -53,6 +53,14 @@ import {
   scaledSquadToFitCap, rookieDraftWage,
 } from '../../lib/finance/engine.js';
 import {
+  COMBINE_SCOUT_COST,
+  displayDraftOverall,
+  displayDraftPotential,
+  displayDraftWageEstimate,
+  applyCombineScoutingRound,
+  scoutRevealTier,
+} from '../../lib/draftScouting.js';
+import {
   tickSponsorYears, proposalForRenewal, generateSponsorOffers,
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
   buildInitialSponsorOffers,
@@ -690,6 +698,24 @@ function DraftTab({ career, club, updateCareer }) {
   const isMyTurn = myPickIndex !== -1 && myPickIndex === draftOrder.findIndex(d => !d.used);
   const dTier = leagueTierOf(career);
 
+  const runCombineScout = () => {
+    const pool = career.draftPool || [];
+    if (!pool.length) return;
+    if ((career.finance?.cash ?? 0) < COMBINE_SCOUT_COST) return;
+    updateCareer({
+      finance: { ...career.finance, cash: career.finance.cash - COMBINE_SCOUT_COST },
+      draftPool: applyCombineScoutingRound(pool),
+      news: [
+        {
+          week: career.week,
+          type: "info",
+          text: `🔭 Combine scouting (−${fmtK(COMBINE_SCOUT_COST)}) — sharper readings on draft-eligible prospects.`,
+        },
+        ...(career.news || []),
+      ].slice(0, 20),
+    });
+  };
+
   const basePool = useMemo(() => {
     let arr = [...(career.draftPool || [])];
     if (posFilter !== "ALL") arr = arr.filter(p => playerHasPosition(p, posFilter));
@@ -779,7 +805,7 @@ function DraftTab({ career, club, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>NATIONAL DRAFT</div>
-          <div className="text-xs text-atext-dim">{draftOrder.length === 0 ? 'Draft order is set after each season ends.' : isMyTurn ? `On the clock: pick #${myNextPick.pick}.` : myNextPick ? `Your next pick: #${myNextPick.pick}` : 'You have no remaining picks.'}</div>
+          <div className="text-xs text-atext-dim">{draftOrder.length === 0 ? 'Draft order is set after each season ends.' : isMyTurn ? `On the clock: pick #${myNextPick.pick}.` : myNextPick ? `Your next pick: #${myNextPick.pick}` : 'You have no remaining picks.'} Prospects stay fuzzy until you fund combine scouting runs.</div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Pool" value={basePool.length} accent="#4AE89A" />
@@ -818,6 +844,22 @@ function DraftTab({ career, club, updateCareer }) {
         </div>
       )}
 
+      {draftOrder.length > 0 && basePool.length > 0 && (
+        <div className={`${css.panel} p-4 flex flex-wrap items-center gap-3 justify-between`}>
+          <div className="text-[11px] text-atext-dim max-w-xl leading-snug">
+            Each run reveals the next scouting tier on a batch of prospects (0 = hidden, 3 = fully exposed). AI clubs draft using true ratings regardless.
+          </div>
+          <button
+            type="button"
+            onClick={runCombineScout}
+            disabled={(career.finance?.cash ?? 0) < COMBINE_SCOUT_COST}
+            className={`${css.btnPrimary} text-xs px-4 py-2.5 min-h-[44px] touch-manipulation shrink-0 disabled:opacity-40`}
+          >
+            Combine scouting (−{fmtK(COMBINE_SCOUT_COST)})
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs text-atext-dim uppercase tracking-wider">Position:</span>
         {["ALL", ...POSITIONS].map(pos => (
@@ -843,21 +885,42 @@ function DraftTab({ career, club, updateCareer }) {
         </div>
         <div className="max-h-[60vh] overflow-y-auto">
           {basePool.slice(0, 50).map((p, i) => {
+            const st = scoutRevealTier(p);
             const rw = rookieDraftWage(p.overall, dTier);
             const capOk = canAffordSigning(career, rw);
+            const oDisp = displayDraftOverall(p);
+            const potDisp = displayDraftPotential(p);
+            const wageDisp = displayDraftWageEstimate(rw, st);
+            const wageAccurate = st >= 2;
             return (
               <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                 <div className="col-span-1 font-bold text-aaccent">#{i+1}</div>
                 <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">(draft age ~17–19)</span></div>
                 <div className="col-span-1"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
-                <div className="col-span-1"><RatingDot value={p.overall} /></div>
-                <div className="col-span-2 flex items-center gap-2">
-                  <div className="font-bold text-[#4AE89A]">{p.potential}</div>
-                  <Bar value={p.potential} color="#4AE89A" small />
+                <div className="col-span-1">
+                  {st >= 3 ? (
+                    <RatingDot value={p.overall} />
+                  ) : (
+                    <div className="font-display font-bold text-sm tabular-nums">{oDisp.label}</div>
+                  )}
+                  {oDisp.hint && <div className="text-[9px] text-atext-mute leading-tight">{oDisp.hint}</div>}
+                </div>
+                <div className="col-span-2 flex flex-col gap-0.5 min-h-[2rem] justify-center">
+                  {st >= 3 ? (
+                    <div className="flex items-center gap-2">
+                      <div className="font-bold text-[#4AE89A]">{p.potential}</div>
+                      <Bar value={p.potential} color="#4AE89A" small />
+                    </div>
+                  ) : (
+                    <span className="font-bold text-atext-dim">{potDisp.label}</span>
+                  )}
+                  {potDisp.hint && <span className="text-[9px] text-atext-mute">{potDisp.hint}</span>}
                 </div>
                 <div className="col-span-2 text-right text-sm font-mono">
-                  <span style={{ color: capOk ? '#4AE89A' : '#E84A6F' }}>${(rw/1000).toFixed(0)}k</span>
-                  <span className="text-[10px] text-atext-dim block">est. rookie</span>
+                  <span style={{
+                    color: wageAccurate ? (capOk ? '#4AE89A' : '#E84A6F') : 'var(--A-accent)',
+                  }}>{wageDisp.label}</span>
+                  <span className="text-[10px] text-atext-dim block">{wageDisp.hint || 'est. rookie'}</span>
                 </div>
                 <div className="col-span-1 flex justify-end">
                   <button type="button" onClick={()=>draftPlayer(p)} className={`${css.btnPrimary} text-xs px-4 py-2.5 min-h-[44px] touch-manipulation`}>{isMyTurn ? 'Draft' : 'Sim →'}</button>
@@ -870,8 +933,13 @@ function DraftTab({ career, club, updateCareer }) {
 
       <div className="xl:hidden space-y-3">
         {basePool.slice(0, 50).map((p, i) => {
+          const st = scoutRevealTier(p);
           const rw = rookieDraftWage(p.overall, dTier);
           const capOk = canAffordSigning(career, rw);
+          const oDisp = displayDraftOverall(p);
+          const potDisp = displayDraftPotential(p);
+          const wageDisp = displayDraftWageEstimate(rw, st);
+          const wageAccurate = st >= 2;
           return (
             <div key={p.id} className="rounded-2xl border border-[var(--A-line)] bg-[var(--A-panel)] p-4">
               <div className="flex items-start justify-between gap-2">
@@ -883,13 +951,28 @@ function DraftTab({ career, club, updateCareer }) {
                 <Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill>
               </div>
               <div className="flex flex-wrap gap-3 mt-3 items-center">
-                <RatingDot value={p.overall} size="sm" />
-                <div className="font-bold text-[#4AE89A]">Pot {p.potential}</div>
-                <Bar value={p.potential} color="#4AE89A" small />
-                <span className="text-sm font-mono" style={{ color: capOk ? "#4AE89A" : "#E84A6F" }}>
-                  ${(rw / 1000).toFixed(0)}k
+                {st >= 3 ? (
+                  <RatingDot value={p.overall} size="sm" />
+                ) : (
+                  <div className="font-display font-bold text-lg">{oDisp.label}</div>
+                )}
+                {st >= 3 ? (
+                  <>
+                    <div className="font-bold text-[#4AE89A]">Pot {p.potential}</div>
+                    <Bar value={p.potential} color="#4AE89A" small />
+                  </>
+                ) : (
+                  <div className="font-bold text-atext-dim">Pot {potDisp.label}</div>
+                )}
+                <span
+                  className="text-sm font-mono"
+                  style={{
+                    color: wageAccurate ? (capOk ? "#4AE89A" : "#E84A6F") : "var(--A-accent)",
+                  }}
+                >
+                  {wageDisp.label}
                 </span>
-                <span className="text-[10px] text-atext-dim">rookie est.</span>
+                <span className="text-[10px] text-atext-dim">{wageDisp.hint || "rookie est."}</span>
               </div>
               <div className="mt-3 flex justify-end">
                 <button type="button" onClick={() => draftPlayer(p)} className={`${css.btnPrimary} text-xs px-4 py-2.5 min-h-[44px] touch-manipulation`}>
@@ -901,7 +984,7 @@ function DraftTab({ career, club, updateCareer }) {
         })}
       </div>
       <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
-        <span className="text-aaccent font-bold">TIP:</span> Bottom-of-ladder clubs pick first. Hit "Sim →" to fast-forward AI selections to your slot. Higher potential = bigger growth ceiling but slower start.
+        <span className="text-aaccent font-bold">TIP:</span> Bottom-of-ladder clubs pick first. Combine scouting reveals ratings before you commit picks; AI still drafts using true grades.
       </div>
     </div>
   );

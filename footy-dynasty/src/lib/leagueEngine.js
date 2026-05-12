@@ -55,7 +55,8 @@ export function getCompetitionClubs(leagueKey, regionState, localDivision) {
   const league = PYRAMID[leagueKey];
   if (!league?.clubs) return [];
   if (league.tier === 1) return [...league.clubs];
-  if (!regionState) return [...league.clubs];
+  // Tier 2/3 without a state would incorrectly pool every club nationally — refuse and let callers fall back (e.g. club.state).
+  if (!regionState) return [];
   let clubs = league.clubs.filter((c) => c.state === regionState);
   if (league.tier === 3 && localDivision != null) {
     const K = tier3DivisionCount(leagueKey, regionState);

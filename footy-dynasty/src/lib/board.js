@@ -4,6 +4,7 @@ import { FIRST_NAMES, LAST_NAMES } from "./playerGen.js";
 import { clamp } from "./format.js";
 import { sortedLadder, competitionClubsForCareer } from "./leagueEngine.js";
 import { findClub, PYRAMID } from "../data/pyramid.js";
+import { pushManagerInboxBoardMirror, removeManagerInboxBoardMirrors, pruneStaleBoardMirrors } from "./inbox.js";
 import { getDifficultyConfig } from "./difficulty.js";
 
 const BOARD_ROLE_DEFS = [
@@ -103,6 +104,7 @@ export function ensureCareerBoard(career, club, league) {
   if (career.board.members.length) {
     recalcBoardConfidence(career);
   }
+  pruneStaleBoardMirrors(career);
 }
 
 /** Full reset (new job / game-over continue): new names, align to confidence. */
@@ -328,7 +330,7 @@ export function maybeEnqueueBoardCrisisPrep(career, league, sackPatience, boardW
   const season = career.season ?? 2026;
   const week = career.week ?? 1;
   const fn = boardMemberFirstName(board, "Chairman") || "Chair";
-  board.inbox.push({
+  const crisisMsg = {
     id: `crisis_prep_${season}_${week}`,
     fromRole: "Chairman",
     title: "On the record before the vote",
@@ -338,7 +340,9 @@ export function maybeEnqueueBoardCrisisPrep(career, league, sackPatience, boardW
       { id: "heart", label: "Emotional appeal to the jumper and the members", memberDeltas: { Chairman: 1, "Community Director": 3 }, votePrepBonus: 2 },
       { id: "vague", label: "Keep it vague — buy time", memberDeltas: { Chairman: -3 }, votePrepBonus: -4 },
     ],
-  });
+  };
+  board.inbox.push(crisisMsg);
+  pushManagerInboxBoardMirror(career, crisisMsg);
   return `📩 ${fn}: statement before the vote — respond in Board → Inbox.`;
 }
 
@@ -460,6 +464,7 @@ export function maybeEnqueueBoardMessage(career, league) {
   const kind = pick(candidates);
   const msg = buildBoardMessage(career, kind);
   board.inbox.push(msg);
+  pushManagerInboxBoardMirror(career, msg);
   board.lastCommsTick = tick;
   return `📩 ${msg.fromRole}: ${msg.title} — open the Board tab to respond.`;
 }
@@ -483,6 +488,7 @@ export function resolveBoardInboxChoice(career, league, messageId, optionId) {
     career.boardVotePrepBonus = clamp((career.boardVotePrepBonus || 0) + opt.votePrepBonus, -12, 12);
   }
   board.inbox.splice(idx, 1);
+  removeManagerInboxBoardMirrors(career, messageId);
   const label = opt.label.length > 48 ? `${opt.label.slice(0, 48)}…` : opt.label;
   return { ok: true, newsLine: `📋 Board: You chose "${label}".` };
 }

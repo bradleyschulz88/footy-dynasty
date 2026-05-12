@@ -8,8 +8,10 @@ import { getClubGround } from '../data/grounds.js';
 import { migrateSaveBoardV8, migrateSaveBoardV9, migrateSaveBoardV10, migrateSaveBoardV11 } from './board.js';
 import { migrateSaveGameDepthV12 } from './gameDepth.js';
 import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
+import { migrateDraftPoolScouting } from './draftScouting.js';
+import { pushManagerInboxBoardMirror, syncTradePeriodManagerInboxRow } from './inbox.js';
 
-export const SAVE_VERSION = 17;
+export const SAVE_VERSION = 19;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
@@ -264,6 +266,21 @@ export function migrate(save) {
     if (s.options.confirmBeforeDeleteSlot === undefined) s.options.confirmBeforeDeleteSlot = true;
     if (!s.options.uiDensity) s.options.uiDensity = 'comfortable';
     if (s.options.reduceMotion === undefined) s.options.reduceMotion = false;
+  }
+
+  if (v < 18) {
+    s.saveVersion = 18;
+    s.inbox = Array.isArray(s.inbox) ? s.inbox : [];
+    s.draftPool = migrateDraftPoolScouting(s.draftPool || []);
+  }
+
+  if (v < 19) {
+    s.saveVersion = 19;
+    s.inbox = Array.isArray(s.inbox) ? s.inbox : [];
+    for (const msg of s.board?.inbox || []) {
+      pushManagerInboxBoardMirror(s, msg);
+    }
+    syncTradePeriodManagerInboxRow(s);
   }
 
   return s;

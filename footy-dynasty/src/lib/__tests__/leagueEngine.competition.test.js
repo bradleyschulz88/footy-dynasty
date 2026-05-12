@@ -50,6 +50,11 @@ describe('getCompetitionClubs', () => {
     expect(sa.every((c) => c.state === 'SA')).toBe(true);
   });
 
+  it('returns empty for tier 2–3 when regionState is missing (avoid national mega-pool)', () => {
+    expect(getCompetitionClubs('SANFL', null, null)).toEqual([]);
+    expect(getCompetitionClubs('AdelFL', '', null)).toEqual([]);
+  });
+
   it('partitions tier 3 into K divisions that cover the full pool without overlap', () => {
     const region = 'SA';
     const leagueKey = 'AdelFL';

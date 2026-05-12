@@ -37,11 +37,13 @@ import TutorialOverlay, {
   tutorialMidStepCompleted,
   tutorialLocksAdvanceButton,
 } from './components/TutorialOverlay.jsx';
+import { advanceBlockedByCareerNeeds, mergeCareerPatchWithInboxSync } from './lib/inbox.js';
 import { HubScreen } from './screens/hub/HubScreen.jsx';
 import AppErrorBoundary from './components/AppErrorBoundary.jsx';
 import { CareerSetup } from './screens/CareerSetupScreen.jsx';
 import { Sidebar } from './components/gameChrome/Sidebar.jsx';
 import { TopBar } from './components/gameChrome/TopBar.jsx';
+import { InboxBanner } from './components/InboxBanner.jsx';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.jsx';
 import {
   useCareerAutosaveEffect,
@@ -224,7 +226,7 @@ function AFLManagerInner() {
 
   useGameHotkeys({
     enabled: hotkeysShellActive,
-    advanceDisabled: career ? tutorialLocksAdvanceButton(career) : true,
+    advanceDisabled: career ? tutorialLocksAdvanceButton(career) || advanceBlockedByCareerNeeds(career) : true,
     onAdvance: advanceToNextEvent,
     onOpenShortcuts: () => setShortcutsOpen(true),
     onNavigateScreen: onNavScreen,
@@ -473,6 +475,8 @@ function AFLManagerInner() {
       tradeHistory:               [],
       draftPickBank:              null,
       offSeasonFreeAgents:        [],
+      draftPool: [],
+      draftOrder: [],
       // Fresh journalist at the new club
       journalist: career.coachReputation >= 60
         ? { ...generateJournalist(), satisfaction: 65 }
@@ -529,7 +533,7 @@ function AFLManagerInner() {
   const myLineup = career.lineup;
 
   // ============== UPDATER ==============
-  const updateCareer = (patch) => setCareer(c => ({ ...c, ...patch }));
+  const updateCareer = (patch) => setCareer((c) => mergeCareerPatchWithInboxSync(c, patch));
   const updateField = (field, value) => setCareer(c => ({ ...c, [field]: value }));
 
   const tutorialActive = career && !career.tutorialComplete;
@@ -763,8 +767,29 @@ function AFLManagerInner() {
           league={league}
           myLadderPos={myLadderPos}
           onAdvance={advanceToNextEvent}
-          advanceDisabled={tutorialLocksAdvanceButton(career)}
+          advanceDisabled={
+            tutorialLocksAdvanceButton(career) || advanceBlockedByCareerNeeds(career)
+          }
+          advanceDisabledReason={
+            tutorialLocksAdvanceButton(career)
+              ? undefined
+              : advanceBlockedByCareerNeeds(career)
+                ? "Finish Club → Board inbox replies, resolve trade-period offers (Recruit → Trades), or clear other blocking inbox items before advancing."
+                : undefined
+          }
           tutorialSpotlightAdvance={!!tutorialActive && (career.tutorialStep ?? 0) === 6}
+        />
+        <InboxBanner
+          career={career}
+          updateCareer={updateCareer}
+          onGoRecruit={() => {
+            setScreen("recruit");
+            setTab("trade");
+          }}
+          onGoClubBoard={() => {
+            setScreen("club");
+            setTab("board");
+          }}
         />
         <div className="p-3 md:p-6 max-w-[1400px] mx-auto">
           <AnimatePresence mode="wait" initial={false}>

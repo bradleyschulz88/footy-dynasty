@@ -7,6 +7,8 @@ import { isForwardPreferred, isMidPreferred, generatePlayer } from './playerGen.
 import { teamRating, simMatch, simMatchWithQuarters, aiClubRating } from './matchEngine.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { generateTradePool } from './defaults.js';
+import { withDraftScoutingDefaults } from './draftScouting.js';
+import { syncTradePeriodManagerInboxRow } from './inbox.js';
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
 import { ensureSquadsForLeague, tickAiSquads, ageAiSquads, selectAiLineup } from './aiSquads.js';
@@ -522,7 +524,9 @@ function finishSeason(c, league) {
   c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier, c.season);
   seedRng(c.season * 999 + 17);
   c.draftPool = Array.from({ length: 60 }, (_, i) =>
-    generatePlayer(2, 9000 + i + c.season * 100, { clubId: 'draft', season: c.season }),
+    withDraftScoutingDefaults(
+      generatePlayer(2, 9000 + i + c.season * 100, { clubId: 'draft', season: c.season }),
+    ),
   );
   c.tradePool = generateTradePool(c.leagueKey, c.season);
   const compClubsDraft = competitionClubsForCareer(c);
@@ -901,6 +905,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         });
       }
       c.pendingTradeOffers = [...(c.pendingTradeOffers || []), ...offers];
+      syncTradePeriodManagerInboxRow(c);
       if (offers.length > 0) {
         extraNews.push({ week: c.week, type: 'info', text: `📨 ${offers.length} new trade offer${offers.length > 1 ? 's' : ''} on the table — check the Trades screen.` });
       }
@@ -919,6 +924,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         extraNews.push({ week: c.week, type: 'info', text: `📨 ${stale.length} trade offer${stale.length > 1 ? 's' : ''} expired with the window.` });
       }
       c.pendingTradeOffers = (c.pendingTradeOffers || []).filter((o) => o.status !== 'pending');
+      syncTradePeriodManagerInboxRow(c);
       const pool2 = competitionClubsForCareer(c);
       const aiClubs2 = (pool2.length ? pool2 : (league.clubs || [])).filter((cl) => cl.id !== c.clubId).slice(0, 3);
       aiClubs2.forEach((cl) => {

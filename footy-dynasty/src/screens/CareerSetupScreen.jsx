@@ -224,9 +224,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
           return { ...p, fromClub: pick(ALL_CLUBS).short };
         });
       })(),
-      draftPool: Array.from({ length: 60 }, (_, i) =>
-        generatePlayer(2, 9000 + i + SEASON * 100, { clubId: 'draft', season: SEASON }),
-      ),
+      draftPool: [],
       youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
       news: [
         { week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` },
@@ -263,6 +261,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
         reduceMotion: false,
       },
       pendingTradeOffers: [],
+      inbox: [],
       retiredThisSeason: [],
       // v3 additions — Gameplay Systems Spec
       difficulty,

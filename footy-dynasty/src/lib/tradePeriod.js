@@ -3,6 +3,7 @@ import { seedRng, rand, rng, pick } from './rng.js';
 import { generatePlayer } from './playerGen.js';
 import { generateTradePool } from './defaults.js';
 import { sortedLadder, competitionClubsForCareer } from './leagueEngine.js';
+import { syncTradePeriodManagerInboxRow } from './inbox.js';
 
 export const TRADE_PERIOD_DAYS = 14;
 export const FREE_AGENCY_END_DAY = 8;
@@ -63,6 +64,7 @@ function seedAiTradeOffers(c, league) {
       ...(c.news || []),
     ].slice(0, 20);
   }
+  syncTradePeriodManagerInboxRow(c);
 }
 
 function makePick({ id, season, round, selection, clubId, type = 'standard', tradeable = true }) {
@@ -218,6 +220,7 @@ export function closeTradePeriodStartDraftCountdown(c) {
     ].slice(0, 20);
   }
   c.pendingTradeOffers = (c.pendingTradeOffers || []).filter((o) => o.status !== 'pending');
+  syncTradePeriodManagerInboxRow(c);
   c.news = [
     {
       week: c.week,

@@ -85,6 +85,7 @@ import { getClubGround } from '../../data/grounds.js';
 import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from '../../lib/careerAdvance.js';
 import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from '../../lib/gameDepth.js';
 import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, LINEUP_FIELD_COUNT, LINEUP_OVAL_SLOT_COUNT, removeIdFromLineup } from '../../lib/lineupHelpers.js';
+import { trainingStaffSupportLine } from '../../lib/staffModifiers.js';
 import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
 import { RenewalsTab } from "../contracts/ContractRenewals.jsx";
 
@@ -737,6 +738,7 @@ function TrainingTab({ career, updateCareer }) {
   const skillsBoost = trainingAttrFocusBoost("kicking", t.focus);
   const fitnessBoost = trainingAttrFocusBoost("speed", t.focus);
   const tacticsBoost = trainingAttrFocusBoost("decision", t.focus);
+  const staffTrainingNote = trainingStaffSupportLine(career.staff, t.focus?.tactics ?? 25);
 
   const medLevel = career.facilities?.medical?.level ?? 1;
   const recoveryFocus = t.focus.recovery ?? 20;
@@ -845,6 +847,7 @@ function TrainingTab({ career, updateCareer }) {
             <div>
               <span className="text-atext font-semibold">Tactics</span> emphasis → ~×{tacticsBoost.toFixed(2)} on decision / tackling.
             </div>
+            <div className="text-[10px] text-atext-mute pt-1 border-t border-aline/60 mt-2">{staffTrainingNote}</div>
           </div>
           {Object.entries(t.focus).map(([k, v]) => {
             const colors = { skills: "var(--A-accent)", fitness: "#4ADBE8", tactics: "#E84A6F", recovery: "#4AE89A" };
