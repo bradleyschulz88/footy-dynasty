@@ -14,7 +14,7 @@ import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf, f
 import { pyramidNoteForLeague } from '../../data/pyramidMeta.js';
 import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from '../../lib/playerGen.js';
 import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET, TIER3_MIN_CLUBS_PER_DIVISION } from '../../lib/leagueEngine.js';
-import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from '../../lib/defaults.js';
+import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool, STAFF_BLUEPRINT } from '../../lib/defaults.js';
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from '../../lib/format.js';
 import { generateSeasonCalendar, TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
 import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from '../../lib/save.js';
@@ -85,6 +85,16 @@ import {
 import { getClubGround } from '../../data/grounds.js';
 import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from '../../lib/careerAdvance.js';
 import { ensureStaffTasks } from '../../lib/staffTasks.js';
+import {
+  listExpandableHires,
+  hireBlueprintStaff,
+  recruitVolunteerStaff,
+  recruitRandomVolunteerStaff,
+  professionalSigningFee,
+  previewExpansionAnnualWage,
+  VOLUNTEER_ROLE_TEMPLATES,
+  MAX_STAFF_ROWS,
+} from '../../lib/staffHiring.js';
 import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from '../../lib/gameDepth.js';
 import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, LINEUP_FIELD_COUNT, LINEUP_OVAL_SLOT_COUNT, removeIdFromLineup } from '../../lib/lineupHelpers.js';
 import {
@@ -1377,6 +1387,47 @@ function StaffTab({ career, updateCareer }) {
     updateCareer({ staffTasks: { ...tasks, ...partial } });
   const roster = career.staff || [];
   const hasAnalyst = roster.some((s) => s.id === 's10');
+  const hirableIds = listExpandableHires(career);
+
+  const tryHireProfessional = (blueprintId) => {
+    const fee = professionalSigningFee(leagueTier, blueprintId);
+    const res = hireBlueprintStaff(career, blueprintId);
+    if (!res.ok) {
+      const msg =
+        res.reason === 'insufficient_cash'
+          ? `Cannot sign — need ${fmtK(fee)} cash for the hiring fee`
+          : res.reason === 'roster_full'
+            ? `Staff roster is full (${MAX_STAFF_ROWS} max)`
+            : 'Signing blocked — check tier or duplicates';
+      updateCareer({
+        news: [{ week: career.week, type: 'loss', text: msg }, ...(career.news || [])].slice(0, 15),
+      });
+      return;
+    }
+    updateCareer({
+      staff: res.staff,
+      finance: res.finance,
+      news: [{ week: career.week, type: 'win', text: res.newsLine }, ...(career.news || [])].slice(0, 15),
+    });
+  };
+
+  const tryRecruitVolunteer = (templateIndex) => {
+    const res =
+      templateIndex === 'random'
+        ? recruitRandomVolunteerStaff(career)
+        : recruitVolunteerStaff(career, templateIndex);
+    if (!res.ok) {
+      updateCareer({
+        news: [{ week: career.week, type: 'loss', text: `Volunteer intake failed (${res.reason})` }, ...(career.news || [])].slice(0, 15),
+      });
+      return;
+    }
+    updateCareer({
+      staff: res.staff,
+      committee: res.committee ?? career.committee,
+      news: [{ week: career.week, type: 'info', text: res.newsLine }, ...(career.news || [])].slice(0, 15),
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -1388,7 +1439,7 @@ function StaffTab({ career, updateCareer }) {
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Avg Rating" value={avgRating} accent="#4AE89A" />
-          <Stat label="Annual Wages" value={fmtK(totalWage)} accent="var(--A-accent)" />
+          <Stat label="Staff headcount" value={`${roster.length}/${MAX_STAFF_ROWS}`} accent="#A78BFA" />
         </div>
       </div>
 
@@ -1514,6 +1565,84 @@ function StaffTab({ career, updateCareer }) {
         </div>
       </div>
 
+      <div className={`${css.panel} p-5 space-y-4`}>
+        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-atext-mute">Recruitment</div>
+        <p className="text-xs text-atext-dim leading-snug">
+          Sign contract staff your tier doesn&apos;t start with (cash signing fee + wages). Add unpaid{' '}
+          <span className="text-atext font-semibold">community volunteers</span> for depth — they boost committee mood at state/local levels and can lead scouting/training assignments like anyone else on the list.
+        </p>
+        {hirableIds.length > 0 && (
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-2">Contract hires</div>
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {hirableIds.map((bid) => {
+                const meta = STAFF_BLUEPRINT.find((b) => b.id === bid);
+                const fee = professionalSigningFee(leagueTier, bid);
+                const wageEst = previewExpansionAnnualWage(leagueTier, bid);
+                const canCash = (career.finance?.cash ?? 0) >= fee;
+                const room = roster.length < MAX_STAFF_ROWS;
+                return (
+                  <div key={bid} className={`${css.inset} p-3 flex flex-col gap-2`}>
+                    <div className="font-bold text-sm text-atext">{meta?.role ?? bid}</div>
+                    <div className="text-[10px] text-atext-dim font-mono">
+                      Fee {fmtK(fee)} · from ~{fmtK(wageEst)}/yr
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!canCash || !room}
+                      onClick={() => tryHireProfessional(bid)}
+                      className={
+                        canCash && room
+                          ? `${css.btnPrimary} text-xs py-2`
+                          : 'text-xs py-2 rounded-lg bg-apanel-2 text-atext-mute'
+                      }
+                      title={!room ? `Max ${MAX_STAFF_ROWS} staff` : !canCash ? 'Insufficient cash for signing fee' : ''}
+                    >
+                      Sign
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-2">Community volunteers</div>
+          <div className="flex flex-wrap gap-2 mb-3">
+            <button
+              type="button"
+              disabled={roster.length >= MAX_STAFF_ROWS}
+              onClick={() => tryRecruitVolunteer('random')}
+              className={
+                roster.length < MAX_STAFF_ROWS
+                  ? `${css.btnGhost} text-xs px-3 py-2 border border-aline font-bold`
+                  : 'text-xs px-3 py-2 rounded-lg bg-apanel-2 text-atext-mute'
+              }
+            >
+              Surprise volunteer
+            </button>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {VOLUNTEER_ROLE_TEMPLATES.map((tpl, idx) => (
+              <button
+                key={tpl.role}
+                type="button"
+                disabled={roster.length >= MAX_STAFF_ROWS}
+                onClick={() => tryRecruitVolunteer(idx)}
+                className={`text-left p-3 rounded-lg border text-[11px] transition ${
+                  roster.length >= MAX_STAFF_ROWS
+                    ? 'border-aline bg-apanel-2 text-atext-mute'
+                    : 'border-aline bg-apanel hover:border-aaccent/40'
+                }`}
+              >
+                <span className="font-bold text-atext">{tpl.role}</span>
+                <span className="block text-[10px] text-atext-dim mt-1">Unpaid · mood lift · assignable</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
         <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
           <div className="col-span-3">Name</div>
@@ -1524,7 +1653,7 @@ function StaffTab({ career, updateCareer }) {
           <div className="col-span-1"></div>
         </div>
         {career.staff.map((s, idx) => (
-          <div key={idx} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+          <div key={`${s.id}-${idx}`} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
             <div className="col-span-3 font-semibold text-sm">{s.name}</div>
             <div className="col-span-3 text-sm text-atext-dim">{s.role}</div>
             <div className="col-span-2 flex items-center gap-2">
@@ -1541,7 +1670,7 @@ function StaffTab({ career, updateCareer }) {
       </div>
 
       <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
-        <span className="text-aaccent font-bold">TIP:</span> Replacing a staff member rolls a new candidate. Volunteers at local level are unpaid; senior coach is usually a small part-time stipend. Higher ratings still improve training.
+        <span className="text-aaccent font-bold">TIP:</span> Replace rerolls the same seat. Recruitment adds new rows (cap {MAX_STAFF_ROWS}). Volunteers never draw a wage; contract hires include a one-off cash fee.
       </div>
     </div>
   );

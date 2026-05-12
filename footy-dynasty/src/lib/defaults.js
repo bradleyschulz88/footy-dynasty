@@ -70,7 +70,7 @@ export function generateSponsors(tier) {
 }
 
 // Staff IDs must stay stable — training sessions reference s2–s5 by id.
-const STAFF_BLUEPRINT = [
+export const STAFF_BLUEPRINT = [
   { id: "s1",  role: "Senior Coach",                    rating: [60, 88], wage: 450000 },
   { id: "s2",  role: "Assistant Coach (Forwards)",      rating: [55, 82], wage: 180000 },
   { id: "s3",  role: "Assistant Coach (Defence)",       rating: [55, 82], wage: 180000 },
@@ -90,51 +90,68 @@ const STAFF_IDS_BY_TIER = {
   3: ["s1", "s2", "s4", "s5", "s6"],
 };
 
+/** Role ids you can add mid-career when missing from the list (by league tier). */
+export const EXPANDABLE_ROLE_IDS_BY_TIER = {
+  1: [],
+  2: ["s3", "s9", "s10"],
+  3: ["s3", "s7", "s8", "s9", "s10"],
+};
+
+/**
+ * @param {string} blueprintId
+ * @param {number} leagueTier 1 | 2 | 3
+ * @param {{ expansionHire?: boolean }} opts expansionHire=true skips tier-3 baseline volunteer packaging for seeded roles.
+ */
+export function buildProfessionalStaffMember(blueprintId, leagueTier, opts = {}) {
+  const expansionHire = !!opts.expansionHire;
+  const b = STAFF_BLUEPRINT.find((x) => x.id === blueprintId);
+  if (!b) return null;
+  const t = leagueTier === 2 ? 2 : leagueTier === 3 ? 3 : 1;
+  const mult = t === 1 ? 1 : t === 2 ? 0.25 : 0.05;
+  let role = b.role;
+  let volunteer = false;
+  if (t === 3 && !expansionHire) {
+    if (blueprintId === "s1") role = "Senior Coach (part-time)";
+    if (blueprintId === "s2") {
+      role = "Assistant / Forwards (volunteer)";
+      volunteer = true;
+    }
+    if (blueprintId === "s4") {
+      role = "Midfield / game-day (volunteer)";
+      volunteer = true;
+    }
+    if (blueprintId === "s5") {
+      role = "Runner / fitness (volunteer)";
+      volunteer = true;
+    }
+    if (blueprintId === "s6") {
+      role = "Club medic / first aid (volunteer)";
+      volunteer = true;
+    }
+  } else if (t === 3 && expansionHire) {
+    role = `${b.role} (contract)`;
+  }
+  let wage = Math.round(b.wage * mult);
+  if (volunteer) wage = 0;
+  else if (t === 3 && blueprintId === "s1") {
+    wage = Math.max(8000, Math.round(b.wage * 0.07));
+  }
+  return {
+    id: b.id,
+    role,
+    name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`,
+    rating: rand(b.rating[0], b.rating[1]),
+    wage,
+    volunteer,
+    contract: rand(1, 3),
+  };
+}
+
 export function generateStaff(tier) {
   const t = tier === 2 ? 2 : tier === 3 ? 3 : 1;
-  const mult = tier === 1 ? 1 : tier === 2 ? 0.25 : 0.05;
   const ids = STAFF_IDS_BY_TIER[t] || STAFF_IDS_BY_TIER[3];
-  const byId = Object.fromEntries(STAFF_BLUEPRINT.map(b => [b.id, b]));
   seedRng(SEED + 19);
-  return ids.map((id) => {
-    const b = byId[id];
-    let role = b.role;
-    let volunteer = false;
-    if (tier === 3) {
-      if (id === "s1") role = "Senior Coach (part-time)";
-      if (id === "s2") {
-        role = "Assistant / Forwards (volunteer)";
-        volunteer = true;
-      }
-      if (id === "s4") {
-        role = "Midfield / game-day (volunteer)";
-        volunteer = true;
-      }
-      if (id === "s5") {
-        role = "Runner / fitness (volunteer)";
-        volunteer = true;
-      }
-      if (id === "s6") {
-        role = "Club medic / first aid (volunteer)";
-        volunteer = true;
-      }
-    }
-    let wage = Math.round(b.wage * mult);
-    if (volunteer) wage = 0;
-    else if (tier === 3 && id === "s1") {
-      // Small part-time honorarium — not a full professional wage
-      wage = Math.max(8000, Math.round(b.wage * 0.07));
-    }
-    return {
-      id: b.id,
-      role,
-      name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`,
-      rating: rand(b.rating[0], b.rating[1]),
-      wage,
-      volunteer,
-      contract: rand(1, 3),
-    };
-  });
+  return ids.map((id) => buildProfessionalStaffMember(id, tier, { expansionHire: false }));
 }
 
 export function defaultKits(colors) {
