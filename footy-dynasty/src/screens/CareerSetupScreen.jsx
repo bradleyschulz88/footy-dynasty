@@ -30,7 +30,7 @@ import {
   planSeasonBoardMeetings,
 } from "../lib/board.js";
 import { primeSeasonStoryState } from "../lib/careerAdvance.js";
-import { SLOT_IDS } from "../lib/save.js";
+import { SLOT_IDS, getLatestSavedSlotMeta } from "../lib/setupConstants.js";
 import { LINEUP_CAP } from "../lib/lineupHelpers.js";
 import { css, Pill } from "../components/primitives.jsx";
 import { SETUP_SS_KEY } from "../lib/setupConstants.js";
@@ -442,7 +442,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
           </div>
 
         {slotsWithSaves.length > 0 && (() => {
-          const latest = getLatestSavedSlot(existingSlots);
+          const latest = getLatestSavedSlotMeta(existingSlots);
           return latest ? (
             <div className="mb-6">
               <button

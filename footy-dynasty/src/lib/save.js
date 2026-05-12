@@ -11,6 +11,7 @@ import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { migrateDraftPoolScouting } from './draftScouting.js';
 import { pushManagerInboxBoardMirror, syncTradePeriodManagerInboxRow } from './inbox.js';
 import { DEFAULT_STAFF_TASKS, ensureStaffTasks } from './staffTasks.js';
+import { SLOT_IDS, getLatestSavedSlotMeta } from './setupConstants.js';
 
 export const SAVE_VERSION = 21;
 export const LEGACY_KEY = 'footy-dynasty-career';
@@ -18,24 +19,14 @@ const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
 const ACTIVE_SLOT_KEY = 'footy-dynasty-active-slot';
 
-export const SLOT_IDS = ['A', 'B', 'C'];
+export { SLOT_IDS };
 
 /** Updated when the player exports JSON — used for backup reminders in Settings. */
 export const LAST_EXPORT_STORAGE_KEY = 'footy-dynasty-last-export-at';
 
 /** Slot id with the newest `savedAt` in meta, or null. */
 export function getLatestSavedSlot(meta = readSlotMeta()) {
-  let best = null;
-  let bestTime = '';
-  for (const id of SLOT_IDS) {
-    const m = meta[id];
-    if (!m?.savedAt) continue;
-    if (!best || m.savedAt > bestTime) {
-      best = id;
-      bestTime = m.savedAt;
-    }
-  }
-  return best;
+  return getLatestSavedSlotMeta(meta);
 }
 
 export function migrate(save) {
