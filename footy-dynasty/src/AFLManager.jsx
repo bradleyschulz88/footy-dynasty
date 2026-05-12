@@ -50,6 +50,7 @@ const CompetitionScreenLazy = lazy(() => import('./screens/competition/Competiti
 const SquadScreenLazy = lazy(() => import('./screens/squad/SquadScreen.jsx'));
 const ClubScreenLazy = lazy(() => import('./screens/club/ClubScreen.jsx'));
 const RecruitScreenLazy = lazy(() => import('./screens/recruit/RecruitScreen.jsx'));
+const SettingsScreenLazy = lazy(() => import('./screens/SettingsScreen.jsx'));
 
 // --- Gameplay systems spec (Sections 1-3) ---
 import { DIFFICULTY_IDS, DIFFICULTY_META, getDifficultyConfig, getDifficultyProfile, shouldShowTutorial } from './lib/difficulty.js';
@@ -733,23 +734,7 @@ function AFLManagerInner() {
     <AppMotionConfig reducedMotion={motionReduced}>
     <div className={`${themeWrapperClass()} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
       {globalStyle}
-      <Sidebar
-        screen={screen}
-        onNavigate={onNavScreen}
-        club={club}
-        league={league}
-        career={career}
-        myLadderPos={myLadderPos}
-        onNewGame={handleNewGame}
-        onSaveNow={handleSaveNow}
-        activeSlot={activeSlot}
-        onTogglePicker={() => setShowSlotPicker(s => !s)}
-        showSlotPicker={showSlotPicker}
-        slotMeta={readSlotMeta()}
-        slotMetaTick={slotMetaTick}
-        onSwitchSlot={handleSwitchSlot}
-        onDeleteSlot={handleDeleteSlot}
-      />
+      <Sidebar screen={screen} onNavigate={onNavScreen} club={club} league={league} career={career} myLadderPos={myLadderPos} />
       <main className="flex-1 overflow-y-auto min-w-0">
         <TopBar
           career={career}
@@ -790,9 +775,6 @@ function AFLManagerInner() {
                     tab={tab}
                     setTab={setTab}
                     tutorialActive={tutorialActive}
-                    activeSlot={activeSlot}
-                    onExportCareer={handleExportCareer}
-                    onImportCareerFile={handleImportCareerFile}
                   />
                 </Suspense>
               )}
@@ -804,6 +786,25 @@ function AFLManagerInner() {
               {screen === "compete" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading competition…" />}>
                   <CompetitionScreenLazy career={career} club={club} league={league} tab={tab} setTab={setTab} />
+                </Suspense>
+              )}
+              {screen === "settings" && (
+                <Suspense fallback={<LazyRouteFallback label="Loading settings…" />}>
+                  <SettingsScreenLazy
+                    career={career}
+                    updateCareer={updateCareer}
+                    activeSlot={activeSlot}
+                    onExportCareer={handleExportCareer}
+                    onImportCareerFile={handleImportCareerFile}
+                    onSaveNow={handleSaveNow}
+                    onNewGame={handleNewGame}
+                    slotMeta={readSlotMeta()}
+                    slotMetaTick={slotMetaTick}
+                    showSlotPicker={showSlotPicker}
+                    onTogglePicker={() => setShowSlotPicker((s) => !s)}
+                    onSwitchSlot={handleSwitchSlot}
+                    onDeleteSlot={handleDeleteSlot}
+                  />
                 </Suspense>
               )}
             </motion.div>

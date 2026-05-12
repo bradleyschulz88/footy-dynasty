@@ -7,18 +7,14 @@ import {
   Repeat,
   Trophy,
   ChevronRight,
-  ChevronsUp,
-  Save,
-  RefreshCw,
+  Settings,
 } from "lucide-react";
-import { findClub } from "../../data/pyramid.js";
-import { SLOT_IDS } from "../../lib/save.js";
 import {
   tutorialAllowsNavigation,
   tutorialHighlightScreen,
 } from "../TutorialOverlay.jsx";
 
-export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos, onNewGame, onSaveNow, activeSlot, slotMeta, slotMetaTick, onTogglePicker, showSlotPicker, onSwitchSlot, onDeleteSlot }) {
+export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos }) {
   const season = career.season;
   const week   = career.week;
   const phase  = career.phase || 'preseason';
@@ -26,12 +22,13 @@ export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos,
   const tutStep = career?.tutorialStep ?? 0;
   const highlightNav = tutorialOn ? tutorialHighlightScreen(tutStep) : null;
   const items = [
-    { key: "hub",      label: "Hub",        icon: Home,      desc: "Overview" },
+    { key: "hub",      label: "Hub",         icon: Home,      desc: "Overview" },
     { key: "squad",    label: "Squad",       icon: Users,     desc: "Players & Tactics" },
     { key: "schedule", label: "Schedule",    icon: Calendar,  desc: "Calendar & Fixtures" },
     { key: "club",     label: "Club",        icon: Building2, desc: "Contracts, ops & board" },
     { key: "recruit",  label: "Recruit",     icon: Repeat,    desc: "Trade & Draft" },
     { key: "compete",  label: "Competition", icon: Trophy,    desc: "Ladder & Fixtures" },
+    { key: "settings", label: "Settings",    icon: Settings,   desc: "Save & preferences" },
   ];
   return (
     <aside className="w-full md:w-64 md:flex flex-col md:sticky md:top-0 md:h-screen shrink-0 bg-apanel border-b md:border-b-0 md:border-r border-aline">
@@ -98,53 +95,8 @@ export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos,
           );
         })}
       </nav>
-      <div className="px-4 py-3 space-y-2 border-t border-aline hidden md:block">
-        {/* Save status */}
-        {onSaveNow && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <button onClick={onSaveNow} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-apanel-2 hover:bg-aaccent/10 hover:text-aaccent transition text-[10px] font-bold uppercase tracking-widest font-mono text-atext-dim">
-                <Save className="w-3.5 h-3.5" /> Save{activeSlot ? ` Slot ${activeSlot}` : ''}
-              </button>
-              <button onClick={onTogglePicker} className="px-2 py-2 rounded-lg bg-apanel-2 hover:bg-aaccent/10 hover:text-aaccent transition text-[10px] font-bold uppercase font-mono text-atext-dim">
-                <ChevronsUp className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            {showSlotPicker && SLOT_IDS && (
-              <div className="rounded-lg overflow-hidden text-[10px]" style={{background:'var(--A-panel-2)', border:'1px solid var(--A-line)'}} key={slotMetaTick}>
-                {SLOT_IDS.map(s => {
-                  const meta = slotMeta?.[s];
-                  const isActive = s === activeSlot;
-                  return (
-                    <div key={s} className={`flex items-center gap-2 px-2.5 py-1.5 ${isActive ? 'bg-aaccent/10' : ''}`} style={{borderBottom:'1px solid var(--A-line)'}}>
-                      <span className={`font-mono font-bold ${isActive ? 'text-aaccent' : 'text-atext-dim'}`}>{s}</span>
-                      {meta ? (
-                        <>
-                          <span className="flex-1 text-atext-dim truncate">{meta.slotLabel ? `${meta.slotLabel} · ` : ''}S{meta.season}{meta.week ? ` R${meta.week}` : ''} · {findClub(meta.clubId)?.short || meta.clubId}</span>
-                          {!isActive && (
-                            <button onClick={() => onSwitchSlot && onSwitchSlot(s)} className="text-aaccent hover:text-[#4ADBE8] font-bold">Load</button>
-                          )}
-                          <button onClick={() => onDeleteSlot && onDeleteSlot(s)} className="text-atext-mute hover:text-aneg">×</button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="flex-1 text-atext-mute italic">empty</span>
-                          {career && !isActive && (
-                            <button onClick={() => onSwitchSlot && onSwitchSlot(s)} className="text-aaccent hover:text-[#4ADBE8] font-bold">Use</button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-        <button onClick={onNewGame} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-atext-mute hover:text-aneg hover:bg-aneg/10 transition text-xs font-bold uppercase tracking-widest font-mono">
-          <RefreshCw className="w-3.5 h-3.5" /> New Career
-        </button>
-        <div className="text-[9px] text-atext-mute text-center uppercase tracking-widest font-mono">Footy Dynasty v2.0</div>
+      <div className="px-4 py-2 border-t border-aline md:hidden">
+        <div className="text-[9px] text-atext-mute text-center uppercase tracking-widest font-mono">Save · Slots · New career → Settings</div>
       </div>
     </aside>
   );

@@ -28,6 +28,7 @@ export function clubEffectiveTab(tab) {
 export function tutorialAllowsNavigation(step, nextScreen) {
   if (step < 0 || step >= TUTORIAL_STEPS.length) return true;
   if (nextScreen === "hub") return true;
+  if (nextScreen === "settings") return true;
   const row = TUTORIAL_STEPS[step];
   if (row.step === 0) return false;
   if (row.step === 6) return false;
