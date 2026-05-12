@@ -30,6 +30,7 @@ import {
   planSeasonBoardMeetings,
 } from "../lib/board.js";
 import { primeSeasonStoryState } from "../lib/careerAdvance.js";
+import { SLOT_IDS } from "../lib/save.js";
 import { LINEUP_CAP } from "../lib/lineupHelpers.js";
 import { css, Pill } from "../components/primitives.jsx";
 import { SETUP_SS_KEY } from "../lib/setupConstants.js";

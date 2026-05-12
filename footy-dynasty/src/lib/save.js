@@ -10,9 +10,9 @@ import { migrateSaveGameDepthV12 } from './gameDepth.js';
 import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { migrateDraftPoolScouting } from './draftScouting.js';
 import { pushManagerInboxBoardMirror, syncTradePeriodManagerInboxRow } from './inbox.js';
-import { DEFAULT_STAFF_TASKS } from './staffTasks.js';
+import { DEFAULT_STAFF_TASKS, ensureStaffTasks } from './staffTasks.js';
 
-export const SAVE_VERSION = 20;
+export const SAVE_VERSION = 21;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
@@ -313,6 +313,33 @@ export function migrate(save) {
         contract: 2,
       });
     }
+  }
+
+  if (v < 21) {
+    s.saveVersion = 21;
+    const prev = s.staffTasks && typeof s.staffTasks === 'object' ? s.staffTasks : {};
+    s.staffTasks = ensureStaffTasks({
+      staff: s.staff,
+      staffTasks: {
+        recruitPriorityState:
+          prev.recruitPriorityState == null || prev.recruitPriorityState === ''
+            ? null
+            : String(prev.recruitPriorityState),
+        matchPrepTier: [0, 1, 2].includes(Number(prev.matchPrepTier))
+          ? Number(prev.matchPrepTier)
+          : 0,
+        trainingLeadId:
+          prev.trainingLeadId == null || prev.trainingLeadId === ''
+            ? null
+            : String(prev.trainingLeadId),
+        scoutLeadId:
+          prev.scoutLeadId == null || prev.scoutLeadId === '' ? null : String(prev.scoutLeadId),
+        tradeNegotiatorId:
+          prev.tradeNegotiatorId == null || prev.tradeNegotiatorId === ''
+            ? null
+            : String(prev.tradeNegotiatorId),
+      },
+    });
   }
 
   return s;

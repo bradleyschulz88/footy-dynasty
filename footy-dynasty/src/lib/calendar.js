@@ -164,11 +164,13 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
   const intScale  = intensityScale(intensity);
 
   const staffMember = (staff || []).find(s => s.id === info.staffId);
-  let staffRating = staffMember?.rating ?? 60;
+  let staffRating = Number(staffMember?.rating) || 60;
   const staffName   = staffMember?.name   ?? 'Unknown Coach';
   const leadId = opts.trainingLeadId ?? null;
-  if (leadId && staffMember && leadId === info.staffId) {
-    staffRating = clamp(Number(staffRating) + 6, 35, 99);
+  const leadMember = leadId ? (staff || []).find((s) => s.id === leadId) : null;
+  if (leadMember) {
+    const leadBoost = clamp(Number(leadMember.rating) + 6, 35, 99);
+    staffRating = clamp(Math.max(staffRating, leadBoost), 35, 99);
   }
   const baseScale   = staffRating / 75;
 

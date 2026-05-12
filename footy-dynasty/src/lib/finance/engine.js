@@ -12,7 +12,7 @@ import { getDifficultyConfig } from '../difficulty.js';
 import { findLeagueOf } from '../../data/pyramid.js';
 import { clamp } from '../format.js';
 import { rng } from '../rng.js';
-import { seniorScoutAccuracyBonus } from '../staffTasks.js';
+import { scoutAccuracyBonus, ensureStaffTasks } from '../staffTasks.js';
 
 // =============================================================================
 // Helpers
@@ -336,7 +336,7 @@ export function effectiveInjuryRate(career, baseRate) {
 // Hides true overall by adding noise, then nudging by the bonus.
 export function scoutedOverall(player, career, extras = {}) {
   const cfg = getDifficultyConfig(career?.difficulty);
-  let staffBon = seniorScoutAccuracyBonus(career?.staff);
+  let staffBon = scoutAccuracyBonus(career?.staff, ensureStaffTasks(career));
   if (typeof extras.focusBonus === 'number') staffBon += extras.focusBonus;
   const bonus = (cfg.scoutAccuracyBonus ?? 0) + staffBon;
   // Positive bonus -> shown rating closer to true; negative -> more noise.

@@ -1345,12 +1345,6 @@ function FacilitiesTab({ career, updateCareer }) {
   );
 }
 
-/** Staff IDs that lead training sessions in calendar TRAINING_INFO — bonus applies when trainingLeadId matches session lead. */
-const TRAINING_SESSION_LEAD_IDS = ['s2', 's4', 's5'];
-
-// ============================================================================
-// STAFF TAB
-// ============================================================================
 function StaffTab({ career, updateCareer }) {
   const leagueTier = PYRAMID[career.leagueKey]?.tier || 1;
   const replaceStaff = (idx) => {
@@ -1381,10 +1375,8 @@ function StaffTab({ career, updateCareer }) {
   const clubState = findClub(career.clubId)?.state ?? null;
   const patchStaffTasks = (partial) =>
     updateCareer({ staffTasks: { ...tasks, ...partial } });
-  const trainingLeadOptions = (career.staff || []).filter((s) =>
-    TRAINING_SESSION_LEAD_IDS.includes(s.id),
-  );
-  const hasAnalyst = (career.staff || []).some((s) => s.id === 's10');
+  const roster = career.staff || [];
+  const hasAnalyst = roster.some((s) => s.id === 's10');
 
   return (
     <div className="space-y-4">
@@ -1403,9 +1395,13 @@ function StaffTab({ career, updateCareer }) {
       <div className={`${css.panel} p-5 space-y-4`}>
         <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-atext-mute">Staff priorities</div>
         <div className="text-xs text-atext-dim leading-snug">
-          Head recruiter shapes trade asks; senior scout trims interstate scouting fees and sharpens local reports. Assign a <span className="text-atext font-semibold">training session lead</span> for +6 effective coaching rating when that coach runs the drill. Match-day depth flavour scales with tier when a performance analyst is on staff.
+          Assign people on your roster to football-office jobs. <span className="text-atext font-semibold">Scouting lead</span>{' '}
+          drives report accuracy and interstate travel discounts (defaults to Senior Scout when unset).{' '}
+          <span className="text-atext font-semibold">Trade negotiator</span> shapes opening wage asks (defaults to Head Recruiter).{' '}
+          <span className="text-atext font-semibold">Training program lead</span> lifts every session using their rating +6 as a floor.
+          Match-day depth still scales with match-prep tier when a performance analyst is employed.
         </div>
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Recruiting region focus</label>
             <select
@@ -1428,7 +1424,47 @@ function StaffTab({ career, updateCareer }) {
             <p className="text-[10px] text-atext-dim mt-1">Cheaper interstate scout packs into this state + clearer reports there.</p>
           </div>
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Training session lead</label>
+            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Scouting lead</label>
+            <select
+              value={tasks.scoutLeadId ?? ''}
+              onChange={(e) =>
+                patchStaffTasks({
+                  scoutLeadId: e.target.value === '' ? null : e.target.value,
+                })
+              }
+              className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm"
+            >
+              <option value="">Auto — Senior Scout if on staff</option>
+              {roster.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} — {s.role}
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-atext-dim mt-1">Local / interstate reports and travel fees use their rating (volunteer coaches count at a softer curve).</p>
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Trade negotiator</label>
+            <select
+              value={tasks.tradeNegotiatorId ?? ''}
+              onChange={(e) =>
+                patchStaffTasks({
+                  tradeNegotiatorId: e.target.value === '' ? null : e.target.value,
+                })
+              }
+              className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm"
+            >
+              <option value="">Auto — Head Recruiter if on staff</option>
+              {roster.map((s) => (
+                <option key={`t-${s.id}`} value={s.id}>
+                  {s.name} — {s.role}
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-atext-dim mt-1">Opening trade asks use their negotiation skill (cap filter &quot;max demand&quot; follows the same band).</p>
+          </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Training program lead</label>
             <select
               value={tasks.trainingLeadId ?? ''}
               onChange={(e) =>
@@ -1438,16 +1474,16 @@ function StaffTab({ career, updateCareer }) {
               }
               className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm"
             >
-              <option value="">Rotate (no lead bonus)</option>
-              {trainingLeadOptions.map((s) => (
-                <option key={s.id} value={s.id}>
+              <option value="">Rotate — specialists only</option>
+              {roster.map((s) => (
+                <option key={`tr-${s.id}`} value={s.id}>
                   {s.name} — {s.role}
                 </option>
               ))}
             </select>
-            <p className="text-[10px] text-atext-dim mt-1">Bonus applies on sessions that coach already leads (forwards, midfield, S&amp;C).</p>
+            <p className="text-[10px] text-atext-dim mt-1">Every session uses the better of the specialist coach or your lead&apos;s rating +6.</p>
           </div>
-          <div>
+          <div className="md:col-span-2 lg:col-span-2">
             <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Match-prep depth</label>
             <div className="flex flex-wrap gap-2">
               {[

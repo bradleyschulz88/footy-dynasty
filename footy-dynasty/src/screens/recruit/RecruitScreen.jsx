@@ -423,11 +423,12 @@ function TradeTab({ career, updateCareer }) {
   const wageCap = effectiveWageCap(career);
   const currentWages = currentPlayerWageBill(career);
   const headroom = Math.max(0, wageCap - currentWages);
+  const staffTasksForTrade = ensureStaffTasks(career);
 
   const capCheckAmount = (p) => {
     const listed = tradeCapCheckListedWage(p);
     if (capFilter === 'listed') return listed;
-    if (capFilter === 'maxDemand') return tradeCapCheckMaxDemandWage(p, career.staff);
+    if (capFilter === 'maxDemand') return tradeCapCheckMaxDemandWage(p, career.staff, staffTasksForTrade);
     return 0;
   };
 
@@ -446,7 +447,7 @@ function TradeTab({ career, updateCareer }) {
   });
 
   const openNegotiation = (p) => {
-    const demandedWage = negotiationDemandWage(p.wage, career.staff);
+    const demandedWage = negotiationDemandWage(p.wage, career.staff, staffTasksForTrade);
     const demandedYears = rand(1, 3);
     setNegotiating({ playerId: p.id, wage: demandedWage, years: demandedYears, counterUsed: false });
   };
@@ -541,7 +542,7 @@ function TradeTab({ career, updateCareer }) {
             const isNeg = negotiating?.playerId === p.id;
             const capBlock = negotiating && isNeg && (currentWages + negotiating.wage > wageCap);
             const lw = tradeCapCheckListedWage(p);
-            const maxAsk = tradeCapCheckMaxDemandWage(p, career.staff);
+            const maxAsk = tradeCapCheckMaxDemandWage(p, career.staff, staffTasksForTrade);
             const okListed = wageCap <= 0 || canAffordSigning(career, lw);
             const okMax = wageCap <= 0 || canAffordSigning(career, maxAsk);
             let capPill;
@@ -627,7 +628,7 @@ function TradeTab({ career, updateCareer }) {
           const isNeg = negotiating?.playerId === p.id;
           const capBlock = negotiating && isNeg && currentWages + negotiating.wage > wageCap;
           const lw = tradeCapCheckListedWage(p);
-          const maxAsk = tradeCapCheckMaxDemandWage(p, career.staff);
+          const maxAsk = tradeCapCheckMaxDemandWage(p, career.staff, staffTasksForTrade);
           const okListed = wageCap <= 0 || canAffordSigning(career, lw);
           const okMax = wageCap <= 0 || canAffordSigning(career, maxAsk);
           let capMob;
