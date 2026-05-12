@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, lazy, Suspense } from "react";
+import { AnimatePresence, motion, MotionConfig, useReducedMotion } from "motion/react";
 import {
   Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
   UserCog,   Repeat, Sprout, BarChart3, Calendar, ChevronRight, ChevronLeft,
@@ -110,6 +111,27 @@ function themeWrapperClass() {
   return 'dirA';
 }
 
+function AppMotionConfig({ reducedMotion, children }) {
+  return (
+    <MotionConfig reducedMotion={reducedMotion ? "always" : "never"}>
+      {children}
+    </MotionConfig>
+  );
+}
+
+function LazyRouteFallback({ label }) {
+  return (
+    <motion.div
+      className="py-16 text-center text-atext-dim font-mono text-sm"
+      initial={{ opacity: 0.4 }}
+      animate={{ opacity: [0.4, 1, 0.4] }}
+      transition={{ duration: 1.25, repeat: Infinity, ease: "easeInOut" }}
+    >
+      {label}
+    </motion.div>
+  );
+}
+
 
 // ============================================================================
 // MAIN APP
@@ -165,6 +187,9 @@ function AFLManagerInner() {
       delete document.documentElement.dataset.reduceMotion;
     };
   }, [career?.options?.uiDensity, career?.options?.reduceMotion, career]);
+
+  const systemReducedMotion = useReducedMotion();
+  const motionReduced = !!(systemReducedMotion || career?.options?.reduceMotion);
 
   useEffect(() => {
     const onVis = () => {
@@ -431,32 +456,36 @@ function AFLManagerInner() {
 
   // ============== CAREER SETUP ==============
   if (!career) {
-    return <CareerSetup onStart={(c) => {
-      const meta = readSlotMeta();
-      let slot = activeSlot;
-      if (!slot) {
-        slot = SLOT_IDS.find(s => !meta[s]) || 'A';
-      }
-      setActiveSlot(slot);
-      setActiveSlotState(slot);
-      const initialised = {
-        ...c,
-        saveVersion: SAVE_VERSION,
-        options: {
-          autosave: true,
-          confirmBeforeNewCareer: true,
-          confirmBeforeDeleteSlot: true,
-          uiDensity: 'comfortable',
-          reduceMotion: false,
-          ...(c.options || {}),
-        },
-      };
-      writeSlot(slot, initialised);
-      sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
-      sessionStorage.removeItem(SETUP_SS_KEY);
-      setCareer(initialised);
-      setScreen("hub");
-    }} existingSlots={readSlotMeta()} onResume={(slot) => { handleSwitchSlot(slot); }} />;
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <CareerSetup onStart={(c) => {
+          const meta = readSlotMeta();
+          let slot = activeSlot;
+          if (!slot) {
+            slot = SLOT_IDS.find(s => !meta[s]) || 'A';
+          }
+          setActiveSlot(slot);
+          setActiveSlotState(slot);
+          const initialised = {
+            ...c,
+            saveVersion: SAVE_VERSION,
+            options: {
+              autosave: true,
+              confirmBeforeNewCareer: true,
+              confirmBeforeDeleteSlot: true,
+              uiDensity: 'comfortable',
+              reduceMotion: false,
+              ...(c.options || {}),
+            },
+          };
+          writeSlot(slot, initialised);
+          sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
+          sessionStorage.removeItem(SETUP_SS_KEY);
+          setCareer(initialised);
+          setScreen("hub");
+        }} existingSlots={readSlotMeta()} onResume={(slot) => { handleSwitchSlot(slot); }} />
+      </AppMotionConfig>
+    );
   }
 
   const club = findClub(career.clubId);
@@ -494,9 +523,10 @@ function AFLManagerInner() {
   // Drives the 5-step narrative, then a Job Market screen for the new club.
   if (career.isSacked) {
     return (
-      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
-        {globalStyle}
-        <SackingSequence
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+          {globalStyle}
+          <SackingSequence
           career={career}
           club={club}
           onAdvanceStep={(nextStep) => {
@@ -526,16 +556,18 @@ function AFLManagerInner() {
             });
           }}
         />
-      </div>
+        </div>
+      </AppMotionConfig>
     );
   }
 
   // Legacy game-over (kept as a no-op fallback so older saves with gameOver but no isSacked don't crash)
   if (career.gameOver && !career.isSacked) {
     return (
-      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
-        {globalStyle}
-        <GameOverScreen
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+          {globalStyle}
+          <GameOverScreen
           career={career}
           club={club}
           onRestart={() => {
@@ -556,30 +588,34 @@ function AFLManagerInner() {
             updateCareer(next);
           }}
         />
-      </div>
+        </div>
+      </AppMotionConfig>
     );
   }
 
   if (career.showSeasonSummary && career.seasonSummary) {
     return (
-      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
-        {globalStyle}
-        <SeasonSummaryScreen
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+          {globalStyle}
+          <SeasonSummaryScreen
           summary={career.seasonSummary}
           club={club}
           retiredThisSeason={career.retiredThisSeason}
           eosFinance={career.lastEosFinance}
           onContinue={() => updateCareer({ showSeasonSummary: false })}
         />
-      </div>
+        </div>
+      </AppMotionConfig>
     );
   }
 
   if (career.inMatchDay && career.currentMatchResult) {
     return (
-      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
-        {globalStyle}
-        <MatchDayScreen
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+          {globalStyle}
+          <MatchDayScreen
           result={career.currentMatchResult}
           league={league}
           career={career}
@@ -605,15 +641,17 @@ function AFLManagerInner() {
             }}
           />
         )}
-      </div>
+        </div>
+      </AppMotionConfig>
     );
   }
 
   if (career.boardCrisis?.phase === 'active') {
     return (
-      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
-        {globalStyle}
-        <VoteOfConfidenceFlow
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+          {globalStyle}
+          <VoteOfConfidenceFlow
           career={career}
           club={club}
           league={league}
@@ -640,15 +678,17 @@ function AFLManagerInner() {
             }
           }}
         />
-      </div>
+        </div>
+      </AppMotionConfig>
     );
   }
 
   if (career.boardMeetingBlocking) {
     return (
-      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
-        {globalStyle}
-        <BoardMeetingScreen
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+          {globalStyle}
+          <BoardMeetingScreen
           career={career}
           blocking={career.boardMeetingBlocking}
           onChoose={(choiceId) => {
@@ -662,15 +702,17 @@ function AFLManagerInner() {
             }
           }}
         />
-      </div>
+        </div>
+      </AppMotionConfig>
     );
   }
 
   if (career.arrivalBriefing?.pending) {
     return (
-      <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
-        {globalStyle}
-        <ArrivalBriefingFlow
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+          {globalStyle}
+          <ArrivalBriefingFlow
           career={career}
           club={club}
           league={league}
@@ -682,11 +724,13 @@ function AFLManagerInner() {
             setCareer(next);
           }}
         />
-      </div>
+        </div>
+      </AppMotionConfig>
     );
   }
 
   return (
+    <AppMotionConfig reducedMotion={motionReduced}>
     <div className={`${themeWrapperClass()} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
       {globalStyle}
       <Sidebar
@@ -717,42 +761,53 @@ function AFLManagerInner() {
           tutorialSpotlightAdvance={!!tutorialActive && (career.tutorialStep ?? 0) === 6}
         />
         <div className="p-3 md:p-6 max-w-[1400px] mx-auto">
-          {screen === "hub"      && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={onNavScreen} setTab={setTab} onAdvance={advanceToNextEvent} />}
-          {screen === "squad" && (
-            <Suspense fallback={<div className="anim-in py-16 text-center text-atext-dim font-mono text-sm">Loading squad…</div>}>
-              <SquadScreenLazy career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} tutorialActive={tutorialActive} />
-            </Suspense>
-          )}
-          {screen === "schedule" && (
-            <Suspense fallback={<div className="anim-in py-16 text-center text-atext-dim font-mono text-sm">Loading calendar…</div>}>
-              <ScheduleScreenLazy career={career} club={club} league={league} />
-            </Suspense>
-          )}
-          {screen === "club" && (
-            <Suspense fallback={<div className="anim-in py-16 text-center text-atext-dim font-mono text-sm">Loading club…</div>}>
-              <ClubScreenLazy
-                career={career}
-                club={club}
-                updateCareer={updateCareer}
-                tab={tab}
-                setTab={setTab}
-                tutorialActive={tutorialActive}
-                activeSlot={activeSlot}
-                onExportCareer={handleExportCareer}
-                onImportCareerFile={handleImportCareerFile}
-              />
-            </Suspense>
-          )}
-          {screen === "recruit" && (
-            <Suspense fallback={<div className="anim-in py-16 text-center text-atext-dim font-mono text-sm">Loading recruit…</div>}>
-              <RecruitScreenLazy career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />
-            </Suspense>
-          )}
-          {screen === "compete" && (
-            <Suspense fallback={<div className="anim-in py-16 text-center text-atext-dim font-mono text-sm">Loading competition…</div>}>
-              <CompetitionScreenLazy career={career} club={club} league={league} tab={tab} setTab={setTab} />
-            </Suspense>
-          )}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={screen}
+              className="min-w-0"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {screen === "hub" && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={onNavScreen} setTab={setTab} onAdvance={advanceToNextEvent} />}
+              {screen === "squad" && (
+                <Suspense fallback={<LazyRouteFallback label="Loading squad…" />}>
+                  <SquadScreenLazy career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} tutorialActive={tutorialActive} />
+                </Suspense>
+              )}
+              {screen === "schedule" && (
+                <Suspense fallback={<LazyRouteFallback label="Loading calendar…" />}>
+                  <ScheduleScreenLazy career={career} club={club} league={league} />
+                </Suspense>
+              )}
+              {screen === "club" && (
+                <Suspense fallback={<LazyRouteFallback label="Loading club…" />}>
+                  <ClubScreenLazy
+                    career={career}
+                    club={club}
+                    updateCareer={updateCareer}
+                    tab={tab}
+                    setTab={setTab}
+                    tutorialActive={tutorialActive}
+                    activeSlot={activeSlot}
+                    onExportCareer={handleExportCareer}
+                    onImportCareerFile={handleImportCareerFile}
+                  />
+                </Suspense>
+              )}
+              {screen === "recruit" && (
+                <Suspense fallback={<LazyRouteFallback label="Loading recruit…" />}>
+                  <RecruitScreenLazy career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />
+                </Suspense>
+              )}
+              {screen === "compete" && (
+                <Suspense fallback={<LazyRouteFallback label="Loading competition…" />}>
+                  <CompetitionScreenLazy career={career} club={club} league={league} tab={tab} setTab={setTab} />
+                </Suspense>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
       {/* Tutorial Overlay (Spec Section 1) */}
@@ -769,6 +824,7 @@ function AFLManagerInner() {
         />
       )}
     </div>
+    </AppMotionConfig>
   );
 }
 

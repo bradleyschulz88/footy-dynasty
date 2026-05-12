@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "motion/react";
 import {
   Users,
   DollarSign,
@@ -30,6 +31,23 @@ import {
 } from "../../lib/community.js";
 import { css, Pill, Stat, Jersey } from "../../components/primitives.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
+
+const hubContainer = {
+  hidden: { opacity: 1 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.055, delayChildren: 0.04 },
+  },
+};
+
+const hubItem = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.24, ease: [0.22, 1, 0.36, 1] },
+  },
+};
 
 // ============================================================================
 // HUB SCREEN
@@ -156,9 +174,9 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
   const capPctHub = cap > 0 ? Math.round((playerWagesHub / cap) * 100) : 0;
 
   return (
-    <div className="anim-in space-y-5">
+    <motion.div className="space-y-5" variants={hubContainer} initial="hidden" animate="show">
       {/* Hero Banner */}
-      <div className="panel rounded-2xl overflow-hidden relative min-h-[160px] border border-aline">
+      <motion.div variants={hubItem} className="panel rounded-2xl overflow-hidden relative min-h-[160px] border border-aline">
         <div className="absolute inset-0 opacity-40" style={{background:`linear-gradient(135deg, ${club.colors[0]}33 0%, transparent 55%)`}} />
         <div className="absolute inset-0" style={{background:`radial-gradient(ellipse at 80% 50%, ${club.colors[1]}22, transparent 65%)`}} />
         <div className="absolute right-6 top-0 bottom-0 flex items-center opacity-20">
@@ -191,10 +209,10 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
             <div className="text-[10px] text-atext-dim uppercase tracking-widest">Points</div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {cap > 0 && (
-        <div className="flex flex-wrap items-center gap-2 px-0.5">
+        <motion.div variants={hubItem} className="flex flex-wrap items-center gap-2 px-0.5">
           <button
             type="button"
             onClick={() => { setScreen('club'); setTab('finances'); }}
@@ -209,18 +227,20 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
               {capPctHub >= 100 ? 'Over the effective cap — expect board pressure after matches until you trim wages.' : 'Cap is tight — plan trades and renewals before offers blow the list up.'}
             </span>
           )}
-        </div>
+        </motion.div>
       )}
 
       {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
-      <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} setTab={setTab} />
+      <motion.div variants={hubItem}>
+        <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} setTab={setTab} />
+      </motion.div>
 
       {(() => {
         const playerQ = (career.pendingRenewals || []).filter((r) => !r._handled).length;
         const staffQ = (career.pendingStaffRenewals || []).filter((r) => !r._handled).length;
         if (career.renewalsClosed || (!playerQ && !staffQ)) return null;
         return (
-          <div className={`${css.panel} p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`} style={{ borderColor: '#FFB347', background: 'rgba(255,179,71,0.06)' }}>
+          <motion.div variants={hubItem} className={`${css.panel} p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`} style={{ borderColor: '#FFB347', background: 'rgba(255,179,71,0.06)' }}>
             <div className="flex items-start gap-3">
               <FileText className="w-5 h-5 text-[#FFB347] flex-shrink-0 mt-0.5" />
               <div>
@@ -245,15 +265,17 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
             >
               Open contracts →
             </button>
-          </div>
+          </motion.div>
         );
       })()}
 
-      <MatchPreviewPanel career={career} league={league} />
+      <motion.div variants={hubItem}>
+        <MatchPreviewPanel career={career} league={league} />
+      </motion.div>
 
       {/* Last Event Result Card */}
       {lastEv && (
-        <div className={`${css.panel} p-4 anim-in`}>
+        <motion.div variants={hubItem} className={`${css.panel} p-4`}>
           {lastEv.type === 'training' && (
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'#F0FDF4', border:'1px solid #BBF7D0'}}>
@@ -304,12 +326,12 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
 
       {/* Upcoming Events Strip */}
       {upcoming7.length > 0 && (
-        <div className={css.panel}>
+        <motion.div variants={hubItem} className={css.panel}>
           <div className="px-4 pt-4 pb-2 flex items-center justify-between">
             <h3 className="font-display text-lg text-atext tracking-wide">UPCOMING</h3>
             <button onClick={() => setScreen('schedule')} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-[#F0A558]">Full calendar →</button>
@@ -350,10 +372,11 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Finals Banner */}
+      <motion.div variants={hubItem} className="space-y-3">
       {career.inFinals && (
         <div className="rounded-2xl p-4 flex items-center justify-between" style={{background:"linear-gradient(135deg, rgba(0, 224, 255, 0.12), rgba(252, 211, 77, 0.06))", border:"2px solid rgba(0, 224, 255, 0.35)"}}>
           <div className="flex items-center gap-3">
@@ -414,16 +437,17 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
           </div>
         </div>
       )}
+      </motion.div>
 
       {/* Stat Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <motion.div variants={hubItem} className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users} />
           <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="#4AE89A" icon={DollarSign} />
           <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="#4ADBE8" icon={Handshake} />
           <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.W ?? 0}W / ${myRow?.L ?? 0}L`} accent={posColor} icon={Trophy} />
-      </div>
+      </motion.div>
 
-      <div className="grid md:grid-cols-5 gap-5">
+      <motion.div variants={hubItem} className="grid md:grid-cols-5 gap-5">
         {/* Ladder */}
         <div className={`${css.panel} md:col-span-3`}>
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
@@ -501,9 +525,10 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
             })}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Board Pressure */}
+      <motion.div variants={hubItem} className="space-y-3">
       {career.finance.boardConfidence < 35 && (
         <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"#FEF2F2", border:"1.5px solid #FECACA"}}>
           <span className="text-2xl">⚠️</span>
@@ -531,9 +556,10 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
           </div>
         );
       })()}
+      </motion.div>
 
       {/* Quick links */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <motion.div variants={hubItem} className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { icon: Users,    label: "Manage Squad",  sub: "Players & lineup", screen: "squad", color: "var(--A-accent)" },
           { icon: Dumbbell, label: "Set Training",  sub: "Intensity & focus", screen: "squad", color: "#4ADBE8" },
@@ -559,7 +585,7 @@ export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab
             </button>
           );
         })}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

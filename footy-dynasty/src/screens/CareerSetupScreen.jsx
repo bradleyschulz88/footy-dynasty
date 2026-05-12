@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Trophy, ChevronRight, ChevronLeft } from "lucide-react";
 import { seedRng, rand, pick } from "../lib/rng.js";
 import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub } from "../data/pyramid.js";
@@ -357,8 +358,6 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     <div className="dirA min-h-screen font-sans text-atext flex flex-col">
       <style>{`
         body, html { background:var(--A-bg); margin:0; color:var(--A-text); }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-up { animation: fadeUp 0.4s ease-out; }
       `}</style>
       {/* Hero */}
       <div className="relative overflow-hidden border-b border-aline" style={{ background: 'radial-gradient(circle at 30% 20%, rgba(13, 148, 136, 0.12) 0%, transparent 65%)' }}>
@@ -384,8 +383,17 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
           ))}
         </div>
 
-        {step === 0 && (
-          <div className="fade-up mb-8 space-y-4">
+        <AnimatePresence mode="wait" initial={false}>
+          {step === 0 && (
+            <motion.div
+              key="setup-step-0"
+              className="space-y-8"
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
+          <div className="space-y-4 mb-8">
             <div>
               <h2 className={`${css.h1} text-2xl mb-2`}>GAME MODE</h2>
               <p className="text-atext-dim text-sm mb-3">
@@ -431,12 +439,11 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
               </div>
             </label>
           </div>
-        )}
 
-        {step === 0 && slotsWithSaves.length > 0 && (() => {
+        {slotsWithSaves.length > 0 && (() => {
           const latest = getLatestSavedSlot(existingSlots);
           return latest ? (
-            <div className="fade-up mb-6">
+            <div className="mb-6">
               <button
                 type="button"
                 onClick={() => onResume && onResume(latest)}
@@ -451,8 +458,8 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
           ) : null;
         })()}
 
-        {step === 0 && slotsWithSaves.length > 0 && (
-          <div className="fade-up mb-8">
+        {slotsWithSaves.length > 0 && (
+          <div className="mb-8">
             <h2 className={`${css.h1} text-3xl mb-3`}>RESUME A CAREER</h2>
             <p className="text-atext-dim mb-4 text-sm">Pick up where you left off, or scroll down to start a fresh career in another save slot.</p>
             <div className="grid md:grid-cols-3 gap-3">
@@ -482,8 +489,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
             </div>
           </div>
         )}
-        {step === 0 && (
-          <div className="fade-up">
+          <div>
             <h2 className={`${css.h1} text-4xl mb-4`}>{slotsWithSaves.length > 0 ? 'OR START A NEW CAREER' : 'PICK A STATE'}</h2>
             <p className="text-atext-dim mb-8">Where will your story begin? Each state has its own football culture and pyramid.</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -501,10 +507,18 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
               })}
             </div>
           </div>
-        )}
+            </motion.div>
+          )}
 
         {step === 1 && (
-          <div className="fade-up max-w-3xl">
+          <motion.div
+            key="setup-step-1"
+            className="max-w-3xl"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
             <button type="button" onClick={() => setStep(0)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>YOUR COACH</h2>
             <p className="text-atext-dim mb-6">Name your manager and pick a starting difficulty. You can change difficulty later in Settings.</p>
@@ -554,11 +568,17 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
             <button type="button" onClick={() => setStep(2)} className={`${css.btnPrimary} text-lg py-3 px-6`}>
               Continue to pyramid →
             </button>
-          </div>
+          </motion.div>
         )}
 
         {step === 2 && (
-          <div className="fade-up">
+          <motion.div
+            key="setup-step-2"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
             <button type="button" onClick={() => setStep(1)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>CHOOSE YOUR PYRAMID LEVEL</h2>
             <p className="text-atext-dim mb-8">Start at the top, the middle, or the bottom. Tiers available in <strong>{state}</strong>.</p>
@@ -591,11 +611,17 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                 </button>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {step === 3 && (
-          <div className="fade-up">
+          <motion.div
+            key="setup-step-3"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
             <button type="button" onClick={() => setStep(2)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>PICK A LEAGUE</h2>
             <p className="text-atext-dim mb-2">{state} • Tier {tier}</p>
@@ -635,11 +661,17 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                 })}
               </div>
             )}
-          </div>
+          </motion.div>
         )}
 
         {step === 4 && tier === 3 && leagueKey && state && (
-          <div className="fade-up">
+          <motion.div
+            key="setup-step-4"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
             <button type="button" onClick={() => setStep(3)} className="text-atext-dim text-sm mb-4 hover:text-atext flex items-center gap-1"><ChevronLeft className="w-4 h-4" />Back</button>
             <h2 className={`${css.h1} text-4xl mb-4`}>LOCAL DIVISION</h2>
             <p className="text-atext-dim mb-2">{PYRAMID[leagueKey]?.name}</p>
@@ -685,11 +717,18 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                 </div>
               );
             })()}
-          </div>
+          </motion.div>
         )}
 
         {step === 5 && leagueKey && (
-          <div className="fade-up max-w-5xl">
+          <motion.div
+            key="setup-step-5"
+            className="max-w-5xl"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
             <button
               type="button"
               onClick={() => {
@@ -749,8 +788,9 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
             <button type="button" onClick={start} disabled={loading || !clubId} className={`${css.btnPrimary} w-full text-lg py-4 mt-6 ${loading ? 'opacity-70' : 'glow'}`}>
               {loading ? '⏳ Starting career…' : 'START CAREER →'}
             </button>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
       <div className="border-t border-aline p-4 text-center text-[10px] text-atext-mute uppercase tracking-widest font-mono">A Football Manager-style game for Australian rules</div>
     </div>

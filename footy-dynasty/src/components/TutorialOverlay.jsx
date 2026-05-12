@@ -4,6 +4,7 @@
 // ADVANCE until the step is done. SKIP TUTORIAL is always available.
 // ---------------------------------------------------------------------------
 import React from "react";
+import { motion } from "motion/react";
 import { ChevronRight, X } from "lucide-react";
 import { css } from "./primitives.jsx";
 import { TUTORIAL_STEPS } from "../lib/tutorialConstants.js";
@@ -75,7 +76,13 @@ export default function TutorialOverlay({ step, onNext, onSkip }) {
   const isFinal = step >= TUTORIAL_STEPS.length - 1;
   const showNext = data.advanceWithNext;
   return (
-    <div className="fixed bottom-4 right-4 z-[70] max-w-sm anim-in" style={{ pointerEvents: "auto" }}>
+    <motion.div
+      className="fixed bottom-4 right-4 z-[70] max-w-sm"
+      style={{ pointerEvents: "auto" }}
+      initial={{ opacity: 0, y: 18, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+    >
       <div
         className="rounded-2xl shadow-2xl overflow-hidden"
         style={{
@@ -125,14 +132,19 @@ export default function TutorialOverlay({ step, onNext, onSkip }) {
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 // Final completion card — shown briefly after step 6 fires
 export function TutorialCompleteCard({ onClose }) {
   return (
-    <div className="fixed bottom-4 right-4 z-[70] max-w-sm anim-in">
+    <motion.div
+      className="fixed bottom-4 right-4 z-[70] max-w-sm"
+      initial={{ opacity: 0, y: 18, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+    >
       <div
         className="rounded-2xl shadow-2xl overflow-hidden"
         style={{ background: "var(--A-panel)", border: "2px solid #4AE89A", boxShadow: "0 20px 60px rgba(74,232,154,0.25)" }}
@@ -150,6 +162,6 @@ export function TutorialCompleteCard({ onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
