@@ -30,10 +30,9 @@ import {
   planSeasonBoardMeetings,
 } from "../lib/board.js";
 import { primeSeasonStoryState } from "../lib/careerAdvance.js";
-import { SLOT_IDS, getLatestSavedSlotMeta } from "../lib/setupConstants.js";
+import { SETUP_SS_KEY, SLOT_IDS, getLatestSavedSlotMeta, SAVE_VERSION } from "../lib/setupConstants.js";
 import { LINEUP_CAP } from "../lib/lineupHelpers.js";
 import { css, Pill } from "../components/primitives.jsx";
-import { SETUP_SS_KEY } from "../lib/setupConstants.js";
 
 function SetupPyramidHint({ state, tier, leagueKey }) {
   if (!state) return null;

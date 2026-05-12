@@ -4,6 +4,12 @@ export const SETUP_SS_KEY = "footy-dynasty-setup-v2";
 /** Older wizard key cleared on reset alongside {@link SETUP_SS_KEY}. */
 export const SETUP_SS_KEY_LEGACY = "footy-dynasty-setup";
 
+/**
+ * Persisted career schema version — bump only when `migrate()` gains new steps.
+ * Imported by `save.js` (re-exported) and by career setup so the wizard does not load `save.js`.
+ */
+export const SAVE_VERSION = 21;
+
 /** Save slot ids — must match `save.js` slot localStorage keys (`footy-dynasty-career-slot-*`). */
 export const SLOT_IDS = ['A', 'B', 'C'];
 

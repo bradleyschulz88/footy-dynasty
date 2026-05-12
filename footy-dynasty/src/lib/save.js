@@ -11,15 +11,14 @@ import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { migrateDraftPoolScouting } from './draftScouting.js';
 import { pushManagerInboxBoardMirror, syncTradePeriodManagerInboxRow } from './inbox.js';
 import { DEFAULT_STAFF_TASKS, ensureStaffTasks } from './staffTasks.js';
-import { SLOT_IDS, getLatestSavedSlotMeta } from './setupConstants.js';
+import { SLOT_IDS, getLatestSavedSlotMeta, SAVE_VERSION } from './setupConstants.js';
 
-export const SAVE_VERSION = 21;
 export const LEGACY_KEY = 'footy-dynasty-career';
 const SLOT_KEY = (slot) => `footy-dynasty-career-slot-${slot}`;
 const SLOT_META_KEY = 'footy-dynasty-slots';
 const ACTIVE_SLOT_KEY = 'footy-dynasty-active-slot';
 
-export { SLOT_IDS };
+export { SLOT_IDS, SAVE_VERSION };
 
 /** Updated when the player exports JSON — used for backup reminders in Settings. */
 export const LAST_EXPORT_STORAGE_KEY = 'footy-dynasty-last-export-at';
