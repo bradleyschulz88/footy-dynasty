@@ -2,6 +2,25 @@
 import { TRADE_PERIOD_DAYS, POST_TRADE_DRAFT_COUNTDOWN_DAYS } from './tradePeriod.js';
 import { TRAINING_INFO } from './calendar.js';
 
+/** Stable string for UI animation keys when calendar / off-season time moves forward. */
+export function advanceTimeFingerprint(career) {
+  const nextEv = (career.eventQueue || []).find((e) => !e.completed);
+  const evSig = nextEv
+    ? `${nextEv.type}:${nextEv.round ?? ''}:${nextEv.date ?? ''}:${nextEv.subtype ?? ''}`
+    : 'none';
+  return [
+    career.currentDate ?? '',
+    String(career.week ?? ''),
+    career.phase ?? '',
+    career.inFinals ? `f${career.finalsRound ?? 0}` : '',
+    career.postSeasonPhase ?? '',
+    String(career.tradePeriodDay ?? ''),
+    String(career.postSeasonDraftCountdown ?? ''),
+    career.freeAgencyOpen ? 'fa' : '',
+    evSig,
+  ].join('|');
+}
+
 /**
  * @returns {{
  *   mode: 'trade_period' | 'draft_countdown' | 'finals' | 'calendar_done',
