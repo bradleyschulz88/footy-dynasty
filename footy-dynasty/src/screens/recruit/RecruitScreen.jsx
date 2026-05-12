@@ -313,7 +313,7 @@ function OffersTab({ career, club, updateCareer }) {
       : null;
     // Cap check: if a swap player is incoming, ensure their wage fits after target leaves
     if (incomingPlayer) {
-      const wageDelta = (incomingPlayer.wage ?? 0) - (targetPlayer.wage ?? 0);
+      const wageDelta = Number(incomingPlayer.wage ?? 0) - Number(targetPlayer.wage ?? 0);
       if (!canAffordSigning(career, wageDelta)) {
         updateCareer({ news: [{ week: career.week, type: 'loss', text: `⚖️ Trade rejected — bringing in ${incomingPlayer.firstName} ${incomingPlayer.lastName} would breach the cap` }, ...(career.news || [])].slice(0, 20) });
         return;
@@ -343,8 +343,15 @@ function OffersTab({ career, club, updateCareer }) {
   };
 
   const rejectOffer = (offer) => {
+    const lines = [
+      `${offer.fromClubName} notes your stance — they may circle back with a different angle.`,
+      `${offer.fromClubName} respects the call for now and shifts focus to another club.`,
+      `List managers at ${offer.fromClubName} wanted more movement — you held firm.`,
+    ];
+    const text = lines[Math.floor(rng() * lines.length)];
     updateCareer({
       pendingTradeOffers: (career.pendingTradeOffers || []).map(o => o.id === offer.id ? { ...o, status: 'rejected' } : o),
+      news: [{ week: career.week, type: 'info', text: `📵 Trade declined: ${text}` }, ...(career.news || [])].slice(0, 20),
     });
   };
 
@@ -410,7 +417,7 @@ function TradeTab({ career, updateCareer }) {
 
   const filtered = pool.filter(p => {
     if (filter !== "ALL" && !playerHasPosition(p, filter)) return false;
-    if (capOnly && wageCap > 0 && !canAffordSigning(career, p.wage)) return false;
+    if (capOnly && wageCap > 0 && !canAffordSigning(career, Number(p.wage ?? 0))) return false;
     return true;
   });
   const sorted = [...filtered].sort((a, b) => {
@@ -752,7 +759,7 @@ function DraftTab({ career, club, updateCareer }) {
         if (!aiPick) break;
         currentPool = currentPool.filter(x => x.id !== aiPick.id);
         currentAiSquads[pickEntry.clubId] = currentAiSquads[pickEntry.clubId] || [];
-        currentAiSquads[pickEntry.clubId] = [...currentAiSquads[pickEntry.clubId], { ...aiPick, age: rand(17, 19) }];
+        currentAiSquads[pickEntry.clubId] = [...currentAiSquads[pickEntry.clubId], { ...aiPick, age: rand(18, 19) }];
         order = order.map((d, i) => i === next ? { ...d, used: true, prospectName: `${aiPick.firstName} ${aiPick.lastName}`, prospectOverall: aiPick.overall, prospectPos: aiPick.position } : d);
         const oppClub = findClub(pickEntry.clubId);
         newsItems.push({ week: career.week, type: 'info', text: `📋 #${pickEntry.pick}: ${oppClub?.short || pickEntry.clubId} → ${aiPick.firstName} ${aiPick.lastName} (${aiPick.overall})` });
@@ -771,7 +778,7 @@ function DraftTab({ career, club, updateCareer }) {
       updateCareer({ news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot draft ${p.firstName} ${p.lastName} — over salary cap` }, ...(career.news || [])].slice(0, 20) });
       return;
     }
-    const rookie = { ...p, id: `r_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage: rw, contract: 2, age: rand(17, 19), rookie: true };
+    const rookie = { ...p, id: `r_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage: rw, contract: 2, age: rand(18, 19), rookie: true };
     let order = draftOrder.map((d, i) => i === myPickIndex ? { ...d, used: true, prospectName: `${p.firstName} ${p.lastName}`, prospectOverall: p.overall, prospectPos: p.position } : d);
     let currentPool = career.draftPool.filter(x => x.id !== p.id);
     let currentAiSquads = { ...(career.aiSquads || {}) };
@@ -786,7 +793,7 @@ function DraftTab({ career, club, updateCareer }) {
       if (!aiPick) break;
       currentPool = currentPool.filter(x => x.id !== aiPick.id);
       currentAiSquads[pickEntry.clubId] = currentAiSquads[pickEntry.clubId] || [];
-      currentAiSquads[pickEntry.clubId] = [...currentAiSquads[pickEntry.clubId], { ...aiPick, age: rand(17, 19) }];
+      currentAiSquads[pickEntry.clubId] = [...currentAiSquads[pickEntry.clubId], { ...aiPick, age: rand(18, 19) }];
       order = order.map((d, i) => i === nextIdx ? { ...d, used: true, prospectName: `${aiPick.firstName} ${aiPick.lastName}`, prospectOverall: aiPick.overall, prospectPos: aiPick.position } : d);
       const oppClub = findClub(pickEntry.clubId);
       newsItems.push({ week: career.week, type: 'info', text: `📋 #${pickEntry.pick}: ${oppClub?.short || pickEntry.clubId} → ${aiPick.firstName} ${aiPick.lastName}` });
@@ -1051,6 +1058,12 @@ function YouthTab({ career, club, updateCareer }) {
     });
   };
   const promote = (p) => {
+    if ((p.age ?? 0) < 18) {
+      updateCareer({
+        news: [{ week: career.week, type: 'info', text: `📋 ${p.firstName} ${p.lastName} cannot join the rookie list until they turn 18.` }, ...career.news].slice(0, 15),
+      });
+      return;
+    }
     if (career.squad.length >= 40) return;
     const youthTier = leagueTierOf(career);
     const wage = youthTier === 1 ? 100_000 : youthTier === 2 ? 35_000 : 8_000;
@@ -1130,7 +1143,15 @@ function YouthTab({ career, club, updateCareer }) {
                     <div className="flex items-center gap-1"><span className="text-xs font-bold text-[#4AE89A]">{p.potential}</span><Bar value={p.potential} color="#4AE89A" small /></div>
                   </div>
                   <div className="col-span-3 flex justify-end">
-                    <button onClick={()=>promote(p)} className={`${css.btnPrimary} text-xs px-3 py-1.5`}>Promote</button>
+                    <button
+                      type="button"
+                      disabled={(p.age ?? 0) < 18}
+                      title={(p.age ?? 0) < 18 ? 'Must be 18 to join the rookie list' : ''}
+                      onClick={()=>promote(p)}
+                      className={(p.age ?? 0) < 18 ? 'px-3 py-1.5 rounded-lg text-xs bg-apanel-2 text-atext-mute' : `${css.btnPrimary} text-xs px-3 py-1.5`}
+                    >
+                      Promote
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1148,7 +1169,17 @@ function LocalTab({ career, club, updateCareer }) {
   // Find tier-3 leagues in same state, or tier-2 if at tier-1
   const myLeague = findLeagueOf(career.clubId);
   const localPool = LEAGUES_BY_STATE(club.state) || [];
-  const localLeagues = localPool.filter(l => l.tier > myLeague.tier);
+  const localLeagues = !myLeague
+    ? []
+    : localPool
+        .filter((l) => l.key !== myLeague.key)
+        .slice()
+        .sort((a, b) => {
+          const da = Math.abs(a.tier - myLeague.tier);
+          const db = Math.abs(b.tier - myLeague.tier);
+          if (da !== db) return da - db;
+          return a.tier - b.tier;
+        });
 
   const scout = (leagueKey) => {
     seedRng(Date.now() % 88888);
@@ -1195,23 +1226,48 @@ function LocalTab({ career, club, updateCareer }) {
     });
   };
 
+  const localTierHead = leagueTierOf(career);
+  const feeLabel =
+    localTierHead === 1 ? '$75k' : localTierHead === 2 ? '$30k' : '$8k';
+
+  const signWalkOn = (p) => {
+    const localTier = leagueTierOf(career);
+    const wage = localTier === 1 ? 200_000 : localTier === 2 ? 80_000 : 18_000;
+    if (career.squad.length >= 40) return;
+    if (!canAffordSigning(career, wage)) return;
+    const newPlayer = { ...p, id: Date.now() + rand(0, 999_999), wage, contract: 2 };
+    setScoutedPlayers((s) => s.filter((x) => x.id !== p.id));
+    updateCareer({
+      squad: [...career.squad, newPlayer],
+      news: [
+        {
+          week: career.week,
+          type: 'info',
+          text: `📍 Walk-on: ${p.firstName} ${p.lastName} from ${p.fromLocal} — no transfer fee, ${(wage / 1000).toFixed(0)}k/yr`,
+        },
+        ...career.news,
+      ].slice(0, 15),
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>LOCAL FOOTBALL</div>
-          <div className="text-xs text-atext-dim">Scout lower-tier {club.state} leagues — each run cycles through local clubs so reports show names from rival sides, not just random noise.</div>
+          <div className="text-xs text-atext-dim">Scout other {club.state} competitions (same tier or neighbouring levels). Each run rotates source clubs so reports feel connected to real locals — not random noise.</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Scout Cost" value="$30k" sub="per signing" accent="var(--A-accent)" />
+          <Stat label="Listed signing" value={feeLabel} sub="fee + wages" accent="var(--A-accent)" />
+          <Stat label="Walk-on" value="$0" sub="same wages" accent="#4AE89A" />
         </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className={`${css.panel} p-5 lg:col-span-1`}>
-          <div className="flex items-center gap-2 mb-3"><Map className="w-5 h-5 text-aaccent" /><div className="font-bold tracking-wide">Lower {club.state} Leagues</div></div>
+          <div className="flex items-center gap-2 mb-3"><Map className="w-5 h-5 text-aaccent" /><div className="font-bold tracking-wide">{club.state} leagues</div></div>
           {localLeagues.length === 0 ? (
-            <div className="text-sm text-atext-dim py-4">No lower-tier leagues available in {club.state} from your current level.</div>
+            <div className="text-sm text-atext-dim py-4">No other leagues listed for {club.state} in the pyramid data.</div>
           ) : (
             <div className="space-y-2">
               {localLeagues.map(l => (
@@ -1250,6 +1306,7 @@ function LocalTab({ career, club, updateCareer }) {
                 const canCash = career.finance.cash >= fee;
                 const canCap  = canAffordSigning(career, wage);
                 const can     = canCash && canCap;
+                const canWalkOn = canCap;
                 const sourceClubVisual = p.fromClubId ? findClub(p.fromClubId) : findClubByShort(p.fromLocal);
                 return (
                   <div key={p.id} className={`${css.inset} p-3 grid grid-cols-12 gap-2 items-center`}>
@@ -1266,11 +1323,16 @@ function LocalTab({ career, club, updateCareer }) {
                       <div className="text-[10px] text-atext-dim">Potential</div>
                       <div className="flex items-center gap-1"><span className="text-xs font-bold text-[#4AE89A]">{p.potential}</span><Bar value={p.potential} color="#4AE89A" small /></div>
                     </div>
-                    <div className="col-span-3 flex justify-end">
-                      <button onClick={()=>sign(p)} disabled={!can}
-                        className={can ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-apanel-2 text-atext-mute"}
+                    <div className="col-span-3 flex flex-col gap-1 items-stretch">
+                      <button type="button" onClick={()=>sign(p)} disabled={!can}
+                        className={can ? `${css.btnPrimary} text-[10px] px-2 py-1.5 leading-tight` : "px-2 py-1.5 rounded-lg text-[10px] bg-apanel-2 text-atext-mute leading-tight"}
                         title={!canCap ? 'Over salary cap' : !canCash ? 'Insufficient cash' : ''}>
-                        Sign · ${(fee/1000).toFixed(0)}k
+                        Fee {feeLabel} · Sign
+                      </button>
+                      <button type="button" onClick={()=>signWalkOn(p)} disabled={!canWalkOn}
+                        className={canWalkOn ? `${css.btnGhost} text-[10px] px-2 py-1.5 font-bold leading-tight border border-aline` : "px-2 py-1.5 rounded-lg text-[10px] bg-apanel-2 text-atext-mute leading-tight"}
+                        title={!canCap ? 'Over salary cap' : 'No transfer fee — league-minimum style deal'}>
+                        Walk-on ($0 fee)
                       </button>
                     </div>
                   </div>
@@ -1281,7 +1343,7 @@ function LocalTab({ career, club, updateCareer }) {
         </div>
       </div>
       <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
-        <span className="text-aaccent font-bold">TIP:</span> Local scouting often unearths late bloomers and gritty depth players. They sign at modest wages but can develop dramatically with the right training program and game time.
+        <span className="text-aaccent font-bold">TIP:</span> Local scouting finds depth with community flavour. Use <span className="text-atext font-semibold">Walk-on</span> for free-transfer style arrivals (still wage-cap checked) — like train-on players crossing without a cheque changing hands.
       </div>
     </div>
   );

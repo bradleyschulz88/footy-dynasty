@@ -804,7 +804,18 @@ function AFLManagerInner() {
               {screen === "hub" && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={onNavScreen} setTab={setTab} onAdvance={advanceToNextEvent} />}
               {screen === "squad" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading squad…" />}>
-                  <SquadScreenLazy career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} tutorialActive={tutorialActive} />
+                  <SquadScreenLazy
+                    career={career}
+                    club={club}
+                    updateCareer={updateCareer}
+                    tab={tab}
+                    setTab={setTab}
+                    tutorialActive={tutorialActive}
+                    onOpenClubStaff={() => {
+                      setScreen('club');
+                      setTab('staff');
+                    }}
+                  />
                 </Suspense>
               )}
               {screen === "schedule" && (

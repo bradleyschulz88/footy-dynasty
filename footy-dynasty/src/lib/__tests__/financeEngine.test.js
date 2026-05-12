@@ -121,6 +121,18 @@ describe('salary cap', () => {
     expect(canAffordSigning(c, remaining + 1_000_000)).toBe(false);
   });
 
+  it('coerces string squad wages so cap checks stay numeric', () => {
+    const c = baseCareer({
+      squad: [
+        { id: 'p1', wage: '100000' },
+        { id: 'p2', wage: 80_000 },
+      ],
+    });
+    expect(currentPlayerWageBill(c)).toBe(180_000);
+    expect(canAffordSigning(c, c.finance.wageBudget - 180_000 - 1)).toBe(true);
+    expect(canAffordSigning(c, c.finance.wageBudget - 180_000 + 1)).toBe(false);
+  });
+
   it('capHeadroom never goes negative', () => {
     const c = baseCareer({ squad: [{ id: 'a', wage: 5_000_000 }] });
     expect(capHeadroom(c)).toBeGreaterThanOrEqual(0);

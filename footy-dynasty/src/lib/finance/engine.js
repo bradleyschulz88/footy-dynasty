@@ -186,7 +186,7 @@ export function effectiveWageCap(career) {
 
 // Sum of player wages currently on the squad.
 export function currentPlayerWageBill(career) {
-  return (career?.squad || []).reduce((a, p) => a + (p.wage || 0), 0);
+  return (career?.squad || []).reduce((a, p) => a + Number(p.wage ?? 0), 0);
 }
 
 // Headroom = effective cap minus current player wages.
@@ -198,7 +198,8 @@ export function capHeadroom(career) {
 export function canAffordSigning(career, wageOffer) {
   const cap = effectiveWageCap(career);
   if (cap === 0) return true; // no cap configured — allow
-  return currentPlayerWageBill(career) + wageOffer <= cap;
+  const inc = Number(wageOffer ?? 0);
+  return currentPlayerWageBill(career) + inc <= cap;
 }
 
 // Scale all player wages down so the squad fits under the effective cap (e.g. new career).

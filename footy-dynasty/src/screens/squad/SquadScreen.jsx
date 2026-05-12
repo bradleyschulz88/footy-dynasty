@@ -14,7 +14,7 @@ import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf, f
 import { pyramidNoteForLeague } from '../../data/pyramidMeta.js';
 import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from '../../lib/playerGen.js';
 import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET, TIER3_MIN_CLUBS_PER_DIVISION } from '../../lib/leagueEngine.js';
-import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from '../../lib/defaults.js';
+import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, generateTradePool } from '../../lib/defaults.js';
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from '../../lib/format.js';
 import { generateSeasonCalendar, TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
 import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from '../../lib/save.js';
@@ -84,7 +84,7 @@ import {
 import { getClubGround } from '../../data/grounds.js';
 import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from '../../lib/careerAdvance.js';
 import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from '../../lib/gameDepth.js';
-import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, LINEUP_FIELD_COUNT, LINEUP_OVAL_SLOT_COUNT, removeIdFromLineup } from '../../lib/lineupHelpers.js';
+import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, removeIdFromLineup } from '../../lib/lineupHelpers.js';
 import { trainingStaffSupportLine } from '../../lib/staffModifiers.js';
 import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
 import { RenewalsTab } from "../contracts/ContractRenewals.jsx";
@@ -95,7 +95,7 @@ import { RenewalsTab } from "../contracts/ContractRenewals.jsx";
 // ============================================================================
 // SQUAD SCREEN — players, tactics, training
 // ============================================================================
-export default function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive }) {
+export default function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive, onOpenClubStaff }) {
   const playerRenewals = (career.pendingRenewals || []).filter(r => !r._handled).length;
   const staffRenewals = (career.pendingStaffRenewals || []).filter((r) => !r._handled).length;
   const renewalCount = playerRenewals + staffRenewals;
@@ -131,8 +131,8 @@ export default function SquadScreen({ career, club, updateCareer, tab, setTab, t
         tutorialHighlightKey={squadTutorialTab}
       />
       {t === "players"  && <PlayersTab career={career} updateCareer={updateCareer} />}
-      {t === "tactics"  && <TacticsTab career={career} updateCareer={updateCareer} />}
-      {t === "training" && <TrainingTab career={career} updateCareer={updateCareer} />}
+      {t === "tactics"  && <TacticsTab career={career} updateCareer={updateCareer} onOpenClubStaff={onOpenClubStaff} />}
+      {t === "training" && <TrainingTab career={career} updateCareer={updateCareer} onOpenClubStaff={onOpenClubStaff} />}
       {t === "renewals" && <RenewalsTab career={career} updateCareer={updateCareer} />}
     </div>
   );
@@ -550,31 +550,6 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
   );
 }
 
-/** SVG coordinates for Squad → Tactics formation (lineup order fills first free slot per position). */
-const TACTICS_FORMATION_SLOTS = [
-  { pos: "KF", x: 80, y: 200 },
-  { pos: "HF", x: 150, y: 130 },
-  { pos: "HF", x: 150, y: 270 },
-  { pos: "C", x: 250, y: 200 },
-  { pos: "WG", x: 250, y: 110 },
-  { pos: "WG", x: 250, y: 290 },
-  { pos: "RU", x: 200, y: 200 },
-  { pos: "R", x: 300, y: 200 },
-  { pos: "HB", x: 350, y: 130 },
-  { pos: "HB", x: 350, y: 270 },
-  { pos: "KB", x: 420, y: 200 },
-  { pos: "UT", x: 175, y: 52 },
-];
-
-function assignLineupToFormationSlots(lineupPlayers, slotDefs) {
-  const slots = slotDefs.map((s, i) => ({ ...s, si: i, player: null }));
-  for (const p of lineupPlayers) {
-    const slot = slots.find((s) => s.pos === p.position && !s.player);
-    if (slot) slot.player = p;
-  }
-  return slots;
-}
-
 const TACTIC_CARDS = [
   { key: 'defensive', label: 'Defensive', icon: ShieldCheck, color: '#4ADBE8',  desc: 'Lock down the contest. Lower scoring both ways.' },
   { key: 'flood',     label: 'Flood',     icon: Activity,    color: '#A78BFA',  desc: 'Pack defensive 50. Frustrates flair sides.' },
@@ -584,26 +559,12 @@ const TACTIC_CARDS = [
   { key: 'attack',    label: 'All-Out Attack', icon: Flame,  color: '#E84A6F',  desc: 'Pump it long. Big upside, leakier defensively.' },
 ];
 
-function TacticsTab({ career, updateCareer }) {
+function TacticsTab({ career, updateCareer, onOpenClubStaff }) {
   const squad = career.squad || [];
   const rawLineup = career.lineup || [];
   const lineup = lineupPlayersOrdered(squad, rawLineup);
-  const startersForFormation = useMemo(() => {
-    return rawLineup
-      .slice(0, LINEUP_FIELD_COUNT)
-      .map((id) => (id ? squad.find((p) => p.id === id) : null))
-      .filter(Boolean);
-  }, [rawLineup, squad]);
-  const formationSlots = useMemo(
-    () => assignLineupToFormationSlots(startersForFormation, TACTICS_FORMATION_SLOTS),
-    [startersForFormation],
-  );
   const byPos = POSITIONS.reduce((acc, p) => ({ ...acc, [p]: lineup.filter(pl => pl.position === p) }), {});
   const currentTactic = career.tacticChoice || 'balanced';
-  const homeKit = career.kits?.home ?? defaultKits(findClub(career.clubId)?.colors || ['#334155', '#0f172a']).home;
-  const fieldStroke = '#FFFFFF28';
-  const fieldStrokeHi = '#FFFFFF40';
-  const goalStroke = '#FFFFFF70';
   return (
     <div className="space-y-6 touch-manipulation">
       <div className={`${css.panel} p-5`}>
@@ -632,38 +593,26 @@ function TacticsTab({ career, updateCareer }) {
           })}
         </div>
       </div>
+
+      <div className={`${css.panel} p-4 md:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`}>
+        <div className="text-xs text-atext-dim max-w-xl leading-snug">
+          <span className="text-atext font-semibold">Coaching staff</span> are hired under{' '}
+          <span className="text-atext font-semibold">Club → Operations → Staff</span>. Better assistants lift prep notes here and on the Training tab — they are not picked on this screen.
+        </div>
+        {typeof onOpenClubStaff === 'function' ? (
+          <button type="button" className={`${css.btnPrimary} text-xs px-4 py-2.5 font-bold shrink-0 min-h-[44px]`} onClick={() => onOpenClubStaff()}>
+            Open Staff
+          </button>
+        ) : null}
+      </div>
+
     <div className="grid md:grid-cols-2 gap-4">
       <div className={`${css.panel} p-5`}>
-        <h3 className={`${css.h1} text-2xl mb-3`}>FORMATION (18 ON FIELD)</h3>
-        <div className="text-[11px] text-atext-dim mb-2">{lineupPlayerCount(rawLineup)}/{LINEUP_CAP} in match squad. Dots use your <span className="text-atext font-semibold">first {LINEUP_OVAL_SLOT_COUNT}</span> oval slots (B→F), then <span className="text-atext font-semibold">{LINEUP_FIELD_COUNT - LINEUP_OVAL_SLOT_COUNT} followers</span>, in list order — wings and lines fill when available.</div>
-        <p className="text-[10px] text-atext-mute mb-3">Tip: <span className="text-atext font-semibold">Utility (UT)</span> appears on the ground when selected in the 23.</p>
-        <div className="relative aspect-[5/4] rounded-2xl overflow-hidden ring-2 ring-white/10" style={{ background: 'radial-gradient(ellipse at center, #1B5E3F 0%, #0F4029 70%, #08251A 100%)' }}>
-          <svg viewBox="0 0 500 400" className="absolute inset-0 w-full h-full" role="img" aria-label="Formation positions">
-            <ellipse cx="250" cy="200" rx="240" ry="190" fill="none" stroke={fieldStroke} strokeWidth={2} />
-            <ellipse cx="250" cy="200" rx="60" ry="60" fill="none" stroke={fieldStrokeHi} strokeWidth={1.5} />
-            <line x1="250" y1="10" x2="250" y2="390" stroke={fieldStroke} strokeWidth={1} strokeDasharray="4,4" />
-            <rect x="205" y="155" width="90" height="90" fill="none" stroke={fieldStrokeHi} strokeWidth="1" />
-            <path d="M 20 115 Q 250 55 480 115" fill="none" stroke={fieldStroke} strokeWidth="0.8" opacity="0.9" />
-            <path d="M 20 285 Q 250 345 480 285" fill="none" stroke={fieldStroke} strokeWidth="0.8" opacity="0.9" />
-            <line x1="10" y1="170" x2="10" y2="230" stroke={goalStroke} strokeWidth={3} />
-            <line x1="490" y1="170" x2="490" y2="230" stroke={goalStroke} strokeWidth={3} />
-            <text x="250" y="28" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="11" fontWeight="700">FWD</text>
-            <text x="250" y="388" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="11" fontWeight="700">BACK</text>
-            {formationSlots.map((sp) => {
-              const filled = !!sp.player;
-              const dotStroke = filled ? homeKit.accent : '#FFFFFF45';
-              const label = sp.player ? `${sp.player.firstName} ${sp.player.lastName}` : `Vacant ${sp.pos}`;
-              return (
-                <g key={`${sp.pos}-${sp.si}`}>
-                  <title>{label}</title>
-                  <circle cx={sp.x} cy={sp.y} r="14" fill={filled ? homeKit.primary : '#FFFFFF18'} stroke={dotStroke} strokeWidth={2} />
-                  <text x={sp.x} y={sp.y + 4} textAnchor="middle" fontSize="10" fontWeight="700" fill="#FFFFFF" fontFamily="Bebas Neue">{sp.pos}</text>
-                </g>
-              );
-            })}
-          </svg>
+        <h3 className={`${css.h1} text-2xl mb-3`}>POSITION DEPTH</h3>
+        <div className="text-[11px] text-atext-dim mb-4">
+          {lineupPlayerCount(rawLineup)}/{LINEUP_CAP} players in your match squad (bench included). Counts reflect everyone selected in the squad list — ordered in <span className="text-atext font-semibold">Selected squad</span> beside this panel.
         </div>
-        <div className="grid grid-cols-3 gap-2 mt-4">
+        <div className="grid grid-cols-3 gap-2">
           {POSITIONS.map(p => (
             <div key={p} className={`${css.inset} p-2 text-center`}>
               <div className="text-[9px] text-atext-dim uppercase">{p}</div>
@@ -693,7 +642,7 @@ function TacticsTab({ career, updateCareer }) {
   );
 }
 
-function TrainingTab({ career, updateCareer }) {
+function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
   const t = career.training;
   const focusSum = useMemo(() => Object.values(t.focus || {}).reduce((a, b) => a + b, 0), [t.focus]);
 
@@ -751,6 +700,17 @@ function TrainingTab({ career, updateCareer }) {
 
   return (
     <div className="space-y-6 touch-manipulation">
+      <div className={`${css.panel} p-4 md:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`}>
+        <div className="text-xs text-atext-dim max-w-xl leading-snug">
+          Training sliders set weekly load. Staff ratings (especially fitness and tactics coaches) modify how hard those sessions land — hire and renew them under{' '}
+          <span className="text-atext font-semibold">Club → Staff</span>.
+        </div>
+        {typeof onOpenClubStaff === 'function' ? (
+          <button type="button" className={`${css.btnPrimary} text-xs px-4 py-2.5 font-bold shrink-0 min-h-[44px]`} onClick={() => onOpenClubStaff()}>
+            Open Staff
+          </button>
+        ) : null}
+      </div>
       <div className={`${css.panel} p-4 md:p-5`}>
         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute mb-2">Quick presets</div>
         <div className="flex flex-wrap gap-2">

@@ -4,6 +4,7 @@ import { generatePlayer } from './playerGen.js';
 import { generateTradePool } from './defaults.js';
 import { sortedLadder, competitionClubsForCareer } from './leagueEngine.js';
 import { syncTradePeriodManagerInboxRow } from './inbox.js';
+import { LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 
 export const TRADE_PERIOD_DAYS = 14;
 export const FREE_AGENCY_END_DAY = 8;
@@ -11,14 +12,20 @@ export const POST_TRADE_DRAFT_COUNTDOWN_DAYS = 7;
 
 /** AI trade offers use the same shape as pre-season pendingTradeOffers. */
 function seedAiTradeOffers(c, league) {
+  const fieldIds = new Set(
+    (c.lineup || [])
+      .slice(0, LINEUP_FIELD_COUNT)
+      .filter((id) => id != null && id !== '')
+      .map((id) => String(id)),
+  );
   const tradableSquad = (c.squad || []).filter(
     (p) =>
       p.contract > 0 &&
-      p.overall >= 65 &&
-      !(c.lineup || []).slice(0, 5).includes(p.id) &&
+      p.overall >= 58 &&
+      !fieldIds.has(String(p.id)) &&
       p.receivedInTrade !== c.season,
   );
-  const offerCount = Math.min(tradableSquad.length, rand(1, 3));
+  const offerCount = Math.min(tradableSquad.length, rand(2, 4));
   const pool = competitionClubsForCareer(c);
   const offerClubs = (pool.length ? pool : (league.clubs || [])).filter((cl) => cl.id !== c.clubId);
   const offers = [];
@@ -26,10 +33,12 @@ function seedAiTradeOffers(c, league) {
     const targetPlayer = pick(tradableSquad);
     const offeringClub = pick(offerClubs);
     if (!targetPlayer || !offeringClub || offers.find((o) => o.targetPlayerId === targetPlayer.id)) continue;
-    const cashOffer = Math.round(targetPlayer.value * (0.5 + rng() * 0.6));
     const aiSq = c.aiSquads?.[offeringClub.id] || [];
-    const swapCandidates = aiSq.filter((ap) => Math.abs(ap.overall - targetPlayer.overall) <= 8).slice(0, 5);
+    const swapCandidates = aiSq.filter((ap) => Math.abs(ap.overall - targetPlayer.overall) <= 12).slice(0, 8);
     const swapPlayer = swapCandidates.length ? pick(swapCandidates) : null;
+    let cashOffer = Math.round(targetPlayer.value * (0.35 + rng() * 0.65));
+    if (swapPlayer && rng() < 0.38) cashOffer = rng() < 0.45 ? 0 : Math.round(targetPlayer.value * (0.08 + rng() * 0.15));
+    cashOffer = Math.max(0, cashOffer);
     offers.push({
       id: `tp_offer_${Date.now()}_${i}`,
       fromClubId: offeringClub.id,
@@ -255,7 +264,7 @@ export function advanceTradePeriodDay(c, league, leagueKey) {
     closeTradePeriodStartDraftCountdown(c);
     return;
   }
-  if (rng() < 0.45) seedAiTradeOffers(c, league);
+  if (rng() < 0.62) seedAiTradeOffers(c, league);
 }
 
 /** @returns {'finish_season' | 'continue'} */

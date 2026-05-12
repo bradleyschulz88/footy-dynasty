@@ -7,7 +7,7 @@ import {
   TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
   Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
   Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus,
-  Landmark, GripVertical, LayoutDashboard, Wrench,
+  Landmark, GripVertical, LayoutDashboard, Wrench, MessageCircle,
 } from "lucide-react";
 import { seedRng, rand, pick, rng, TIER_SCALE } from '../../lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf, findClubByShort } from '../../data/pyramid.js';
@@ -314,11 +314,26 @@ export default function ClubScreen({ career, club, updateCareer, tab, setTab, tu
 }
 
 function BoardTab({ career, club, updateCareer }) {
+  const [directorChatRole, setDirectorChatRole] = useState(null);
   const league = findLeagueOf(career.clubId);
   const members = career.board?.members ?? [];
   const objectives = career.board?.objectives ?? [];
   const inbox = career.board?.inbox ?? [];
-  const overall = career.finance?.boardConfidence ?? 0;
+  const overallRaw = career.finance?.boardConfidence ?? 0;
+  const overallPct = Math.round(clamp(overallRaw, 0, 100));
+
+  const boardPct = (v) => Math.round(clamp(v ?? 0, 0, 100));
+
+  const runDirectorChat = (role, delta, newsLine) => {
+    const draft = JSON.parse(JSON.stringify(career));
+    applyMemberConfidenceDelta(draft, role, delta);
+    updateCareer({
+      board: draft.board,
+      finance: draft.finance,
+      news: [{ week: career.week, type: 'board', text: newsLine }, ...(career.news || [])].slice(0, 20),
+    });
+    setDirectorChatRole(null);
+  };
 
   const respondInbox = (messageId, optionId) => {
     if (!league) return;
@@ -384,16 +399,17 @@ function BoardTab({ career, club, updateCareer }) {
       <div className={`${css.panel} p-4`}>
         <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
           <span className={css.label}>Overall board confidence</span>
-          <span className="font-display text-2xl text-aaccent">{overall}</span>
+          <span className="font-display text-2xl text-aaccent">{overallPct}%</span>
         </div>
         <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
-          <div className="h-full" style={{ width: `${overall}%`, background: 'linear-gradient(90deg, var(--A-accent-2), var(--A-accent))' }} />
+          <div className="h-full" style={{ width: `${overallPct}%`, background: 'linear-gradient(90deg, var(--A-accent-2), var(--A-accent))' }} />
         </div>
       </div>
 
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {(members.length ? members : []).map((m) => {
-          const col = m.confidence >= 70 ? '#4AE89A' : m.confidence >= 40 ? 'var(--A-accent-2)' : '#E84A6F';
+          const pct = boardPct(m.confidence);
+          const col = pct >= 70 ? '#4AE89A' : pct >= 40 ? 'var(--A-accent-2)' : '#E84A6F';
           const moodLabel = (m.mood || 'neutral').toUpperCase();
           return (
             <div key={m.role} className={`${css.panel} p-4`}>
@@ -404,16 +420,98 @@ function BoardTab({ career, club, updateCareer }) {
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded" style={{ border: `1px solid ${col}`, color: col }}>{moodLabel}</span>
               </div>
               <div className="h-1.5 rounded-full overflow-hidden mb-1" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
-                <div className="h-full transition-all" style={{ width: `${m.confidence}%`, background: col }} />
+                <div className="h-full transition-all" style={{ width: `${pct}%`, background: col }} />
               </div>
-              <div className="flex justify-between text-[11px] text-atext-dim">
+              <div className="flex justify-between text-[11px] text-atext-dim mb-2">
                 <span>Confidence</span>
-                <span>{m.confidence}%</span>
+                <span>{pct}%</span>
               </div>
+              <button
+                type="button"
+                onClick={() => setDirectorChatRole(m.role)}
+                className={`${css.btnGhost} w-full text-[10px] py-2 font-bold inline-flex items-center justify-center gap-1 min-h-[40px]`}
+              >
+                <MessageCircle className="w-3.5 h-3.5 opacity-80" />
+                Quick chat
+              </button>
             </div>
           );
         })}
       </div>
+
+      {directorChatRole && (() => {
+        const m = members.find((x) => x.role === directorChatRole);
+        if (!m) return null;
+        const first = m.name?.split(' ')[0] || 'Director';
+        return (
+          <div
+            className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.55)' }}
+            role="presentation"
+            onClick={() => setDirectorChatRole(null)}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="board-chat-title"
+              className={`${css.panel} max-w-md w-full p-5 space-y-3`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div id="board-chat-title" className={`${css.h1} text-lg`}>Check-in · {m.role}</div>
+                  <div className="text-xs text-atext-dim mt-1">{m.name}</div>
+                </div>
+                <button type="button" className={`${css.btnGhost} text-[10px] px-2 py-1`} onClick={() => setDirectorChatRole(null)}>Close</button>
+              </div>
+              <p className="text-[11px] text-atext-dim leading-snug">
+                Short conversation — mirrors how desktop sports sims keep board drama mostly in objectives and inbox mail, with occasional face-time when you need to steer tone.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  className={`${css.btnPrimary} text-xs py-2.5 text-left px-3`}
+                  onClick={() =>
+                    runDirectorChat(
+                      m.role,
+                      5,
+                      `📋 You aligned priorities with ${first} (${m.role}) — they sound steadier.`,
+                    )
+                  }
+                >
+                  Align on season priorities (+5 confidence)
+                </button>
+                <button
+                  type="button"
+                  className={`${css.btnGhost} text-xs py-2.5 text-left px-3 border border-aline`}
+                  onClick={() =>
+                    runDirectorChat(
+                      m.role,
+                      3,
+                      `🤝 You thanked ${first} for backing the football program.`,
+                    )
+                  }
+                >
+                  Thank them for patience (+3)
+                </button>
+                <button
+                  type="button"
+                  className="text-xs py-2.5 text-left px-3 rounded-lg border border-[#E84A6F]/55 text-[#E84A6F] hover:bg-[#E84A6F]/10 font-bold"
+                  onClick={() =>
+                    runDirectorChat(
+                      m.role,
+                      -4,
+                      `⚠️ You challenged ${first} on spend — useful tension, but confidence dipped.`,
+                    )
+                  }
+                >
+                  Push back on budget (−4)
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       <div>
         <div className={`${css.h1} text-lg mb-2`}>Season objectives</div>
@@ -447,6 +545,7 @@ function BoardTab({ career, club, updateCareer }) {
       <p className="text-[11px] text-atext-mute leading-snug">
         Playing as <strong className="text-atext">{club?.short}</strong>
         {league ? ` · ${league.short} (Tier ${league.tier})` : ''}. Directors may message you after games — respond here. Formal meetings and votes are still to come.
+        {' '}Inspired by games like Football Manager: pressure usually arrives through objectives and inbox notes; optional quick chats above add light FM-style relationship tuning without spamming you every week.
       </p>
     </div>
   );
@@ -466,12 +565,37 @@ function CommitteeTab({ career, club, updateCareer }) {
   const accent = avg >= 70 ? '#4AE89A' : avg >= 40 ? 'var(--A-accent-2)' : '#E84A6F';
   const tripUsed = career.footyTripUsed;
   const tripAvailable = career.footyTripAvailable && !tripUsed;
+  const cash = career.finance?.cash ?? 0;
+
+  const thankVolunteers = () => {
+    const cost = 2000;
+    if (cash < cost) return;
+    const committeeNext = committee.map((m) => ({ ...m, mood: clamp((m.mood ?? 55) + 4, 0, 100) }));
+    updateCareer({
+      committee: committeeNext,
+      finance: { ...career.finance, cash: cash - cost },
+      news: [{ week: career.week, type: 'committee', text: '☕ Coffee shout for the volunteers — everyone walks a little taller.' }, ...(career.news || [])].slice(0, 25),
+    });
+  };
+
+  const raffleNight = () => {
+    const cost = 4000;
+    if (cash < cost) return;
+    let com = bumpCommitteeMood(committee, 'Social Coordinator', 12);
+    com = bumpCommitteeMood(com, 'Treasurer', -6);
+    updateCareer({
+      committee: com,
+      finance: { ...career.finance, cash: cash - cost },
+      news: [{ week: career.week, type: 'committee', text: '🎟 Extra raffle night locked in — huge win with Social, Treasurer watches the petty cash.' }, ...(career.news || [])].slice(0, 25),
+    });
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>VOLUNTEER COMMITTEE</div>
-          <div className="text-xs text-atext-dim">Five locals who keep the club running. They have opinions — and they&apos;ll tell you about them.</div>
+          <div className="text-xs text-atext-dim">Five locals who keep the club running. They have opinions — and they&apos;ll tell you about them. Drop into the shed with quick actions below — same flavour as community boards in lower-tier sim career modes.</div>
         </div>
         <Stat label="Avg Mood" value={avg} accent={accent} icon={Users} />
       </div>
@@ -503,6 +627,28 @@ function CommitteeTab({ career, club, updateCareer }) {
             </div>
           );
         })}
+      </div>
+
+      <div className={`${css.panel} p-4`}>
+        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute mb-2">Quick interactions</div>
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={cash < 2000}
+            onClick={thankVolunteers}
+            className={cash >= 2000 ? `${css.btnPrimary} text-xs px-3 py-2.5 flex-1 min-h-[44px]` : 'text-xs px-3 py-2.5 rounded-lg bg-apanel-2 text-atext-mute flex-1 min-h-[44px]'}
+          >
+            Coffee shout (−$2k · +4 mood each)
+          </button>
+          <button
+            type="button"
+            disabled={cash < 4000}
+            onClick={raffleNight}
+            className={cash >= 4000 ? `${css.btnGhost} text-xs px-3 py-2.5 flex-1 min-h-[44px] font-bold border border-aline` : 'text-xs px-3 py-2.5 rounded-lg bg-apanel-2 text-atext-mute flex-1 min-h-[44px]'}
+          >
+            Bonus raffle night (−$4k · Social up, Treasurer down)
+          </button>
+        </div>
       </div>
     </div>
   );
