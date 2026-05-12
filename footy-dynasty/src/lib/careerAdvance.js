@@ -72,6 +72,29 @@ import {
 } from './gameDepth.js';
 import { medicalStaffMitigation } from './staffTasks.js';
 
+const ROUND_REPORT_WIN_CLOSERS = [
+  'Fans lingered after the siren.',
+  'The song echoed across the terraces.',
+  'Change rooms stayed loud well past cool-down.',
+  'Hard nuts-to-oranges win on the road.',
+  'Four-quarter effort finally stuck.',
+];
+
+const ROUND_REPORT_DRAW_CLOSERS = [
+  'Neither coach blinked at the last centre bounce.',
+  'Honours even — replay vibes without the fixture.',
+  'One kick either way all afternoon.',
+  'Shared points, split moods in the rooms.',
+];
+
+const ROUND_REPORT_LOSS_CLOSERS = [
+  'Dressing room fell quiet quick.',
+  'Coaches\' box ran out of answers late.',
+  'Errors compounded when it mattered.',
+  'Review tape will hurt tomorrow.',
+  'Momentum never quite flipped.',
+];
+
 /** First day of the home-and-away season: formal renewal window closes; auto-fill staff gaps. */
 export function applySeasonRenewalDeadline(c, league) {
   if (c.renewalsClosed) return;
@@ -983,8 +1006,10 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         marks: p.marks + rand(1, 4), tackles: p.tackles + rand(1, 3), gamesPlayed: p.gamesPlayed + 1,
       };
     });
+    const preBase = `${ev.label}: ${isHome ? 'vs' : '@'} ${opp?.short} ${myTotal}–${oppTotal} (${won ? 'W' : drew ? 'D' : 'L'})`;
+    const preFlavor = won ? pick(ROUND_REPORT_WIN_CLOSERS) : drew ? pick(ROUND_REPORT_DRAW_CLOSERS) : pick(ROUND_REPORT_LOSS_CLOSERS);
     c.news = [{ week: 0, type: won ? 'win' : drew ? 'draw' : 'loss',
-      text: `${ev.label}: ${isHome ? 'vs' : '@'} ${opp?.short} ${myTotal}–${oppTotal} (${won ? 'W' : drew ? 'D' : 'L'})` }, ...(c.news || [])].slice(0, 15);
+      text: `${preBase} ${preFlavor}` }, ...(c.news || [])].slice(0, 15);
     c.lastEvent = {
       type: 'preseason_match', label: ev.label, date: ev.date, isHome, opp, result, myTotal, oppTotal, won, drew,
     };
@@ -1161,8 +1186,10 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       ensureCareerBoard(c, findClub(c.clubId), league);
       applyBoardConfidenceDelta(c, boardDelta);
       c.lastBoardConfidenceDelta = c.finance.boardConfidence - prevBoard;
+      const rdBase = `Rd ${ev.round}: ${myResult.isHome ? 'vs' : '@'} ${myResult.opp?.short} ${myResult.myTotal}–${myResult.oppTotal} (${myResult.won ? 'W' : myResult.drew ? 'D' : 'L'})`;
+      const rdFlavor = myResult.won ? pick(ROUND_REPORT_WIN_CLOSERS) : myResult.drew ? pick(ROUND_REPORT_DRAW_CLOSERS) : pick(ROUND_REPORT_LOSS_CLOSERS);
       c.news = [{ week: ev.round, type: myResult.won ? 'win' : myResult.drew ? 'draw' : 'loss',
-        text: `Rd ${ev.round}: ${myResult.isHome ? 'vs' : '@'} ${myResult.opp?.short} ${myResult.myTotal}–${myResult.oppTotal} (${myResult.won ? 'W' : myResult.drew ? 'D' : 'L'})` },
+        text: `${rdBase} ${rdFlavor}` },
       ...(c.news || [])].slice(0, 12);
 
       if (c.journalist) {

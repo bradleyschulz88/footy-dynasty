@@ -11,6 +11,23 @@ import { bumpCommitteeMood } from './community.js';
 
 export const MAX_STAFF_ROWS = 22;
 
+const PRO_HIRE_NEWS_CLOSERS = [
+  'Paperwork filed.',
+  'Desk sorted for Monday.',
+  'Board quietly approved the basics.',
+  'Welcome pack sent.',
+  'Parking pass is in the mail.',
+  'IT login provisioning queued.',
+];
+
+const VOLUNTEER_NEWS_CLOSERS = [
+  'Committee noted the boost.',
+  'Canteen roster just got easier.',
+  'Match-day crew appreciates it.',
+  'Signed on for community rates.',
+  'Will wear the hi-vis with pride.',
+];
+
 /** Extra helpers — not blueprint ids; fine for staffTasks / flavour (training still keys s2–s5). */
 export const VOLUNTEER_ROLE_TEMPLATES = [
   { role: 'Stats runner', rating: [46, 62] },
@@ -68,7 +85,7 @@ export function hireBlueprintStaff(career, blueprintId, nowMs = Date.now()) {
     staff: [...(career.staff || []), member],
     finance: { ...career.finance, cash: cash - fee },
     fee,
-    newsLine: `📋 Signed ${member.role}: ${member.name} (${member.rating} OVR) — ${fmtFeeNews(fee)} signing`,
+    newsLine: `📋 Signed ${member.role}: ${member.name} (${member.rating} OVR) — ${fmtFeeNews(fee)} signing fee. ${pick(PRO_HIRE_NEWS_CLOSERS)}`,
   };
 }
 
@@ -108,7 +125,7 @@ export function recruitVolunteerStaff(career, templateIndex, nowMs = Date.now())
     ok: true,
     staff: [...(career.staff || []), member],
     committee,
-    newsLine: `🙌 Volunteer: ${member.name} — ${member.role}`,
+    newsLine: `🙌 Volunteer: ${member.name} — ${member.role}. ${pick(VOLUNTEER_NEWS_CLOSERS)}`,
   };
 }
 

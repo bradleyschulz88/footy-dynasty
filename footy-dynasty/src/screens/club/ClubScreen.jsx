@@ -14,7 +14,7 @@ import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf, f
 import { pyramidNoteForLeague } from '../../data/pyramidMeta.js';
 import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from '../../lib/playerGen.js';
 import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET, TIER3_MIN_CLUBS_PER_DIVISION } from '../../lib/leagueEngine.js';
-import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool, STAFF_BLUEPRINT } from '../../lib/defaults.js';
+import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool, STAFF_BLUEPRINT, EXPANDABLE_ROLE_IDS_BY_TIER } from '../../lib/defaults.js';
 import { fmt, fmtK, clamp, avgFacilities, avgStaff } from '../../lib/format.js';
 import { generateSeasonCalendar, TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
 import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from '../../lib/save.js';
@@ -920,6 +920,12 @@ function FinancesTab({ career }) {
           )}
         </div>
       )}
+      {wageCap > 0 && (
+        <div className={`${css.inset} p-4 text-xs text-atext-dim leading-relaxed`}>
+          <span className="text-aaccent font-bold">Cap vs expenses:</span> The salary-cap bar counts{' '}
+          <strong className="text-atext">player wages only</strong>. Staff wages (~{fmtK(exp.staffWages)}/yr) sit in operating expenses and drain cash over time — they do not fill the cap meter. Signing and renewal checks against the cap still look at the playing list.
+        </div>
+      )}
 
       {/* Income / Expenses split */}
       <div className="grid md:grid-cols-2 gap-4">
@@ -1387,7 +1393,30 @@ function StaffTab({ career, updateCareer }) {
     updateCareer({ staffTasks: { ...tasks, ...partial } });
   const roster = career.staff || [];
   const hasAnalyst = roster.some((s) => s.id === 's10');
+  const hasHeadRecruiter = roster.some((s) => s.id === 's7');
+  const hasSeniorScout = roster.some((s) => s.id === 's8');
+  const expandablePool = EXPANDABLE_ROLE_IDS_BY_TIER[leagueTier] || [];
+  const rosterHints = [];
+  if (!hasSeniorScout && expandablePool.includes('s8')) {
+    rosterHints.push({
+      title: 'No Senior Scout on staff',
+      body: 'Recruitment can sign one when offered — sharper scouting reports and better interstate pack value when they lead scouting.',
+    });
+  }
+  if (!hasHeadRecruiter && expandablePool.includes('s7')) {
+    rosterHints.push({
+      title: 'No Head Recruiter on staff',
+      body: 'Hire under Recruitment when available — trade opening asks default to their negotiation skill.',
+    });
+  }
+  if (!hasAnalyst && expandablePool.includes('s10')) {
+    rosterHints.push({
+      title: 'No Performance Analyst on staff',
+      body: 'Sign one under Recruitment to unlock Deep dive match prep and richer preview flavour.',
+    });
+  }
   const hirableIds = listExpandableHires(career);
+  const wageBillAnnual = annualWageBill(career);
 
   const tryHireProfessional = (blueprintId) => {
     const fee = professionalSigningFee(leagueTier, blueprintId);
@@ -1452,6 +1481,20 @@ function StaffTab({ career, updateCareer }) {
           <span className="text-atext font-semibold">Training program lead</span> lifts every session using their rating +6 as a floor.
           Match-day depth still scales with match-prep tier when a performance analyst is employed.
         </div>
+        {rosterHints.length > 0 && (
+          <div className="space-y-2">
+            {rosterHints.map((h) => (
+              <div
+                key={h.title}
+                className="rounded-xl border border-aline bg-apanel-2/40 px-3 py-2 text-[11px] text-atext-dim leading-snug"
+              >
+                <span className="font-semibold text-atext">{h.title}</span>
+                {' — '}
+                {h.body}
+              </div>
+            ))}
+          </div>
+        )}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Recruiting region focus</label>
@@ -1579,13 +1622,19 @@ function StaffTab({ career, updateCareer }) {
                 const meta = STAFF_BLUEPRINT.find((b) => b.id === bid);
                 const fee = professionalSigningFee(leagueTier, bid);
                 const wageEst = previewExpansionAnnualWage(leagueTier, bid);
-                const canCash = (career.finance?.cash ?? 0) >= fee;
+                const cashNow = career.finance?.cash ?? 0;
+                const canCash = cashNow >= fee;
                 const room = roster.length < MAX_STAFF_ROWS;
+                const projectedWageBill = wageBillAnnual + wageEst;
+                const cashAfterFee = cashNow - fee;
                 return (
                   <div key={bid} className={`${css.inset} p-3 flex flex-col gap-2`}>
                     <div className="font-bold text-sm text-atext">{meta?.role ?? bid}</div>
                     <div className="text-[10px] text-atext-dim font-mono">
                       Fee {fmtK(fee)} · from ~{fmtK(wageEst)}/yr
+                    </div>
+                    <div className="text-[10px] text-atext-dim leading-snug">
+                      Proj. total wage bill ~{fmtK(projectedWageBill)}/yr · cash after fee ~{fmtK(cashAfterFee)}
                     </div>
                     <button
                       type="button"
