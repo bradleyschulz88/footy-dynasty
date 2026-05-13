@@ -1,34 +1,37 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+﻿import React, { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { AnimatePresence, motion, MotionConfig, useReducedMotion } from "motion/react";
+import { seedRng, rng } from "./lib/rng.js";
+import { PYRAMID, findClub } from "./data/pyramid.js";
+import { generateSquad } from "./lib/playerGen.js";
 import {
-  Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
-  UserCog,   Repeat, Sprout, BarChart3, Calendar, ChevronRight, ChevronLeft,
-  Home, Settings, Play, Pause, Save, ArrowUp, ArrowDown, ArrowRight,
-  Star, Zap, Heart, Target, Activity, Flame, Sparkles, Crown,
-  TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
-  Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
-  Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus,
-  Landmark, GripVertical, LayoutDashboard, Wrench,
-} from "lucide-react";
-import { seedRng, rand, pick, rng, TIER_SCALE } from './lib/rng.js';
-import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf, findClubByShort } from './data/pyramid.js';
-import { pyramidNoteForLeague } from './data/pyramidMeta.js';
-import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from './lib/playerGen.js';
-import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET, TIER3_MIN_CLUBS_PER_DIVISION } from './lib/leagueEngine.js';
-import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from './lib/defaults.js';
-import { DEFAULT_STAFF_TASKS } from './lib/staffTasks.js';
-import { fmt, fmtK, clamp, avgFacilities, avgStaff } from './lib/format.js';
-import { generateSeasonCalendar, TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from './lib/calendar.js';
-import { SAVE_VERSION, SLOT_IDS, LAST_EXPORT_STORAGE_KEY, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from './lib/save.js';
-import { computeInitialCareerBoot } from './lib/bootCareer.js';
+  generateFixtures,
+  blankLadder,
+  sortedLadder,
+  getCompetitionClubs,
+  localDivisionForClub,
+} from "./lib/leagueEngine.js";
+import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits } from "./lib/defaults.js";
+import { DEFAULT_STAFF_TASKS } from "./lib/staffTasks.js";
+import { clamp } from "./lib/format.js";
+import { generateSeasonCalendar } from "./lib/calendar.js";
 import {
-  playerBlockedFromTrade,
-  TRADE_PERIOD_DAYS,
-  POST_TRADE_DRAFT_COUNTDOWN_DAYS,
-} from './lib/tradePeriod.js';
-import { css, Bar, RatingDot, Pill, Stat, Jersey, GlobalStyle } from './components/primitives.jsx';
-import GameOverScreen from './screens/GameOverScreen.jsx';
-import PostMatchSummary from './screens/PostMatchSummary.jsx';
+  SAVE_VERSION,
+  SLOT_IDS,
+  LAST_EXPORT_STORAGE_KEY,
+  readSlot,
+  writeSlot,
+  deleteSlot,
+  readSlotMeta,
+  setActiveSlot,
+  migrate as migrateSave,
+  cloneSerializable,
+} from "./lib/save.js";
+import { computeInitialCareerBoot } from "./lib/bootCareer.js";
+import { GlobalStyle } from "./components/primitives.jsx";
+import GameOverScreen from "./screens/GameOverScreen.jsx";
+import PostMatchSummary from "./screens/PostMatchSummary.jsx";
+import SeasonSummaryScreen from "./screens/SeasonSummaryScreen.jsx";
+import MatchDayScreen from "./screens/MatchDayScreen.jsx";
 import SackingSequence from './screens/SackingSequence.jsx';
 import VoteOfConfidenceFlow from './screens/VoteOfConfidenceFlow.jsx';
 import BoardMeetingScreen from './screens/BoardMeetingScreen.jsx';
@@ -63,7 +66,7 @@ const RecruitScreenLazy = lazy(() => import('./screens/recruit/RecruitScreen.jsx
 const SettingsScreenLazy = lazy(() => import('./screens/SettingsScreen.jsx'));
 
 // --- Gameplay systems spec (Sections 1-3) ---
-import { DIFFICULTY_IDS, DIFFICULTY_META, getDifficultyConfig, getDifficultyProfile, shouldShowTutorial } from './lib/difficulty.js';
+import { getDifficultyConfig } from "./lib/difficulty.js";
 import {
   generateCommittee, getCommitteeMember, bumpCommitteeMood, committeeMoodAverage,
   committeeMessage, FOOTY_TRIP_OPTIONS, applyFootyTrip, postMatchFundraiser,
@@ -90,7 +93,6 @@ import {
 } from './lib/finance/sponsors.js';
 import { proposeRenewal, renewalExtensionStableKey, applyRenewal, applyRenewalRejection, canAffordRenewal } from './lib/finance/contracts.js';
 import { applyStaffRenewalAccept, applyStaffRenewalReject, canAffordStaffRenewal } from './lib/staffRenewals.js';
-import { getAdvanceContext } from './lib/advanceContext.js';
 import {
   ensureCareerBoard,
   resetExecutiveBoard,
@@ -130,7 +132,10 @@ function AppMotionConfig({ reducedMotion, children }) {
   );
 }
 
-function LazyRouteFallback({ label }) {
+function LazyRouteFallback({ label, reducedMotion }) {
+  if (reducedMotion) {
+    return <div className="py-16 text-center text-atext-dim font-mono text-sm">{label}</div>;
+  }
   return (
     <motion.div
       className="py-16 text-center text-atext-dim font-mono text-sm"
@@ -549,6 +554,8 @@ function AFLManagerInner() {
     return i >= 0 ? i + 1 : 0;
   }, [sortedLadderRows, career.clubId]);
 
+  const slotMetaSnapshot = useMemo(() => readSlotMeta(), [slotMetaTick]);
+
   // ============== RENDER ==============
   const globalStyle = <GlobalStyle />;
 
@@ -689,14 +696,14 @@ function AFLManagerInner() {
           league={league}
           onComplete={({ survived, pitchBonus }) => {
             if (survived) {
-              const next = JSON.parse(JSON.stringify(career));
+              const next = cloneSerializable(career);
               const { newsLine } = applyVoteSurvivalMutate(next, league, pitchBonus);
               const catchUp = catchUpBoardMeetingForCurrentWeek(next);
               if (catchUp) next.boardMeetingBlocking = catchUp;
               next.news = [{ week: next.week, type: 'board', text: newsLine }, ...(next.news || [])].slice(0, 20);
               updateCareer(next);
             } else {
-              const next = JSON.parse(JSON.stringify(career));
+              const next = cloneSerializable(career);
               if (next.gameMode === 'sandbox') {
                 next.boardCrisis = null;
                 next.boardWarning = 0;
@@ -724,7 +731,7 @@ function AFLManagerInner() {
           career={career}
           blocking={career.boardMeetingBlocking}
           onChoose={(choiceId) => {
-            const draft = JSON.parse(JSON.stringify(career));
+            const draft = cloneSerializable(career);
             const r = resolveRoutineBoardMeeting(draft, league, career.boardMeetingBlocking.slotId, choiceId);
             if (r.ok) {
               updateCareer({
@@ -749,7 +756,7 @@ function AFLManagerInner() {
           club={club}
           league={league}
           onComplete={(patch) => {
-            const next = JSON.parse(JSON.stringify({ ...career, ...patch }));
+            const next = cloneSerializable({ ...career, ...patch });
             ensureCareerBoard(next, findClub(next.clubId), PYRAMID[next.leagueKey]);
             alignBoardMembersToTarget(next.board, next.finance.boardConfidence);
             recalcBoardConfidence(next);
@@ -820,7 +827,7 @@ function AFLManagerInner() {
                 />
               )}
               {screen === "squad" && (
-                <Suspense fallback={<LazyRouteFallback label="Loading squad…" />}>
+                <Suspense fallback={<LazyRouteFallback label="Loading squad…" reducedMotion={motionReduced} />}>
                   <SquadScreenLazy
                     career={career}
                     club={club}
@@ -836,12 +843,12 @@ function AFLManagerInner() {
                 </Suspense>
               )}
               {screen === "schedule" && (
-                <Suspense fallback={<LazyRouteFallback label="Loading calendar…" />}>
+                <Suspense fallback={<LazyRouteFallback label="Loading calendar…" reducedMotion={motionReduced} />}>
                   <ScheduleScreenLazy career={career} club={club} league={league} onOpenCompetition={() => onNavScreen("compete")} />
                 </Suspense>
               )}
               {screen === "club" && (
-                <Suspense fallback={<LazyRouteFallback label="Loading club…" />}>
+                <Suspense fallback={<LazyRouteFallback label="Loading club…" reducedMotion={motionReduced} />}>
                   <ClubScreenLazy
                     career={career}
                     club={club}
@@ -853,17 +860,17 @@ function AFLManagerInner() {
                 </Suspense>
               )}
               {screen === "recruit" && (
-                <Suspense fallback={<LazyRouteFallback label="Loading recruit…" />}>
+                <Suspense fallback={<LazyRouteFallback label="Loading recruit…" reducedMotion={motionReduced} />}>
                   <RecruitScreenLazy career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />
                 </Suspense>
               )}
               {screen === "compete" && (
-                <Suspense fallback={<LazyRouteFallback label="Loading competition…" />}>
+                <Suspense fallback={<LazyRouteFallback label="Loading competition…" reducedMotion={motionReduced} />}>
                   <CompetitionScreenLazy career={career} club={club} league={league} tab={tab} setTab={setTab} onOpenCalendar={() => onNavScreen("schedule")} />
                 </Suspense>
               )}
               {screen === "settings" && (
-                <Suspense fallback={<LazyRouteFallback label="Loading settings…" />}>
+                <Suspense fallback={<LazyRouteFallback label="Loading settings…" reducedMotion={motionReduced} />}>
                   <SettingsScreenLazy
                     career={career}
                     updateCareer={updateCareer}
@@ -872,7 +879,7 @@ function AFLManagerInner() {
                     onImportCareerFile={handleImportCareerFile}
                     onSaveNow={handleSaveNow}
                     onNewGame={handleNewGame}
-                    slotMeta={readSlotMeta()}
+                    slotMeta={slotMetaSnapshot}
                     slotMetaTick={slotMetaTick}
                     showSlotPicker={showSlotPicker}
                     onTogglePicker={() => setShowSlotPicker((s) => !s)}
@@ -903,424 +910,3 @@ function AFLManagerInner() {
     </AppMotionConfig>
   );
 }
-
-// ============================================================================
-// SEASON SUMMARY SCREEN
-// ============================================================================
-function EosFinTile({ label, value, accent = 'var(--A-accent)', sub }) {
-  return (
-    <div className="rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
-      <div className={css.label}>{label}</div>
-      <div className="font-display text-2xl mt-1" style={{ color: accent }}>{value}</div>
-      {sub && <div className="text-[10px] text-atext-mute mt-1">{sub}</div>}
-    </div>
-  );
-}
-
-function SeasonSummaryScreen({ summary, club, retiredThisSeason = [], eosFinance = null, onContinue }) {
-  const posColor   = summary.position <= 1 ? '#FFD700' : summary.position <= 4 ? '#4AE89A' : summary.position <= summary.totalTeams / 2 ? 'var(--A-accent)' : '#E84A6F';
-  const tierColors = { 1: '#E84A6F', 2: 'var(--A-accent)', 3: '#4ADBE8' };
-  const tierColor  = tierColors[summary.leagueTier] || 'var(--A-accent)';
-
-  let outcomeText  = `Finished ${summary.position}${summary.position===1?'st':summary.position===2?'nd':summary.position===3?'rd':'th'} of ${summary.totalTeams}`;
-  let outcomeIcon  = summary.champion ? '🏆' : summary.promoted ? '⬆️' : summary.relegated ? '⬇️' : summary.position <= 4 ? '✅' : '📊';
-  let outcomeSub   = summary.champion   ? 'PREMIERS — ' + summary.leagueShort + ' Champions!'
-    : summary.promoted  ? `Promoted to the next division`
-    : summary.relegated ? `Relegated — bounce back next season`
-    : outcomeText;
-
-  const AwardCard = ({ icon, label, name, stat, sub }) => (
-    <div className="rounded-2xl p-4 flex items-center gap-4" style={{background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)'}}>
-      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
-        style={{background:'rgba(232,154,74,0.15)', border:'1px solid rgba(232,154,74,0.3)'}}>
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">{label}</div>
-        <div className="font-bold text-white truncate">{name || '—'}</div>
-        <div className="text-sm font-display text-aaccent">{stat}</div>
-      </div>
-      {sub && <div className="text-[10px] text-slate-500 text-right leading-tight">{sub}</div>}
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen flex flex-col" style={{background:'linear-gradient(160deg,#0F172A 0%,#1E293B 100%)'}}>
-      {/* Header */}
-      <div className="text-center px-6 py-10" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-        <div className="text-5xl mb-4">{outcomeIcon}</div>
-        <div className="text-[11px] font-bold uppercase tracking-[0.3em] mb-2" style={{color: tierColor}}>{summary.leagueName} · Season {summary.season}</div>
-        <div className="font-display text-6xl leading-none text-white mb-2">{summary.leagueShort} {summary.season}</div>
-        <div className="font-bold text-xl" style={{color: posColor}}>{outcomeSub}</div>
-
-        {/* Season record strip */}
-        <div className="flex items-center justify-center gap-6 mt-8">
-          {[
-            { label: 'Position', value: `#${summary.position}`, color: posColor },
-            { label: 'Wins',     value: summary.W,  color: '#4AE89A' },
-            { label: 'Losses',   value: summary.L,  color: '#E84A6F' },
-            { label: 'Draws',    value: summary.D,  color: 'var(--A-accent)' },
-            { label: 'Points',   value: summary.pts, color: '#A78BFA' },
-            { label: 'Pct',      value: `${summary.pct}%`, color: '#4ADBE8' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="text-center">
-              <div className="font-display text-4xl leading-none" style={{color}}>{value}</div>
-              <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Awards */}
-      <div className="flex-1 px-6 py-8 max-w-2xl mx-auto w-full space-y-3">
-        <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 mb-4">Season Awards</div>
-
-        {summary.champion && (
-          <div className="rounded-2xl p-4 text-center mb-4" style={{background:'linear-gradient(135deg,rgba(255,215,0,0.15),rgba(232,154,74,0.1))', border:'2px solid rgba(255,215,0,0.4)'}}>
-            <div className="text-4xl mb-2">🏆</div>
-            <div className="font-display text-3xl text-[#FFD700]">PREMIERS!</div>
-            <div className="text-sm text-slate-300 mt-1">{club.name} are the {summary.season} {summary.leagueShort} Champions</div>
-          </div>
-        )}
-
-        <AwardCard
-          icon="🥇" label="Best & Fairest"
-          name={summary.baf?.name}
-          stat={summary.baf ? `${summary.baf.overall} OVR · ${summary.baf.games} games` : '—'}
-        />
-        <AwardCard
-          icon="⚽" label="Top Goal Kicker"
-          name={summary.topScorer?.name}
-          stat={summary.topScorer ? `${summary.topScorer.goals} goals` : '—'}
-          sub={summary.topScorer ? `${summary.topScorer.games} games` : null}
-        />
-        <AwardCard
-          icon="🤝" label="Disposal King"
-          name={summary.topDisposal?.name}
-          stat={summary.topDisposal ? `${summary.topDisposal.disposals} disposals` : '—'}
-          sub={summary.topDisposal ? `${summary.topDisposal.games} games` : null}
-        />
-
-        <AwardCard
-          icon="🥇" label="Brownlow Medal"
-          name={summary.brownlow?.name || '—'}
-          stat={summary.brownlow ? `${summary.brownlow.votes} votes` : 'Outside our club this year'}
-          sub={summary.brownlow?.position}
-        />
-
-        {retiredThisSeason && retiredThisSeason.length > 0 && (
-          <div className="rounded-2xl p-4 mt-2" style={{background:'rgba(168,139,250,0.08)', border:'1px solid rgba(168,139,250,0.3)'}}>
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#A78BFA] mb-3">Retirements & Departures</div>
-            <div className="space-y-1.5">
-              {retiredThisSeason.map((r, i) => (
-                <div key={r.id || i} className="flex items-center justify-between text-sm">
-                  <span className="text-slate-200 font-semibold">{r.name}</span>
-                  <span className="text-[11px] text-slate-400">
-                    {r.reason === 'retired' ? `🏁 retired @ ${r.age}` : `📤 released`} · {r.career.gamesPlayed} games · {r.career.goals} goals
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {(summary.promoted || summary.relegated) && (
-          <div className="rounded-2xl p-4 mt-2" style={{background: summary.promoted ? 'rgba(74,232,154,0.1)' : 'rgba(232,74,111,0.1)', border: `1px solid ${summary.promoted ? 'rgba(74,232,154,0.3)' : 'rgba(232,74,111,0.3)'}`}}>
-            <div className="font-bold text-base" style={{color: summary.promoted ? '#4AE89A' : '#E84A6F'}}>
-              {summary.promoted ? '⬆️ Promoted!' : '⬇️ Relegated'}
-            </div>
-            <div className="text-sm text-slate-400 mt-1">
-              {summary.promoted ? 'A new challenge awaits in the division above.' : 'Time to rebuild and fight back up.'}
-            </div>
-          </div>
-        )}
-
-        {eosFinance && (
-          <div className="rounded-2xl p-5 mt-2" style={{ background: 'var(--A-panel)', border: '1px solid var(--A-line-2)' }}>
-            <div className="flex items-center gap-2 mb-3">
-              <DollarSign className="w-5 h-5 text-aaccent" />
-              <div className="font-display text-2xl tracking-wide text-atext">FINANCIAL YEAR</div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <EosFinTile label="Cash on hand"        value={fmtK(eosFinance.cashEnd)} accent={eosFinance.cashEnd >= 0 ? '#4AE89A' : '#E84A6F'} />
-              <EosFinTile label="Prize money"         value={`+${fmtK(eosFinance.prizeMoney)}`} accent="#FFD200" />
-              <EosFinTile label="Transfer refill"     value={`+${fmtK(eosFinance.transferBudgetRefill)}`} accent="#4ADBE8" />
-              <EosFinTile label="Sponsors lost"       value={eosFinance.sponsorsExpired} accent={eosFinance.sponsorsExpired > 0 ? '#E84A6F' : '#4AE89A'} sub={`${eosFinance.sponsorsActive} active now`} />
-            </div>
-            {eosFinance.cashCrisis > 0 && (
-              <div className="mt-3 text-xs text-[#E84A6F] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Cash crisis level {eosFinance.cashCrisis} carries into next season</div>
-            )}
-            {eosFinance.ripple && (
-              <div className="mt-3 text-xs text-atext-dim">
-                {eosFinance.ripple.promoted ? `Promotion ripple: sponsor values +30%, board confidence +20.` : `Relegation ripple: sponsor values cut to half, board confidence -25.`}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="px-6 py-6" style={{borderTop:'1px solid rgba(255,255,255,0.08)'}}>
-        <div className="max-w-2xl mx-auto">
-          <button onClick={onContinue}
-            className="w-full py-4 rounded-2xl font-display text-xl tracking-widest text-white transition-all"
-            style={{background:'linear-gradient(135deg,var(--A-accent),#D07A2A)', boxShadow:'0 4px 20px rgba(232,154,74,0.4)'}}>
-            START SEASON {summary.season + 1} →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-// ============================================================================
-// GAME OVER SCREEN
-// ============================================================================
-// ============================================================================
-// MATCH DAY SCREEN — quarter-by-quarter visual scoreboard
-// ============================================================================
-function MatchDayScreen({ result, league, career, club, onContinue }) {
-  const [revealed, setRevealed] = React.useState(0);
-  const [showEvents, setShowEvents] = React.useState(true);
-
-  const qLabels = ['Q1', 'Q2', 'Q3', 'Q4'];
-
-  const { cumHome, cumAway, quarters } = useMemo(() => {
-    const list = result.quarters || [];
-    const cumH = [];
-    const cumA = [];
-    let hG = 0;
-    let hB = 0;
-    let aG = 0;
-    let aB = 0;
-    for (const q of list) {
-      hG += q.homeGoals;
-      hB += q.homeBehinds;
-      aG += q.awayGoals;
-      aB += q.awayBehinds;
-      cumH.push({ g: hG, b: hB, total: hG * 6 + hB });
-      cumA.push({ g: aG, b: aB, total: aG * 6 + aB });
-    }
-    return { cumHome: cumH, cumAway: cumA, quarters: list };
-  }, [result.quarters]);
-
-  // Events for the broadcast feed — only visible up to current revealed quarter
-  const visibleQuarter = revealed === 0 ? 0 : Math.min(revealed, quarters.length);
-  const eventFeed = (result.events || []).filter(ev => ev.q <= visibleQuarter);
-  // Lookup helper for event scorer / moment player
-  const playerLookup = useMemo(() => {
-    const map = {};
-    (career.squad || []).forEach(p => { map[p.id] = p; });
-    return map;
-  }, [career.squad]);
-
-  // Final-quarter momentum (from event-driven engine if available)
-  const momentumEnd = quarters.length ? (quarters[Math.min(visibleQuarter, quarters.length) - 1]?.momentumEnd ?? 0) : 0;
-  const momentumPct = ((momentumEnd + 1) / 2) * 100; // -1..1 -> 0..100
-
-  const homeClub = result.isHome ? club : result.opp;
-  const awayClub = result.isHome ? result.opp : club;
-  const myColor  = club.colors[0] || 'var(--A-accent)';
-  const oppColor = result.opp?.colors?.[0] || '#64748B';
-
-  const won  = result.won;
-  const drew = result.drew;
-  const resultLabel = won ? 'WIN' : drew ? 'DRAW' : 'LOSS';
-  const resultColor = won ? '#4AE89A' : drew ? 'var(--A-accent)' : '#E84A6F';
-
-  // AFL-tier commentary lines
-  const commentary = result.isAFL ? [
-    won  ? `${club.name} put in a dominant performance today.` : drew ? `An even contest — both sides had their chances.` : `A tough day at the office for ${club.name}.`,
-    result.myTotal > 80 ? 'The forward line was electric, converting at a high rate.' : result.myTotal > 60 ? 'A solid if unremarkable offensive effort.' : 'The team struggled to convert inside 50.',
-    won && result.myTotal - result.oppTotal > 30 ? 'It was never in doubt from the third quarter on.' : won ? 'They held on for a hard-fought victory.' : '',
-    result.isPreseason ? 'Pre-season result — ladders unaffected.' : `${league.short} Round ${result.label.replace('Round ', '')}.`,
-  ].filter(Boolean) : [];
-
-  return (
-    <div className="min-h-screen flex flex-col" style={{background:'linear-gradient(160deg, #0F172A 0%, #1E293B 100%)'}}>
-      {/* Header */}
-      <div className="px-6 py-5 text-center" style={{borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-        <div className="text-[11px] font-bold uppercase tracking-[0.3em] mb-1" style={{color: result.isPreseason ? '#4ADBE8' : 'var(--A-accent)'}}>
-          {result.label} · {career.currentDate ? formatDate(career.currentDate) : ''}
-          {result.isPreseason && ' · Pre-Season'}
-        </div>
-
-        {/* Teams */}
-        <div className="flex items-center justify-center gap-6 mt-4">
-          {/* Home */}
-          <div className="text-center flex-1">
-            <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center font-display text-2xl mb-2"
-              style={{background:`linear-gradient(135deg,${homeClub?.colors?.[0]||'var(--A-accent)'},${homeClub?.colors?.[1]||'#D07A2A'})`,color:homeClub?.colors?.[2]||'#FFF'}}>
-              {homeClub?.short}
-            </div>
-            <div className="text-white font-bold text-sm">{homeClub?.name}</div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-widest">HOME</div>
-          </div>
-
-          {/* Score */}
-          <div className="text-center px-6">
-            <div className="font-display text-6xl leading-none" style={{color: resultColor}}>
-              {result.homeTotal} – {result.awayTotal}
-            </div>
-            <div className="text-[11px] font-bold uppercase tracking-widest mt-1" style={{color: resultColor}}>{resultLabel}</div>
-          </div>
-
-          {/* Away */}
-          <div className="text-center flex-1">
-            <div className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center font-display text-2xl mb-2"
-              style={{background:`linear-gradient(135deg,${awayClub?.colors?.[0]||'#64748B'},${awayClub?.colors?.[1]||'#475569'})`,color:awayClub?.colors?.[2]||'#FFF'}}>
-              {awayClub?.short}
-            </div>
-            <div className="text-white font-bold text-sm">{awayClub?.name}</div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-widest">AWAY</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Momentum bar */}
-      {(result.events && result.events.length > 0) && (
-        <div className="px-6 py-3 max-w-2xl mx-auto w-full">
-          <div className="flex items-center justify-between mb-1">
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Momentum {visibleQuarter > 0 ? `· End of ${qLabels[visibleQuarter - 1]}` : ''}</div>
-            <div className="text-[10px] text-slate-400">
-              {momentumEnd > 0.15 ? `${(result.isHome ? club.short : result.opp?.short) || 'Home'} on top` : momentumEnd < -0.15 ? `${(result.isHome ? result.opp?.short : club.short) || 'Away'} on top` : 'Even contest'}
-            </div>
-          </div>
-          <div className="h-2 rounded-full overflow-hidden flex" style={{background:'rgba(255,255,255,0.05)'}}>
-            <div className="h-full" style={{width: `${momentumPct}%`, background: 'linear-gradient(90deg,#4ADBE8,#4AE89A)'}} />
-            <div className="h-full" style={{width: `${100 - momentumPct}%`, background: 'linear-gradient(90deg,#E84A6F,#A78BFA)'}} />
-          </div>
-        </div>
-      )}
-
-      {/* Live event feed */}
-      {(result.events && result.events.length > 0) && (
-        <div className="px-6 max-w-2xl mx-auto w-full">
-          <button onClick={() => setShowEvents(s => !s)} className="text-[10px] font-bold uppercase tracking-[0.2em] text-aaccent flex items-center gap-1 mb-2">
-            {showEvents ? '▾' : '▸'} Broadcast Feed
-            {result.events.filter(e => e.kind === 'moment').length > 0 && (
-              <span className="text-[9px] text-slate-400 ml-2">{result.events.filter(e => e.kind === 'moment').length} key moments</span>
-            )}
-          </button>
-          {showEvents && (
-            <div className="rounded-2xl p-3 max-h-48 overflow-y-auto space-y-1" style={{background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)'}}>
-              {eventFeed.length === 0 && <div className="text-xs text-slate-500 text-center py-3">Waiting for first quarter…</div>}
-              {eventFeed.slice().reverse().map((ev, i) => {
-                const player = ev.scorer ? playerLookup[ev.scorer] : ev.playerId ? playerLookup[ev.playerId] : null;
-                const sideMine = (result.isHome ? 'home' : 'away') === ev.side;
-                const color = ev.kind === 'goal' ? '#4AE89A' : ev.kind === 'behind' ? 'var(--A-accent)' : ev.kind === 'moment' ? '#A78BFA' : '#64748B';
-                const icon = ev.kind === 'goal' ? '⚽' : ev.kind === 'behind' ? '○' : ev.kind === 'miss' ? '×' : '✦';
-                let label = '';
-                if (ev.kind === 'goal') label = 'GOAL';
-                else if (ev.kind === 'behind') label = 'Behind';
-                else if (ev.kind === 'miss') label = 'Out on the full / OOB';
-                else if (ev.kind === 'moment') label = ev.text;
-                return (
-                  <div key={i} className="flex items-center gap-2 text-xs py-1 px-2 rounded" style={{background: i === 0 ? `${color}10` : 'transparent'}}>
-                    <span className="text-[9px] font-mono text-slate-500 w-12 flex-shrink-0">Q{ev.q} {String(ev.minute % 25).padStart(2, '0')}{"'"}</span>
-                    <span style={{color}} className="font-bold w-4">{icon}</span>
-                    <span className="text-[10px] uppercase tracking-wider font-bold w-12 flex-shrink-0" style={{color: sideMine ? '#4AE89A' : '#E84A6F'}}>{sideMine ? club.short : (result.opp?.short || 'OPP')}</span>
-                    <span className="text-slate-300 flex-1 truncate">{player ? `${player.firstName ? player.firstName[0] + '. ' : ''}${player.lastName || player.name || ''}: ` : ''}{label}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Quarter breakdown */}
-      <div className="flex-1 px-6 py-6 max-w-2xl mx-auto w-full">
-        <div className="mb-4">
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-3">Quarter by Quarter</div>
-          {quarters.length === 0 && (
-            <div className="text-slate-400 text-sm text-center py-4">No quarter data available.</div>
-          )}
-          <div className="space-y-3">
-            {quarters.map((q, i) => {
-              const isShowing = i < revealed || revealed === quarters.length;
-              const hCum = cumHome[i] || { g: 0, b: 0, total: 0 };
-              const aCum = cumAway[i] || { g: 0, b: 0, total: 0 };
-              const qWinner = hCum.total > aCum.total ? 'home' : aCum.total > hCum.total ? 'away' : 'draw';
-              return (
-                <div key={i} className={`rounded-2xl p-4 transition-all duration-300 ${isShowing ? 'opacity-100' : 'opacity-0 translate-y-2'}`}
-                  style={{background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)'}}>
-                  <div className="flex items-center justify-between">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{qLabels[i]}</div>
-                    {isShowing && (
-                      <div className="text-[10px] text-slate-500">
-                        {q.homeGoals}.{q.homeBehinds} — {q.awayGoals}.{q.awayBehinds} (this qtr)
-                      </div>
-                    )}
-                  </div>
-                  {isShowing && (
-                    <div className="flex items-center gap-4 mt-2">
-                      <div className="text-right flex-1">
-                        <span className="font-display text-3xl" style={{color: result.isHome ? myColor : oppColor}}>{hCum.total}</span>
-                        <div className="text-[10px] text-slate-400">{hCum.g}.{hCum.b}</div>
-                      </div>
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{background: qWinner === (result.isHome ? 'home' : 'away') ? '#4AE89A22' : '#64748B22', color: qWinner === (result.isHome ? 'home' : 'away') ? '#4AE89A' : '#64748B'}}>
-                        {qWinner === 'draw' ? '=' : qWinner === (result.isHome ? 'home' : 'away') ? '▲' : '▼'}
-                      </div>
-                      <div className="text-left flex-1">
-                        <span className="font-display text-3xl" style={{color: result.isHome ? oppColor : myColor}}>{aCum.total}</span>
-                        <div className="text-[10px] text-slate-400">{aCum.g}.{aCum.b}</div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Reveal controls */}
-          {quarters.length > 0 && revealed < quarters.length && (
-            <button onClick={() => setRevealed(r => Math.min(r + 1, quarters.length))}
-              className="mt-4 w-full rounded-xl py-3 text-sm font-bold uppercase tracking-widest transition-all"
-              style={{background:'rgba(232,154,74,0.15)', color:'var(--A-accent)', border:'1px solid rgba(232,154,74,0.3)'}}>
-              Show {qLabels[revealed]} →
-            </button>
-          )}
-        </div>
-
-        {/* AFL Commentary */}
-        {result.isAFL && commentary.length > 0 && revealed === quarters.length && (
-          <div className="rounded-2xl p-4 mt-2" style={{background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)'}}>
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-3">Match Commentary</div>
-            <div className="space-y-2">
-              {commentary.map((line, i) => (
-                <div key={i} className="flex gap-2 text-sm text-slate-300">
-                  <span className="text-aaccent flex-shrink-0">›</span>
-                  <span>{line}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      <div className="px-6 py-5" style={{borderTop:'1px solid rgba(255,255,255,0.08)'}}>
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          {revealed < quarters.length && quarters.length > 0 ? (
-            <button onClick={() => setRevealed(quarters.length)}
-              className="flex-1 py-3 rounded-xl text-sm font-bold text-slate-400 uppercase tracking-widest"
-              style={{border:'1px solid rgba(255,255,255,0.1)'}}>
-              Skip to Full Time
-            </button>
-          ) : null}
-          <button onClick={onContinue}
-            className={`flex-1 py-3 rounded-xl font-bold uppercase tracking-widest text-white transition-all`}
-            style={{background:`linear-gradient(135deg,${resultColor}CC,${resultColor})`, boxShadow:`0 4px 20px ${resultColor}44`}}>
-            Continue →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-

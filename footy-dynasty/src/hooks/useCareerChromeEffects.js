@@ -1,28 +1,49 @@
 import { useEffect, useRef } from "react";
 import { writeSlot } from "../lib/save.js";
+import { nextAutosaveDelayMs } from "../lib/autosaveTiming.js";
 import { SETUP_SS_KEY, SETUP_SS_KEY_LEGACY } from "../lib/setupConstants.js";
 
 /** Idle delay before autosave batches rapid `career` updates (main-thread stringify cost). */
 const AUTOSAVE_DEBOUNCE_MS = 450;
+/** Hard cap on time between disk writes while `career` keeps changing. */
+const AUTOSAVE_MAX_WAIT_MS = 4000;
 
 /** Autosave career to active slot when state stabilizes (respects options.autosave). */
 export function useCareerAutosaveEffect(career, activeSlot, onAfterWrite) {
   const careerRef = useRef(career);
   const slotRef = useRef(activeSlot);
   const afterRef = useRef(onAfterWrite);
+  const burstStartRef = useRef(0);
   careerRef.current = career;
   slotRef.current = activeSlot;
   afterRef.current = onAfterWrite;
 
   useEffect(() => {
-    if (!career || !activeSlot) return;
+    if (!career || !activeSlot) {
+      burstStartRef.current = 0;
+      return;
+    }
     const opts = career.options || { autosave: true };
-    if (!opts.autosave) return;
+    if (!opts.autosave) {
+      burstStartRef.current = 0;
+      return;
+    }
+
+    const now = Date.now();
+    if (!burstStartRef.current) burstStartRef.current = now;
+
+    const delay = nextAutosaveDelayMs(
+      now,
+      burstStartRef.current,
+      AUTOSAVE_DEBOUNCE_MS,
+      AUTOSAVE_MAX_WAIT_MS,
+    );
 
     const tid = window.setTimeout(() => {
       const c = careerRef.current;
       const slot = slotRef.current;
       if (!c || !slot || c.options?.autosave === false) return;
+      burstStartRef.current = 0;
       writeSlot(slot, c);
       try {
         sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
@@ -31,7 +52,7 @@ export function useCareerAutosaveEffect(career, activeSlot, onAfterWrite) {
         /* ignore */
       }
       afterRef.current?.();
-    }, AUTOSAVE_DEBOUNCE_MS);
+    }, delay);
 
     return () => {
       window.clearTimeout(tid);

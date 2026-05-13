@@ -335,6 +335,20 @@ export function migrate(save) {
   return s;
 }
 
+/**
+ * Deep snapshot for branching mutable updates (prefer native clone; JSON fallback for edge types).
+ */
+export function cloneSerializable(obj) {
+  if (typeof structuredClone === "function") {
+    try {
+      return structuredClone(obj);
+    } catch {
+      /* unsupported — fall through */
+    }
+  }
+  return JSON.parse(JSON.stringify(obj));
+}
+
 export function readSlot(slot) {
   try {
     const raw = localStorage.getItem(SLOT_KEY(slot));
