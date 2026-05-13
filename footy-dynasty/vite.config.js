@@ -49,5 +49,6 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     maxWorkers: process.env.CI ? 4 : '75%',
+    exclude: ["**/node_modules/**", "**/e2e/**"],
   },
 })

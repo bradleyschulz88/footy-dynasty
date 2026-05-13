@@ -70,55 +70,30 @@ const SettingsScreenLazy = lazy(() => import('./screens/SettingsScreen.jsx'));
 // --- Gameplay systems spec (Sections 1-3) ---
 import { getDifficultyConfig } from "./lib/difficulty.js";
 import {
-  generateCommittee, getCommitteeMember, bumpCommitteeMood, committeeMoodAverage,
-  committeeMessage, FOOTY_TRIP_OPTIONS, applyFootyTrip, postMatchFundraiser,
-  ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
-  groundConditionBand, stadiumDescription, generateJournalist, journalistMatchLine,
+  generateCommittee,
+  generateJournalist,
   rollPlayerTrait,
 } from './lib/community.js';
 import {
   generateJobMarket, takeSeasonOff,
 } from './lib/coachReputation.js';
 // --- Finance system rebuild ---
-import {
-  effectiveWageCap, capHeadroom,
-  currentPlayerWageBill,
-  canAffordSigning, makeStartingFinance, scoutedOverall,
-  incomeBreakdown, expenseBreakdown,
-  annualWageBill, leagueTierOf,
-  scaledSquadToFitCap, rookieDraftWage,
-} from './lib/finance/engine.js';
-import {
-  tickSponsorYears, proposalForRenewal, generateSponsorOffers,
-  applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
-  buildInitialSponsorOffers,
-} from './lib/finance/sponsors.js';
-import { proposeRenewal, renewalExtensionStableKey, applyRenewal, applyRenewalRejection, canAffordRenewal } from './lib/finance/contracts.js';
-import { applyStaffRenewalAccept, applyStaffRenewalReject, canAffordStaffRenewal } from './lib/staffRenewals.js';
+import { makeStartingFinance, scaledSquadToFitCap } from './lib/finance/engine.js';
+import { buildInitialSponsorOffers } from './lib/finance/sponsors.js';
 import {
   ensureCareerBoard,
   resetExecutiveBoard,
-  applyBoardConfidenceDelta,
   generateSeasonObjectives,
-  updateBoardObjectiveProgress,
-  resolveBoardObjectivesAtSeasonEnd,
-  youthSeniorGameCount,
-  boardObjectiveUiStatus,
-  maybeEnqueueBoardMessage,
-  maybeEnqueueBoardCrisisPrep,
-  resolveBoardInboxChoice,
   planSeasonBoardMeetings,
-  findDueBoardMeetingSlot,
-  openBoardMeetingBlockingFromSlot,
   catchUpBoardMeetingForCurrentWeek,
   applyVoteSurvivalMutate,
   resolveRoutineBoardMeeting,
   alignBoardMembersToTarget,
   recalcBoardConfidence,
-  applyMemberConfidenceDelta,
 } from './lib/board.js';
 import { getClubGround } from './data/grounds.js';
-import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from './lib/careerAdvance.js';
+import { advanceCareerNextEvent, triggerSackState } from './lib/careerAdvance.js';
+import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
 
 /** Single light UI — always `dirA` (see tokens.css `--A-*`). */
@@ -498,6 +473,8 @@ function AFLManagerInner() {
     resetExecutiveBoard(nextCareer, newClub, newLeague, newFinance.boardConfidence);
     generateSeasonObjectives(nextCareer, newLeague);
     planSeasonBoardMeetings(nextCareer);
+    const dqN = compClubsNew.length || newLeague.clubs?.length || 12;
+    assignDynastyQuestsForSeason(nextCareer, newLeague.tier, dqN);
     setCareer(nextCareer);
     setScreen('hub');
     setTab(null);
@@ -555,6 +532,12 @@ function AFLManagerInner() {
               ...(c.options || {}),
             },
           };
+          const initLeague = PYRAMID[initialised.leagueKey];
+          const initClubCount =
+            getCompetitionClubs(initialised.leagueKey, initialised.regionState, initialised.localDivision)?.length
+            || initLeague?.clubs?.length
+            || 12;
+          assignDynastyQuestsForSeason(initialised, initLeague?.tier ?? 2, initClubCount);
           writeSlot(slot, initialised);
           sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
           sessionStorage.removeItem(SETUP_SS_KEY);
@@ -573,11 +556,9 @@ function AFLManagerInner() {
 
   const club = findClub(career.clubId);
   const league = PYRAMID[career.leagueKey];
-  const myLineup = career.lineup;
 
   // ============== UPDATER ==============
   const updateCareer = (patch) => setCareer((c) => mergeCareerPatchWithInboxSync(c, patch));
-  const updateField = (field, value) => setCareer(c => ({ ...c, [field]: value }));
 
   const tutorialActive = career && !career.tutorialComplete;
 

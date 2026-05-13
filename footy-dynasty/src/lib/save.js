@@ -332,6 +332,15 @@ export function migrate(save) {
     });
   }
 
+  if (v < 22) {
+    s.saveVersion = 22;
+    s.dynasty = {
+      seasonKey: null,
+      quests: [],
+      lifetimeGoals: 0,
+    };
+  }
+
   return s;
 }
 

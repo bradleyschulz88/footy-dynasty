@@ -71,6 +71,13 @@ import {
   bumpClubCulture,
 } from './gameDepth.js';
 import { medicalStaffMitigation } from './staffTasks.js';
+import { weeklyClubOperationsPulse } from './weeklyClubPulse.js';
+import {
+  assignDynastyQuestsForSeason,
+  dynastyRecordHomeAwayWin,
+  ensureDynastyAssignments,
+  finalizeDynastyLadderAtSeasonEnd,
+} from './dynastyQuests.js';
 
 const ROUND_REPORT_WIN_CLOSERS = [
   'Fans lingered after the siren.',
@@ -371,6 +378,7 @@ function advanceFinalsWeek(c, league) {
 function finishSeason(c, league) {
   const sorted = sortedLadder(c.ladder);
   const myPos = sorted.findIndex((r) => r.id === c.clubId) + 1;
+  finalizeDynastyLadderAtSeasonEnd(c, myPos, sorted.length, league.tier);
   const myRow = sorted.find((r) => r.id === c.clubId) || {};
   let promoted = false; let relegated = false;
 
@@ -708,6 +716,9 @@ function finishSeason(c, league) {
   generateSeasonObjectives(c, nextLeagueForCal);
   planSeasonBoardMeetings(c);
   updateBoardObjectiveProgress(c, nextLeagueForCal);
+  const dynClubCount =
+    competitionClubsForCareer(c).length || calClubs.length || PYRAMID[c.leagueKey]?.clubs?.length || 12;
+  assignDynastyQuestsForSeason(c, nextLeagueForCal?.tier ?? league.tier, dynClubCount);
   c.currentDate = `${c.season - 1}-12-01`;
   c.phase = 'preseason';
   c.lastEvent = null;
@@ -730,6 +741,8 @@ export function primeSeasonStoryState(career) {
  */
 export function advanceCareerNextEvent({ career, league, club, setCareer, setScreen }) {
   const c = JSON.parse(JSON.stringify(career));
+
+  ensureDynastyAssignments(c, league?.tier ?? 3, competitionClubsForCareer(c).length || (league?.clubs?.length ?? 0));
 
   if (c.inFinals) {
     advanceFinalsWeek(c, league);
@@ -776,7 +789,10 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
   c.eventQueue[evIdx] = { ...ev, completed: true };
 
   // Operating cashflow: one accrual per distinct calendar day (`tickWeeklyCashflow` uses `lastFinanceTickDay`).
-  tickWeeklyCashflow(c);
+  const financePulse = tickWeeklyCashflow(c);
+  if (financePulse !== 0) {
+    weeklyClubOperationsPulse(c, league?.tier ?? 3);
+  }
   const prevCrisis = c.cashCrisisLevel ?? 0;
   c.cashCrisisLevel = cashCrisisLevel(c);
   if (c.cashCrisisLevel >= 1 && (c.cashCrisisStartWeek == null || c.cashCrisisStartWeek > c.week)) {
@@ -1186,6 +1202,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       ensureCareerBoard(c, findClub(c.clubId), league);
       applyBoardConfidenceDelta(c, boardDelta);
       c.lastBoardConfidenceDelta = c.finance.boardConfidence - prevBoard;
+      if (myResult.won) dynastyRecordHomeAwayWin(c);
       const rdBase = `Rd ${ev.round}: ${myResult.isHome ? 'vs' : '@'} ${myResult.opp?.short} ${myResult.myTotal}–${myResult.oppTotal} (${myResult.won ? 'W' : myResult.drew ? 'D' : 'L'})`;
       const rdFlavor = myResult.won ? pick(ROUND_REPORT_WIN_CLOSERS) : myResult.drew ? pick(ROUND_REPORT_DRAW_CLOSERS) : pick(ROUND_REPORT_LOSS_CLOSERS);
       c.news = [{ week: ev.round, type: myResult.won ? 'win' : myResult.drew ? 'draw' : 'loss',
