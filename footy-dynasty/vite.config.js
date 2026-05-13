@@ -5,6 +5,23 @@ import { VitePWA } from 'vite-plugin-pwa'
 const testing = process.env.npm_lifecycle_event === 'test'
 
 export default defineConfig({
+  build: testing
+    ? undefined
+    : {
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (!id.includes('node_modules')) return undefined;
+              if (id.includes('react-dom')) return 'react-vendor';
+              if (id.includes('node_modules/react/')) return 'react-vendor';
+              if (id.includes('node_modules/motion')) return 'motion-vendor';
+              if (id.includes('lucide-react')) return 'icons-vendor';
+              if (id.includes('@dnd-kit')) return 'dnd-vendor';
+              return undefined;
+            },
+          },
+        },
+      },
   plugins: testing
     ? []
     : [

@@ -14,7 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { findClub } from "../../data/pyramid.js";
-import { sortedLadder, finalsLabel } from "../../lib/leagueEngine.js";
+import { finalsLabel } from "../../lib/leagueEngine.js";
 import { fmtK } from "../../lib/format.js";
 import { TRAINING_INFO, formatDate } from "../../lib/calendar.js";
 import { getAdvanceContext } from "../../lib/advanceContext.js";
@@ -156,15 +156,23 @@ function DifficultyMiniSummary({ career, cfg }) {
   );
 }
 
-export function HubScreen({ career, club, league, myLadderPos, setScreen, setTab, onAdvance }) {
+export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance }) {
   const advanceCtx = getAdvanceContext(career, league);
-  const sorted = sortedLadder(career.ladder);
+  const sorted = sortedLadderRows;
   const top5 = sorted.slice(0, 5);
   const myRow = sorted.find(r => r.id === career.clubId);
   const recentNews = (career.news || []).slice(0, 6);
-  const wagesAnnual = career.squad.reduce((a, p) => a + p.wage, 0) + career.staff.reduce((a, s) => a + s.wage, 0);
-  const sponsorsAnnual = (career.sponsors || []).reduce((a, s) => a + s.annualValue, 0);
-  const squadAvg = career.squad.length ? Math.round(career.squad.reduce((a, p) => a + p.overall, 0) / career.squad.length) : 0;
+  const hubTotals = React.useMemo(() => {
+    const wagesAnnual =
+      career.squad.reduce((a, p) => a + p.wage, 0) +
+      career.staff.reduce((a, s) => a + s.wage, 0);
+    const sponsorsAnnual = (career.sponsors || []).reduce((a, s) => a + s.annualValue, 0);
+    const squadAvg = career.squad.length
+      ? Math.round(career.squad.reduce((a, p) => a + p.overall, 0) / career.squad.length)
+      : 0;
+    return { wagesAnnual, sponsorsAnnual, squadAvg };
+  }, [career.squad, career.staff, career.sponsors]);
+  const { wagesAnnual, sponsorsAnnual, squadAvg } = hubTotals;
   const posColor = myLadderPos <= 2 ? "var(--A-pos)" : myLadderPos <= 5 ? "var(--A-accent)" : "var(--A-neg)";
 
   // Next 7 upcoming events

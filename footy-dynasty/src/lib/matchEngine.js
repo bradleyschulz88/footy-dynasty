@@ -35,7 +35,10 @@ export function teamRating(squad, lineup, training, facilitiesAvg, staffAvg, qua
       : [];
   const topStarters =
     starterIds.length > 0
-      ? starterIds.map((id) => squad.find((p) => p.id === id)).filter(Boolean)
+      ? (() => {
+          const byId = new Map(squad.map((p) => [p.id, p]));
+          return starterIds.map((id) => byId.get(id)).filter(Boolean);
+        })()
       : squad
           .slice()
           .sort((a, b) => b.overall - a.overall)

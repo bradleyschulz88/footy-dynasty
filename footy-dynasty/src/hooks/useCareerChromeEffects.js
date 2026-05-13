@@ -1,18 +1,42 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { writeSlot } from "../lib/save.js";
 import { SETUP_SS_KEY, SETUP_SS_KEY_LEGACY } from "../lib/setupConstants.js";
 
-/** Autosave career to active slot when state changes (respects options.autosave). */
+/** Idle delay before autosave batches rapid `career` updates (main-thread stringify cost). */
+const AUTOSAVE_DEBOUNCE_MS = 450;
+
+/** Autosave career to active slot when state stabilizes (respects options.autosave). */
 export function useCareerAutosaveEffect(career, activeSlot, onAfterWrite) {
+  const careerRef = useRef(career);
+  const slotRef = useRef(activeSlot);
+  const afterRef = useRef(onAfterWrite);
+  careerRef.current = career;
+  slotRef.current = activeSlot;
+  afterRef.current = onAfterWrite;
+
   useEffect(() => {
     if (!career || !activeSlot) return;
     const opts = career.options || { autosave: true };
     if (!opts.autosave) return;
-    writeSlot(activeSlot, career);
-    sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
-    sessionStorage.removeItem(SETUP_SS_KEY);
-    onAfterWrite?.();
-  }, [career, activeSlot, onAfterWrite]);
+
+    const tid = window.setTimeout(() => {
+      const c = careerRef.current;
+      const slot = slotRef.current;
+      if (!c || !slot || c.options?.autosave === false) return;
+      writeSlot(slot, c);
+      try {
+        sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
+        sessionStorage.removeItem(SETUP_SS_KEY);
+      } catch (_) {
+        /* ignore */
+      }
+      afterRef.current?.();
+    }, AUTOSAVE_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(tid);
+    };
+  }, [career, activeSlot]);
 }
 
 /** Flush save when tab hides (respects options.autosave). */

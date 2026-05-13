@@ -540,10 +540,14 @@ function AFLManagerInner() {
 
   const tutorialActive = career && !career.tutorialComplete;
 
-  const myLadderPos = (() => {
-    const s = sortedLadder(career.ladder);
-    return s.findIndex(r => r.id === career.clubId) + 1;
-  })();
+  const sortedLadderRows = useMemo(
+    () => sortedLadder(career.ladder),
+    [career.ladder],
+  );
+  const myLadderPos = useMemo(() => {
+    const i = sortedLadderRows.findIndex((r) => r.id === career.clubId);
+    return i >= 0 ? i + 1 : 0;
+  }, [sortedLadderRows, career.clubId]);
 
   // ============== RENDER ==============
   const globalStyle = <GlobalStyle />;
@@ -803,7 +807,18 @@ function AFLManagerInner() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
             >
-              {screen === "hub" && <HubScreen career={career} club={club} league={league} myLadderPos={myLadderPos} setScreen={onNavScreen} setTab={setTab} onAdvance={advanceToNextEvent} />}
+              {screen === "hub" && (
+                <HubScreen
+                  career={career}
+                  club={club}
+                  league={league}
+                  myLadderPos={myLadderPos}
+                  sortedLadderRows={sortedLadderRows}
+                  setScreen={onNavScreen}
+                  setTab={setTab}
+                  onAdvance={advanceToNextEvent}
+                />
+              )}
               {screen === "squad" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading squad…" />}>
                   <SquadScreenLazy
@@ -1069,18 +1084,26 @@ function MatchDayScreen({ result, league, career, club, onContinue }) {
   const [revealed, setRevealed] = React.useState(0);
   const [showEvents, setShowEvents] = React.useState(true);
 
-  const quarters = result.quarters || [];
-  const qLabels  = ['Q1', 'Q2', 'Q3', 'Q4'];
+  const qLabels = ['Q1', 'Q2', 'Q3', 'Q4'];
 
-  // Cumulative scores per quarter
-  const cumHome = [], cumAway = [];
-  let hG = 0, hB = 0, aG = 0, aB = 0;
-  quarters.forEach(q => {
-    hG += q.homeGoals;   hB += q.homeBehinds;
-    aG += q.awayGoals;   aB += q.awayBehinds;
-    cumHome.push({ g: hG, b: hB, total: hG * 6 + hB });
-    cumAway.push({ g: aG, b: aB, total: aG * 6 + aB });
-  });
+  const { cumHome, cumAway, quarters } = useMemo(() => {
+    const list = result.quarters || [];
+    const cumH = [];
+    const cumA = [];
+    let hG = 0;
+    let hB = 0;
+    let aG = 0;
+    let aB = 0;
+    for (const q of list) {
+      hG += q.homeGoals;
+      hB += q.homeBehinds;
+      aG += q.awayGoals;
+      aB += q.awayBehinds;
+      cumH.push({ g: hG, b: hB, total: hG * 6 + hB });
+      cumA.push({ g: aG, b: aB, total: aG * 6 + aB });
+    }
+    return { cumHome: cumH, cumAway: cumA, quarters: list };
+  }, [result.quarters]);
 
   // Events for the broadcast feed — only visible up to current revealed quarter
   const visibleQuarter = revealed === 0 ? 0 : Math.min(revealed, quarters.length);
