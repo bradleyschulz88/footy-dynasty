@@ -229,6 +229,30 @@ export function applyFootyTrip(career, optionId) {
 // =============================================================================
 // 3C — Meat Tray Raffle (Tier 3 only) / equivalents at higher tiers
 // =============================================================================
+const COMMITTEE_MEAT_TRAY_WINNER_LINES = [
+  (w) => `Congrats to ${w.firstName} ${w.lastName} who won the meat tray tonight. Donated it back to the kitchen. Legend.`,
+  (w) => `${w.firstName} ${w.lastName} clears the raffle — meat tray and bragging rights. The bar tab lives on.`,
+  (w, income) => `Meat tray goes to ${w.firstName} ${w.lastName}. Club collects $${income} and the tuckshop is ecstatic.`,
+];
+
+const COMMITTEE_MEAT_TRAY_GENERIC_LINES = [
+  (income) => `Tonight's meat tray raffle raised $${income} for the club. A community staple.`,
+  (income) => `Raffle night banked $${income}. Half the suburb still claims their ticket stub was "definitely drawn".`,
+  (income) => `Silent auction + raffle pulled $${income}. treasurer already earmarked nets for preseason.`,
+];
+
+const COMMITTEE_TIER2_FUNCTION_LINES = [
+  (income) => `Post-match function pulled in $${income} this evening. Solid night for the club.`,
+  (income) => `Licensed club rooms netted $${income}. DJ stayed on-brand with 2000s bangers.`,
+  (income) => `Kitchen ran hot — $${income} across bar and raffle. treasurer's grin says it all.`,
+];
+
+const COMMITTEE_TIER1_COCKTAIL_LINES = [
+  (income) => `The corporate sponsor cocktail evening raised $${income}. Suits and tinnies, in equal measure.`,
+  (income) => `Hospitality deck hosted partners for $${income}. Finger food survived longer than predictions.`,
+  (income) => `Partners' lounge tip jar (metaphorically) spat $${income}. Enough for facility paint before finals.`,
+];
+
 export function postMatchFundraiser(career, tier, isHomeGame) {
   if (!isHomeGame) return null;
   if (tier === 3) {
@@ -236,22 +260,26 @@ export function postMatchFundraiser(career, tier, isHomeGame) {
     const winnerRoll = rand(0, 100);
     if (winnerRoll < 20 && (career.squad || []).length > 0) {
       const winner = pick(career.squad);
+      const lineFn = pick(COMMITTEE_MEAT_TRAY_WINNER_LINES);
       return {
         income,
-        news: { type: 'committee', text: `Congrats to ${winner.firstName} ${winner.lastName} who won the meat tray tonight. Donated it back to the kitchen. Legend.` },
+        news: { type: 'committee', text: lineFn(winner, income) },
         moralePlayerId: winner.id,
         moraleDelta: 4,
       };
     }
-    return { income, news: { type: 'committee', text: `Tonight's meat tray raffle raised $${income} for the club. A community staple.` } };
+    const lineFn = pick(COMMITTEE_MEAT_TRAY_GENERIC_LINES);
+    return { income, news: { type: 'committee', text: lineFn(income) } };
   }
   if (tier === 2) {
     const income = rand(1000, 3000);
-    return { income, news: { type: 'committee', text: `Post-match function pulled in $${income} this evening. Solid night for the club.` } };
+    const lineFn = pick(COMMITTEE_TIER2_FUNCTION_LINES);
+    return { income, news: { type: 'committee', text: lineFn(income) } };
   }
   if (tier === 1) {
     const income = rand(8000, 20000);
-    return { income, news: { type: 'committee', text: `The corporate sponsor cocktail evening raised $${income}. Suits and tinnies, in equal measure.` } };
+    const lineFn = pick(COMMITTEE_TIER1_COCKTAIL_LINES);
+    return { income, news: { type: 'committee', text: lineFn(income) } };
   }
   return null;
 }

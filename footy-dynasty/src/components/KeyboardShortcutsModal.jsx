@@ -85,7 +85,8 @@ export default function KeyboardShortcutsModal({ open, onClose }) {
         </div>
         <div className="px-5 py-4 space-y-2 max-h-[min(70vh,420px)] overflow-y-auto">
           <p className="text-[11px] text-atext-dim leading-relaxed mb-3">
-            Disabled while typing in a field. Tutorial may lock navigation until the current step is done.
+            Desktop-first — on phones and tablets use the sidebar and on-screen buttons. Disabled while typing in a field.
+            Tutorial may lock navigation until the current step is done.
           </p>
           {ROWS.map(([label, keys]) => (
             <div

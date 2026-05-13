@@ -48,7 +48,9 @@ import { CareerSetup } from './screens/CareerSetupScreen.jsx';
 import { Sidebar } from './components/gameChrome/Sidebar.jsx';
 import { TopBar } from './components/gameChrome/TopBar.jsx';
 import { InboxBanner } from './components/InboxBanner.jsx';
+import { ExportReminderBanner } from './components/ExportReminderBanner.jsx';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.jsx';
+import { recordGameEvent } from './lib/gameAnalytics.js';
 import {
   useCareerAutosaveEffect,
   useCareerVisibilityFlushEffect,
@@ -512,6 +514,21 @@ function AFLManagerInner() {
   }, [sortedLadderRows, career?.clubId]);
 
   const slotMetaSnapshot = useMemo(() => readSlotMeta(), [slotMetaTick]);
+  const lastHubDiagSigRef = useRef("");
+
+  useEffect(() => {
+    if (!career || !activeSlot) return;
+    const sig = `${activeSlot}:${career.clubId}:${career.season}`;
+    if (lastHubDiagSigRef.current === sig) return;
+    lastHubDiagSigRef.current = sig;
+    recordGameEvent(career, "hub_career_active", {
+      slot: activeSlot,
+      clubId: career.clubId,
+      leagueKey: career.leagueKey,
+      season: career.season,
+      week: career.week,
+    });
+  }, [career, activeSlot]);
 
   // ============== CAREER SETUP ==============
   if (!career) {
@@ -534,12 +551,19 @@ function AFLManagerInner() {
               confirmBeforeDeleteSlot: true,
               uiDensity: 'comfortable',
               reduceMotion: false,
+              sessionDiagnostics: false,
               ...(c.options || {}),
             },
           };
           writeSlot(slot, initialised);
           sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
           sessionStorage.removeItem(SETUP_SS_KEY);
+          recordGameEvent(initialised, 'career_started', {
+            clubId: initialised.clubId,
+            leagueKey: initialised.leagueKey,
+            difficulty: initialised.difficulty,
+            slot,
+          });
           setCareer(initialised);
           setScreen("hub");
         }} existingSlots={readSlotMeta()} onResume={(slot) => { handleSwitchSlot(slot); }} />
@@ -805,6 +829,7 @@ function AFLManagerInner() {
             setTab("board");
           }}
         />
+        <ExportReminderBanner onGoSettings={() => setScreen("settings")} />
         <div className="p-3 md:p-6 max-w-[1400px] mx-auto">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { findClub } from "../../data/pyramid.js";
 import { finalsLabel } from "../../lib/leagueEngine.js";
-import { fmtK } from "../../lib/format.js";
+import { fmtK, avgFacilities, avgStaff } from "../../lib/format.js";
 import { TRAINING_INFO, formatDate } from "../../lib/calendar.js";
 import { getAdvanceContext } from "../../lib/advanceContext.js";
 import { effectiveWageCap, currentPlayerWageBill } from "../../lib/finance/engine.js";
@@ -29,6 +29,7 @@ import {
   stadiumDescription,
   committeeMoodAverage,
 } from "../../lib/community.js";
+import { ladderNeighbourClubs } from "../../lib/hubRivals.js";
 import { boardObjectiveUiStatus, youthSeniorGameCount } from "../../lib/board.js";
 import { css, Pill, Stat, Jersey } from "../../components/primitives.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
@@ -139,6 +140,55 @@ function CommitteeMiniSummary({ career, setScreen, setTab }) {
         VIEW COMMITTEE →
       </button>
     </div>
+  );
+}
+
+function HubSimulationSnippet({ career }) {
+  const cfg = getDifficultyConfig(career.difficulty);
+  const profile = getDifficultyProfile(career.difficulty);
+  let facAvg = null;
+  try {
+    const f = career.facilities;
+    if (f && typeof f === "object" && Object.keys(f).length > 0) {
+      facAvg = Math.round(avgFacilities(f) * 10) / 10;
+    }
+  } catch {
+    facAvg = null;
+  }
+  let staffAvg = null;
+  try {
+    if (Array.isArray(career.staff) && career.staff.length > 0) {
+      staffAvg = Math.round(avgStaff(career.staff) * 10) / 10;
+    }
+  } catch {
+    staffAvg = null;
+  }
+  const phaseBits =
+    career.phase === "preseason"
+      ? "Pre-season"
+      : career.inFinals
+        ? "Finals"
+        : `Round ${career.week ?? "—"}`;
+  return (
+    <motion.div variants={hubItem} className={`${css.panel} p-3`}>
+      <div className={css.label}>Simulation & club shape</div>
+      <div className="text-sm text-atext mt-1 leading-snug">
+        <span className="font-bold" style={{ color: profile.color }}>
+          {profile.label}
+        </span>
+        <span className="text-atext-dim"> · </span>
+        {phaseBits}
+        <span className="text-atext-dim"> · </span>
+        {cfg.boardPatienceSeasons} season{cfg.boardPatienceSeasons === 1 ? "" : "s"} board patience · {cfg.injuryMultiplier}× injuries
+      </div>
+      {(facAvg != null || staffAvg != null) && (
+        <div className="text-[11px] text-atext-dim mt-2 leading-relaxed">
+          {facAvg != null && <>Facilities ~{facAvg.toFixed(1)}</>}
+          {facAvg != null && staffAvg != null && <span> · </span>}
+          {staffAvg != null && <>Staff ~{staffAvg.toFixed(1)}</>}
+        </div>
+      )}
+    </motion.div>
   );
 }
 
@@ -264,10 +314,26 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         </motion.div>
       )}
 
+      <HubSimulationSnippet career={career} />
+
       {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
       <motion.div variants={hubItem}>
         <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} setTab={setTab} />
       </motion.div>
+
+      {(() => {
+        const neigh = ladderNeighbourClubs(sorted, career.clubId);
+        if (neigh.length === 0) return null;
+        return (
+          <motion.div variants={hubItem} className={`${css.panel} p-3`}>
+            <div className={css.label}>Ladder neighbours</div>
+            <div className="text-sm text-atext mt-1 leading-snug">
+              {neigh.map(({ club: nc, pts }) => `${nc.short} (${pts} pts)`).join(" · ")}
+              <span className="text-atext-dim"> — the ladder pack beside you shapes the run home.</span>
+            </div>
+          </motion.div>
+        );
+      })()}
 
       {boardObjectiveRows.length > 0 && (
         <motion.div variants={hubItem} className={`${css.panel} p-4`}>
@@ -408,12 +474,27 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       )}
 
       {/* Upcoming Events Strip */}
-      {upcoming7.length > 0 && (
-        <motion.div variants={hubItem} className={css.panel}>
-          <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-            <h3 className="font-display text-lg text-atext tracking-wide">UPCOMING</h3>
-            <button onClick={() => setScreen('schedule')} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-[#F0A558]">Full calendar →</button>
+      <motion.div variants={hubItem} className={css.panel}>
+        <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+          <h3 className="font-display text-lg text-atext tracking-wide">UPCOMING</h3>
+          <button type="button" onClick={() => setScreen('schedule')} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-[#F0A558]">Full calendar →</button>
+        </div>
+        {upcoming7.length === 0 ? (
+          <div className="px-4 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-[11px] text-atext-dim leading-relaxed flex-1">
+              No events on this strip yet — advance time or open the calendar to line up training, fixtures, and off-field weeks.
+            </p>
+            <button
+              type="button"
+              onClick={onAdvance}
+              className="rounded-xl px-3 py-2 text-[11px] font-bold text-white inline-flex items-center gap-2 shrink-0"
+              style={{ background: 'linear-gradient(135deg,var(--A-accent),#D07A2A)' }}
+            >
+              <Play className="w-4 h-4" />
+              <span>{advanceCtx.buttonLabel}</span>
+            </button>
           </div>
+        ) : (
           <div className="flex gap-2 px-4 pb-4 overflow-x-auto">
             {upcoming7.map((ev) => {
               const isMatch = ev.type === 'round' || ev.type === 'preseason_match';
@@ -450,8 +531,8 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               </button>
             </div>
           </div>
-        </motion.div>
-      )}
+        )}
+      </motion.div>
 
       {/* Finals Banner */}
       <motion.div variants={hubItem} className="space-y-3">

@@ -30,6 +30,7 @@ export default function SettingsScreen({
   const setAutosave = (v) => patchOpts({ autosave: v });
   const uiDensity = opts.uiDensity === 'compact' ? 'compact' : 'comfortable';
   const reduceMotion = !!opts.reduceMotion;
+  const sessionDiagnostics = !!opts.sessionDiagnostics;
   const skipDestructiveConfirms = opts.confirmBeforeNewCareer === false && opts.confirmBeforeDeleteSlot === false;
   const slotLabel = opts.slotLabel ?? '';
 
@@ -178,6 +179,30 @@ export default function SettingsScreen({
             }}
           >
             {reduceMotion ? 'On' : 'Off'}
+          </button>
+        </div>
+      </div>
+
+      <div className={`${css.panel} p-5 space-y-4`}>
+        <h3 className={`${css.h1} text-2xl`}>DIAGNOSTICS</h3>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-bold text-sm">Session event buffer</div>
+            <div className="text-[11px] text-atext-dim max-w-xl">
+              Keeps the last milestones in this tab only — useful when reporting a bug. Nothing is uploaded; clear the tab data to wipe it.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => patchOpts({ sessionDiagnostics: !sessionDiagnostics })}
+            className="px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition"
+            style={{
+              background: sessionDiagnostics ? 'rgba(74,232,154,0.15)' : 'var(--A-panel-2)',
+              color: sessionDiagnostics ? '#4AE89A' : 'var(--A-text-dim)',
+              border: `1px solid ${sessionDiagnostics ? 'rgba(74,232,154,0.4)' : 'var(--A-line)'}`,
+            }}
+          >
+            {sessionDiagnostics ? 'On' : 'Off'}
           </button>
         </div>
       </div>
