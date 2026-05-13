@@ -501,6 +501,18 @@ function AFLManagerInner() {
     setTab(null);
   }
 
+  const sortedLadderRows = useMemo(
+    () => (career?.ladder?.length ? sortedLadder(career.ladder) : []),
+    [career?.ladder],
+  );
+  const myLadderPos = useMemo(() => {
+    if (!career?.clubId) return 0;
+    const i = sortedLadderRows.findIndex((r) => r.id === career.clubId);
+    return i >= 0 ? i + 1 : 0;
+  }, [sortedLadderRows, career?.clubId]);
+
+  const slotMetaSnapshot = useMemo(() => readSlotMeta(), [slotMetaTick]);
+
   // ============== CAREER SETUP ==============
   if (!career) {
     return (
@@ -544,17 +556,6 @@ function AFLManagerInner() {
   const updateField = (field, value) => setCareer(c => ({ ...c, [field]: value }));
 
   const tutorialActive = career && !career.tutorialComplete;
-
-  const sortedLadderRows = useMemo(
-    () => sortedLadder(career.ladder),
-    [career.ladder],
-  );
-  const myLadderPos = useMemo(() => {
-    const i = sortedLadderRows.findIndex((r) => r.id === career.clubId);
-    return i >= 0 ? i + 1 : 0;
-  }, [sortedLadderRows, career.clubId]);
-
-  const slotMetaSnapshot = useMemo(() => readSlotMeta(), [slotMetaTick]);
 
   // ============== RENDER ==============
   const globalStyle = <GlobalStyle />;
