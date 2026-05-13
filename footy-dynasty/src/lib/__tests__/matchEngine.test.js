@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { seedRng } from '../rng.js';
-import { teamRating, simMatch, simMatchWithQuarters, aiClubRating } from '../matchEngine.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus } from '../matchEngine.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -320,5 +320,25 @@ describe('simMatchWithQuarters', () => {
     expect(a.homeTotal).toBe(b.homeTotal);
     expect(a.awayTotal).toBe(b.awayTotal);
     expect(a.winner).toBe(b.winner);
+  });
+});
+
+describe('benchStrengthBonus', () => {
+  it('is zero before Q3', () => {
+    const squad = makeSquad(26, 75);
+    const lineup = squad.slice(0, 18).map((p) => p.id);
+    expect(benchStrengthBonus(squad, lineup, 1)).toBe(0);
+    expect(benchStrengthBonus(squad, lineup, 2)).toBe(0);
+  });
+
+  it('rewards a deep bench in Q3–Q4 when bench tops starters', () => {
+    const starters = Array.from({ length: 18 }, (_, i) => ({ ...makePlayer(58), id: `s${i}` }));
+    const bench = Array.from({ length: 10 }, (_, i) => ({ ...makePlayer(88), id: `b${i}` }));
+    const squad = [...starters, ...bench];
+    const lineup = starters.map((p) => p.id);
+    const q3 = benchStrengthBonus(squad, lineup, 3);
+    const q4 = benchStrengthBonus(squad, lineup, 4);
+    expect(q3).toBeGreaterThan(0);
+    expect(q4).toBeGreaterThanOrEqual(q3);
   });
 });

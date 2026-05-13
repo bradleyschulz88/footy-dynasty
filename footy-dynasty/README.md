@@ -35,17 +35,17 @@ Then open [http://localhost:5173](http://localhost:5173).
 
 ```
 src/
-  AFLManager.jsx   # The entire game — single component file
-  main.jsx         # React entry point
-  index.css        # Tailwind base
+  AFLManager.jsx     # Career shell: routing, save IO, coordination
+  main.jsx           # React entry
+  index.css          # Tailwind base
+  screens/           # Hub, squad, club, recruit, match day, etc.
+  components/        # Shared UI (primitives, match preview, …)
+  lib/               # Simulation: league, match engine, finance, calendar, AI
+  data/              # Pyramid, grounds
+docs/
+  AFL_Manager_Suggestions.md   # Roadmap & improvement backlog
 ```
 
 ## Roadmap
 
-See `AFL_Manager_Suggestions.md` for a detailed roadmap covering:
-- Phase-based match engine
-- Salary cap & list management (Total Player Payments)
-- AI club personalities
-- Youth pipeline (Coates Talent League, NextGen Academies)
-- Themed rounds (Anzac Day, Dreamtime at the G, Showdown)
-- Multi-season history book & Hall of Fame
+See [docs/AFL_Manager_Suggestions.md](docs/AFL_Manager_Suggestions.md) for a living backlog covering match depth, TPP/list pressure, AI behaviours, youth pathways, themed content, and honours/history.

@@ -4,7 +4,8 @@
 import { seedRng, rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred, generatePlayer } from './playerGen.js';
-import { teamRating, simMatch, simMatchWithQuarters, aiClubRating } from './matchEngine.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus } from './matchEngine.js';
+import { resolveAiOppTactic } from './aiPersonality.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { generateTradePool } from './defaults.js';
 import { withDraftScoutingDefaults } from './draftScouting.js';
@@ -283,7 +284,7 @@ function advanceFinalsWeek(c, league) {
       const oppRatingForTactics = oppSquad?.length
         ? teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60)
         : aiClubRating(oppId, league.tier);
-      const oppTactic = oppRatingForTactics > myRating + 4 ? 'attack' : oppRatingForTactics < myRating - 4 ? 'defensive' : 'balanced';
+      const oppTactic = resolveAiOppTactic(oppId, oppRatingForTactics, myRating);
       const playerLineup = c.lineup.map((id) => c.squad.find((p) => p.id === id)).filter(Boolean);
       let groundScoringMod = 1.0;
       let groundAccuracyMod = 1.0;
@@ -293,9 +294,12 @@ function advanceFinalsWeek(c, league) {
         groundAccuracyMod = band.accuracyMod;
       }
       const getPlayerStrengthForQuarter = (qi) =>
-        teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi);
+        teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
+        + benchStrengthBonus(c.squad, c.lineup, qi);
       const getOppStrengthForQuarter = oppSquad?.length
-        ? (qi) => teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
+        ? (qi) =>
+            teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
+            + benchStrengthBonus(oppSquad, oppLineupIds, qi)
         : null;
       result = simMatchWithQuarters(
         { rating: homeR }, { rating: awayR }, isHome, myRating,
@@ -576,6 +580,8 @@ function finishSeason(c, league) {
     W: myRow.W || 0, L: myRow.L || 0, D: myRow.D || 0,
     pts: myRow.pts || 0,
     pct: Math.round(myRow.pct || 0),
+    F: myRow.F || 0,
+    A: myRow.A || 0,
     promoted, relegated, champion,
     topScorer: byGoals[0] ? { name: pName(byGoals[0]), goals: byGoals[0].goals || 0 } : null,
     brownlow: brownlowWinner,
@@ -1059,7 +1065,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           ? teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60)
           : aiClubRating(opp.id, league.tier);
         const playerLineup = c.lineup.map((id) => c.squad.find((p) => p.id === id)).filter(Boolean);
-        const oppTactic = oppRating > myRating + 4 ? 'attack' : oppRating < myRating - 4 ? 'defensive' : 'balanced';
+        const oppTactic = resolveAiOppTactic(opp.id, oppRating, myRating);
         let groundScoringMod = 1.0; let groundAccuracyMod = 1.0;
         if (isHome) {
           const band = groundConditionBand(c.groundCondition ?? 85);
@@ -1067,9 +1073,12 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           groundAccuracyMod = band.accuracyMod;
         }
         const getPlayerStrengthForQuarter = (qi) =>
-          teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi);
+          teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
+          + benchStrengthBonus(c.squad, c.lineup, qi);
         const getOppStrengthForQuarter = oppSquad?.length
-          ? (qi) => teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
+          ? (qi) =>
+              teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
+              + benchStrengthBonus(oppSquad, oppLineupIds, qi)
           : null;
         const result = simMatchWithQuarters(
           { rating: isHome ? myRating : oppRating },
@@ -1303,7 +1312,9 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       refreshTurningPointForNextFixture(c, league);
       refreshCrucialFive(c, league, ev.round);
     }
-    c.lastEvent = myResult ? { type: 'round', round: ev.round, date: ev.date, ...myResult } : null;
+    c.lastEvent = myResult
+      ? { type: 'round', round: ev.round, date: ev.date, themedRound: ev.themedRound ?? null, ...myResult }
+      : null;
 
     if (ev.phase === 'season' && !c.isSacked && c.boardCrisis?.phase !== 'active') {
       const due = findDueBoardMeetingSlot(c, c.week);

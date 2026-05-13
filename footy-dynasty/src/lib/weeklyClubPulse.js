@@ -1,5 +1,6 @@
 import { rng, pick } from "./rng.js";
 import { clamp, avgFacilities, avgStaff } from "./format.js";
+import { effectiveWageCap, currentPlayerWageBill } from "./finance/engine.js";
 
 /** Ladder/table position goal for dynasty arc (exclusive of finals). */
 export function dynastyLadderCutoff(totalTeams, leagueTier) {
@@ -75,6 +76,34 @@ export function weeklyClubOperationsPulse(career, leagueTier) {
         week: career.week ?? 0,
         type: "info",
         text: `🌧 Drainage grunt work falls to ${name} — low-tier facilities make wet weeks heavier.`,
+      },
+      ...(career.news || []),
+    ].slice(0, 20);
+  } else if (career.phase === "season" && rng() < 0.055) {
+    const cap = effectiveWageCap(career);
+    if (cap > 0) {
+      const bill = currentPlayerWageBill(career);
+      if (bill / cap >= 0.96) {
+        career.news = [
+          {
+            week: career.week ?? 0,
+            type: "info",
+            text: "💼 TPP pressure: wages are brushing the effective cap — every signing needs a spreadsheet.",
+          },
+          ...(career.news || []),
+        ].slice(0, 20);
+        return;
+      }
+    }
+    const tactic = career.tacticChoice || "balanced";
+    const intensity = career.training?.intensity ?? 60;
+    const focus = career.training?.focus || {};
+    const topFocus = Object.entries(focus).sort((a, b) => b[1] - a[1])[0]?.[0] || "skills";
+    career.news = [
+      {
+        week: career.week ?? 0,
+        type: "info",
+        text: `🧠 Football department notes: ${tactic} plan at ~${intensity}% load — development lean is ${topFocus}.`,
       },
       ...(career.news || []),
     ].slice(0, 20);

@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { findClub } from "../data/pyramid.js";
 import { teamRating, aiClubRating } from "../lib/matchEngine.js";
 import { selectAiLineup, ensureSquadsForLeague } from "../lib/aiSquads.js";
+import { resolveAiOppTactic } from "../lib/aiPersonality.js";
 import { groundConditionBand } from "../lib/community.js";
 import { avgFacilities, avgStaff } from "../lib/format.js";
 import { matchPrepStaffLine } from "../lib/staffModifiers.js";
@@ -38,7 +39,10 @@ export default function MatchPreviewPanel({ career, league }) {
       if (!m) return null;
       isHome = m.home === career.clubId;
       opp = findClub(isHome ? m.away : m.home);
-      label = `Round ${ev.round} · ${isHome ? "vs" : "@"} ${opp?.short || ""}`;
+      const tr = ev.themedRound?.short;
+      label = tr
+        ? `Round ${ev.round} (${tr}) · ${isHome ? "vs" : "@"} ${opp?.short || ""}`
+        : `Round ${ev.round} · ${isHome ? "vs" : "@"} ${opp?.short || ""}`;
       const tp = m.turningPoint ? turningPointRibbon(m.turningPoint) : null;
       const bogey = opp?.id && career.bogeyTeamId === opp.id;
       extraTags = [
@@ -68,7 +72,7 @@ export default function MatchPreviewPanel({ career, league }) {
       : aiClubRating(opp.id, league.tier);
 
     const playerTactic = career.tacticChoice || "balanced";
-    const oppTacticKey = oppRating > myRating + 4 ? "attack" : oppRating < myRating - 4 ? "defensive" : "balanced";
+    const oppTacticKey = resolveAiOppTactic(opp.id, oppRating, myRating);
 
     const band = groundConditionBand(career.groundCondition ?? 85);
     let condYou;

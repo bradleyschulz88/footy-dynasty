@@ -32,6 +32,7 @@ import {
 } from "../../lib/community.js";
 import { ladderNeighbourClubs } from "../../lib/hubRivals.js";
 import { boardObjectiveUiStatus, youthSeniorGameCount } from "../../lib/board.js";
+import { themedRoundForNumber } from "../../lib/themedRounds.js";
 import { css, Pill, Stat, Jersey } from "../../components/primitives.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 
@@ -170,6 +171,13 @@ function HubSimulationSnippet({ career }) {
       : career.inFinals
         ? "Finals"
         : `Round ${career.week ?? "—"}`;
+  const roundTheme =
+    career.phase === "season" && !career.inFinals && career.week
+      ? themedRoundForNumber(career.week)
+      : null;
+  const focusLead =
+    career.training?.focus &&
+    Object.entries(career.training.focus).sort((a, b) => b[1] - a[1])[0]?.[0];
   return (
     <motion.div variants={hubItem} className={`${css.panel} p-3`}>
       <div className={css.label}>Simulation & club shape</div>
@@ -179,9 +187,28 @@ function HubSimulationSnippet({ career }) {
         </span>
         <span className="text-atext-dim"> · </span>
         {phaseBits}
+        {roundTheme?.short && (
+          <>
+            <span className="text-atext-dim"> · </span>
+            <span className="text-amber-700/90 dark:text-amber-400/90">{roundTheme.short}</span>
+          </>
+        )}
         <span className="text-atext-dim"> · </span>
         {cfg.boardPatienceSeasons} season{cfg.boardPatienceSeasons === 1 ? "" : "s"} board patience · {cfg.injuryMultiplier}× injuries
       </div>
+      {career.phase === "season" && !career.inFinals && (
+        <div className="text-[11px] text-atext-dim mt-2 leading-relaxed">
+          Match plan <span className="font-semibold text-atext">{career.tacticChoice || "balanced"}</span>
+          {" · "}
+          training ~{career.training?.intensity ?? 60}%
+          {focusLead ? (
+            <>
+              {" "}
+              · focus leans <span className="text-atext">{focusLead}</span>
+            </>
+          ) : null}
+        </div>
+      )}
       {(facAvg != null || staffAvg != null) && (
         <div className="text-[11px] text-atext-dim mt-2 leading-relaxed">
           {facAvg != null && <>Facilities ~{facAvg.toFixed(1)}</>}
@@ -209,6 +236,10 @@ function DifficultyMiniSummary({ career, cfg }) {
 
 export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance }) {
   const advanceCtx = getAdvanceContext(career, league);
+  const hubRoundTheme =
+    career.phase === "season" && !career.inFinals && career.week
+      ? themedRoundForNumber(career.week)
+      : null;
   const sorted = sortedLadderRows;
   const top5 = sorted.slice(0, 5);
   const myRow = sorted.find(r => r.id === career.clubId);
@@ -278,6 +309,9 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                 : career.inFinals
                   ? <Pill color="#E84A6F">Finals</Pill>
                   : <Pill color="#4ADBE8">Round {career.week}</Pill>}
+              {hubRoundTheme?.short && (
+                <Pill color="#B45309">{hubRoundTheme.short}</Pill>
+              )}
               <Pill color={posColor}>#{myLadderPos || "—"} on Ladder</Pill>
               {myRow && <Pill color="#64748B">{myRow.W}W {myRow.L}L {myRow.D}D</Pill>}
               {career.clubCulture && (
@@ -496,7 +530,11 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                 {lastEv.won ? '✅' : lastEv.drew ? '🤝' : '❌'}
               </div>
               <div className="flex-1">
-                <div className={css.label}>{lastEv.type === 'preseason_match' ? lastEv.label : `Round ${lastEv.round}`}</div>
+                <div className={css.label}>
+                  {lastEv.type === 'preseason_match'
+                    ? lastEv.label
+                    : `Round ${lastEv.round}${lastEv.themedRound?.short ? ` (${lastEv.themedRound.short})` : ''}`}
+                </div>
                 <div className="font-bold text-atext">
                   {lastEv.isHome ? 'vs' : '@'} {lastEv.opp?.name}
                   <span className="ml-3 font-display text-xl" style={{color: lastEv.won ? '#4AE89A' : lastEv.drew ? 'var(--A-accent)' : '#E84A6F'}}>

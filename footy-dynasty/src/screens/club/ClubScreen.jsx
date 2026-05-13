@@ -756,20 +756,22 @@ function HonoursTab({ career, club }) {
       ) : (
         <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
           <div className="overflow-x-auto">
-          <div className="grid gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b min-w-[680px]"
-            style={{gridTemplateColumns:"5rem 1fr 4rem 4rem 4rem 4rem 1fr 1fr",borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
+          <div className="grid gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b min-w-[760px]"
+            style={{gridTemplateColumns:"5rem 1fr 4rem 4rem 4rem 4rem 4rem 4rem 1fr 1fr",borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
             <div>Season</div>
             <div>League</div>
             <div className="text-center">Pos</div>
             <div className="text-center">W-L-D</div>
             <div className="text-center">Pts</div>
             <div className="text-center">%</div>
+            <div className="text-center">F</div>
+            <div className="text-center">A</div>
             <div>Top Scorer</div>
             <div>Brownlow</div>
           </div>
           {[...history].reverse().map((h, i) => (
-            <div key={i} className="grid gap-2 px-4 py-3 text-sm items-center min-w-[680px]"
-              style={{gridTemplateColumns:"5rem 1fr 4rem 4rem 4rem 4rem 1fr 1fr",borderBottom:"1px solid var(--A-line)"}}>
+            <div key={i} className="grid gap-2 px-4 py-3 text-sm items-center min-w-[760px]"
+              style={{gridTemplateColumns:"5rem 1fr 4rem 4rem 4rem 4rem 4rem 4rem 1fr 1fr",borderBottom:"1px solid var(--A-line)"}}>
               <div className="font-display text-lg text-aaccent">{h.season}</div>
               <div>
                 <span className="font-semibold">{h.leagueShort}</span>
@@ -781,6 +783,8 @@ function HonoursTab({ career, club }) {
               <div className="text-center font-mono text-xs">{h.W}-{h.L}-{h.D}</div>
               <div className="text-center font-mono">{h.pts}</div>
               <div className="text-center font-mono text-xs">{h.pct}%</div>
+              <div className="text-center font-mono text-xs">{h.F != null ? h.F : '—'}</div>
+              <div className="text-center font-mono text-xs">{h.A != null ? h.A : '—'}</div>
               <div className="text-xs text-atext-dim truncate">{h.topScorer ? `${h.topScorer.name} · ${h.topScorer.goals}g` : '—'}</div>
               <div className="text-xs text-atext-dim truncate">{h.brownlow ? `${h.brownlow.name} · ${h.brownlow.votes}v` : '—'}</div>
             </div>

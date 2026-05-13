@@ -4,6 +4,7 @@
 
 import { rng } from './rng.js';
 import { clamp } from './format.js';
+import { themedRoundForNumber } from './themedRounds.js';
 
 export function addDays(dateStr, n) {
   const y = parseInt(dateStr.slice(0, 4), 10);
@@ -297,13 +298,16 @@ export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId) {
   const seasonStart = `${season}-03-21`;
   fixtures.forEach((round, roundIdx) => {
     const roundDate = addDays(seasonStart, roundIdx * 7);
+    const roundNum = roundIdx + 1;
+    const themedRound = themedRoundForNumber(roundNum);
     events.push({
       id:        eid(),
       date:      roundDate,
       type:      'round',
-      round:     roundIdx + 1,
+      round:     roundNum,
       matches:   round,
       phase:     'season',
+      themedRound: themedRound ? { ...themedRound } : null,
       completed: false,
       result:    null,
     });

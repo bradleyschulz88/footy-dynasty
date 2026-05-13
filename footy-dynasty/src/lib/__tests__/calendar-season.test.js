@@ -82,6 +82,13 @@ describe('generateSeasonCalendar', () => {
     expect(rounds[2].date).toBe('2026-04-04');
   });
 
+  it('themed round tags attach to select home-and-away rounds', () => {
+    const rounds = events.filter(ev => ev.type === 'round').sort((a, b) => a.round - b.round);
+    expect(rounds[0].themedRound?.short).toBe('Opening Round');
+    const rd8 = rounds.find((r) => r.round === 8);
+    if (rd8) expect(rd8.themedRound?.short).toBe('Anzac Round');
+  });
+
   it('no duplicate event ids', () => {
     const ids = events.map(ev => ev.id);
     expect(new Set(ids).size).toBe(ids.length);

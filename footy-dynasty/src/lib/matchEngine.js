@@ -66,6 +66,38 @@ const TACTIC_PROFILES = {
   run:        { goalRateMod:  0.12, oppRateMod:  0.05, momentumGain: 1.2, riskMod: 1.15 },
 };
 
+/** Per-quarter shot-volume shape (indexes 0–3 = Q1–Q4). Tunable “phase” feel without extra events. */
+const TACTIC_QUARTER_MULT = {
+  defensive:  [1.05, 1.03, 0.98, 0.94],
+  balanced:   [1, 1, 1, 1],
+  attack:     [0.96, 0.98, 1.02, 1.06],
+  flood:      [1.02, 1.04, 1.0, 0.96],
+  press:      [1.0, 1.02, 1.04, 0.98],
+  run:        [0.98, 0.99, 1.03, 1.05],
+};
+
+/**
+ * Small effective-rating boost when the bench is strong vs chosen starters (Q3–Q4 only).
+ * @param {object[]} squad
+ * @param {string[]} lineupIds
+ * @param {number} quarterNum 1–4
+ */
+export function benchStrengthBonus(squad, lineupIds, quarterNum) {
+  if (!Array.isArray(squad) || quarterNum < 3) return 0;
+  const ids = new Set((lineupIds || []).filter((id) => id != null && id !== ''));
+  const bench = squad.filter((p) => p && !ids.has(p.id));
+  if (bench.length < 4) return 0;
+  const rate = (p) => p.trueRating ?? p.overall ?? 60;
+  const benchTop = [...bench].sort((a, b) => rate(b) - rate(a)).slice(0, 6);
+  const starters = squad.filter((p) => p && ids.has(p.id));
+  if (starters.length < Math.floor(LINEUP_FIELD_COUNT * 0.5)) return 0;
+  const avgStar = starters.reduce((a, p) => a + rate(p), 0) / starters.length;
+  const avgBench = benchTop.reduce((a, p) => a + rate(p), 0) / benchTop.length;
+  const diff = Math.max(0, avgBench - avgStar);
+  const qScale = quarterNum >= 4 ? 1 : 0.65;
+  return diff * 0.11 * qScale;
+}
+
 const KEY_MOMENT_KINDS = [
   { id: 'specky',  text: 'Speccie of the year! Hanger over the pack.', weight: 4, posKey: ['KF', 'HF', 'KB', 'HB'], scoreImpact: 0, momentumImpact: 0.25, voteImpact: 1 },
   { id: 'fifty',   text: '50m penalty paid downfield.',                weight: 3, posKey: null,                  scoreImpact: 0, momentumImpact: 0.15, voteImpact: 0 },
@@ -216,8 +248,15 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
       ? rates.away * (1 + playerSideMod) * (1 - oppOppMod * 0.5)
       : rates.away * (1 + oppSideMod) * (1 - playerOppMod * 0.5);
 
-    const homeShots = poisson(Math.max(2, homeShotMean * groundScoring));
-    const awayShots = poisson(Math.max(2, awayShotMean * groundScoring));
+    const plQ = TACTIC_QUARTER_MULT[tactic]?.[q] ?? 1;
+    const opQ = TACTIC_QUARTER_MULT[oppTactic]?.[q] ?? 1;
+    const homeQuarterMult = isPlayerHome ? plQ : opQ;
+    const awayQuarterMult = isPlayerHome ? opQ : plQ;
+    const homeShotMeanPhased = homeShotMean * homeQuarterMult;
+    const awayShotMeanPhased = awayShotMean * awayQuarterMult;
+
+    const homeShots = poisson(Math.max(2, homeShotMeanPhased * groundScoring));
+    const awayShots = poisson(Math.max(2, awayShotMeanPhased * groundScoring));
 
     let hG = 0, hB = 0, aG = 0, aB = 0;
     const qEvents = [];
