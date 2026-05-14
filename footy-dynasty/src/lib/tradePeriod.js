@@ -5,6 +5,64 @@ import { generateTradePool } from './defaults.js';
 import { sortedLadder, competitionClubsForCareer } from './leagueEngine.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
 import { LINEUP_FIELD_COUNT } from './lineupHelpers.js';
+import { draftPickPositionForClub } from './draftSeed.js';
+
+/** Rich snapshot for trade offers / UI (attrs, status, career log). */
+export function tradePlayerSnapshot(p) {
+  if (!p) return null;
+  return {
+    id: p.id,
+    firstName: p.firstName,
+    lastName: p.lastName,
+    name: p.name,
+    overall: p.overall,
+    trueRating: p.trueRating ?? p.overall,
+    potential: p.potential,
+    position: p.position,
+    secondaryPosition: p.secondaryPosition ?? null,
+    age: p.age,
+    wage: p.wage,
+    contract: p.contract,
+    value: p.value,
+    tier: p.tier,
+    attrs: p.attrs ? { ...p.attrs } : undefined,
+    form: p.form,
+    fitness: p.fitness,
+    morale: p.morale,
+    gamesPlayed: p.gamesPlayed ?? 0,
+    goals: p.goals ?? 0,
+    behinds: p.behinds ?? 0,
+    disposals: p.disposals ?? 0,
+    marks: p.marks ?? 0,
+    tackles: p.tackles ?? 0,
+    injured: p.injured ?? 0,
+    careerLog: Array.isArray(p.careerLog) ? [...p.careerLog] : [],
+    fromClub: p.fromClub ?? null,
+  };
+}
+
+/** Rehydrate a full squad player from snapshot when AI squad lookup fails. */
+export function playerFromTradeSnapshot(snap, overrides = {}) {
+  if (!snap) return null;
+  return {
+    ...snap,
+    attrs: snap.attrs || {},
+    fitness: snap.fitness ?? 88,
+    form: snap.form ?? 65,
+    morale: snap.morale ?? 70,
+    contract: snap.contract ?? 2,
+    goals: snap.goals ?? 0,
+    behinds: snap.behinds ?? 0,
+    disposals: snap.disposals ?? 0,
+    marks: snap.marks ?? 0,
+    tackles: snap.tackles ?? 0,
+    gamesPlayed: snap.gamesPlayed ?? 0,
+    injured: snap.injured ?? 0,
+    suspended: 0,
+    careerLog: snap.careerLog || [],
+    ...overrides,
+  };
+}
 
 export const TRADE_PERIOD_DAYS = 14;
 export const FREE_AGENCY_END_DAY = 8;
@@ -46,17 +104,7 @@ function seedAiTradeOffers(c, league) {
       targetPlayerId: targetPlayer.id,
       offerCash: cashOffer,
       offerPlayerId: swapPlayer?.id || null,
-      offerPlayerSnapshot: swapPlayer
-        ? {
-            id: swapPlayer.id,
-            firstName: swapPlayer.firstName,
-            lastName: swapPlayer.lastName,
-            overall: swapPlayer.overall,
-            position: swapPlayer.position,
-            age: swapPlayer.age,
-            wage: swapPlayer.wage,
-          }
-        : null,
+      offerPlayerSnapshot: swapPlayer ? tradePlayerSnapshot(swapPlayer) : null,
       status: 'pending',
       createdAt: `postseason-${c.tradePeriodDay}`,
       tradePeriod: true,
@@ -94,15 +142,21 @@ export function buildDraftPickBank(c, league) {
   const y0 = c.season;
   const years = [y0, y0 + 1, y0 + 2];
   const bank = {};
-  const ladderClubRows = (() => {
+  const fromSnapshot = draftPickPositionForClub(c, clubId);
+  let approxR1;
+  if (fromSnapshot != null) {
+    approxR1 = fromSnapshot;
+  } else {
     const pool = competitionClubsForCareer(c);
     const rows = pool.length ? pool : (league.clubs || []);
-    return rows.map((cl) => ({ id: cl.id, W: 0, L: 0, D: 0, pts: 0, pct: 0, F: 0, A: 0 }));
-  })();
-  const ladderRows = sortedLadder(c.ladder?.length ? c.ladder : ladderClubRows);
-  const myPos = Math.max(1, ladderRows.findIndex((r) => r.id === clubId) + 1);
-  const approxR1 = myPos;
-  const approxR2 = Math.min(18, myPos + 6);
+    const ladderRows = (c.ladder?.length ? c.ladder : rows.map((cl) => ({
+      id: cl.id, W: 0, L: 0, D: 0, pts: 0, pct: 0, F: 0, A: 0,
+    })));
+    const sorted = sortedLadder(ladderRows);
+    const ladderPos = Math.max(1, sorted.findIndex((r) => r.id === clubId) + 1);
+    approxR1 = Math.max(1, sorted.length - ladderPos + 1);
+  }
+  const approxR2 = Math.min(18, approxR1 + 6);
   for (const y of years) {
     const ys = String(y);
     bank[ys] = [

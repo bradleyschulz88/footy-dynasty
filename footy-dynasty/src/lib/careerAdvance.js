@@ -8,7 +8,7 @@ import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrength
 import { resolveAiOppTactic } from './aiPersonality.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { generateTradePool } from './defaults.js';
-import { withDraftScoutingDefaults } from './draftScouting.js';
+import { seedNationalDraft } from './draftSeed.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
@@ -19,6 +19,7 @@ import {
   advanceDraftCountdown,
   clearPostSeasonTransient,
   playerBlockedFromTrade,
+  tradePlayerSnapshot,
 } from './tradePeriod.js';
 import { TUTORIAL_STEPS } from './tutorialConstants.js';
 import { getDifficultyConfig } from './difficulty.js';
@@ -558,18 +559,8 @@ function finishSeason(c, league) {
   c.staff = (c.staff || []).map((s) => ({ ...s, contract: Math.max(0, (s.contract ?? 0) - 1) }));
   c.pendingStaffRenewals = buildStaffRenewalQueue(c.staff);
   c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier, c.season);
-  seedRng(c.season * 999 + 17);
-  c.draftPool = Array.from({ length: 60 }, (_, i) =>
-    withDraftScoutingDefaults(
-      generatePlayer(2, 9000 + i + c.season * 100, { clubId: 'draft', season: c.season }),
-    ),
-  );
   c.tradePool = generateTradePool(c.leagueKey, c.season);
-  const compClubsDraft = competitionClubsForCareer(c);
-  const draftBase = compClubsDraft.length ? compClubsDraft : (PYRAMID[c.leagueKey]?.clubs || []);
-  const draftOrder = sortedLadder(c.ladder.length ? c.ladder : blankLadder(draftBase))
-    .slice().reverse().map((r) => r.id);
-  c.draftOrder = draftOrder.map((clubId, i) => ({ pick: i + 1, clubId, used: false }));
+  seedNationalDraft(c, league, { ladderSnapshot: sorted, inaugural: false, force: true });
   syncRecruitPhaseInboxRows(c);
 
   c.history = c.history || [];
@@ -952,7 +943,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           targetPlayerId: targetPlayer.id,
           offerCash: cashOffer,
           offerPlayerId: swapPlayer?.id || null,
-          offerPlayerSnapshot: swapPlayer ? { id: swapPlayer.id, firstName: swapPlayer.firstName, lastName: swapPlayer.lastName, overall: swapPlayer.overall, position: swapPlayer.position, secondaryPosition: swapPlayer.secondaryPosition ?? null, age: swapPlayer.age, wage: swapPlayer.wage } : null,
+          offerPlayerSnapshot: swapPlayer ? tradePlayerSnapshot(swapPlayer) : null,
           status: 'pending',
           createdAt: ev.date,
         });
@@ -964,6 +955,10 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       }
     }
     if (ev.name === 'National Draft Day') {
+      const inaugural = !(c.history?.length);
+      if (!(c.draftPool?.length) || !(c.draftOrder?.length)) {
+        seedNationalDraft(c, league, { inaugural, force: true });
+      }
       syncRecruitPhaseInboxRows(c);
       extraNews.push({
         week: c.week,

@@ -162,11 +162,53 @@ export function defaultKits(colors) {
   };
 }
 
+/** Synthetic career rows + season stats for trade-market veterans. */
+export function enrichMarketPlayerCareer(p, season) {
+  if (!p || p.age < 20) {
+    return { ...p, careerLog: p.careerLog || [], gamesPlayed: p.gamesPlayed || 0 };
+  }
+  const fromClub = p.fromClub || pick(ALL_CLUBS).short;
+  const maxCareerGames = Math.max(8, (p.age - 17) * rand(10, 18));
+  const careerLog = [];
+  let remaining = maxCareerGames;
+  const seasonsBack = Math.min(Math.max(1, p.age - 18), 5);
+  for (let y = 0; y < seasonsBack && remaining > 0; y++) {
+    const games = Math.min(remaining, rand(6, 22));
+    remaining -= games;
+    const isFwd = p.position === 'FWD';
+    const goals = Math.round(games * (isFwd ? 0.25 + rng() * 0.35 : 0.02 + rng() * 0.1));
+    careerLog.push({
+      season: season - (y + 1),
+      club: y === 0 ? fromClub : pick(ALL_CLUBS).short,
+      games,
+      goals,
+      disposals: Math.round(games * (6 + rng() * 14)),
+    });
+  }
+  const gamesPlayed = careerLog.reduce((s, r) => s + r.games, 0);
+  const lastSeason = careerLog[0];
+  const goals = lastSeason ? Math.round(lastSeason.goals * (0.85 + rng() * 0.3)) : rand(0, 12);
+  const disposals = lastSeason ? Math.round(lastSeason.disposals * (0.9 + rng() * 0.2)) : rand(50, 280);
+  const marks = Math.round(disposals * (0.15 + rng() * 0.2));
+  const tackles = Math.round(disposals * (0.08 + rng() * 0.12));
+  return {
+    ...p,
+    fromClub,
+    careerLog,
+    gamesPlayed,
+    goals,
+    behinds: Math.round(goals * (0.2 + rng() * 0.4)),
+    disposals,
+    marks,
+    tackles,
+  };
+}
+
 export function generateTradePool(leagueKey, season) {
   seedRng(season * 333 + 7);
   return Array.from({ length: 25 }, (_, i) => {
     const tierForPlayer = rand(1, 3);
     const p = generatePlayer(tierForPlayer, 5000 + i + season * 50, { clubId: 'trade', season });
-    return { ...p, fromClub: pick(ALL_CLUBS).short };
+    return enrichMarketPlayerCareer({ ...p, fromClub: pick(ALL_CLUBS).short }, season);
   });
 }

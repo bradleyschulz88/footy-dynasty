@@ -4,6 +4,7 @@ import {
   advanceTradePeriodDay,
   advanceDraftCountdown,
   playerBlockedFromTrade,
+  buildDraftPickBank,
   TRADE_PERIOD_DAYS,
 } from '../tradePeriod.js';
 import { PYRAMID } from '../../data/pyramid.js';
@@ -66,5 +67,14 @@ describe('tradePeriod', () => {
     expect(playerBlockedFromTrade({ receivedInTrade: 2026 }, 2026)).toBe(true);
     expect(playerBlockedFromTrade({ receivedInTrade: 2025 }, 2026)).toBe(false);
     expect(playerBlockedFromTrade({ receivedInTrade: null }, 2026)).toBe(false);
+  });
+
+  it('buildDraftPickBank uses lastDraftOrderSnapshot for pick slot', () => {
+    const myId = league.clubs[4].id;
+    career.clubId = myId;
+    career.lastDraftOrderSnapshot = league.clubs.map((c) => c.id);
+    const bank = buildDraftPickBank(career, league);
+    const y0 = String(career.season);
+    expect(bank[y0][0].selection).toBe(5);
   });
 });

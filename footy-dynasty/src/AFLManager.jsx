@@ -27,6 +27,7 @@ import {
   cloneSerializable,
 } from "./lib/save.js";
 import { computeInitialCareerBoot } from "./lib/bootCareer.js";
+import { seedNationalDraft } from "./lib/draftSeed.js";
 import { GlobalStyle } from "./components/primitives.jsx";
 import GameOverScreen from "./screens/GameOverScreen.jsx";
 import PostMatchSummary from "./screens/PostMatchSummary.jsx";
@@ -537,6 +538,7 @@ function AFLManagerInner() {
     planSeasonBoardMeetings(nextCareer);
     const dqN = compClubsNew.length || newLeague.clubs?.length || 12;
     assignDynastyQuestsForSeason(nextCareer, newLeague.tier, dqN);
+    seedNationalDraft(nextCareer, newLeague, { inaugural: true, force: true });
     setCareer(nextCareer);
     setScreen('hub');
     setTab(null);

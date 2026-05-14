@@ -14,7 +14,8 @@ import {
   TIER3_CLUBS_PER_DIVISION_TARGET,
   TIER3_MIN_CLUBS_PER_DIVISION,
 } from "../lib/leagueEngine.js";
-import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits } from "../lib/defaults.js";
+import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from "../lib/defaults.js";
+import { seedNationalDraft } from "../lib/draftSeed.js";
 import { generateSeasonCalendar } from "../lib/calendar.js";
 import { DEFAULT_STAFF_TASKS } from "../lib/staffTasks.js";
 import { getPlayerPrefs, setPlayerPrefs } from "../lib/playerPrefs.js";
@@ -218,13 +219,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       kits: defaultKits(club.colors),
       ladder: ladder0,
       fixtures,
-      tradePool: (() => {
-        seedRng(SEASON * 4441 + 7777);
-        return Array.from({ length: 25 }, (_, i) => {
-          const p = generatePlayer(rand(1, 3), 5000 + i + SEASON * 50, { clubId: 'trade', season: SEASON });
-          return { ...p, fromClub: pick(ALL_CLUBS).short };
-        });
-      })(),
+      tradePool: generateTradePool(leagueKey, SEASON),
       draftPool: [],
       youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
       news: [
@@ -338,6 +333,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     generateSeasonObjectives(newCareer, league);
     planSeasonBoardMeetings(newCareer);
     primeSeasonStoryState(newCareer);
+    seedNationalDraft(newCareer, league, { inaugural: true, force: true });
     onStart(newCareer);
     } catch (err) {
       setStartError(err.message);

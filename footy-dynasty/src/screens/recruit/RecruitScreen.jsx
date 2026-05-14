@@ -22,7 +22,9 @@ import {
   playerBlockedFromTrade,
   TRADE_PERIOD_DAYS,
   POST_TRADE_DRAFT_COUNTDOWN_DAYS,
+  playerFromTradeSnapshot,
 } from '../../lib/tradePeriod.js';
+import RecruitPlayerProfile from '../../components/RecruitPlayerProfile.jsx';
 import { css, Bar, RatingDot, Pill, Stat, Jersey, GlobalStyle } from '../../components/primitives.jsx';
 import { SquadLineupBuilder, LineupSortablePanel } from '../../components/SquadLineupDnD.jsx';
 import TabNav from '../../components/TabNav.jsx';
@@ -319,6 +321,27 @@ function FreeAgentsTab({ career, updateCareer }) {
 function OffersTab({ career, club, updateCareer }) {
   const offers = (career.pendingTradeOffers || []).filter(o => o.status === 'pending');
   const finance = career.finance;
+  const [inspectOffer, setInspectOffer] = useState(null);
+
+  const resolveIncomingPlayer = (offer) => {
+    const aiSq = career.aiSquads?.[offer.fromClubId] || [];
+    const live = offer.offerPlayerId
+      ? aiSq.find((p) => p.id === offer.offerPlayerId)
+      : null;
+    if (live) {
+      return {
+        ...live,
+        id: `incoming_${Date.now()}_${rand(1, 1e6)}`,
+        receivedInTrade: career.season,
+        seasonsAtClub: 0,
+      };
+    }
+    return playerFromTradeSnapshot(offer.offerPlayerSnapshot, {
+      id: `incoming_${Date.now()}_${rand(1, 1e6)}`,
+      receivedInTrade: career.season,
+      seasonsAtClub: 0,
+    });
+  };
 
   const acceptOffer = (offer) => {
     const targetPlayer = career.squad.find(p => p.id === offer.targetPlayerId);
@@ -327,9 +350,8 @@ function OffersTab({ career, club, updateCareer }) {
       updateCareer({ news: [{ week: career.week, type: 'loss', text: `⛔ ${targetPlayer.firstName} ${targetPlayer.lastName} can't be traded until next season (recently arrived).` }, ...(career.news || [])].slice(0, 20) });
       return;
     }
-    const incomingPlayer = offer.offerPlayerSnapshot
-      ? { ...offer.offerPlayerSnapshot, id: `incoming_${Date.now()}`, fitness: 90, form: 70, contract: 2, attrs: targetPlayer.attrs, potential: offer.offerPlayerSnapshot.overall + 4, trueRating: offer.offerPlayerSnapshot.overall, goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0, suspended: 0, morale: 75,
-          receivedInTrade: career.season, seasonsAtClub: 0 }
+    const incomingPlayer = offer.offerPlayerSnapshot || offer.offerPlayerId
+      ? resolveIncomingPlayer(offer)
       : null;
     // Cap check: if a swap player is incoming, ensure their wage fits after target leaves
     if (incomingPlayer) {
@@ -360,6 +382,7 @@ function OffersTab({ career, club, updateCareer }) {
         text: `🤝 Trade complete: ${targetPlayer.firstName} ${targetPlayer.lastName} → ${offer.fromClubName} for ${fmtK(offer.offerCash)}${incomingPlayer ? ` + ${incomingPlayer.firstName} ${incomingPlayer.lastName}` : ''}`,
       }, ...(career.news || [])].slice(0, 20),
     });
+    setInspectOffer(null);
   };
 
   const rejectOffer = (offer) => {
@@ -391,34 +414,62 @@ function OffersTab({ career, club, updateCareer }) {
           No active offers right now. Wait for the trade window or check back after key events.
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid xl:grid-cols-[1fr_minmax(280px,360px)] gap-4 items-start">
+          <div className="space-y-3">
           {offers.map(offer => {
             const player = career.squad.find(p => p.id === offer.targetPlayerId);
             if (!player) return null;
+            const incomingPreview = offer.offerPlayerSnapshot;
             return (
-              <div key={offer.id} className={`${css.panel} p-5`}>
+              <div key={offer.id} className={`${css.panel} p-5 cursor-pointer transition-colors ${inspectOffer?.id === offer.id ? 'ring-2 ring-aaccent' : ''}`}
+                onClick={() => setInspectOffer(inspectOffer?.id === offer.id ? null : offer)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter') setInspectOffer(inspectOffer?.id === offer.id ? null : offer); }}
+              >
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-aaccent">{offer.fromClubName} offers</div>
-                    <div className="font-display text-2xl text-atext mt-1">{fmtK(offer.offerCash)}{offer.offerPlayerSnapshot ? ` + ${offer.offerPlayerSnapshot.firstName} ${offer.offerPlayerSnapshot.lastName}` : ''}</div>
-                    {offer.offerPlayerSnapshot && (
-                      <div className="text-xs text-atext-dim mt-1">{offer.offerPlayerSnapshot.position} · {offer.offerPlayerSnapshot.overall} OVR · age {offer.offerPlayerSnapshot.age}</div>
+                    <div className="font-display text-2xl text-atext mt-1">{fmtK(offer.offerCash)}{incomingPreview ? ` + ${incomingPreview.firstName} ${incomingPreview.lastName}` : ''}</div>
+                    {incomingPreview && (
+                      <div className="text-xs text-atext-dim mt-1">{incomingPreview.position} · {incomingPreview.overall} OVR · age {incomingPreview.age} · {incomingPreview.gamesPlayed ?? 0} gp</div>
                     )}
                   </div>
                   <ArrowRight className="w-6 h-6 text-aaccent" />
                   <div className="text-right">
                     <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-dim">For</div>
                     <div className="font-display text-2xl text-atext mt-1">{player.firstName} {player.lastName}</div>
-                    <div className="text-xs text-atext-dim mt-1">{player.position} · {player.overall} OVR · age {player.age} · {fmtK(player.wage)}/yr</div>
+                    <div className="text-xs text-atext-dim mt-1">{player.position} · {player.overall} OVR · age {player.age} · {fmtK(player.wage)}/yr · {player.gamesPlayed ?? 0} gp</div>
                   </div>
                 </div>
-                <div className="flex gap-2 justify-end">
+                <div className="flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
                   <button onClick={() => rejectOffer(offer)} className="px-4 py-2 rounded-lg text-xs font-bold bg-apanel-2 text-atext-dim hover:bg-aline">Reject</button>
                   <button onClick={() => acceptOffer(offer)} className={`${css.btnPrimary} text-xs px-4 py-2`}>Accept Trade</button>
                 </div>
               </div>
             );
           })}
+          </div>
+          {inspectOffer && (
+            <div className="space-y-3 xl:sticky xl:top-20">
+              {inspectOffer.offerPlayerSnapshot && (
+                <RecruitPlayerProfile
+                  player={inspectOffer.offerPlayerSnapshot}
+                  onClose={() => setInspectOffer(null)}
+                  subtitle={`Incoming from ${inspectOffer.fromClubName}`}
+                />
+              )}
+              {(() => {
+                const out = career.squad.find(p => p.id === inspectOffer.targetPlayerId);
+                return out ? (
+                  <RecruitPlayerProfile
+                    player={out}
+                    subtitle={`Your player — offered to ${inspectOffer.fromClubName}`}
+                  />
+                ) : null;
+              })()}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -431,6 +482,7 @@ function TradeTab({ career, updateCareer }) {
   /** off | listed | maxDemand — maxDemand uses upper-bound opening ask vs cap */
   const [capFilter, setCapFilter] = useState("off");
   const [negotiating, setNegotiating] = useState(null); // { playerId, wage, years, counterUsed }
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
   const pool = career.tradePool || [];
   const wageCap = effectiveWageCap(career);
   const currentWages = currentPlayerWageBill(career);
@@ -554,6 +606,9 @@ function TradeTab({ career, updateCareer }) {
         </select>
       </div>
 
+      <div className="grid xl:grid-cols-[1fr_minmax(280px,360px)] gap-4 items-start">
+      <div className="space-y-4 min-w-0">
+
       <div className="hidden xl:block rounded-2xl overflow-x-auto" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
         <div className="gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b grid min-w-[720px]" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}}>
           <div>Player</div>
@@ -585,10 +640,10 @@ function TradeTab({ career, updateCareer }) {
             else capPill = <Pill color="#E84A6F" title={`Listed ${fmtK(lw)} · upper ask ~${fmtK(maxAsk)}/yr`}>No</Pill>;
             return (
               <div key={p.id}>
-                <div className="gap-2 px-4 py-3 items-center transition-colors grid min-w-[720px]" style={{borderBottom: isNeg ? "none" : "1px solid var(--A-line)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <div className={`gap-2 px-4 py-3 items-center transition-colors grid min-w-[720px] cursor-pointer ${selectedPlayer?.id === p.id ? 'bg-aaccent/10' : ''}`} style={{borderBottom: isNeg ? "none" : "1px solid var(--A-line)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}} onClick={() => setSelectedPlayer(p)} onMouseEnter={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="rgba(0,224,255,0.05)"; }} onMouseLeave={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="transparent"; }}>
                   <div>
                     <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
-                    <div className="text-[10px] text-atext-dim">Ask · {fmtK(p.wage)}/yr</div>
+                    <div className="text-[10px] text-atext-dim">{p.gamesPlayed ?? 0} gp · Ask {fmtK(p.wage)}/yr</div>
                   </div>
                   <div><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
                   <div className="text-sm text-center">{p.age}</div>
@@ -603,7 +658,7 @@ function TradeTab({ career, updateCareer }) {
                   <div className="flex justify-center">
                     {capPill}
                   </div>
-                  <div className="flex justify-end">
+                  <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
                     {isNeg
                       ? <button onClick={()=>setNegotiating(null)} className="text-xs text-atext-mute hover:text-atext-dim px-2 py-1">✕</button>
                       : <button onClick={()=>canAfford ? openNegotiation(p) : null} disabled={!canAfford} className={canAfford ? `${css.btnPrimary} text-xs px-3 py-1.5` : "px-3 py-1.5 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>{canAfford ? "Negotiate" : "Too dear"}</button>
@@ -754,6 +809,19 @@ function TradeTab({ career, updateCareer }) {
           </div>
         )}
       </div>
+      </div>
+      {selectedPlayer && (
+        <div className="xl:sticky xl:top-20">
+          <RecruitPlayerProfile
+            player={selectedPlayer}
+            onClose={() => setSelectedPlayer(null)}
+            listedFee={selectedPlayer.value}
+            fromClub={selectedPlayer.fromClub}
+            subtitle="Select Negotiate to open contract talks."
+          />
+        </div>
+      )}
+      </div>
     </div>
   );
 }
@@ -874,7 +942,7 @@ function DraftTab({ career, club, updateCareer }) {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>NATIONAL DRAFT</div>
-          <div className="text-xs text-atext-dim">{draftOrder.length === 0 ? 'Draft order is set after each season ends.' : isMyTurn ? `On the clock: pick #${myNextPick.pick}.` : myNextPick ? `Your next pick: #${myNextPick.pick}` : 'You have no remaining picks.'} Prospects stay fuzzy until you fund combine scouting runs.</div>
+          <div className="text-xs text-atext-dim">{draftOrder.length === 0 ? 'Draft pool loading…' : career.draftOrderInaugural ? (isMyTurn ? `Inaugural lottery — on the clock: pick #${myNextPick.pick}.` : myNextPick ? `Inaugural lottery — your next pick: #${myNextPick.pick}` : 'Inaugural lottery complete for your club.') : (isMyTurn ? `On the clock: pick #${myNextPick.pick}.` : myNextPick ? `Your next pick: #${myNextPick.pick}` : 'You have no remaining picks.')} Prospects stay fuzzy until you fund combine scouting runs.</div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Pool" value={basePool.length} accent="#4AE89A" />
@@ -1496,3 +1564,7 @@ function LocalTab({ career, club, updateCareer }) {
     </div>
   );
 }
+
+
+
+
