@@ -6,6 +6,22 @@ import { sortedLadder, competitionClubsForCareer } from './leagueEngine.js';
 import { PYRAMID } from '../data/pyramid.js';
 
 export const DRAFT_POOL_SIZE = 60;
+export const DRAFT_ROUNDS = 3;
+
+/** Snake draft: round 1 order, even rounds reversed. */
+export function buildSnakeDraftOrder(round1ClubIds, rounds = DRAFT_ROUNDS) {
+  if (!round1ClubIds?.length) return [];
+  const order = [];
+  let pickNum = 1;
+  for (let r = 1; r <= rounds; r++) {
+    const ids = r % 2 === 0 ? [...round1ClubIds].reverse() : [...round1ClubIds];
+    for (const clubId of ids) {
+      order.push({ pick: pickNum, clubId, round: r, used: false });
+      pickNum += 1;
+    }
+  }
+  return order;
+}
 
 /** Worst ladder finisher → pick 1 (AFL reverse order). */
 export function buildReverseLadderOrder(ladderRows) {
@@ -45,7 +61,7 @@ function competitionClubIds(c, league) {
  * @param {{ ladderSnapshot?: object[], inaugural?: boolean, force?: boolean }} [options]
  */
 export function seedNationalDraft(c, league, options = {}) {
-  const { ladderSnapshot, inaugural = false, force = false } = options;
+  const { ladderSnapshot, inaugural = false, force = false, rounds = DRAFT_ROUNDS } = options;
   if (!force && (c.draftPool?.length > 0) && (c.draftOrder?.length > 0)) return c;
 
   const season = c.season || 2026;
@@ -58,13 +74,15 @@ export function seedNationalDraft(c, league, options = {}) {
 
   const clubIds = competitionClubIds(c, league);
   const useInaugural = inaugural || !ladderSnapshot?.length;
-  const orderIds = useInaugural
+  const round1Ids = useInaugural
     ? buildInauguralDraftOrder(clubIds, inauguralSeedKey(c))
     : buildReverseLadderOrder(ladderSnapshot);
 
-  c.draftOrder = orderIds.map((clubId, i) => ({ pick: i + 1, clubId, used: false }));
-  c.lastDraftOrderSnapshot = orderIds;
+  c.draftOrder = buildSnakeDraftOrder(round1Ids, rounds);
+  c.lastDraftOrderSnapshot = round1Ids;
   c.draftOrderInaugural = useInaugural;
+  c.draftPhase = c.draftPhase === 'complete' ? 'complete' : 'live';
+  c.draftHistory = c.draftHistory || [];
   return c;
 }
 

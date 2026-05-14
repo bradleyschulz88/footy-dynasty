@@ -9,6 +9,7 @@ import { migrateSaveBoardV8, migrateSaveBoardV9, migrateSaveBoardV10, migrateSav
 import { migrateSaveGameDepthV12 } from './gameDepth.js';
 import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { migrateDraftPoolScouting } from './draftScouting.js';
+import { seedNationalDraft } from './draftSeed.js';
 import { pushManagerInboxBoardMirror, syncTradePeriodManagerInboxRow } from './inbox.js';
 import { DEFAULT_STAFF_TASKS, ensureStaffTasks } from './staffTasks.js';
 import { SLOT_IDS, getLatestSavedSlotMeta, SAVE_VERSION } from './setupConstants.js';
@@ -348,6 +349,19 @@ export function migrate(save) {
     }
     if (!s.options || typeof s.options !== 'object') s.options = {};
     if (!s.options.advanceReminders) s.options.advanceReminders = 'before_matches';
+  }
+
+  if (v < 24) {
+    s.saveVersion = 24;
+    s.draftHistory = Array.isArray(s.draftHistory) ? s.draftHistory : [];
+    const league = s.leagueKey ? PYRAMID[s.leagueKey] : null;
+    const poolEmpty = !(s.draftPool?.length);
+    const orderEmpty = !(s.draftOrder?.length);
+    if (league && s.draftPhase !== 'complete' && (poolEmpty || orderEmpty)) {
+      const inaugural = !(s.history?.length);
+      seedNationalDraft(s, league, { inaugural, force: true });
+      if (!s.draftPhase) s.draftPhase = 'live';
+    }
   }
 
   return s;

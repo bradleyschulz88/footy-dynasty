@@ -561,6 +561,8 @@ function finishSeason(c, league) {
   c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier, c.season);
   c.tradePool = generateTradePool(c.leagueKey, c.season);
   seedNationalDraft(c, league, { ladderSnapshot: sorted, inaugural: false, force: true });
+  c.draftPhase = 'live';
+  c.draftHistory = [];
   syncRecruitPhaseInboxRows(c);
 
   c.history = c.history || [];
@@ -959,6 +961,8 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       if (!(c.draftPool?.length) || !(c.draftOrder?.length)) {
         seedNationalDraft(c, league, { inaugural, force: true });
       }
+      c.draftPhase = 'live';
+      c.draftHistory = c.draftHistory || [];
       syncRecruitPhaseInboxRows(c);
       extraNews.push({
         week: c.week,
@@ -973,8 +977,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       ].slice(0, 20);
       markTutorialCompleteAfterAdvance(c);
       setCareer(c);
-      setScreen('recruit');
-      if (setTab) setTab('draft');
+      setScreen('draft');
       return;
     }
     if (ev.name === 'Transfer Window Closes') {

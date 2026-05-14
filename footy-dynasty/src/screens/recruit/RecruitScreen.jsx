@@ -102,7 +102,13 @@ import {
 import { getClubGround } from '../../data/grounds.js';
 import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from '../../lib/careerAdvance.js';
 import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from '../../lib/gameDepth.js';
-import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, LINEUP_FIELD_COUNT, LINEUP_OVAL_SLOT_COUNT, removeIdFromLineup } from '../../lib/lineupHelpers.js';
+import {
+  ensureDraftSeeded,
+  needsDraftSeed,
+  isPlayerDraftTurn,
+  isDraftLive,
+  startDraftSessionPatch,
+} from '../../lib/draftEngine.js';
 
 // ============================================================================
 // RECRUIT SCREEN — Trade / Draft / Youth / Local
@@ -141,7 +147,7 @@ function RecruitOffSeasonStrip({ career }) {
   );
 }
 
-export default function RecruitScreen({ career, club, updateCareer, tab, setTab }) {
+export default function RecruitScreen({ career, club, updateCareer, tab, setTab, league, onOpenDraftRoom }) {
   const offerCount = (career.pendingTradeOffers || []).filter(o => o.status === 'pending').length;
   const inTradePeriod = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
   const showPicks = !!career.draftPickBank;
@@ -180,7 +186,7 @@ export default function RecruitScreen({ career, club, updateCareer, tab, setTab 
         <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Draft capital is prepared when the Trade Period opens.</div>
       ))}
       {t === "trade" && <TradeTab career={career} updateCareer={updateCareer} />}
-      {t === "draft" && <DraftTab career={career} club={club} updateCareer={updateCareer} />}
+      {t === "draft" && <DraftTab career={career} club={club} league={league} updateCareer={updateCareer} onOpenDraftRoom={onOpenDraftRoom} />}
       {t === "youth" && <YouthTab career={career} club={club} updateCareer={updateCareer} />}
       {t === "local" && <LocalTab career={career} club={club} updateCareer={updateCareer} />}
     </div>
@@ -826,9 +832,18 @@ function TradeTab({ career, updateCareer }) {
   );
 }
 
-function DraftTab({ career, club, updateCareer }) {
+function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
   const [posFilter, setPosFilter] = useState("ALL");
   const [poolSort, setPoolSort] = useState("overall");
+
+  useEffect(() => {
+    if (!league) return;
+    if (needsDraftSeed(career)) {
+      const patch = ensureDraftSeeded(career, league);
+      if (patch) updateCareer(patch);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const draftOrder = career.draftOrder || [];
   const myPickIndex = draftOrder.findIndex(d => d.clubId === career.clubId && !d.used);
   const myNextPick = myPickIndex >= 0 ? draftOrder[myPickIndex] : null;
@@ -939,10 +954,20 @@ function DraftTab({ career, club, updateCareer }) {
 
   return (
     <div className="space-y-4">
+
+      <div className={`${css.panel} p-4 flex flex-wrap items-center justify-between gap-3`} style={{ background: 'rgba(0,224,255,0.06)' }}>
+        <div>
+          <div className="font-display text-xl text-aaccent">Draft room</div>
+          <p className="text-xs text-atext-dim mt-1">On-the-clock picks, pass, and live feed.</p>
+        </div>
+        <button type="button" onClick={() => { if (needsDraftSeed(career) && league) updateCareer(startDraftSessionPatch(career, league)); onOpenDraftRoom?.(); }} className={`${css.btnPrimary} text-sm px-5 py-2.5 min-h-[44px]`}>
+          {isMyTurn ? 'Enter draft room — on the clock' : 'Enter draft room'}
+        </button>
+      </div>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>NATIONAL DRAFT</div>
-          <div className="text-xs text-atext-dim">{draftOrder.length === 0 ? 'Draft pool loading…' : career.draftOrderInaugural ? (isMyTurn ? `Inaugural lottery — on the clock: pick #${myNextPick.pick}.` : myNextPick ? `Inaugural lottery — your next pick: #${myNextPick.pick}` : 'Inaugural lottery complete for your club.') : (isMyTurn ? `On the clock: pick #${myNextPick.pick}.` : myNextPick ? `Your next pick: #${myNextPick.pick}` : 'You have no remaining picks.')} Prospects stay fuzzy until you fund combine scouting runs.</div>
+          <div className="text-xs text-atext-dim">{needsDraftSeed(career) ? 'No draft loaded — open the draft room to start.' : career.draftOrderInaugural ? (isMyTurn ? `Inaugural lottery — on the clock: pick #${myNextPick.pick}.` : myNextPick ? `Inaugural lottery — your next pick: #${myNextPick.pick}` : 'Inaugural lottery complete for your club.') : (isMyTurn ? `On the clock: pick #${myNextPick.pick}.` : myNextPick ? `Your next pick: #${myNextPick.pick}` : 'You have no remaining picks.')} Combine scouting reveals ratings.</div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Pool" value={basePool.length} accent="#4AE89A" />

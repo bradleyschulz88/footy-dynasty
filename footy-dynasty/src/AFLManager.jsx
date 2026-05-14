@@ -68,6 +68,7 @@ const CompetitionScreenLazy = lazy(() => import('./screens/competition/Competiti
 const SquadScreenLazy = lazy(() => import('./screens/squad/SquadScreen.jsx'));
 const ClubScreenLazy = lazy(() => import('./screens/club/ClubScreen.jsx'));
 const RecruitScreenLazy = lazy(() => import('./screens/recruit/RecruitScreen.jsx'));
+const DraftRoomScreenLazy = lazy(() => import('./screens/DraftRoomScreen.jsx'));
 const SettingsScreenLazy = lazy(() => import('./screens/SettingsScreen.jsx'));
 
 // --- Gameplay systems spec (Sections 1-3) ---
@@ -936,7 +937,26 @@ function AFLManagerInner() {
               )}
               {screen === "recruit" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading recruit…" reducedMotion={motionReduced} />}>
-                  <RecruitScreenLazy career={career} club={club} updateCareer={updateCareer} tab={tab} setTab={setTab} />
+                  <RecruitScreenLazy
+                    career={career}
+                    club={club}
+                    updateCareer={updateCareer}
+                    tab={tab}
+                    setTab={setTab}
+                    league={league}
+                    onOpenDraftRoom={() => setScreen("draft")}
+                  />
+                </Suspense>
+              )}
+              {screen === "draft" && (
+                <Suspense fallback={<LazyRouteFallback label="Loading draft room…" reducedMotion={motionReduced} />}>
+                  <DraftRoomScreenLazy
+                    career={career}
+                    club={club}
+                    league={league}
+                    updateCareer={updateCareer}
+                    onExit={() => { setScreen("recruit"); setTab("draft"); }}
+                  />
                 </Suspense>
               )}
               {screen === "compete" && (

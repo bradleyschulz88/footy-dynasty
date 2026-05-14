@@ -35,7 +35,7 @@ describe('draftSeed', () => {
     const career = { clubId: clubIds[0], leagueKey, season: 2026, draftPool: [], draftOrder: [] };
     seedNationalDraft(career, league, { inaugural: true, force: true });
     expect(career.draftPool.length).toBe(DRAFT_POOL_SIZE);
-    expect(career.draftOrder.length).toBe(clubIds.length);
+    expect(career.draftOrder.length).toBe(clubIds.length * 3);
     expect(career.lastDraftOrderSnapshot?.length).toBe(clubIds.length);
     expect(career.draftOrderInaugural).toBe(true);
   });
