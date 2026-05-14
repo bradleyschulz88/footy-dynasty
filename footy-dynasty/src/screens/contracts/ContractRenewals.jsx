@@ -26,7 +26,11 @@ export function StaffRenewalsPanel({ career, updateCareer, leagueTier, showHeadi
     if (closed) return;
     if (!canAffordStaffRenewal(career, proposal)) {
       updateCareer({
-        news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot renew ${proposal.name} — would breach the salary cap` }, ...(career.news || [])].slice(0, 25),
+        news: [{
+          week: career.week,
+          type: 'loss',
+          text: `⚖️ Cannot renew ${proposal.name} — club cash is too tight for this pay rise (staff wages sit outside the player cap but still hit the bank).`,
+        }, ...(career.news || [])].slice(0, 25),
       });
       return;
     }
@@ -73,7 +77,7 @@ export function StaffRenewalsPanel({ career, updateCareer, leagueTier, showHeadi
                 <div className="text-right font-mono">{r.proposedYears}y</div>
               </div>
               {!r.volunteer && !canAfford && (
-                <div className="text-[10px] text-[#E84A6F] mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Over salary cap</div>
+                <div className="text-[10px] text-[#E84A6F] mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Cash buffer too low for raise</div>
               )}
               <div className="flex gap-2 justify-end">
                 <button type="button" onClick={() => reject(r)} disabled={closed} className={closed ? 'text-xs px-3 py-2 text-atext-mute' : 'text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10'}>Replace</button>

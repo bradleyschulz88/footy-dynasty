@@ -32,10 +32,34 @@ describe('staff renewals', () => {
     expect(patch.staff[0].wage).toBe(120);
   });
 
-  it('volunteer renewals do not gate on cap', () => {
-    const career = { difficulty: 'contender', squad: [], finance: { wageBudget: 1 }, staff: [] };
+  it('volunteer renewals do not gate on finances', () => {
+    const career = { finance: { cash: -500_000 } };
     const proposal = { volunteer: true, staffId: 's2', proposedWage: 0 };
     expect(canAffordStaffRenewal(career, proposal)).toBe(true);
+  });
+
+  it('paid raise blocked when club cash is negative', () => {
+    const career = { finance: { cash: -1 } };
+    const proposal = { volunteer: false, staffId: 's1', currentWage: 50_000, proposedWage: 52_000 };
+    expect(canAffordStaffRenewal(career, proposal)).toBe(false);
+  });
+
+  it('paid raise blocked when cash cannot cover liquidity buffer', () => {
+    const career = { finance: { cash: 100 } };
+    const proposal = { volunteer: false, staffId: 's1', currentWage: 50_000, proposedWage: 60_000 };
+    expect(canAffordStaffRenewal(career, proposal)).toBe(false);
+  });
+
+  it('paid raise allowed when cash covers liquidity buffer on wage delta', () => {
+    const career = { finance: { cash: 50_000 } };
+    const proposal = { volunteer: false, staffId: 's1', currentWage: 50_000, proposedWage: 60_000 };
+    expect(canAffordStaffRenewal(career, proposal)).toBe(true);
+  });
+
+  it('flat or reduced wage offers always allowed when cash non-negative', () => {
+    const career = { finance: { cash: 0 } };
+    expect(canAffordStaffRenewal(career, { volunteer: false, currentWage: 80_000, proposedWage: 80_000 })).toBe(true);
+    expect(canAffordStaffRenewal(career, { volunteer: false, currentWage: 80_000, proposedWage: 70_000 })).toBe(true);
   });
 
   it('reject rolls replacement with new name', () => {

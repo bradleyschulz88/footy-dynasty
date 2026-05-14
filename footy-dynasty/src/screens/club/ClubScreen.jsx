@@ -59,7 +59,6 @@ import {
   buildInitialSponsorOffers,
 } from '../../lib/finance/sponsors.js';
 import { proposeRenewal, renewalExtensionStableKey, applyRenewal, applyRenewalRejection, canAffordRenewal } from '../../lib/finance/contracts.js';
-import { applyStaffRenewalAccept, applyStaffRenewalReject, canAffordStaffRenewal } from '../../lib/staffRenewals.js';
 import { getAdvanceContext } from '../../lib/advanceContext.js';
 import {
   ensureCareerBoard,

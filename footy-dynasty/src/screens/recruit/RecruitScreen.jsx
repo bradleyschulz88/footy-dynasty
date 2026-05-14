@@ -74,7 +74,6 @@ import {
   buildInitialSponsorOffers,
 } from '../../lib/finance/sponsors.js';
 import { proposeRenewal, renewalExtensionStableKey, applyRenewal, applyRenewalRejection, canAffordRenewal } from '../../lib/finance/contracts.js';
-import { applyStaffRenewalAccept, applyStaffRenewalReject, canAffordStaffRenewal } from '../../lib/staffRenewals.js';
 import { getAdvanceContext } from '../../lib/advanceContext.js';
 import {
   ensureCareerBoard,
@@ -453,12 +452,33 @@ function TradeTab({ career, updateCareer }) {
   };
 
   const acceptDeal = (p) => {
-    if (career.finance.transferBudget < p.value) return;
-    if (career.squad.length >= 40) return;
-    if (!canAffordSigning(career, negotiating.wage)) return;
-    const signedPlayer = { ...p, id: Date.now() + rand(0, 999_999), wage: negotiating.wage, contract: negotiating.years, receivedInTrade: null, seasonsAtClub: 0 };
-    // Spec Phase 2: trades come out of the transfer budget only; signing-on bonus = 5% of value from cash.
+    if (career.finance.transferBudget < p.value) {
+      updateCareer({
+        news: [{ week: career.week, type: 'loss', text: `⛔ Transfer budget too low to complete the deal for ${p.firstName} ${p.lastName} (${fmtK(p.value)}).` }, ...(career.news || [])].slice(0, 15),
+      });
+      return;
+    }
+    if (career.squad.length >= 40) {
+      updateCareer({
+        news: [{ week: career.week, type: 'loss', text: `⛔ List full — cannot sign ${p.firstName} ${p.lastName} (40 player limit).` }, ...(career.news || [])].slice(0, 15),
+      });
+      return;
+    }
+    if (!canAffordSigning(career, negotiating.wage)) {
+      updateCareer({
+        news: [{ week: career.week, type: 'loss', text: `⛔ Player list cap won’t fit ${p.firstName} ${p.lastName} at ${fmtK(negotiating.wage)}/yr.` }, ...(career.news || [])].slice(0, 15),
+      });
+      return;
+    }
     const signingBonus = Math.round(p.value * 0.05);
+    if ((career.finance.cash ?? 0) < signingBonus) {
+      updateCareer({
+        news: [{ week: career.week, type: 'loss', text: `⛔ Cash too low for signing bonus (${fmtK(signingBonus)}) on ${p.firstName} ${p.lastName}.` }, ...(career.news || [])].slice(0, 15),
+      });
+      return;
+    }
+    const signedPlayer = { ...p, id: `trade_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage: negotiating.wage, contract: negotiating.years, receivedInTrade: null, seasonsAtClub: 0 };
+    // Spec Phase 2: trades come out of the transfer budget only; signing-on bonus = 5% of value from cash.
     updateCareer({
       squad: [...career.squad, signedPlayer],
       tradePool: pool.filter(x => x.id !== p.id),
@@ -1093,14 +1113,19 @@ function YouthTab({ career, club, updateCareer }) {
       });
       return;
     }
-    if (career.squad.length >= 40) return;
+    if (career.squad.length >= 40) {
+      updateCareer({
+        news: [{ week: career.week, type: 'loss', text: `⛔ List full — cannot add ${p.firstName} ${p.lastName} from the academy (40 player limit).` }, ...career.news].slice(0, 15),
+      });
+      return;
+    }
     const youthTier = leagueTierOf(career);
     const wage = youthTier === 1 ? 100_000 : youthTier === 2 ? 35_000 : 8_000;
     if (!canAffordSigning(career, wage)) {
       updateCareer({ news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot promote ${p.firstName} ${p.lastName} — over salary cap` }, ...career.news].slice(0, 15) });
       return;
     }
-    const rookie = { ...p, id: Date.now() + rand(0, 999_999), wage, contract: 2, rookie: true };
+    const rookie = { ...p, id: `draft_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage, contract: 2, rookie: true };
     const remaining = generated.filter(x => x.id !== p.id);
     setGenerated(remaining);
     updateCareer({
@@ -1280,7 +1305,7 @@ function LocalTab({ career, club, updateCareer }) {
     const fee  = localTier === 1 ? 75_000  : localTier === 2 ? 30_000 : 8_000;
     if (career.finance.cash < fee || career.squad.length >= 40) return;
     if (!canAffordSigning(career, wage)) return;
-    const newPlayer = { ...p, id: Date.now() + rand(0, 999_999), wage, contract: 2 };
+    const newPlayer = { ...p, id: `local_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage, contract: 2 };
     setScoutedPlayers(s => s.filter(x => x.id !== p.id));
     updateCareer({
       squad: [...career.squad, newPlayer],
@@ -1298,7 +1323,7 @@ function LocalTab({ career, club, updateCareer }) {
     const wage = localTier === 1 ? 200_000 : localTier === 2 ? 80_000 : 18_000;
     if (career.squad.length >= 40) return;
     if (!canAffordSigning(career, wage)) return;
-    const newPlayer = { ...p, id: Date.now() + rand(0, 999_999), wage, contract: 2 };
+    const newPlayer = { ...p, id: `walkon_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage, contract: 2 };
     setScoutedPlayers((s) => s.filter((x) => x.id !== p.id));
     updateCareer({
       squad: [...career.squad, newPlayer],

@@ -1,9 +1,12 @@
 // ---------------------------------------------------------------------------
 // Staff contract renewals — ticks at season end with player renewals.
+// Paid staff are NOT charged to the player list cap (TPP); liquidity/cash checks only.
 // ---------------------------------------------------------------------------
 import { pick, rand, rng, seedRng } from './rng.js';
 import { FIRST_NAMES, LAST_NAMES } from './playerGen.js';
-import { canAffordSigning } from './finance/engine.js';
+
+/** Weeks of incremental annual wage the club should cover in cash before approving a raise. */
+export const STAFF_RENEWAL_LIQUIDITY_WEEKS = 2;
 
 export function proposeStaffRenewal(staffMember) {
   if (!staffMember || staffMember.contract > 0) return null;
@@ -32,7 +35,12 @@ export function buildStaffRenewalQueue(staffList) {
 export function canAffordStaffRenewal(career, proposal) {
   if (!proposal || proposal.volunteer) return true;
   const wageDelta = (proposal.proposedWage ?? 0) - (proposal.currentWage ?? 0);
-  return canAffordSigning(career, wageDelta);
+  if (wageDelta <= 0) return true;
+  const cash = career?.finance?.cash ?? 0;
+  if (cash < 0) return false;
+  const weeklyInc = wageDelta / 52;
+  const minReserve = Math.round(weeklyInc * STAFF_RENEWAL_LIQUIDITY_WEEKS);
+  return cash >= Math.max(0, minReserve);
 }
 
 export function applyStaffRenewalAccept(career, proposal) {
