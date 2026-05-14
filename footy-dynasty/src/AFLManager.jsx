@@ -32,6 +32,9 @@ import { GlobalStyle } from "./components/primitives.jsx";
 import GameOverScreen from "./screens/GameOverScreen.jsx";
 import PostMatchSummary from "./screens/PostMatchSummary.jsx";
 import SeasonSummaryScreen from "./screens/SeasonSummaryScreen.jsx";
+import PremiershipScreen from "./screens/PremiershipScreen.jsx";
+import FinalsQualificationScreen from "./screens/FinalsQualificationScreen.jsx";
+import FinalsEliminatedScreen from "./screens/FinalsEliminatedScreen.jsx";
 import MatchDayScreen from "./screens/MatchDayScreen.jsx";
 import SackingSequence from './screens/SackingSequence.jsx';
 import VoteOfConfidenceFlow from './screens/VoteOfConfidenceFlow.jsx';
@@ -97,7 +100,7 @@ import {
 } from './lib/board.js';
 import { getClubGround } from './data/grounds.js';
 import { buildMatchDayExitPatch } from './lib/matchDayFinalize.js';
-import { advanceCareerNextEvent, triggerSackState } from './lib/careerAdvance.js';
+import { advanceCareerNextEvent, triggerSackState, fastForwardFinals } from './lib/careerAdvance.js';
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
 
@@ -214,8 +217,26 @@ function AFLManagerInner() {
     if (!c?.clubId) return;
     const patched = applyCareerPatch(c, buildMatchDayExitPatch);
     const isPreseason = !!c.currentMatchResult?.isPreseason;
-    if (!autoAdvanceCalendar || isPreseason) {
-      sc(patched);
+    const isFinals = !!c.currentMatchResult?.isFinals;
+    if (!autoAdvanceCalendar || isPreseason || isFinals) {
+      let next = patched;
+      if (isFinals && patched.finalsEliminated) {
+        next = { ...next, showFinalsEliminated: true };
+      }
+      if (isFinals && (patched.finalsAlive || []).length === 1) {
+        const advClub = findClub(patched.clubId);
+        const advLeague = PYRAMID[patched.leagueKey];
+        advanceCareerNextEvent({
+          career: next,
+          league: advLeague,
+          club: advClub,
+          setCareer: sc,
+          setScreen: ss,
+          setTab: st,
+        });
+        return;
+      }
+      sc(next);
       return;
     }
     const advClub = findClub(patched.clubId);
@@ -274,6 +295,9 @@ function AFLManagerInner() {
     !career.isSacked &&
     !(career.gameOver && !career.isSacked) &&
     !career.showSeasonSummary &&
+    !career.showPremiershipScreen &&
+    !career.showFinalsQualification &&
+    !career.showFinalsEliminated &&
     !career.inMatchDay &&
     career.boardCrisis?.phase !== 'active' &&
     !career.boardMeetingBlocking &&
@@ -722,6 +746,55 @@ function AFLManagerInner() {
     );
   }
 
+  if (career.showPremiershipScreen && career.premiershipMoment) {
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <motion.div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+          {globalStyle}
+          <PremiershipScreen
+            moment={career.premiershipMoment}
+            club={club}
+            onContinue={() => updateCareer({ showPremiershipScreen: false, premiershipMoment: null })}
+          />
+        </motion.div>
+      </AppMotionConfig>
+    );
+  }
+
+  if (career.showFinalsQualification && career.finalsQualification) {
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <motion.div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+          {globalStyle}
+          <FinalsQualificationScreen
+            qualification={career.finalsQualification}
+            club={club}
+            onContinue={() => updateCareer({ showFinalsQualification: false })}
+          />
+        </motion.div>
+      </AppMotionConfig>
+    );
+  }
+
+  if (career.showFinalsEliminated) {
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <motion.div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+          {globalStyle}
+          <FinalsEliminatedScreen
+            career={career}
+            league={league}
+            onSimRemainder={() => {
+              const next = fastForwardFinals(career, league);
+              setCareer(next);
+            }}
+            onContinue={() => updateCareer({ showFinalsEliminated: false })}
+          />
+        </motion.div>
+      </AppMotionConfig>
+    );
+  }
+
   if (career.showSeasonSummary && career.seasonSummary) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
@@ -763,7 +836,8 @@ function AFLManagerInner() {
             onReview={() => setShowPostMatch(false)}
             onContinue={() => {
               setShowPostMatch(false);
-              completeMatchDay(true);
+              const isFinals = career.currentMatchResult?.isFinals;
+              completeMatchDay(!isFinals);
             }}
           />
         )}

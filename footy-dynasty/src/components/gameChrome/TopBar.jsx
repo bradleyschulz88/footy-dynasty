@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Play } from "lucide-react";
 import { getAdvanceContext, advanceTimeFingerprint } from "../../lib/advanceContext.js";
 import { TRAINING_INFO, formatDate } from "../../lib/calendar.js";
+import { finalsRoundLabel, playerFinalsOpponent } from "../../lib/finalsBracket.js";
 import { findClub } from "../../data/pyramid.js";
 import { fmtK } from "../../lib/format.js";
 import { css } from "../primitives.jsx";
@@ -33,13 +34,17 @@ export function TopBar({
   const nextEv = (career.eventQueue || []).find(e => !e.completed);
   const phaseColors = { preseason: 'var(--A-accent)', season: 'var(--A-accent-2)', finals: 'var(--A-neg)', offseason: '#A78BFA' };
   const phaseLabel  = { preseason: 'Pre-Season', season: 'Season', finals: 'Finals', offseason: 'Off-Season' };
-  const phase = career.phase || 'preseason';
+  const phase = career.inFinals ? 'finals' : (career.phase || 'preseason');
 
   let nextLabel = 'End of Season';
   let nextIcon  = null;
   if (career.inFinals) {
-    nextLabel = 'Finals Match';
-    nextIcon  = '🏆';
+    const alive = career.finalsAlive || [];
+    const oppId = playerFinalsOpponent(career);
+    const opp = oppId ? findClub(oppId) : null;
+    const roundName = finalsRoundLabel(alive.length, league?.tier ?? 1);
+    nextLabel = opp ? `${roundName}: vs ${opp.short}` : roundName;
+    nextIcon = '🏆';
   } else if (nextEv) {
     if (nextEv.type === 'training') {
       const info = TRAINING_INFO[nextEv.subtype] || {};

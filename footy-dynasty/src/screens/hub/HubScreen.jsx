@@ -15,7 +15,7 @@ import {
   Medal,
 } from "lucide-react";
 import { findClub } from "../../data/pyramid.js";
-import { finalsLabel } from "../../lib/leagueEngine.js";
+import { finalsRoundLabel, playerFinalsOpponent, finalsSeedFor } from "../../lib/finalsBracket.js";
 import { fmtK, avgFacilities, avgStaff } from "../../lib/format.js";
 import { TRAINING_INFO, formatDate } from "../../lib/calendar.js";
 import { getAdvanceContext } from "../../lib/advanceContext.js";
@@ -611,20 +611,33 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
 
       {/* Finals Banner */}
       <motion.div variants={hubItem} className="space-y-3">
-      {career.inFinals && (
-        <div className="rounded-2xl p-4 flex items-center justify-between" style={{background:"linear-gradient(135deg, rgba(0, 224, 255, 0.12), rgba(252, 211, 77, 0.06))", border:"2px solid rgba(0, 224, 255, 0.35)"}}>
-          <div className="flex items-center gap-3">
+      {career.inFinals && (() => {
+        const alive = career.finalsAlive || [];
+        const stillIn = alive.includes(career.clubId);
+        const oppId = stillIn ? playerFinalsOpponent(career) : null;
+        const opp = oppId ? findClub(oppId) : null;
+        const roundName = finalsRoundLabel(alive.length, league?.tier ?? 1);
+        const seed = finalsSeedFor(career.clubId, career.finalsBracket);
+        return (
+<div className="rounded-2xl p-4 flex items-center justify-between" style={{background:"linear-gradient(135deg, rgba(0, 224, 255, 0.12), rgba(252, 211, 77, 0.06))", border:"2px solid rgba(0, 224, 255, 0.35)"}}>
+<div className="flex items-center gap-3">
             <span className="text-3xl">🏆</span>
-            <div>
-              <div className="font-display text-2xl text-aaccent">FINALS MODE</div>
-              <div className="text-sm text-atext-dim">{(career.finalsAlive||[]).length} clubs remain · {finalsLabel(career.finalsRound||0, career.finalsTotalRounds||3)}</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="font-display text-xl text-aaccent">{(career.finalsAlive||[]).includes(career.clubId) ? "STILL ALIVE" : "SEASON OVER"}</div>
-          </div>
-        </div>
-      )}
+<div>
+<div className="font-display text-2xl text-aaccent">FINALS</div>
+<div className="text-sm text-atext-dim">
+                {stillIn
+                  ? <>Seed #{seed} · {roundName}{opp ? <> vs <span className="font-bold text-atext">{opp.short}</span></> : null}</>
+                  : `${alive.length} clubs remain · season over for you`}
+</div>
+</div>
+</div>
+<div className="text-right">
+<div className="font-display text-xl text-aaccent">{stillIn ? "STILL ALIVE" : "ELIMINATED"}</div>
+<div className="text-[10px] text-atext-mute">{alive.length} in contention</div>
+</div>
+</div>
+        );
+      })()}
 
       {career.postSeasonPhase === 'trade_period' && career.inTradePeriod && (
         <div className="rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3" style={{background:"linear-gradient(135deg, rgba(74, 232, 154, 0.12), rgba(0, 224, 255, 0.08))", border:"2px solid rgba(74, 232, 154, 0.4)"}}>
@@ -662,7 +675,16 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       )}
 
       {/* Premiership Banner */}
-      {career.premiership === career.season - 1 && (
+      {career.premiership === career.season && (
+        <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"linear-gradient(135deg, rgba(252, 211, 77, 0.18), rgba(0, 224, 255, 0.08))", border:"2px solid rgba(252, 211, 77, 0.5)"}}>
+          <span className="text-3xl">🎉</span>
+                    <div>
+            <div className="font-display text-2xl text-aaccent">REIGNING PREMIERS!</div>
+            <div className="text-sm text-atext-dim">You won the {career.season} flag — defend it this season.</div>
+          </div>
+        </div>
+      )}
+      {career.premiership === career.season - 1 && career.premiership !== career.season && (
         <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"linear-gradient(135deg, rgba(252, 211, 77, 0.12), rgba(0, 224, 255, 0.06))", border:"2px solid rgba(252, 211, 77, 0.35)"}}>
           <span className="text-3xl">🎉</span>
           <div>

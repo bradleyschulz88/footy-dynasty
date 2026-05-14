@@ -6,7 +6,15 @@ import { PYRAMID, findClub } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred, generatePlayer } from './playerGen.js';
 import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus } from './matchEngine.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
-import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
+import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
+import {
+  buildFinalsBracket,
+  appendFinalsCalendarEvents,
+  completeNextFinalsCalendarEvent,
+  pairFinalsRound,
+  finalsRoundLabel,
+  finalsSeedFor,
+} from './finalsBracket.js';
 import { generateTradePool } from './defaults.js';
 import { seedNationalDraft } from './draftSeed.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
@@ -168,7 +176,7 @@ function aiVsAiTeamRating(c, league, clubId) {
   return aiClubRating(clubId, league.tier);
 }
 
-function buildPostMatchSummary(c, league, club, myResult, round) {
+function buildPostMatchSummary(c, league, club, myResult, roundOrLabel) {
   const attribution = myResult.result?.goalAttribution || {};
   let topScorerId = null; let topGoals = -1;
   Object.entries(attribution).forEach(([pid, v]) => {
@@ -205,8 +213,9 @@ function buildPostMatchSummary(c, league, club, myResult, round) {
   }
   const baseCrowd = league.tier === 1 ? 35000 : league.tier === 2 ? 4500 : 800;
   const crowd = Math.round(baseCrowd * (0.6 + 0.5 * rng()));
+  const labelStr = typeof roundOrLabel === 'number' ? `Round ${roundOrLabel}` : String(roundOrLabel || 'Match');
   return {
-    label: `Round ${round}`,
+    label: labelStr,
     myScore: `${myResult.result?.homeGoals ?? 0}.${myResult.result?.homeBehinds ?? 0} (${myResult.myTotal})`,
     oppScore: `${myResult.result?.awayGoals ?? 0}.${myResult.result?.awayBehinds ?? 0} (${myResult.oppTotal})`,
     myShortName: club.short, oppShortName: myResult.opp?.short || 'OPP',
@@ -221,114 +230,174 @@ function buildPostMatchSummary(c, league, club, myResult, round) {
     boardReaction,
     journalistLine: journoLine,
     committeeReaction,
+    isFinals: typeof roundOrLabel === 'string' && roundOrLabel !== `Round ${roundOrLabel}`,
+    isGrandFinal: labelStr === 'Grand Final',
   };
 }
 
-function startFinals(c, league) {
-  const finalists = getFinalsTeams(c.ladder, league.tier);
-  const myPos = sortedLadder(c.ladder).findIndex((r) => r.id === c.clubId) + 1;
-  const inFinals = finalists.some((f) => f.id === c.clubId);
-  const totalRounds = Math.log2(finalists.length);
-  c.inFinals = true;
-  c.finalsRound = 0;
-  c.finalsFinalists = finalists.map((f) => f.id);
-  c.finalsAlive = finalists.map((f) => f.id);
-  c.finalsTotalRounds = Math.ceil(totalRounds);
-  c.finalsResults = [];
-  const news = inFinals
-    ? `🏆 FINALS! Finished ${myPos}${myPos === 1 ? 'st' : myPos === 2 ? 'nd' : myPos === 3 ? 'rd' : 'th'} — into the ${finalsLabel(0, c.finalsTotalRounds)}!`
-    : `Season over. Finished ${myPos}/${sortedLadder(c.ladder).length} — missed finals.`;
-  c.news = [{ week: c.week, type: inFinals ? 'win' : 'draw', text: news }, ...c.news].slice(0, 15);
+function crownPremier(c, league, winnerId) {
+  const winnerClub = findClub(winnerId);
+  const isMeChamp = winnerId === c.clubId;
+  c.premiership = isMeChamp ? c.season : c.premiership;
+  c.news = [{
+    week: c.week,
+    type: isMeChamp ? 'win' : 'loss',
+    text: isMeChamp
+      ? `🏆🎉 PREMIERS! ${winnerClub?.name} are the ${c.season} champions!`
+      : `${winnerClub?.name} win the ${c.season} premiership.`,
+  }, ...c.news].slice(0, 15);
+  c.inFinals = false;
+  c.phase = 'offseason';
+  c.finalsEliminated = false;
+  if (isMeChamp) {
+    c.showPremiershipScreen = true;
+    c.premiershipMoment = {
+      season: c.season,
+      leagueName: league.name,
+      leagueShort: league.short,
+      leagueTier: league.tier,
+      clubName: winnerClub?.name,
+      clubShort: winnerClub?.short,
+    };
+  }
+  beginPostSeasonTradePeriod(c, league, c.leagueKey);
   return c;
+}
+
+function startFinals(c, league) {
+  if (c.inFinals) return c;
+  const finalists = getFinalsTeams(c.ladder, league.tier);
+  const sorted = sortedLadder(c.ladder);
+  const myPos = sorted.findIndex((r) => r.id === c.clubId) + 1;
+  const inFinals = finalists.some((f) => f.id === c.clubId);
+  const seedIds = finalists.map((f) => f.id);
+
+  c.inFinals = true;
+  c.phase = 'finals';
+  c.finalsRound = 0;
+  c.finalsFinalists = seedIds;
+  c.finalsAlive = [...seedIds];
+  c.finalsTotalRounds = finalsWeeksEstimateFromCount(seedIds.length);
+  c.finalsResults = [];
+  c.finalsBracket = buildFinalsBracket(seedIds, league.tier);
+  c.finalsEliminated = false;
+  c.eventQueue = appendFinalsCalendarEvents(c, seedIds.length);
+
+  if (inFinals) {
+    c.showFinalsQualification = true;
+    c.finalsQualification = {
+      position: myPos,
+      seed: finalsSeedFor(c.clubId, c.finalsBracket),
+      totalTeams: sorted.length,
+      leagueShort: league.short,
+      leagueTier: league.tier,
+      firstRoundLabel: finalsRoundLabel(seedIds.length, league.tier),
+    };
+    c.news = [{
+      week: c.week,
+      type: 'win',
+      text: `🏆 FINALS! Finished ${myPos}${myPos === 1 ? 'st' : myPos === 2 ? 'nd' : myPos === 3 ? 'rd' : 'th'} — ${c.finalsQualification.firstRoundLabel} awaits.`,
+    }, ...c.news].slice(0, 15);
+  } else {
+    c.news = [{
+      week: c.week,
+      type: 'draw',
+      text: `Season over. Finished ${myPos}/${sorted.length} — missed finals.`,
+    }, ...c.news].slice(0, 15);
+    beginPostSeasonTradePeriod(c, league, c.leagueKey);
+    c.inFinals = false;
+    c.phase = 'offseason';
+  }
+  return c;
+}
+
+function finalsWeeksEstimateFromCount(n) {
+  let alive = n;
+  let w = 0;
+  while (alive > 1) { w += 1; alive = Math.ceil(alive / 2); }
+  return w;
+}
+
+function simFinalsPair(c, league, m, roundLabel) {
+  const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff))
+    + getCaptainMatchBonus(c, true);
+  const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
+  const isHome = m.home === c.clubId;
+  const homeR = m.home === c.clubId ? myRating : aiClubRating(m.home, league.tier);
+  const awayR = m.away === c.clubId ? myRating : aiClubRating(m.away, league.tier);
+  let result;
+  if (isPlayerMatch) {
+    c.aiSquads = ensureSquadsForLeague(c, league);
+    const oppId = isHome ? m.away : m.home;
+    const oppClub = findClub(oppId);
+    const oppSquad = c.aiSquads?.[oppId];
+    const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
+    const oppLineupIds = oppLineup.map((p) => p.id);
+    const neutralTraining = { intensity: 60, focus: {} };
+    const oppRatingForTactics = oppSquad?.length
+      ? teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60)
+      : aiClubRating(oppId, league.tier);
+    const oppTactic = resolveAiOppTactic(oppId, oppRatingForTactics, myRating);
+    const playerLineup = c.lineup.map((id) => c.squad.find((p) => p.id === id)).filter(Boolean);
+    let groundScoringMod = 1.0;
+    let groundAccuracyMod = 1.0;
+    if (isHome) {
+      const band = groundConditionBand(c.groundCondition ?? 85);
+      groundScoringMod = band.scoringMod;
+      groundAccuracyMod = band.accuracyMod;
+    }
+    const getPlayerStrengthForQuarter = (qi) =>
+      teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
+      + benchStrengthBonus(c.squad, c.lineup, qi);
+    const getOppStrengthForQuarter = oppSquad?.length
+      ? (qi) =>
+          teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
+          + benchStrengthBonus(oppSquad, oppLineupIds, qi)
+      : null;
+    result = simMatchWithQuarters(
+      { rating: homeR }, { rating: awayR }, isHome, myRating,
+      {
+        tactic: c.tacticChoice || 'balanced',
+        playerLineup,
+        oppLineup,
+        oppTactic,
+        groundScoringMod,
+        groundAccuracyMod,
+        getPlayerStrengthForQuarter,
+        ...(getOppStrengthForQuarter ? { getOppStrengthForQuarter } : {}),
+        homeFixtureAdvantage: resolveHomeAdvantageForFixture(c, league, isHome, findClub(c.clubId), oppClub),
+      },
+    );
+  } else {
+    const weatherTag = typeof c.weeklyWeather?.[c.week] === 'string' ? c.weeklyWeather[c.week] : 'fine';
+    const homeAdvAi = homeAdvantageAiHome(
+      league,
+      getClubGround(findClub(m.home), 3, league.tier),
+      true,
+      weatherTag,
+    );
+    result = simMatch({ rating: homeR }, { rating: awayR }, false, awayR, homeAdvAi);
+  }
+  const winnerId = result.winner === 'home' ? m.home : result.winner === 'away' ? m.away : m.home;
+  m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
+  return { result, winnerId, isPlayerMatch, isHome };
 }
 
 function advanceFinalsWeek(c, league) {
   const alive = c.finalsAlive || [];
   if (alive.length <= 1) {
-    const winner = alive[0];
-    const winnerClub = findClub(winner);
-    const isMeChamp = winner === c.clubId;
-    c.premiership = isMeChamp ? c.season : c.premiership;
-    c.news = [{ week: c.week, type: isMeChamp ? 'win' : 'loss',
-      text: isMeChamp ? `🏆🎉 PREMIERS! ${winnerClub?.name} are the ${c.season} champions!`
-        : `${winnerClub?.name} win the ${c.season} premiership.` }, ...c.news].slice(0, 15);
-    c.inFinals = false;
-    beginPostSeasonTradePeriod(c, league, c.leagueKey);
-    return c;
+    return crownPremier(c, league, alive[0]);
   }
 
-  const sorted = c.finalsFinalists.filter((id) => alive.includes(id));
-  const pairs = [];
-  for (let i = 0; i < Math.floor(sorted.length / 2); i++) {
-    pairs.push({ home: sorted[i], away: sorted[sorted.length - 1 - i] });
-  }
-
+  const tier = c.finalsBracket?.tier ?? league.tier;
+  const pairs = pairFinalsRound(c.finalsFinalists, alive, tier);
+  const roundLabel = finalsRoundLabel(alive.length, tier);
   const newAlive = [];
-  const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff))
-    + getCaptainMatchBonus(c, true);
-  const roundLabel = finalsLabel(c.finalsRound, c.finalsTotalRounds);
+  let playerMatchPayload = null;
 
   for (const m of pairs) {
-    const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
-    const isHome = m.home === c.clubId;
-    const homeR = m.home === c.clubId ? myRating : aiClubRating(m.home, league.tier);
-    const awayR = m.away === c.clubId ? myRating : aiClubRating(m.away, league.tier);
-    let result;
-    if (isPlayerMatch) {
-      c.aiSquads = ensureSquadsForLeague(c, league);
-      const oppId = isHome ? m.away : m.home;
-      const oppClub = findClub(oppId);
-      const oppSquad = c.aiSquads?.[oppId];
-      const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
-      const oppLineupIds = oppLineup.map((p) => p.id);
-      const neutralTraining = { intensity: 60, focus: {} };
-      const oppRatingForTactics = oppSquad?.length
-        ? teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60)
-        : aiClubRating(oppId, league.tier);
-      const oppTactic = resolveAiOppTactic(oppId, oppRatingForTactics, myRating);
-      const playerLineup = c.lineup.map((id) => c.squad.find((p) => p.id === id)).filter(Boolean);
-      let groundScoringMod = 1.0;
-      let groundAccuracyMod = 1.0;
-      if (isHome) {
-        const band = groundConditionBand(c.groundCondition ?? 85);
-        groundScoringMod = band.scoringMod;
-        groundAccuracyMod = band.accuracyMod;
-      }
-      const getPlayerStrengthForQuarter = (qi) =>
-        teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
-        + benchStrengthBonus(c.squad, c.lineup, qi);
-      const getOppStrengthForQuarter = oppSquad?.length
-        ? (qi) =>
-            teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
-            + benchStrengthBonus(oppSquad, oppLineupIds, qi)
-        : null;
-      result = simMatchWithQuarters(
-        { rating: homeR }, { rating: awayR }, isHome, myRating,
-        {
-          tactic: c.tacticChoice || 'balanced',
-          playerLineup,
-          oppLineup,
-          oppTactic,
-          groundScoringMod,
-          groundAccuracyMod,
-          getPlayerStrengthForQuarter,
-          ...(getOppStrengthForQuarter ? { getOppStrengthForQuarter } : {}),
-          homeFixtureAdvantage: resolveHomeAdvantageForFixture(c, league, isHome, findClub(c.clubId), oppClub),
-        },
-      );
-    } else {
-      const weatherTag = typeof c.weeklyWeather?.[c.week] === 'string' ? c.weeklyWeather[c.week] : 'fine';
-      const homeAdvAi = homeAdvantageAiHome(
-        league,
-        getClubGround(findClub(m.home), 3, league.tier),
-        true,
-        weatherTag,
-      );
-      result = simMatch({ rating: homeR }, { rating: awayR }, false, awayR, homeAdvAi);
-    }
-    const winnerId = result.winner === 'home' ? m.home : result.winner === 'away' ? m.away : m.home;
+    const { result, winnerId, isPlayerMatch, isHome } = simFinalsPair(c, league, m, roundLabel);
     newAlive.push(winnerId);
-    m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
 
     if (isPlayerMatch) {
       const playerWon = (isHome && result.winner === 'home') || (!isHome && result.winner === 'away');
@@ -351,32 +420,105 @@ function advanceFinalsWeek(c, league) {
       const ag = isHome ? (result.awayGoals ?? 0) : (result.homeGoals ?? 0);
       const ab = isHome ? (result.awayBehinds ?? 0) : (result.homeBehinds ?? 0);
       pushTeamStatsFromResult(c, hg, hb, ag, ab, playerWon, drewFinal);
-      c.news = [{ week: c.week, type: playerWon ? 'win' : 'loss',
+      const matchLabel = m.label || roundLabel;
+      c.news = [{
+        week: c.week,
+        type: playerWon ? 'win' : 'loss',
         text: playerWon
-          ? `✅ ${roundLabel} WIN! ${myScore} def ${opp?.short} ${oppScore}`
-          : `❌ Eliminated in ${roundLabel}. ${opp?.short} ${oppScore} def ${myScore}` },
-      ...c.news].slice(0, 15);
-      c.inMatchDay = true;
-      c.currentMatchResult = {
-        ...result,
-        isHome, opp,
-        myTotal: myScore, oppTotal: oppScore,
-        won: playerWon, drew: drewFinal,
-        isPreseason: false, label: roundLabel, isAFL: league.tier === 1,
+          ? `✅ ${matchLabel} WIN! ${myScore} def ${opp?.short} ${oppScore}`
+          : `❌ Eliminated in ${matchLabel}. ${opp?.short} ${oppScore} def ${myScore}`,
+      }, ...c.news].slice(0, 15);
+
+      const club = findClub(c.clubId);
+      const myResult = {
+        result, isHome, opp, myTotal: myScore, oppTotal: oppScore, won: playerWon, drew: drewFinal,
       };
-      c.lastEvent = {
-        type: 'round', round: roundLabel, date: c.currentDate || '', isHome, opp,
-        result, myTotal: myScore, oppTotal: oppScore, won: playerWon, drew: drewFinal,
+      playerMatchPayload = {
+        result,
+        isHome,
+        opp,
+        myTotal: myScore,
+        oppTotal: oppScore,
+        won: playerWon,
+        drew: drewFinal,
+        matchLabel,
+        myResult,
+        club,
       };
     }
-    c.finalsResults.push({ round: c.finalsRound, label: roundLabel, ...m });
+    c.finalsResults.push({ round: c.finalsRound, label: m.label || roundLabel, ...m });
   }
 
-  if (sorted.length % 2 !== 0) newAlive.unshift(sorted[0]);
-
-  c.finalsAlive = newAlive;
+  const orderedAlive = c.finalsFinalists.filter((id) => newAlive.includes(id));
+  c.finalsAlive = orderedAlive.length ? orderedAlive : newAlive;
   c.finalsRound += 1;
   c.week += 1;
+  c.eventQueue = completeNextFinalsCalendarEvent(c.eventQueue, c.finalsRound - 1);
+
+  if (playerMatchPayload) {
+    const { result, isHome, opp, myTotal, oppTotal, won, drew, matchLabel, myResult, club } = playerMatchPayload;
+    c.inMatchDay = true;
+    c.currentMatchResult = {
+      ...result,
+      isHome,
+      opp,
+      myTotal,
+      oppTotal,
+      won,
+      drew: drew,
+      isPreseason: false,
+      label: matchLabel,
+      isAFL: league.tier === 1,
+      isFinals: true,
+      isGrandFinal: matchLabel === 'Grand Final',
+    };
+    c.lastEvent = {
+      type: 'finals',
+      round: matchLabel,
+      date: c.currentDate || '',
+      isHome,
+      opp,
+      result,
+      myTotal,
+      oppTotal,
+      won,
+      drew,
+    };
+    c.lastMatchSummary = buildPostMatchSummary(c, league, club, myResult, matchLabel);
+    if (!won && matchLabel !== 'Grand Final') {
+      c.finalsEliminated = true;
+    }
+    return c;
+  }
+
+  if (c.finalsAlive.length <= 1) {
+    return crownPremier(c, league, c.finalsAlive[0]);
+  }
+  return c;
+}
+
+/** Fast-forward AI finals after the player is eliminated. */
+export function fastForwardFinals(career, league) {
+  const c = JSON.parse(JSON.stringify(career));
+  let guard = 0;
+  while (c.inFinals && guard < 12) {
+    guard += 1;
+    const alive = c.finalsAlive || [];
+    if (alive.length <= 1) {
+      crownPremier(c, league, alive[0]);
+      break;
+    }
+    if (alive.includes(c.clubId)) break;
+    const before = c.finalsRound;
+    advanceFinalsWeek(c, league);
+    if (c.inMatchDay) {
+      c.inMatchDay = false;
+      c.currentMatchResult = null;
+      c.lastMatchSummary = null;
+    }
+    if (c.finalsRound === before && c.inFinals) break;
+  }
+  c.showFinalsEliminated = false;
   return c;
 }
 
@@ -585,9 +727,10 @@ function finishSeason(c, league) {
 
   const games = (myRow.W || 0) + (myRow.L || 0) + (myRow.D || 0);
   const winRate = games > 0 ? (myRow.W || 0) / games : 0;
+  const madeFinals = (c.finalsFinalists || []).includes(c.clubId) || champion;
   c.coachReputation = applyEndOfSeasonReputation(c.coachReputation, {
     premiership: champion,
-    finals: myPos <= 4,
+    finals: madeFinals && !champion,
     promoted, relegated, winRate,
   });
   c.coachTier = coachTierFromScore(c.coachReputation);

@@ -1,6 +1,8 @@
 // Labels for the primary time-advance control (calendar vs off-season pipeline).
 import { TRADE_PERIOD_DAYS, POST_TRADE_DRAFT_COUNTDOWN_DAYS } from './tradePeriod.js';
 import { TRAINING_INFO } from './calendar.js';
+import { finalsRoundLabel, playerFinalsOpponent } from './finalsBracket.js';
+import { findClub } from '../data/pyramid.js';
 
 /** Stable string for UI animation keys when calendar / off-season time moves forward. */
 export function advanceTimeFingerprint(career) {
@@ -57,12 +59,19 @@ export function getAdvanceContext(career, league) {
   }
 
   if (career.inFinals) {
+    const alive = career.finalsAlive || [];
+    const stillIn = alive.includes(career.clubId);
+    const oppId = stillIn ? playerFinalsOpponent(career) : null;
+    const opp = oppId ? findClub(oppId) : null;
+    const roundName = finalsRoundLabel(alive.length, league?.tier ?? 1);
     return {
       mode: 'finals',
-      buttonLabel: 'Play finals',
-      summary: 'Finals week',
-      detail: 'Sim the next finals fixture (or complete the series).',
-      nextEventShort: 'Finals match',
+      buttonLabel: stillIn ? 'Play finals' : 'Sim finals',
+      summary: stillIn ? `${roundName} · ${alive.length} clubs left` : 'Finals · eliminated',
+      detail: stillIn && opp
+        ? `Next: ${roundName} vs ${opp.short}`
+        : 'Sim remaining finals fixtures to crown a premier.',
+      nextEventShort: stillIn && opp ? `${roundName}: vs ${opp.short}` : roundName,
     };
   }
 

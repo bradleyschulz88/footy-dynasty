@@ -11,6 +11,7 @@ import {
 import { PYRAMID, findClub } from "../../data/pyramid.js";
 import { pyramidNoteForLeague } from "../../data/pyramidMeta.js";
 import { sortedLadder } from "../../lib/leagueEngine.js";
+import { finalsRoundLabel } from "../../lib/finalsBracket.js";
 import { turningPointRibbon } from "../../lib/gameDepth.js";
 import TabNav from "../../components/TabNav.jsx";
 import { css, Pill } from "../../components/primitives.jsx";
@@ -23,6 +24,9 @@ export default function CompetitionScreen({ career, club, league, tab, setTab, o
   const tabs = [
     { key: "ladder", label: "Ladder", icon: BarChart3 },
     { key: "fixtures", label: "Fixtures", icon: Calendar },
+    ...(career.inFinals || (career.finalsResults || []).length
+      ? [{ key: "finals", label: "Finals", icon: Trophy }]
+      : []),
     { key: "pyramid", label: "Pyramid", icon: Trophy },
   ];
   return (
@@ -41,6 +45,7 @@ export default function CompetitionScreen({ career, club, league, tab, setTab, o
       <TabNav tabs={tabs} active={t} onChange={setTab} />
       {t === "ladder"   && <LadderTab career={career} club={club} league={league} />}
       {t === "fixtures" && <FixturesTab career={career} club={club} league={league} />}
+      {t === "finals" && <FinalsTab career={career} league={league} />}
       {t === "pyramid"  && <PyramidTab career={career} club={club} league={league} />}
     </div>
   );
@@ -181,6 +186,67 @@ function FixturesTab({ career, club, league }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function FinalsTab({ career, league }) {
+  const results = career.finalsResults || [];
+  const alive = new Set(career.finalsAlive || []);
+  const seeds = career.finalsBracket?.seeds || career.finalsFinalists || [];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className={`${css.h1} text-3xl`}>FINALS SERIES</div>
+        <div className="text-xs text-atext-dim">
+          {career.inFinals
+            ? `${alive.size} clubs remain · ${finalsRoundLabel(alive.size, league?.tier ?? 1)} next`
+            : "Series complete"}
+        </div>
+      </div>
+      {seeds.length > 0 && (
+        <div className={`${css.panel} p-4`}>
+          <div className="text-[10px] uppercase tracking-widest text-atext-mute mb-2">Seeding</div>
+          <div className="flex flex-wrap gap-2">
+            {seeds.map((id, i) => {
+              const c = findClub(id);
+              const isMe = id === career.clubId;
+              const out = !alive.has(id);
+              return (
+                <span
+                  key={id}
+                  className={`text-xs px-2 py-1 rounded-lg border ${isMe ? "border-aaccent bg-aaccent/10 font-bold" : "border-aline"} ${out ? "opacity-40 line-through" : ""}`}
+                >
+                  #{i + 1} {c?.short || id}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      <div className="space-y-2">
+        {results.map((r, i) => {
+          const home = findClub(r.home);
+          const away = findClub(r.away);
+          const my = r.home === career.clubId || r.away === career.clubId;
+          const res = r.result;
+          return (
+            <div
+              key={i}
+              className={`${css.panel} p-3 flex flex-wrap items-center justify-between gap-2 ${my ? "ring-1 ring-aaccent/40" : ""}`}
+            >
+              <span className="text-[10px] font-bold uppercase text-aaccent">{r.label}</span>
+              <span className="text-sm">
+                {home?.short} {res ? `${res.hScore}–${res.aScore}` : "vs"} {away?.short}
+              </span>
+            </div>
+          );
+        })}
+        {!results.length && career.inFinals && (
+          <p className="text-sm text-atext-dim">Advance time to play the opening finals week.</p>
+        )}
       </div>
     </div>
   );
