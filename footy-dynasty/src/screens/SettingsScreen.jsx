@@ -144,6 +144,37 @@ export default function SettingsScreen({
       </div>
 
       <div className={`${css.panel} p-5 space-y-4`}>
+        <h3 className={`${css.h1} text-2xl`}>GAMEPLAY</h3>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-bold text-sm">Advance reminders</div>
+            <div className="text-[11px] text-atext-dim max-w-md">
+              Optional checklist before time moves — lineup, renewals, cap, and staff prep. Hard blocks (board inbox, trades) always apply.
+            </div>
+          </div>
+          <div className="flex rounded-lg overflow-hidden border border-aline flex-wrap">
+            {([
+              { id: 'before_matches', label: 'Matches' },
+              { id: 'all_events', label: 'All events' },
+              { id: 'minimal', label: 'Off' },
+            ]).map(({ id, label }) => {
+              const active = (opts.advanceReminders ?? 'before_matches') === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => patchOpts({ advanceReminders: id })}
+                  className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${active ? 'bg-aaccent text-[#001520]' : 'bg-apanel-2 text-atext-dim'}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className={`${css.panel} p-5 space-y-4`}>
         <h3 className={`${css.h1} text-2xl`}>DISPLAY</h3>
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>

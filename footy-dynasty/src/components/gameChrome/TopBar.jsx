@@ -25,6 +25,7 @@ export function TopBar({
   onAdvance,
   advanceDisabled,
   advanceDisabledReason,
+  advanceAgendaCount = 0,
   tutorialSpotlightAdvance,
 }) {
   const ctx = getAdvanceContext(career, league);
@@ -155,6 +156,15 @@ export function TopBar({
             className={`${css.btnPrimary} flex items-center gap-1.5 md:gap-2 glow text-[11px] md:text-xs px-3 md:px-5 ${tutorialSpotlightAdvance ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${advanceDisabled ? "opacity-45 cursor-not-allowed" : ""}`}
           >
             <Play className="w-4 h-4" /> {ctx.buttonLabel.toUpperCase()}
+            {!advanceDisabled && advanceAgendaCount > 0 && (
+              <span
+                className="ml-0.5 min-w-[1.25rem] h-5 px-1 rounded-md text-[10px] font-mono font-bold flex items-center justify-center"
+                style={{ background: "rgba(232,74,111,0.2)", color: "#E84A6F", border: "1px solid rgba(232,74,111,0.35)" }}
+                title={`${advanceAgendaCount} optional reminder${advanceAgendaCount === 1 ? "" : "s"} before advancing`}
+              >
+                {advanceAgendaCount}
+              </span>
+            )}
           </motion.button>
         </div>
       </div>

@@ -50,6 +50,8 @@ import { TopBar } from './components/gameChrome/TopBar.jsx';
 import { InboxBanner } from './components/InboxBanner.jsx';
 import { ExportReminderBanner } from './components/ExportReminderBanner.jsx';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.jsx';
+import AdvanceAgendaModal from './components/AdvanceAgendaModal.jsx';
+import { getVisibleAdvanceAgenda, snoozeAdvanceAgendaItems } from './lib/advanceAgenda.js';
 import { recordGameEvent } from './lib/gameAnalytics.js';
 import {
   useCareerAutosaveEffect,
@@ -144,6 +146,8 @@ function AFLManagerInner() {
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [advanceAgendaOpen, setAdvanceAgendaOpen] = useState(false);
+  const [advanceAgendaItems, setAdvanceAgendaItems] = useState([]);
 
   const bumpSlotMeta = useCallback(() => setSlotMetaTick((t) => t + 1), []);
 
@@ -152,12 +156,58 @@ function AFLManagerInner() {
     advanceShellRef.current = { career, setCareer, setScreen };
   }, [career, setCareer, setScreen]);
 
-  const advanceToNextEvent = useCallback(() => {
+  const performAdvance = useCallback(() => {
     const { career: c, setCareer: sc, setScreen: ss } = advanceShellRef.current;
     if (!c?.clubId) return;
     const advClub = findClub(c.clubId);
     const advLeague = PYRAMID[c.leagueKey];
     advanceCareerNextEvent({ career: c, league: advLeague, club: advClub, setCareer: sc, setScreen: ss });
+  }, []);
+
+  const requestAdvance = useCallback(() => {
+    const { career: c } = advanceShellRef.current;
+    if (!c?.clubId) return;
+    if (tutorialLocksAdvanceButton(c) || advanceBlockedByCareerNeeds(c)) return;
+    const advLeague = PYRAMID[c.leagueKey];
+    const items = getVisibleAdvanceAgenda(c, advLeague);
+    if (items.length > 0) {
+      setAdvanceAgendaItems(items);
+      setAdvanceAgendaOpen(true);
+      return;
+    }
+    performAdvance();
+  }, [performAdvance]);
+
+  const advanceToNextEvent = requestAdvance;
+
+  const handleAdvanceAgendaClose = useCallback(() => {
+    setAdvanceAgendaOpen(false);
+    setAdvanceAgendaItems([]);
+  }, []);
+
+  const handleAdvanceAgendaAnyway = useCallback((snooze, itemIds) => {
+    setAdvanceAgendaOpen(false);
+    setAdvanceAgendaItems([]);
+    const { career: c, setCareer: sc, setScreen: ss } = advanceShellRef.current;
+    if (!c?.clubId) return;
+    const nextCareer =
+      snooze && itemIds?.length ? { ...c, ...snoozeAdvanceAgendaItems(c, itemIds) } : c;
+    const advClub = findClub(nextCareer.clubId);
+    const advLeague = PYRAMID[nextCareer.leagueKey];
+    advanceCareerNextEvent({
+      career: nextCareer,
+      league: advLeague,
+      club: advClub,
+      setCareer: sc,
+      setScreen: ss,
+    });
+  }, []);
+
+  const handleAdvanceAgendaGoTo = useCallback((item) => {
+    setAdvanceAgendaOpen(false);
+    setAdvanceAgendaItems([]);
+    setScreen(item.screen);
+    setTab(item.tab ?? null);
   }, []);
 
   const navCareerRef = useRef(null);
@@ -561,6 +611,10 @@ function AFLManagerInner() {
   const updateCareer = (patch) => setCareer((c) => mergeCareerPatchWithInboxSync(c, patch));
 
   const tutorialActive = career && !career.tutorialComplete;
+  const visibleAdvanceAgendaCount =
+    !tutorialLocksAdvanceButton(career) && !advanceBlockedByCareerNeeds(career)
+      ? getVisibleAdvanceAgenda(career, league).length
+      : 0;
 
   // ============== RENDER ==============
   const globalStyle = <GlobalStyle />;
@@ -796,6 +850,7 @@ function AFLManagerInner() {
                 ? "Finish Club → Board inbox replies, resolve trade-period offers (Recruit → Trades), or clear other blocking inbox items before advancing."
                 : undefined
           }
+          advanceAgendaCount={visibleAdvanceAgendaCount}
           tutorialSpotlightAdvance={!!tutorialActive && (career.tutorialStep ?? 0) === 6}
         />
         <InboxBanner
@@ -913,6 +968,15 @@ function AFLManagerInner() {
         />
       )}
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <AdvanceAgendaModal
+        open={advanceAgendaOpen}
+        career={career}
+        league={league}
+        items={advanceAgendaItems}
+        onClose={handleAdvanceAgendaClose}
+        onAdvanceAnyway={handleAdvanceAgendaAnyway}
+        onGoTo={handleAdvanceAgendaGoTo}
+      />
     </div>
     </AppMotionConfig>
   );

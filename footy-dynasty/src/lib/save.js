@@ -341,6 +341,15 @@ export function migrate(save) {
     };
   }
 
+  if (v < 23) {
+    s.saveVersion = 23;
+    if (!s.advanceAgendaSnooze || typeof s.advanceAgendaSnooze !== 'object') {
+      s.advanceAgendaSnooze = {};
+    }
+    if (!s.options || typeof s.options !== 'object') s.options = {};
+    if (!s.options.advanceReminders) s.options.advanceReminders = 'before_matches';
+  }
+
   return s;
 }
 
