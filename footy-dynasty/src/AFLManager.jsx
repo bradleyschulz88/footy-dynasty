@@ -96,7 +96,7 @@ import {
   recalcBoardConfidence,
 } from './lib/board.js';
 import { getClubGround } from './data/grounds.js';
-import { buildPendingPlayerMatchPatch } from './lib/matchDayFinalize.js';
+import { buildMatchDayExitPatch } from './lib/matchDayFinalize.js';
 import { advanceCareerNextEvent, triggerSackState } from './lib/careerAdvance.js';
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
@@ -207,14 +207,27 @@ function AFLManagerInner() {
     });
   }, []);
 
-  const finalizeMatchDayExit = useCallback((careerSnap) => {
-    const patch = buildPendingPlayerMatchPatch(careerSnap) || {};
-    return {
-      ...patch,
-      inMatchDay: false,
-      currentMatchResult: null,
-      lastMatchSummary: null,
-    };
+  const finalizeMatchDayExit = useCallback((careerSnap) => buildMatchDayExitPatch(careerSnap), []);
+
+  const completeMatchDay = useCallback((autoAdvanceCalendar = false) => {
+    const { career: c, setCareer: sc, setScreen: ss, setTab: st } = advanceShellRef.current;
+    if (!c?.clubId) return;
+    const patched = applyCareerPatch(c, buildMatchDayExitPatch);
+    const isPreseason = !!c.currentMatchResult?.isPreseason;
+    if (!autoAdvanceCalendar || isPreseason) {
+      sc(patched);
+      return;
+    }
+    const advClub = findClub(patched.clubId);
+    const advLeague = PYRAMID[patched.leagueKey];
+    advanceCareerNextEvent({
+      career: patched,
+      league: advLeague,
+      club: advClub,
+      setCareer: sc,
+      setScreen: ss,
+      setTab: st,
+    });
   }, []);
 
   const handleAdvanceAgendaGoTo = useCallback((item) => {
@@ -740,7 +753,7 @@ function AFLManagerInner() {
             if (career.lastMatchSummary && !career.currentMatchResult.isPreseason) {
               setShowPostMatch(true);
             } else {
-              updateCareer((c) => finalizeMatchDayExit(c));
+              completeMatchDay(false);
             }
           }}
         />
@@ -750,7 +763,7 @@ function AFLManagerInner() {
             onReview={() => setShowPostMatch(false)}
             onContinue={() => {
               setShowPostMatch(false);
-              updateCareer((c) => finalizeMatchDayExit(c));
+              completeMatchDay(true);
             }}
           />
         )}

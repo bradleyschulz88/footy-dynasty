@@ -27,8 +27,8 @@ describe('generateSeasonCalendar', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('training events only fall on Mon/Wed/Fri', () => {
-    const training = events.filter(ev => ev.type === 'training');
+  it('preseason training events only fall on Mon/Wed/Fri', () => {
+    const training = events.filter(ev => ev.type === 'training' && ev.phase === 'preseason');
     expect(training.length).toBeGreaterThan(0);
     training.forEach(ev => {
       const dow = getDayOfWeek(ev.date);
@@ -36,8 +36,17 @@ describe('generateSeasonCalendar', () => {
     });
   });
 
-  it('training events all have dates between 2025-12-01 and 2026-02-28', () => {
-    const training = events.filter(ev => ev.type === 'training');
+  it('in-season training events sit between home-and-away rounds', () => {
+    const seasonTraining = events.filter(ev => ev.type === 'training' && ev.phase === 'season');
+    expect(seasonTraining.length).toBe((fixtures.length - 1) * 2);
+    seasonTraining.forEach(ev => {
+      const dow = getDayOfWeek(ev.date);
+      expect([2, 4]).toContain(dow);
+    });
+  });
+
+  it('preseason training events all have dates between 2025-12-01 and 2026-02-28', () => {
+    const training = events.filter(ev => ev.type === 'training' && ev.phase === 'preseason');
     training.forEach(ev => {
       expect(ev.date >= '2025-12-01').toBe(true);
       expect(ev.date <= '2026-02-28').toBe(true);

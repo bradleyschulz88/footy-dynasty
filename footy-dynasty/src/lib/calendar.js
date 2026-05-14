@@ -296,6 +296,7 @@ export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId) {
 
   // Regular season — one round event per round, starting Mar 21
   const seasonStart = `${season}-03-21`;
+  let seasonTrainIdx = 0;
   fixtures.forEach((round, roundIdx) => {
     const roundDate = addDays(seasonStart, roundIdx * 7);
     const roundNum = roundIdx + 1;
@@ -311,6 +312,22 @@ export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId) {
       completed: false,
       result:    null,
     });
+
+    // Mid-week training between home-and-away rounds (recovery + load management).
+    if (roundIdx < fixtures.length - 1) {
+      for (const offset of [3, 5]) {
+        events.push({
+          id:       eid(),
+          date:     addDays(roundDate, offset),
+          type:     'training',
+          subtype:  TRAINING_ROTATION[seasonTrainIdx % TRAINING_ROTATION.length],
+          phase:    'season',
+          completed: false,
+          result:   null,
+        });
+        seasonTrainIdx += 1;
+      }
+    }
   });
 
   return events.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
