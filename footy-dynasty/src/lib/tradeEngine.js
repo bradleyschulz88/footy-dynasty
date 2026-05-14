@@ -2,9 +2,9 @@
 
 import { rand, rng, pick } from './rng.js';
 import { findClub } from '../data/pyramid.js';
-import { competitionClubsForCareer } from './leagueEngine.js';
+import { clubFinalsGrudgeTowardPlayer } from './finalsRivalry.js';
 import { aiPersonalityForClub } from './aiPersonality.js';
-import { sortedLadder } from './leagueEngine.js';
+import { sortedLadder, competitionClubsForCareer } from './leagueEngine.js';
 import { LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 import { tradePlayerSnapshot } from './tradePeriod.js';
 import { pushNews } from './news.js';
@@ -44,6 +44,8 @@ export function generateAiTradeOffers(c, league) {
   for (const offeringClub of offerClubs) {
     if (offers.length >= baseCount) break;
     const { tradeAggression } = aiPersonalityForClub(offeringClub.id);
+    const grudge = clubFinalsGrudgeTowardPlayer(c, offeringClub.id);
+    if (grudge > 0 && rng() < 0.22 + Math.min(3, grudge) * 0.11) continue;
     const aggMult = 0.6 + tradeAggression * 1.4;
     if (rng() > 0.35 * aggMult) continue;
 
@@ -57,6 +59,7 @@ export function generateAiTradeOffers(c, league) {
     const swapPlayer = swapCandidates.length ? pick(swapCandidates) : null;
 
     let cashOffer = Math.round(targetPlayer.value * (0.25 + rng() * 0.55) * aggMult);
+    if (grudge > 0) cashOffer = Math.round(cashOffer * (1 - 0.09 * Math.min(grudge, 2)));
     if (swapPlayer && rng() < 0.4) {
       cashOffer = rng() < 0.4 ? 0 : Math.round(targetPlayer.value * (0.05 + rng() * 0.12));
     }

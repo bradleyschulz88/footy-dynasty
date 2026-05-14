@@ -8,6 +8,7 @@
 import { rng, rand, pick } from './rng.js';
 import { FIRST_NAMES, LAST_NAMES } from './playerGen.js';
 import { clamp } from './format.js';
+import { journalistFinalsRivalryLine } from './finalsRivalry.js';
 
 const pickName = () => `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
 
@@ -353,6 +354,9 @@ export function bumpJournalist(j, delta) {
 }
 
 export function journalistMatchLine(career, result, club, opp) {
+  const finalsLine = journalistFinalsRivalryLine(career, result, opp);
+  if (finalsLine) return finalsLine;
+
   const j = career.journalist || generateJournalist();
   const tone = j.satisfaction >= 60 ? 'supportive'
              : j.satisfaction <= 35 ? 'critical' : 'neutral';

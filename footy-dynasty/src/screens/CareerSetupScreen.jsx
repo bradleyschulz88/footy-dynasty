@@ -346,6 +346,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       offSeasonFreeAgents:        [],
       clubCulture:                defaultClubCulture(),
       headToHead:                 {},
+      finalsRivalryLog:           [],
       captainId:                  null,
       viceCaptainId:              null,
       captainHistory:             [],

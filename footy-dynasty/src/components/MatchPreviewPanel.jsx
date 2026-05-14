@@ -9,6 +9,7 @@ import { matchPrepStaffLine } from "../lib/staffModifiers.js";
 import { turningPointRibbon } from "../lib/gameDepth.js";
 import { buildOppositionReport, runOppositionScoutPatch, SCOUT_COST } from "../lib/oppositionScout.js";
 import { derbyLabel } from "../lib/derbies.js";
+import { finalsRivalryPreviewLine } from "../lib/finalsRivalry.js";
 import { DataTable, css } from "./primitives.jsx";
 
 const TACTIC_LABEL = {
@@ -62,6 +63,9 @@ export default function MatchPreviewPanel({ career, league, onUpdateCareer }) {
       label = `${ev.label || "Practice match"} · ${isHome ? "vs" : "@"} ${opp?.short || ""}`;
     }
     if (!opp) return null;
+
+    const rivalryLine = finalsRivalryPreviewLine(career, opp.id);
+    if (rivalryLine) extraTags = [...extraTags, rivalryLine];
 
     const scoutTier = career.opponentScout?.[oppId]?.tier ?? 0;
     const scoutReport = buildOppositionReport(career, league, { tier: scoutTier });

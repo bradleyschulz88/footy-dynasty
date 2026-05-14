@@ -20,7 +20,9 @@ import {
   finalsWeeksEstimate,
 } from './finalsBracket.js';
 import { capBreachSanctionPatch } from './listRules.js';
-import { generateAiTradeOffers, applyLeagueTradeNews } from './tradeEngine.js';
+import { applyLeagueTradeNews } from './tradeEngine.js';
+import { recordFinalsRivalryEvent, clubFinalsGrudgeTowardPlayer } from './finalsRivalry.js';
+import { awayTravelRatingPenalty } from './travelFatigue.js';
 import { derbyLabel } from './derbies.js';
 import { generateTradePool } from './defaults.js';
 import { seedNationalDraft } from './draftSeed.js';
@@ -346,10 +348,12 @@ function simFinalsPair(c, league, m, roundLabel) {
       groundScoringMod = band.scoringMod;
       groundAccuracyMod = band.accuracyMod;
     }
+    const travelPen = awayTravelRatingPenalty(isHome, c.clubId, oppId);
     const getPlayerStrengthForQuarter = (qi) =>
       teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
       + benchStrengthBonus(c.squad, c.lineup, qi)
-      + interchangeRotationBonus(c.squad, c.lineup, qi);
+      + interchangeRotationBonus(c.squad, c.lineup, qi)
+      - travelPen;
     const getOppStrengthForQuarter = oppSquad?.length
       ? (qi) =>
           teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
@@ -410,6 +414,7 @@ function advanceFinalsWeek(c, league) {
       const myScore = isHome ? result.homeTotal : result.awayTotal;
       const oppScore = isHome ? result.awayTotal : result.homeTotal;
       const drewFinal = myScore === oppScore;
+      const matchLabel = m.label || roundLabel;
       applyMatchStreaks(c, playerWon, drewFinal, isHome);
       const opp = findClub(isHome ? m.away : m.home);
       const oid = opp?.id;
@@ -420,13 +425,20 @@ function advanceFinalsWeek(c, league) {
         const lbl = `${playerWon ? 'W' : drewFinal ? 'D' : 'L'} ${Math.abs(diff)}pt`;
         recordHeadToHead(c, oid, playerWon, drewFinal, diff, lbl);
         celebrateBogeyBreakIfNeeded(c, oid, playerWon, wasBogey, prevStreak, findClub);
+        recordFinalsRivalryEvent(c, {
+          oppId: oid,
+          season: c.season,
+          roundLabel: matchLabel,
+          won: playerWon,
+          isGrandFinal: matchLabel === 'Grand Final',
+          drew: drewFinal,
+        });
       }
       const hg = isHome ? (result.homeGoals ?? 0) : (result.awayGoals ?? 0);
       const hb = isHome ? (result.homeBehinds ?? 0) : (result.awayBehinds ?? 0);
       const ag = isHome ? (result.awayGoals ?? 0) : (result.homeGoals ?? 0);
       const ab = isHome ? (result.awayBehinds ?? 0) : (result.homeBehinds ?? 0);
       pushTeamStatsFromResult(c, hg, hb, ag, ab, playerWon, drewFinal);
-      const matchLabel = m.label || roundLabel;
       c.news = [{
         week: c.week,
         type: playerWon ? 'win' : 'loss',
@@ -437,7 +449,15 @@ function advanceFinalsWeek(c, league) {
 
       const club = findClub(c.clubId);
       const myResult = {
-        result, isHome, opp, myTotal: myScore, oppTotal: oppScore, won: playerWon, drew: drewFinal,
+        result,
+        isHome,
+        opp,
+        myTotal: myScore,
+        oppTotal: oppScore,
+        won: playerWon,
+        drew: drewFinal,
+        isFinals: true,
+        matchLabel,
       };
       playerMatchPayload = {
         result,
@@ -1098,7 +1118,10 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         const targetPlayer = pick(tradableSquad);
         const offeringClub = pick(offerClubs);
         if (!targetPlayer || !offeringClub || offers.find((o) => o.targetPlayerId === targetPlayer.id)) continue;
-        const cashOffer = Math.round(targetPlayer.value * (0.5 + rng() * 0.6));
+        const grudge = clubFinalsGrudgeTowardPlayer(c, offeringClub.id);
+        if (grudge > 0 && rng() < 0.22 + Math.min(3, grudge) * 0.11) continue;
+        let cashOffer = Math.round(targetPlayer.value * (0.5 + rng() * 0.6));
+        if (grudge > 0) cashOffer = Math.round(cashOffer * (1 - 0.09 * Math.min(grudge, 2)));
         const aiSq = c.aiSquads?.[offeringClub.id] || [];
         const swapCandidates = aiSq.filter((ap) => Math.abs(ap.overall - targetPlayer.overall) <= 8).slice(0, 5);
         const swapPlayer = swapCandidates.length ? pick(swapCandidates) : null;
@@ -1256,10 +1279,12 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           groundScoringMod = band.scoringMod;
           groundAccuracyMod = band.accuracyMod;
         }
+        const travelPen = awayTravelRatingPenalty(isHome, c.clubId, opp.id);
         const getPlayerStrengthForQuarter = (qi) =>
           teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
           + benchStrengthBonus(c.squad, c.lineup, qi)
-      + interchangeRotationBonus(c.squad, c.lineup, qi);
+          + interchangeRotationBonus(c.squad, c.lineup, qi)
+          - travelPen;
         const getOppStrengthForQuarter = oppSquad?.length
           ? (qi) =>
               teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)

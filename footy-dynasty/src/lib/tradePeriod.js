@@ -6,6 +6,7 @@ import { sortedLadder, competitionClubsForCareer } from './leagueEngine.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
 import { LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 import { draftPickPositionForClub } from './draftSeed.js';
+import { clubFinalsGrudgeTowardPlayer } from './finalsRivalry.js';
 
 /** Rich snapshot for trade offers / UI (attrs, status, career log). */
 export function tradePlayerSnapshot(p) {
@@ -91,10 +92,13 @@ function seedAiTradeOffers(c, league) {
     const targetPlayer = pick(tradableSquad);
     const offeringClub = pick(offerClubs);
     if (!targetPlayer || !offeringClub || offers.find((o) => o.targetPlayerId === targetPlayer.id)) continue;
+    const grudge = clubFinalsGrudgeTowardPlayer(c, offeringClub.id);
+    if (grudge > 0 && rng() < 0.22 + Math.min(3, grudge) * 0.11) continue;
     const aiSq = c.aiSquads?.[offeringClub.id] || [];
     const swapCandidates = aiSq.filter((ap) => Math.abs(ap.overall - targetPlayer.overall) <= 12).slice(0, 8);
     const swapPlayer = swapCandidates.length ? pick(swapCandidates) : null;
     let cashOffer = Math.round(targetPlayer.value * (0.35 + rng() * 0.65));
+    if (grudge > 0) cashOffer = Math.round(cashOffer * (1 - 0.09 * Math.min(grudge, 2)));
     if (swapPlayer && rng() < 0.38) cashOffer = rng() < 0.45 ? 0 : Math.round(targetPlayer.value * (0.08 + rng() * 0.15));
     cashOffer = Math.max(0, cashOffer);
     offers.push({

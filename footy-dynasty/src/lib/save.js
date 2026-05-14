@@ -388,6 +388,11 @@ export function migrate(save) {
     }
   }
 
+  if (v < 27) {
+    s.saveVersion = 27;
+    s.finalsRivalryLog = s.finalsRivalryLog || [];
+  }
+
   return s;
 }
 

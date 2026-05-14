@@ -21,13 +21,13 @@ Living backlog aligned with current code. Priorities shift; tick items off as yo
 
 - [x] Stable per-club tactical personality blended with rating-based heuristics (`lib/aiPersonality.js`)
 - [x] Trade/draft aggression tied to personality + ladder position (`tradeEngine.js`, `draftEngine` needs bias)
-- [ ] Rival clubs remember past finals
+- [x] Rival clubs remember past finals (`finalsRivalryLog`, trades, match preview, journo lines)
 
 ## Calendar & flavour
 
 - [x] Themed round tags on schedule events (`lib/themedRounds.js`)
 - [x] Derbies: auto-detect same-city pairs for flavour text (`derbies.js`)
-- [ ] Weather / travel fatigue by distance
+- [x] Weather / travel fatigue by distance (`travelFatigue.js` — interstate away rating penalty)
 
 ## Career history
 
