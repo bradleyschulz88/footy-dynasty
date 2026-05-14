@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   needsDraftSeed,
   skipCurrentPick,
-  simAiPicksUntil,
+  resolveNextPick,
   draftProspectOnClock,
 } from '../draftEngine.js';
 import { seedNationalDraft, DRAFT_ROUNDS, buildSnakeDraftOrder } from '../draftSeed.js';
@@ -29,9 +29,10 @@ describe('draftEngine', () => {
     expect(order[3].round).toBe(2);
   });
 
-  it('skipCurrentPick marks pass and advances phase', () => {
+  it('skipCurrentPick marks pass when draft is live', () => {
     const career = {
       clubId: clubIds[0],
+      draftPhase: 'live',
       season: 2026,
       week: 1,
       squad: [],
@@ -49,9 +50,10 @@ describe('draftEngine', () => {
     expect(patch.draftHistory[0].skipped).toBe(true);
   });
 
-  it('simAiPicksUntil stops at player club', () => {
+  it('resolveNextPick resolves one AI pick only', () => {
     const career = {
       clubId: clubIds[2],
+      draftPhase: 'live',
       season: 2026,
       week: 1,
       squad: [],
@@ -72,16 +74,17 @@ describe('draftEngine', () => {
       draftHistory: [],
       news: [],
     };
-    const patch = simAiPicksUntil(career, clubIds[2]);
-    expect(patch.draftOrder.filter((d) => d.used).length).toBe(2);
+    const patch = resolveNextPick(career);
+    expect(patch.draftOrder.filter((d) => d.used).length).toBe(1);
     const next = patch.draftOrder.find((d) => !d.used);
-    expect(next.clubId).toBe(clubIds[2]);
+    expect(next.clubId).toBe(clubIds[1]);
   });
 
   it('draftProspectOnClock adds rookie when on the clock', () => {
     const me = clubIds[0];
     const career = {
       clubId: me,
+      draftPhase: 'live',
       leagueKey,
       season: 2026,
       week: 1,
@@ -117,11 +120,13 @@ describe('draftSeed multi-round', () => {
   const league = PYRAMID[leagueKey];
   const clubIds = league.clubs.map((c) => c.id);
 
-  it('seedNationalDraft creates snake order across rounds', () => {
+  it('seedNationalDraft creates snake order in scouting phase', () => {
     const career = { clubId: clubIds[0], leagueKey, season: 2026, draftPool: [], draftOrder: [] };
     seedNationalDraft(career, league, { inaugural: true, force: true });
     expect(career.draftPool.length).toBeGreaterThan(0);
     expect(career.draftOrder.length).toBe(clubIds.length * DRAFT_ROUNDS);
     expect(career.draftOrder[0].round).toBe(1);
+    expect(career.draftPhase).toBe('scouting');
+    expect(career.draftStartDate).toBe('2026-01-10');
   });
 });

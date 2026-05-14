@@ -5,8 +5,38 @@ export function isPostSeasonTradePeriod(career) {
   return career?.postSeasonPhase === "trade_period" && !!career?.inTradePeriod;
 }
 
-/** Draft pool + pick order active (after season rollover or draft day). */
+/** Pool and pick order exist (scouting or live). */
+export function hasDraftPool(career) {
+  return (career?.draftPool?.length > 0) && (career?.draftOrder?.length > 0);
+}
+
+/** Calendar date when national draft picks begin. */
+export function nationalDraftDayDate(career) {
+  if (career?.draftStartDate) return career.draftStartDate;
+  const season = Number(career?.season) || 2026;
+  const ev = (career?.eventQueue || []).find(
+    (e) => e.type === "key_event" && e.name === "National Draft Day",
+  );
+  return ev?.date || `${season}-01-10`;
+}
+
+/** True when calendar has not yet reached draft day. */
+export function isBeforeDraftDay(career) {
+  const cur = career?.currentDate;
+  if (!cur) return true;
+  return cur < nationalDraftDayDate(career);
+}
+
+/** Combine scouting window — pool visible, no picks on the clock yet. */
+export function isDraftScoutingPhase(career) {
+  if (career?.draftPhase === "complete") return false;
+  if (!hasDraftPool(career)) return false;
+  return career?.draftPhase === "scouting";
+}
+
+/** Draft night — picks resolving one at a time. */
 export function isDraftLive(career) {
+  if (career?.draftPhase !== "live") return false;
   const order = career?.draftOrder || [];
   const pool = career?.draftPool || [];
   return order.length > 0 && pool.length > 0 && order.some((d) => !d.used);

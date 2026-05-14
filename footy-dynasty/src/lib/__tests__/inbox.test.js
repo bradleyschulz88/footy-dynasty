@@ -48,6 +48,7 @@ describe("syncRecruitPhaseInboxRows / mergeCareerPatchWithInboxSync", () => {
   it("blocks advance when player draft pick is due", () => {
     const career = {
       clubId: 'c1',
+      draftPhase: 'live',
       board: { inbox: [] },
       pendingTradeOffers: [],
       draftOrder: [{ pick: 1, clubId: 'c1', used: false }],

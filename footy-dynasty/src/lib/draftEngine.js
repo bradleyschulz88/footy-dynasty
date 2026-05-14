@@ -1,5 +1,5 @@
 /**
- * National draft runtime: seeding guards, AI sim chain, pick / skip, history.
+ * National draft runtime: seeding guards, single-pick resolution, pick / skip, history.
  */
 import { rand, rng } from './rng.js';
 import { findClub } from '../data/pyramid.js';
@@ -9,11 +9,19 @@ import {
   isPlayerDraftTurn,
   nextDraftPickIndex,
   hasUnusedClubDraftPick,
+  isDraftScoutingPhase,
 } from './recruitPhase.js';
 import { rookieDraftWage, canAffordSigning, leagueTierOf } from './finance/engine.js';
 
 export { DRAFT_ROUNDS, DRAFT_POOL_SIZE } from './draftSeed.js';
-export { isDraftLive, isPlayerDraftTurn, nextDraftPickIndex, hasUnusedClubDraftPick };
+export {
+  isDraftLive,
+  isDraftScoutingPhase,
+  isPlayerDraftTurn,
+  nextDraftPickIndex,
+  hasUnusedClubDraftPick,
+  nationalDraftDayDate,
+} from './recruitPhase.js';
 
 /** Career needs pool + order seeded (e.g. legacy saves). */
 export function needsDraftSeed(career) {
@@ -28,22 +36,11 @@ export function needsDraftSeed(career) {
 /** True when an active draft session should be offered. */
 export function isDraftSessionActive(career) {
   if (career?.draftPhase === 'complete') return false;
-  return isDraftLive(career);
+  return isDraftLive(career) || isDraftScoutingPhase(career);
 }
 
-/** Build snake draft order (round 1 order, even rounds reversed). */
-export function buildSnakeDraftOrder(round1ClubIds, rounds = DRAFT_ROUNDS) {
-  if (!round1ClubIds?.length) return [];
-  const order = [];
-  let pickNum = 1;
-  for (let r = 1; r <= rounds; r++) {
-    const ids = r % 2 === 0 ? [...round1ClubIds].reverse() : [...round1ClubIds];
-    for (const clubId of ids) {
-      order.push({ pick: pickNum, clubId, round: r, used: false });
-      pickNum += 1;
-    }
-  }
-  return order;
+function phaseAfterPicks(order) {
+  return order.some((d) => !d.used) ? 'live' : 'complete';
 }
 
 /**
@@ -65,12 +62,22 @@ export function ensureDraftSeeded(career, league, options = {}) {
     draftOrder: c.draftOrder,
     lastDraftOrderSnapshot: c.lastDraftOrderSnapshot,
     draftOrderInaugural: c.draftOrderInaugural,
-    draftPhase: 'live',
+    draftStartDate: c.draftStartDate,
+    draftPhase: c.draftPhase,
     draftHistory: c.draftHistory || [],
   };
 }
 
+/** Transition from scouting window to live draft night (National Draft Day). */
+export function beginLiveDraftPatch(career) {
+  return {
+    draftPhase: 'live',
+    draftHistory: career?.draftHistory || [],
+  };
+}
+
 export function getOnClockPick(career) {
+  if (!isDraftLive(career)) return null;
   const idx = nextDraftPickIndex(career);
   if (idx < 0) return null;
   return career.draftOrder[idx] ?? null;
@@ -154,43 +161,41 @@ function applyAiPickAt(order, pool, aiSquads, pickIndex) {
 }
 
 /**
- * Run AI picks from current clock until stopClubId is on clock or draft ends.
- * @returns {object} patch fields for updateCareer
+ * Resolve exactly one on-the-clock pick (AI club only — returns null if player is on the clock).
+ * @returns {object|null} patch fields for updateCareer
  */
-export function simAiPicksUntil(career, stopClubId) {
-  let order = [...(career.draftOrder || [])];
-  let pool = [...(career.draftPool || [])];
-  let aiSquads = { ...(career.aiSquads || {}) };
-  let history = [...(career.draftHistory || [])];
-  const newsItems = [];
+export function resolveNextPick(career) {
+  if (!isDraftLive(career)) return null;
+  if (isPlayerDraftTurn(career)) return null;
+  const idx = nextDraftPickIndex(career);
+  if (idx < 0) return null;
 
-  while (true) {
-    const idx = order.findIndex((d) => !d.used);
-    if (idx === -1) break;
-    if (order[idx].clubId === stopClubId) break;
-    const res = applyAiPickAt(order, pool, aiSquads, idx);
-    order = res.order;
-    pool = res.pool;
-    aiSquads = res.aiSquads;
-    if (res.news) newsItems.push({ ...res.news, week: career.week });
-    if (res.historyEntry) history = appendHistory(history, res.historyEntry);
-  }
+  const res = applyAiPickAt(
+    career.draftOrder,
+    career.draftPool || [],
+    career.aiSquads || {},
+    idx,
+  );
+  const history = res.historyEntry
+    ? appendHistory(career.draftHistory, res.historyEntry)
+    : career.draftHistory || [];
 
   const patch = {
-    draftOrder: order,
-    draftPool: pool,
-    aiSquads,
+    draftOrder: res.order,
+    draftPool: res.pool,
+    aiSquads: res.aiSquads,
     draftHistory: history,
-    draftPhase: order.some((d) => !d.used) ? 'live' : 'complete',
+    draftPhase: phaseAfterPicks(res.order),
   };
-  if (newsItems.length) {
-    patch.news = [...newsItems.slice(-8), ...(career.news || [])].slice(0, 20);
+  if (res.news) {
+    patch.news = [{ ...res.news, week: career.week }, ...(career.news || [])].slice(0, 20);
   }
   return patch;
 }
 
-/** Skip the current on-the-clock pick (player or AI when forced). */
+/** Skip the current on-the-clock pick (live draft only). */
 export function skipCurrentPick(career) {
+  if (!isDraftLive(career)) return null;
   const idx = nextDraftPickIndex(career);
   if (idx < 0) return null;
   const pickEntry = career.draftOrder[idx];
@@ -208,10 +213,10 @@ export function skipCurrentPick(career) {
   });
   const short = clubShort(pickEntry.clubId);
   const isMe = pickEntry.clubId === career.clubId;
-  const patch = {
+  return {
     draftOrder: order,
     draftHistory: history,
-    draftPhase: order.some((d) => !d.used) ? 'live' : 'complete',
+    draftPhase: phaseAfterPicks(order),
     news: [
       {
         week: career.week,
@@ -223,12 +228,11 @@ export function skipCurrentPick(career) {
       ...(career.news || []),
     ].slice(0, 20),
   };
-  if (!order.some((d) => !d.used)) patch.draftPhase = 'complete';
-  return patch;
 }
 
-/** Player drafts a prospect on their turn; auto-sims AI until next player pick or end. */
+/** Player drafts a prospect on their turn — one pick only, no AI chain. */
 export function draftProspectOnClock(career, club, prospect) {
+  if (!isDraftLive(career)) return { error: 'not_live' };
   const idx = nextDraftPickIndex(career);
   if (idx < 0) return { error: 'no_pick' };
   const pickEntry = career.draftOrder[idx];
@@ -248,14 +252,13 @@ export function draftProspectOnClock(career, club, prospect) {
     rookie: true,
   };
 
-  let order = markPickUsed(career.draftOrder, idx, {
+  const order = markPickUsed(career.draftOrder, idx, {
     prospectName: `${prospect.firstName} ${prospect.lastName}`,
     prospectOverall: prospect.overall,
     prospectPos: prospect.position,
   });
-  let pool = (career.draftPool || []).filter((x) => x.id !== prospect.id);
-  let aiSquads = { ...(career.aiSquads || {}) };
-  let history = appendHistory(career.draftHistory, {
+  const pool = (career.draftPool || []).filter((x) => x.id !== prospect.id);
+  const history = appendHistory(career.draftHistory, {
     pick: pickEntry.pick,
     round: pickEntry.round,
     clubId: career.clubId,
@@ -266,39 +269,26 @@ export function draftProspectOnClock(career, club, prospect) {
     isPlayer: true,
   });
 
-  const newsItems = [{
-    week: career.week,
-    type: 'win',
-    text: `🎯 #${pickEntry.pick}: ${club?.short || 'You'} draft ${prospect.firstName} ${prospect.lastName} (${prospect.overall} OVR)`,
-  }];
-
-  while (true) {
-    const nextIdx = order.findIndex((d) => !d.used);
-    if (nextIdx === -1) break;
-    if (order[nextIdx].clubId === career.clubId) break;
-    const res = applyAiPickAt(order, pool, aiSquads, nextIdx);
-    order = res.order;
-    pool = res.pool;
-    aiSquads = res.aiSquads;
-    if (res.news) newsItems.push({ ...res.news, week: career.week });
-    if (res.historyEntry) history = appendHistory(history, res.historyEntry);
-  }
-
   return {
     patch: {
       squad: [...career.squad, rookie],
       draftPool: pool,
       draftOrder: order,
-      aiSquads,
       draftHistory: history,
-      draftPhase: order.some((d) => !d.used) ? 'live' : 'complete',
-      news: [...newsItems.slice(0, 6), ...(career.news || [])].slice(0, 20),
+      draftPhase: phaseAfterPicks(order),
+      news: [
+        {
+          week: career.week,
+          type: 'win',
+          text: `🎯 #${pickEntry.pick}: ${club?.short || 'You'} draft ${prospect.firstName} ${prospect.lastName} (${prospect.overall} OVR)`,
+        },
+        ...(career.news || []),
+      ].slice(0, 20),
     },
   };
 }
 
+/** Ensure pool exists for scouting — does not start live picks. */
 export function startDraftSessionPatch(career, league) {
-  const seedPatch = ensureDraftSeeded(career, league, { force: needsDraftSeed(career) });
-  const base = seedPatch || {};
-  return { ...base, draftPhase: 'live' };
+  return ensureDraftSeeded(career, league, { force: needsDraftSeed(career) }) || {};
 }

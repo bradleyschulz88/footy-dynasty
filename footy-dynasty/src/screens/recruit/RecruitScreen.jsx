@@ -107,6 +107,10 @@ import {
   needsDraftSeed,
   isPlayerDraftTurn,
   isDraftLive,
+  isDraftScoutingPhase,
+  nationalDraftDayDate,
+  draftProspectOnClock,
+  getPlayerNextPick,
   startDraftSessionPatch,
 } from '../../lib/draftEngine.js';
 
@@ -115,8 +119,8 @@ import {
 // ============================================================================
 function RecruitOffSeasonStrip({ career }) {
   const tradeLive = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
-  const draftLive = (career.draftOrder || []).length > 0 && (career.draftPool || []).length > 0;
-  if (!tradeLive && !draftLive) return null;
+  const draftPoolReady = isDraftScoutingPhase(career) || isDraftLive(career);
+  if (!tradeLive && !draftPoolReady) return null;
   return (
     <div
       className="mb-4 rounded-2xl border border-[var(--A-line)] p-4 flex flex-col gap-3"
@@ -133,12 +137,16 @@ function RecruitOffSeasonStrip({ career }) {
             </div>
           </div>
         )}
-        {draftLive && (
+        {draftPoolReady && (
           <div className="flex-1 min-w-[200px] rounded-xl border border-aline bg-apanel p-3 flex gap-3 items-center">
             <div className="text-2xl" aria-hidden>🎯</div>
             <div>
-              <div className="font-display text-sm text-aaccent uppercase tracking-wide">National draft live</div>
-              <div className="text-xs text-atext-dim mt-0.5">Pick order bar shows club colours; draft board is card-first on small screens.</div>
+              <div className="font-display text-sm text-aaccent uppercase tracking-wide">
+                {isDraftScoutingPhase(career) ? 'Draft scouting' : 'National draft live'}
+              </div>
+              <div className="text-xs text-atext-dim mt-0.5">
+                {isDraftScoutingPhase(career) ? 'Scout the list before draft night.' : 'Resolve picks one at a time in the draft room.'}
+              </div>
             </div>
           </div>
         )}
@@ -845,9 +853,11 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const draftOrder = career.draftOrder || [];
-  const myPickIndex = draftOrder.findIndex(d => d.clubId === career.clubId && !d.used);
-  const myNextPick = myPickIndex >= 0 ? draftOrder[myPickIndex] : null;
-  const isMyTurn = myPickIndex !== -1 && myPickIndex === draftOrder.findIndex(d => !d.used);
+  const scoutingPhase = isDraftScoutingPhase(career);
+  const draftLive = isDraftLive(career);
+  const myNextPick = getPlayerNextPick(career);
+  const isMyTurn = isPlayerDraftTurn(career);
+  const draftDayLabel = formatDate(nationalDraftDayDate(career));
   const dTier = leagueTierOf(career);
 
   const runCombineScout = () => {
@@ -880,77 +890,31 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
     return arr;
   }, [career.draftPool, posFilter, poolSort, dTier]);
 
-  const aiPickFromPool = (clubId, currentPool) => {
-    if (!currentPool.length) return null;
-    const ranked = [...currentPool].sort((a, b) => b.overall - a.overall);
-    if (rng() < 0.72) return ranked[0];
-    const k = Math.min(5, ranked.length);
-    return ranked[rand(0, k - 1)];
-  };
-
   const draftPlayer = (p) => {
-    if (!isMyTurn) {
-      // Sim AI picks until our slot
-      let order = [...draftOrder];
-      let currentPool = [...career.draftPool];
-      let currentAiSquads = { ...(career.aiSquads || {}) };
-      const newsItems = [];
-      while (true) {
-        const next = order.findIndex(d => !d.used);
-        if (next === -1) break;
-        const pickEntry = order[next];
-        if (pickEntry.clubId === career.clubId) break;
-        const aiPick = aiPickFromPool(pickEntry.clubId, currentPool);
-        if (!aiPick) break;
-        currentPool = currentPool.filter(x => x.id !== aiPick.id);
-        currentAiSquads[pickEntry.clubId] = currentAiSquads[pickEntry.clubId] || [];
-        currentAiSquads[pickEntry.clubId] = [...currentAiSquads[pickEntry.clubId], { ...aiPick, age: rand(18, 19) }];
-        order = order.map((d, i) => i === next ? { ...d, used: true, prospectName: `${aiPick.firstName} ${aiPick.lastName}`, prospectOverall: aiPick.overall, prospectPos: aiPick.position } : d);
-        const oppClub = findClub(pickEntry.clubId);
-        newsItems.push({ week: career.week, type: 'info', text: `📋 #${pickEntry.pick}: ${oppClub?.short || pickEntry.clubId} → ${aiPick.firstName} ${aiPick.lastName} (${aiPick.overall})` });
-      }
-      updateCareer({
-        draftPool: currentPool,
-        draftOrder: order,
-        aiSquads: currentAiSquads,
-        news: [...newsItems.slice(-5), ...(career.news || [])].slice(0, 20),
-      });
-      return;
-    }
+    if (!draftLive || !isMyTurn) return;
     if (career.squad.length >= 40) return;
-    const rw = rookieDraftWage(p.overall, dTier);
-    if (!canAffordSigning(career, rw)) {
+    const result = draftProspectOnClock(career, club, p);
+    if (result.error === 'cap') {
       updateCareer({ news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot draft ${p.firstName} ${p.lastName} — over salary cap` }, ...(career.news || [])].slice(0, 20) });
       return;
     }
-    const rookie = { ...p, id: `r_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage: rw, contract: 2, age: rand(18, 19), rookie: true };
-    let order = draftOrder.map((d, i) => i === myPickIndex ? { ...d, used: true, prospectName: `${p.firstName} ${p.lastName}`, prospectOverall: p.overall, prospectPos: p.position } : d);
-    let currentPool = career.draftPool.filter(x => x.id !== p.id);
-    let currentAiSquads = { ...(career.aiSquads || {}) };
-    const newsItems = [{ week: career.week, type: 'win', text: `🎯 #${myNextPick.pick}: ${club.short} draft ${p.firstName} ${p.lastName} (${p.overall} OVR)` }];
-    // Auto-run AI picks until next player turn
-    while (true) {
-      const nextIdx = order.findIndex(d => !d.used);
-      if (nextIdx === -1) break;
-      const pickEntry = order[nextIdx];
-      if (pickEntry.clubId === career.clubId) break;
-      const aiPick = aiPickFromPool(pickEntry.clubId, currentPool);
-      if (!aiPick) break;
-      currentPool = currentPool.filter(x => x.id !== aiPick.id);
-      currentAiSquads[pickEntry.clubId] = currentAiSquads[pickEntry.clubId] || [];
-      currentAiSquads[pickEntry.clubId] = [...currentAiSquads[pickEntry.clubId], { ...aiPick, age: rand(18, 19) }];
-      order = order.map((d, i) => i === nextIdx ? { ...d, used: true, prospectName: `${aiPick.firstName} ${aiPick.lastName}`, prospectOverall: aiPick.overall, prospectPos: aiPick.position } : d);
-      const oppClub = findClub(pickEntry.clubId);
-      newsItems.push({ week: career.week, type: 'info', text: `📋 #${pickEntry.pick}: ${oppClub?.short || pickEntry.clubId} → ${aiPick.firstName} ${aiPick.lastName}` });
-    }
-    updateCareer({
-      squad: [...career.squad, rookie],
-      draftPool: currentPool,
-      draftOrder: order,
-      aiSquads: currentAiSquads,
-      news: [...newsItems.slice(0, 6), ...(career.news || [])].slice(0, 20),
-    });
+    if (result.error) return;
+    updateCareer(result.patch);
   };
+
+  const statusLine = needsDraftSeed(career)
+    ? 'No draft loaded — open the draft room to generate the pool.'
+    : scoutingPhase
+      ? `Combine scouting open — draft begins ${draftDayLabel}. Your first pick: #${myNextPick?.pick ?? '—'}.`
+      : draftLive
+        ? (isMyTurn
+          ? `On the clock: pick #${myNextPick?.pick}.`
+          : myNextPick
+            ? `Draft live — your next pick: #${myNextPick.pick}. Use Next pick in the draft room.`
+            : 'No remaining picks for your club.')
+        : career.draftPhase === 'complete'
+          ? 'National draft complete for this season.'
+          : 'Draft pool ready.';
 
   return (
     <div className="space-y-4">
@@ -958,16 +922,16 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
       <div className={`${css.panel} p-4 flex flex-wrap items-center justify-between gap-3`} style={{ background: 'rgba(0,224,255,0.06)' }}>
         <div>
           <div className="font-display text-xl text-aaccent">Draft room</div>
-          <p className="text-xs text-atext-dim mt-1">On-the-clock picks, pass, and live feed.</p>
+          <p className="text-xs text-atext-dim mt-1">{scoutingPhase ? 'Scout the list before draft night.' : 'One pick at a time — on-the-clock banner in the draft room.'}</p>
         </div>
         <button type="button" onClick={() => { if (needsDraftSeed(career) && league) updateCareer(startDraftSessionPatch(career, league)); onOpenDraftRoom?.(); }} className={`${css.btnPrimary} text-sm px-5 py-2.5 min-h-[44px]`}>
-          {isMyTurn ? 'Enter draft room — on the clock' : 'Enter draft room'}
+          {scoutingPhase ? 'Open draft board' : isMyTurn ? 'Enter draft room — on the clock' : 'Enter draft room'}
         </button>
       </div>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>NATIONAL DRAFT</div>
-          <div className="text-xs text-atext-dim">{needsDraftSeed(career) ? 'No draft loaded — open the draft room to start.' : career.draftOrderInaugural ? (isMyTurn ? `Inaugural lottery — on the clock: pick #${myNextPick.pick}.` : myNextPick ? `Inaugural lottery — your next pick: #${myNextPick.pick}` : 'Inaugural lottery complete for your club.') : (isMyTurn ? `On the clock: pick #${myNextPick.pick}.` : myNextPick ? `Your next pick: #${myNextPick.pick}` : 'You have no remaining picks.')} Combine scouting reveals ratings.</div>
+          <div className="text-xs text-atext-dim">{statusLine}</div>
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Pool" value={basePool.length} accent="#4AE89A" />
@@ -1085,7 +1049,9 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
                   <span className="text-[10px] text-atext-dim block">{wageDisp.hint || 'est. rookie'}</span>
                 </div>
                 <div className="col-span-1 flex justify-end">
-                  <button type="button" onClick={()=>draftPlayer(p)} className={`${css.btnPrimary} text-xs px-4 py-2.5 min-h-[44px] touch-manipulation`}>{isMyTurn ? 'Draft' : 'Sim →'}</button>
+                  {draftLive && isMyTurn && (
+                    <button type="button" onClick={()=>draftPlayer(p)} className={`${css.btnPrimary} text-xs px-4 py-2.5 min-h-[44px] touch-manipulation`}>Draft</button>
+                  )}
                 </div>
               </div>
             );
@@ -1136,11 +1102,11 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
                 </span>
                 <span className="text-[10px] text-atext-dim">{wageDisp.hint || "rookie est."}</span>
               </div>
-              <div className="mt-3 flex justify-end">
+              {draftLive && isMyTurn && (
                 <button type="button" onClick={() => draftPlayer(p)} className={`${css.btnPrimary} text-xs px-4 py-2.5 min-h-[44px] touch-manipulation`}>
-                  {isMyTurn ? "Draft" : "Sim →"}
+                  Draft
                 </button>
-              </div>
+              )}
             </div>
           );
         })}

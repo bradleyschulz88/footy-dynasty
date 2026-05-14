@@ -1,21 +1,34 @@
 import { describe, it, expect } from 'vitest';
 import {
   isDraftLive,
+  isDraftScoutingPhase,
   isPlayerDraftTurn,
   draftPickBlocksAdvance,
   isPostSeasonTradePeriod,
+  nationalDraftDayDate,
 } from '../recruitPhase.js';
 
 describe('recruitPhase', () => {
-  it('detects live draft with unused picks', () => {
-    const career = {
+  it('detects live draft only when phase is live', () => {
+    const scouting = {
       clubId: 'c1',
+      draftPhase: 'scouting',
       draftOrder: [{ pick: 1, clubId: 'c1', used: false }],
       draftPool: [{ id: 'p1' }],
     };
-    expect(isDraftLive(career)).toBe(true);
-    expect(isPlayerDraftTurn(career)).toBe(true);
-    expect(draftPickBlocksAdvance(career)).toBe(true);
+    expect(isDraftScoutingPhase(scouting)).toBe(true);
+    expect(isDraftLive(scouting)).toBe(false);
+    expect(isPlayerDraftTurn(scouting)).toBe(false);
+    expect(draftPickBlocksAdvance(scouting)).toBe(false);
+
+    const live = { ...scouting, draftPhase: 'live' };
+    expect(isDraftLive(live)).toBe(true);
+    expect(isPlayerDraftTurn(live)).toBe(true);
+    expect(draftPickBlocksAdvance(live)).toBe(true);
+  });
+
+  it('nationalDraftDayDate defaults to Jan 10 of season', () => {
+    expect(nationalDraftDayDate({ season: 2026 })).toBe('2026-01-10');
   });
 
   it('detects post-season trade period', () => {

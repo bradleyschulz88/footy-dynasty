@@ -10,6 +10,7 @@ import { migrateSaveGameDepthV12 } from './gameDepth.js';
 import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { migrateDraftPoolScouting } from './draftScouting.js';
 import { seedNationalDraft } from './draftSeed.js';
+import { nationalDraftDayDate, isBeforeDraftDay } from './recruitPhase.js';
 import { pushManagerInboxBoardMirror, syncTradePeriodManagerInboxRow } from './inbox.js';
 import { DEFAULT_STAFF_TASKS, ensureStaffTasks } from './staffTasks.js';
 import { SLOT_IDS, getLatestSavedSlotMeta, SAVE_VERSION } from './setupConstants.js';
@@ -360,11 +361,29 @@ export function migrate(save) {
     if (league && s.draftPhase !== 'complete' && (poolEmpty || orderEmpty)) {
       const inaugural = !(s.history?.length);
       seedNationalDraft(s, league, { inaugural, force: true });
-      if (!s.draftPhase) s.draftPhase = 'live';
+      if (!s.draftPhase) s.draftPhase = 'scouting';
+    }
+  }
+
+  if (v < 25) {
+    s.saveVersion = 25;
+    if (!s.draftStartDate) {
+      s.draftStartDate = nationalDraftDayDate(s);
+    }
+    const hasPicks = (s.draftOrder || []).some((d) => d.used);
+    if (s.draftPhase === 'live' && !hasPicks && isBeforeDraftDay(s)) {
+      s.draftPhase = 'scouting';
+    }
+    if (!s.draftPhase && hasDraftPool(s)) {
+      s.draftPhase = hasPicks ? 'live' : 'scouting';
     }
   }
 
   return s;
+}
+
+function hasDraftPool(s) {
+  return (s.draftPool?.length > 0) && (s.draftOrder?.length > 0);
 }
 
 /**

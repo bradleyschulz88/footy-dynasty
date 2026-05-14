@@ -561,7 +561,7 @@ function finishSeason(c, league) {
   c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier, c.season);
   c.tradePool = generateTradePool(c.leagueKey, c.season);
   seedNationalDraft(c, league, { ladderSnapshot: sorted, inaugural: false, force: true });
-  c.draftPhase = 'live';
+  c.draftPhase = 'scouting';
   c.draftHistory = [];
   syncRecruitPhaseInboxRows(c);
 
@@ -967,7 +967,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       extraNews.push({
         week: c.week,
         type: 'info',
-        text: '📋 National Draft Day — your club is on the clock when picks reach you. Open Recruit → Draft.',
+        text: '📋 National Draft Day — picks are live one at a time. Open the draft room when you are on the clock.',
       });
       c.lastEvent = { type: 'key_event', name: ev.name, description: ev.description, action: ev.action, date: ev.date };
       c.news = [

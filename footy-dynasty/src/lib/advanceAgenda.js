@@ -10,11 +10,14 @@ import { ensureStaffTasks } from "./staffTasks.js";
 import {
   isPostSeasonTradePeriod,
   isDraftLive,
+  isDraftScoutingPhase,
   isPlayerDraftTurn,
   hasUnusedClubDraftPick,
   isKeyEventNamed,
   nextCalendarEvent,
+  nationalDraftDayDate,
 } from "./recruitPhase.js";
+import { formatDate } from "./calendar.js";
 import { hasUnackedTradePeriodOpen, hasUnackedTradeWindowOpen } from "./inbox.js";
 import { TRADE_PERIOD_DAYS } from "./tradePeriod.js";
 
@@ -166,9 +169,11 @@ function buildMilestoneAgenda(career, nextEv) {
       title: "National draft day",
       detail: isDraftLive(career)
         ? isPlayerDraftTurn(career)
-          ? "Your pick is on the clock — Recruit → Draft."
-          : "Draft board is live — check Recruit → Draft for your upcoming pick."
-        : "Draft pool will populate after off-season rollover if not already live.",
+          ? "Your pick is on the clock — open the draft room."
+          : "Draft is live — resolve picks one at a time in the draft room."
+        : isDraftScoutingPhase(career)
+          ? "Draft opens today — picks go live when you advance into this date."
+          : "Draft pool will populate after off-season rollover if not already loaded.",
       screen: "recruit",
       tab: "draft",
     });
@@ -233,6 +238,18 @@ function buildOffSeasonAgenda(career, league) {
     });
   }
 
+  if (isDraftScoutingPhase(career)) {
+    items.push({
+      id: "draft_scouting",
+      severity: "info",
+      scope: "milestone",
+      title: "Draft combine scouting",
+      detail: `National Draft ${formatDate(nationalDraftDayDate(career))} — scout the list in Recruit → Draft before picks begin.`,
+      screen: "recruit",
+      tab: "draft",
+    });
+  }
+
   if (isDraftLive(career) && hasUnusedClubDraftPick(career)) {
     items.push({
       id: "draft_live",
@@ -240,8 +257,8 @@ function buildOffSeasonAgenda(career, league) {
       scope: "milestone",
       title: isPlayerDraftTurn(career) ? "Your draft pick is due" : "National draft in progress",
       detail: isPlayerDraftTurn(career)
-        ? "You are on the clock — Recruit → Draft."
-        : "Unused picks remain on your board — Recruit → Draft.",
+        ? "You are on the clock — open the draft room."
+        : "Unused picks remain — use Next pick in the draft room.",
       screen: "recruit",
       tab: "draft",
     });
@@ -280,13 +297,27 @@ export function getAdvanceAgenda(career, league) {
     });
   }
 
+  if (isDraftScoutingPhase(career) && !isKeyEventNamed(career, "National Draft Day")) {
+    items.push({
+      id: "draft_scouting",
+      severity: "info",
+      scope: "milestone",
+      title: "Draft combine scouting",
+      detail: `National Draft ${formatDate(nationalDraftDayDate(career))} — scout the list before picks begin.`,
+      screen: "recruit",
+      tab: "draft",
+    });
+  }
+
   if (isDraftLive(career) && hasUnusedClubDraftPick(career) && !isKeyEventNamed(career, "National Draft Day")) {
     items.push({
       id: "draft_live",
       severity: isPlayerDraftTurn(career) ? "warn" : "info",
       scope: "milestone",
       title: isPlayerDraftTurn(career) ? "Your draft pick is due" : "National draft in progress",
-      detail: "Recruit → Draft — selections remain on the board.",
+      detail: isPlayerDraftTurn(career)
+        ? "You are on the clock — open the draft room."
+        : "Resolve picks one at a time in the draft room.",
       screen: "recruit",
       tab: "draft",
     });

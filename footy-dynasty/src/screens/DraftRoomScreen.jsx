@@ -3,6 +3,7 @@ import { Clock, SkipForward, X, Award } from "lucide-react";
 import { findClub } from "../data/pyramid.js";
 import { POSITIONS, formatPositionSlash } from "../lib/playerGen.js";
 import { fmtK } from "../lib/format.js";
+import { formatDate } from "../lib/calendar.js";
 import { css, Bar, RatingDot, Pill, Stat } from "../components/primitives.jsx";
 import { ClubBadge } from "../components/ClubBadge.jsx";
 import {
@@ -23,9 +24,11 @@ import {
   needsDraftSeed,
   isPlayerDraftTurn,
   isDraftLive,
+  isDraftScoutingPhase,
+  nationalDraftDayDate,
   getOnClockPick,
   getPlayerNextPick,
-  simAiPicksUntil,
+  resolveNextPick,
   skipCurrentPick,
   draftProspectOnClock,
   startDraftSessionPatch,
@@ -41,17 +44,18 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
     if (needsDraftSeed(career)) {
       const patch = ensureDraftSeeded(career, league);
       if (patch) updateCareer(patch);
-    } else if (career.draftPhase !== "live" && isDraftLive(career)) {
-      updateCareer({ draftPhase: "live" });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- seed once on mount
 
   const draftOrder = career.draftOrder || [];
+  const scoutingPhase = isDraftScoutingPhase(career);
+  const draftLive = isDraftLive(career);
   const onClock = getOnClockPick(career);
   const myNext = getPlayerNextPick(career);
   const onClockClub = onClock ? findClub(onClock.clubId) : null;
   const isMyTurn = isPlayerDraftTurn(career);
-  const draftComplete = career.draftPhase === "complete" || !isDraftLive(career);
+  const draftComplete = career.draftPhase === "complete";
+  const draftDayLabel = formatDate(nationalDraftDayDate(career));
   const history = career.draftHistory || [];
 
   const basePool = useMemo(() => {
@@ -85,29 +89,19 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
     });
   };
 
-  const simToMe = () => {
-    if (isMyTurn) return;
-    updateCareer(simAiPicksUntil(career, career.clubId));
+  const nextPick = () => {
+    const patch = resolveNextPick(career);
+    if (patch) updateCareer(patch);
   };
 
   const passPick = () => {
     if (!isMyTurn) return;
     const patch = skipCurrentPick(career);
-    if (patch) {
-      const after = { ...career, ...patch };
-      if (isDraftLive(after) && !isPlayerDraftTurn(after)) {
-        updateCareer({ ...patch, ...simAiPicksUntil(after, career.clubId) });
-      } else {
-        updateCareer(patch);
-      }
-    }
+    if (patch) updateCareer(patch);
   };
 
   const pickProspect = (p) => {
-    if (!isMyTurn) {
-      updateCareer(simAiPicksUntil(career, career.clubId));
-      return;
-    }
+    if (!draftLive || !isMyTurn) return;
     const result = draftProspectOnClock(career, club, p);
     if (result.error === "cap") {
       updateCareer({
@@ -150,12 +144,16 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
           <p className="text-xs text-atext-dim mt-1">
             {draftComplete
               ? "Draft complete — review results or return to recruit."
-              : isMyTurn
-                ? `You are on the clock — pick #${onClock?.pick} (round ${onClock?.round || 1}).`
-                : onClock
-                  ? `${onClockClub?.short || onClock.clubId} on the clock — pick #${onClock.pick}.`
-                  : "Waiting for draft order…"}
-            {myNext && !isMyTurn && ` Your next: #${myNext.pick}.`}
+              : scoutingPhase
+                ? `Combine scouting — draft opens ${draftDayLabel}. Scout prospects before picks begin.`
+                : draftLive
+                  ? isMyTurn
+                    ? `You are on the clock — pick #${onClock?.pick} (round ${onClock?.round || 1}).`
+                    : onClock
+                      ? `${onClockClub?.short || onClock.clubId} on the clock — pick #${onClock.pick}.`
+                      : "Waiting for draft order…"
+                  : "Draft pool loading…"}
+            {draftLive && myNext && !isMyTurn && ` Your next: #${myNext.pick}.`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -167,8 +165,15 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
         </div>
       </div>
 
+      {scoutingPhase && (
+        <div className="rounded-2xl p-4 border border-aaccent/40" style={{ background: "rgba(0,224,255,0.06)" }}>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-aaccent mb-1">Scouting window</div>
+          <div className="text-sm text-atext">Picks are locked until <span className="font-semibold">{draftDayLabel}</span>. Run combine scouting to reveal ratings, then advance to National Draft Day.</div>
+        </div>
+      )}
+
       {/* On the clock banner */}
-      {!draftComplete && onClock && (
+      {draftLive && !draftComplete && onClock && (
         <div
           className={`rounded-2xl p-4 border-2 flex flex-wrap items-center justify-between gap-4 ${isMyTurn ? "border-aaccent" : "border-aline"}`}
           style={{ background: isMyTurn ? "rgba(0,224,255,0.08)" : "var(--A-panel-2)" }}
@@ -191,8 +196,8 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
           </div>
           <div className="flex flex-wrap gap-2">
             {!isMyTurn && (
-              <button type="button" onClick={simToMe} className={`${css.btnPrimary} text-xs px-4 py-2.5 min-h-[44px] flex items-center gap-1`}>
-                <SkipForward className="w-4 h-4" /> Sim to my pick
+              <button type="button" onClick={nextPick} className={`${css.btnPrimary} text-xs px-4 py-2.5 min-h-[44px] flex items-center gap-1`}>
+                <SkipForward className="w-4 h-4" /> Next pick
               </button>
             )}
             {isMyTurn && (
@@ -260,7 +265,7 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
                       {st >= 3 ? <RatingDot value={p.overall} size="sm" /> : <span className="font-bold">{oDisp.label}</span>}
                       <span className="text-xs text-[#4AE89A]">Pot {st >= 3 ? p.potential : potDisp.label}</span>
                       <span className="text-xs font-mono" style={{ color: capOk ? "#4AE89A" : "#E84A6F" }}>{wageDisp.label}</span>
-                      {isMyTurn && (
+                      {draftLive && isMyTurn && (
                         <button type="button" onClick={() => pickProspect(p)} className={`${css.btnPrimary} text-xs px-3 py-2 min-h-[40px]`}>
                           Draft
                         </button>

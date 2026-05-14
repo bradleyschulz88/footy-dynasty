@@ -38,6 +38,7 @@ describe('draftSeed', () => {
     expect(career.draftOrder.length).toBe(clubIds.length * 3);
     expect(career.lastDraftOrderSnapshot?.length).toBe(clubIds.length);
     expect(career.draftOrderInaugural).toBe(true);
+    expect(career.draftPhase).toBe('scouting');
   });
 
   it('draftPickPositionForClub reads snapshot', () => {
