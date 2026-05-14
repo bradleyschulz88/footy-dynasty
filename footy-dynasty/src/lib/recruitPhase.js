@@ -34,6 +34,11 @@ export function isDraftScoutingPhase(career) {
   return career?.draftPhase === "scouting";
 }
 
+/** Scouting reminders until the player opens the draft board once. */
+export function hasUnackedDraftScouting(career) {
+  return isDraftScoutingPhase(career) && !career?.draftBriefingAck;
+}
+
 /** Draft night — picks resolving one at a time. */
 export function isDraftLive(career) {
   if (career?.draftPhase !== "live") return false;

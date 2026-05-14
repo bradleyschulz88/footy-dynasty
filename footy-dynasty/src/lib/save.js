@@ -379,6 +379,15 @@ export function migrate(save) {
     }
   }
 
+  if (v < 26) {
+    s.saveVersion = 26;
+    if (s.draftBriefingAck == null) s.draftBriefingAck = false;
+    // Stop repeat scouting nags for in-progress scouting saves (pool already visited in UI).
+    if (s.draftPhase === 'scouting' && hasDraftPool(s)) {
+      s.draftBriefingAck = true;
+    }
+  }
+
   return s;
 }
 

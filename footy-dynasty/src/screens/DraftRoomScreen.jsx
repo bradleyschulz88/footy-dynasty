@@ -41,11 +41,16 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
 
   useEffect(() => {
     if (!career || !league) return;
+    const patch = {};
     if (needsDraftSeed(career)) {
-      const patch = ensureDraftSeeded(career, league);
-      if (patch) updateCareer(patch);
+      const seedPatch = ensureDraftSeeded(career, league);
+      if (seedPatch) Object.assign(patch, seedPatch);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- seed once on mount
+    if (isDraftScoutingPhase(career) && !career.draftBriefingAck) {
+      patch.draftBriefingAck = true;
+    }
+    if (Object.keys(patch).length > 0) updateCareer(patch);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- seed / ack once on mount
 
   const draftOrder = career.draftOrder || [];
   const scoutingPhase = isDraftScoutingPhase(career);

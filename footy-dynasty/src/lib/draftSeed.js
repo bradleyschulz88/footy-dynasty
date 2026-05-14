@@ -83,6 +83,7 @@ export function seedNationalDraft(c, league, options = {}) {
   c.draftOrderInaugural = useInaugural;
   c.draftStartDate = `${season}-01-10`;
   c.draftPhase = c.draftPhase === 'complete' ? 'complete' : 'scouting';
+  c.draftBriefingAck = false;
   c.draftHistory = c.draftHistory || [];
   return c;
 }

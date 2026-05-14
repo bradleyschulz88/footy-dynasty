@@ -130,4 +130,36 @@ describe('advanceAgenda', () => {
     const title = advanceAgendaModalTitle(baseCareer(), league);
     expect(title.toLowerCase()).toContain('round');
   });
+
+  it('hides draft scouting reminder after briefing ack', () => {
+    const career = baseCareer({
+      draftPhase: 'scouting',
+      draftOrder: [{ pick: 1, clubId: 'c1', used: false }],
+      draftPool: [{ id: 'd1' }],
+      draftBriefingAck: true,
+      eventQueue: [{ type: 'training', subtype: 'skills', completed: false }],
+    });
+    const items = getAdvanceAgenda(career, league);
+    expect(items.some((i) => i.id === 'draft_scouting')).toBe(false);
+  });
+
+  it('only nags live draft when player is on the clock', () => {
+    const notTurn = baseCareer({
+      clubId: 'c1',
+      draftPhase: 'live',
+      draftOrder: [
+        { pick: 1, clubId: 'c2', used: false },
+        { pick: 2, clubId: 'c1', used: false },
+      ],
+      draftPool: [{ id: 'd1' }, { id: 'd2' }],
+      eventQueue: [{ type: 'training', subtype: 'skills', completed: false }],
+    });
+    expect(getAdvanceAgenda(notTurn, league).some((i) => i.id === 'draft_live')).toBe(false);
+
+    const onClock = {
+      ...notTurn,
+      draftOrder: [{ pick: 1, clubId: 'c1', used: false }],
+    };
+    expect(getAdvanceAgenda(onClock, league).some((i) => i.id === 'draft_live')).toBe(true);
+  });
 });

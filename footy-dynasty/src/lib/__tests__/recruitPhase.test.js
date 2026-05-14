@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isDraftLive,
   isDraftScoutingPhase,
+  hasUnackedDraftScouting,
   isPlayerDraftTurn,
   draftPickBlocksAdvance,
   isPostSeasonTradePeriod,
@@ -35,5 +36,16 @@ describe('recruitPhase', () => {
     expect(
       isPostSeasonTradePeriod({ postSeasonPhase: 'trade_period', inTradePeriod: true }),
     ).toBe(true);
+  });
+
+  it('hasUnackedDraftScouting until briefing ack', () => {
+    const scouting = {
+      draftPhase: 'scouting',
+      draftOrder: [{ pick: 1, clubId: 'c1', used: false }],
+      draftPool: [{ id: 'p1' }],
+      draftBriefingAck: false,
+    };
+    expect(hasUnackedDraftScouting(scouting)).toBe(true);
+    expect(hasUnackedDraftScouting({ ...scouting, draftBriefingAck: true })).toBe(false);
   });
 });

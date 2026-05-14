@@ -171,8 +171,11 @@ export default function RecruitScreen({ career, club, updateCareer, tab, setTab,
         patch.tradeWindowBriefingPending = false;
       }
     }
+    if (t === "draft" && isDraftScoutingPhase(career) && !career.draftBriefingAck) {
+      patch.draftBriefingAck = true;
+    }
     if (Object.keys(patch).length > 0) updateCareer(patch);
-  }, [t, career.tradePeriodBriefingAck, career.tradeWindowBriefingAck, career.tradeWindowBriefingPending, inTradePeriod, updateCareer]);
+  }, [t, career.tradePeriodBriefingAck, career.tradeWindowBriefingAck, career.tradeWindowBriefingPending, career.draftBriefingAck, inTradePeriod, updateCareer]);
   const tabs = [
     { key: "offers", label: `Offers${offerCount ? ` (${offerCount})` : ''}`, icon: Newspaper },
     ...(inTradePeriod ? [{ key: "freeagents", label: career.freeAgencyOpen ? "Free agents" : "Free agents (closed)", icon: UserPlus }] : []),

@@ -11,8 +11,8 @@ import {
   isPostSeasonTradePeriod,
   isDraftLive,
   isDraftScoutingPhase,
+  hasUnackedDraftScouting,
   isPlayerDraftTurn,
-  hasUnusedClubDraftPick,
   isKeyEventNamed,
   nextCalendarEvent,
   nationalDraftDayDate,
@@ -238,7 +238,7 @@ function buildOffSeasonAgenda(career, league) {
     });
   }
 
-  if (isDraftScoutingPhase(career)) {
+  if (hasUnackedDraftScouting(career)) {
     items.push({
       id: "draft_scouting",
       severity: "info",
@@ -250,15 +250,13 @@ function buildOffSeasonAgenda(career, league) {
     });
   }
 
-  if (isDraftLive(career) && hasUnusedClubDraftPick(career)) {
+  if (isPlayerDraftTurn(career)) {
     items.push({
       id: "draft_live",
-      severity: isPlayerDraftTurn(career) ? "warn" : "info",
+      severity: "warn",
       scope: "milestone",
-      title: isPlayerDraftTurn(career) ? "Your draft pick is due" : "National draft in progress",
-      detail: isPlayerDraftTurn(career)
-        ? "You are on the clock — open the draft room."
-        : "Unused picks remain — use Next pick in the draft room.",
+      title: "Your draft pick is due",
+      detail: "You are on the clock — open the draft room.",
       screen: "recruit",
       tab: "draft",
     });
@@ -297,7 +295,7 @@ export function getAdvanceAgenda(career, league) {
     });
   }
 
-  if (isDraftScoutingPhase(career) && !isKeyEventNamed(career, "National Draft Day")) {
+  if (hasUnackedDraftScouting(career) && !isKeyEventNamed(career, "National Draft Day")) {
     items.push({
       id: "draft_scouting",
       severity: "info",
@@ -309,15 +307,13 @@ export function getAdvanceAgenda(career, league) {
     });
   }
 
-  if (isDraftLive(career) && hasUnusedClubDraftPick(career) && !isKeyEventNamed(career, "National Draft Day")) {
+  if (isPlayerDraftTurn(career) && !isKeyEventNamed(career, "National Draft Day")) {
     items.push({
       id: "draft_live",
-      severity: isPlayerDraftTurn(career) ? "warn" : "info",
+      severity: "warn",
       scope: "milestone",
-      title: isPlayerDraftTurn(career) ? "Your draft pick is due" : "National draft in progress",
-      detail: isPlayerDraftTurn(career)
-        ? "You are on the clock — open the draft room."
-        : "Resolve picks one at a time in the draft room.",
+      title: "Your draft pick is due",
+      detail: "You are on the clock — open the draft room.",
       screen: "recruit",
       tab: "draft",
     });
@@ -390,12 +386,14 @@ function shouldShowAgendaModal(career, nextEv, league) {
   }
   if (mode === "all_events") return true;
   // before_matches — matches, training, and recruit milestones
-  if (!nextEv) return isDraftLive(career) || hasUnackedTradeWindowOpen(career);
+  if (!nextEv) {
+    return hasUnackedTradeWindowOpen(career) || hasUnackedDraftScouting(career);
+  }
   return (
     isMatchLikeEvent(nextEv) ||
     isTrainingEvent(nextEv) ||
     isKeyEvent(nextEv) ||
-    isDraftLive(career)
+    isPlayerDraftTurn(career)
   );
 }
 
