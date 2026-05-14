@@ -42,7 +42,7 @@ import TutorialOverlay, {
   tutorialMidStepCompleted,
   tutorialLocksAdvanceButton,
 } from './components/TutorialOverlay.jsx';
-import { advanceBlockedByCareerNeeds, mergeCareerPatchWithInboxSync } from './lib/inbox.js';
+import { advanceBlockedByCareerNeeds, applyCareerPatch } from './lib/inbox.js';
 import { HubScreen } from './screens/hub/HubScreen.jsx';
 import AppErrorBoundary from './components/AppErrorBoundary.jsx';
 import { CareerSetup } from './screens/CareerSetupScreen.jsx';
@@ -623,7 +623,7 @@ function AFLManagerInner() {
   const league = PYRAMID[career.leagueKey];
 
   // ============== UPDATER ==============
-  const updateCareer = (patch) => setCareer((c) => mergeCareerPatchWithInboxSync(c, patch));
+  const updateCareer = (patchOrFn) => setCareer((c) => applyCareerPatch(c, patchOrFn));
 
   const tutorialActive = career && !career.tutorialComplete;
   const visibleAdvanceAgendaCount =

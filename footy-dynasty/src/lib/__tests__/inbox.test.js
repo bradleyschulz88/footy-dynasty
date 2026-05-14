@@ -3,6 +3,7 @@ import {
   advanceBlockedByCareerNeeds,
   hasBlockingBoardInbox,
   mergeCareerPatchWithInboxSync,
+  applyCareerPatch,
   syncRecruitPhaseInboxRows,
   MANAGER_INBOX_TRADE_PERIOD_ID,
   MANAGER_INBOX_DRAFT_PICK_ID,
@@ -122,5 +123,30 @@ describe("canAcknowledgeBlockingInboxItem", () => {
   it("allows generic blocking acknowledge", () => {
     const career = {};
     expect(canAcknowledgeBlockingInboxItem(career, { blocking: true, resolved: false })).toBe(true);
+  });
+});
+
+describe("applyCareerPatch", () => {
+  it("applies updater function patches (match-day exit)", () => {
+    const prev = {
+      clubId: "c1",
+      inMatchDay: true,
+      currentMatchResult: { homeTotal: 80 },
+      lastMatchSummary: { label: "R1" },
+    };
+    const next = applyCareerPatch(prev, (c) => ({
+      inMatchDay: false,
+      currentMatchResult: null,
+      lastMatchSummary: null,
+      pendingPlayerMatchResult: c.pendingPlayerMatchResult,
+    }));
+    expect(next.inMatchDay).toBe(false);
+    expect(next.currentMatchResult).toBe(null);
+    expect(next.lastMatchSummary).toBe(null);
+  });
+
+  it("still applies plain object patches", () => {
+    const next = applyCareerPatch({ week: 1 }, { week: 2 });
+    expect(next.week).toBe(2);
   });
 });

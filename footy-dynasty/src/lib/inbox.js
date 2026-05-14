@@ -218,6 +218,15 @@ export function mergeCareerPatchWithInboxSync(prevCareer, patch) {
   return next;
 }
 
+/**
+ * Apply an object patch or updater `(career) => patch` (match-day exit uses the latter).
+ */
+export function applyCareerPatch(prevCareer, patchOrFn) {
+  const patch = typeof patchOrFn === "function" ? patchOrFn(prevCareer) : patchOrFn;
+  if (!patch || typeof patch !== "object") return prevCareer;
+  return mergeCareerPatchWithInboxSync(prevCareer, patch);
+}
+
 /** Mark one manager inbox row resolved (idempotent). */
 export function resolveInboxItem(inbox, itemId) {
   const arr = Array.isArray(inbox) ? inbox : [];
