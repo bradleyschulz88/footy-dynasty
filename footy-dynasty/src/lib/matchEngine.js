@@ -1,6 +1,6 @@
 import { rand, randNorm, rng, pick } from './rng.js';
 import { findClub } from '../data/pyramid.js';
-import { isForwardPreferred, isMidPreferred } from './playerGen.js';
+import { isForwardPreferred, isMidPreferred, playerHasPosition } from './playerGen.js';
 import { lineupStructureModifier } from './lineupBalance.js';
 import { LINEUP_CAP, LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 
@@ -96,6 +96,46 @@ export function benchStrengthBonus(squad, lineupIds, quarterNum) {
   const diff = Math.max(0, avgBench - avgStar);
   const qScale = quarterNum >= 4 ? 1 : 0.65;
   return diff * 0.11 * qScale;
+}
+
+/** Ruck + midfield contested strength for stoppage chains. */
+function stoppageStrength(lineup) {
+  if (!lineup?.length) return 50;
+  const rucks = lineup.filter((p) => playerHasPosition(p, 'RU') || playerHasPosition(p, 'R'));
+  const mids = lineup.filter((p) => isMidPreferred(p));
+  const ruckAvg = rucks.length
+    ? rucks.reduce((a, p) => a + (p.attrs?.strength ?? 60) + (p.attrs?.marking ?? 60), 0) / rucks.length
+    : 50;
+  const midAvg = mids.length
+    ? mids.reduce((a, p) => a + (p.attrs?.decision ?? 60) + (p.attrs?.endurance ?? 60), 0) / mids.length
+    : 50;
+  return ruckAvg * 0.45 + midAvg * 0.55;
+}
+
+/**
+ * Stoppage win margin for one quarter (-1..1, positive favours home side of diff).
+ * @returns {{ margin: number, homeClearances: number, awayClearances: number }}
+ */
+export function resolveStoppageQuarter(playerLineup, oppLineup, tactic, oppTactic, isPlayerHome) {
+  const pressMod = tactic === 'press' ? 0.08 : tactic === 'flood' ? -0.04 : 0;
+  const oppPressMod = oppTactic === 'press' ? 0.08 : oppTactic === 'flood' ? -0.04 : 0;
+  const playerStop = stoppageStrength(playerLineup) * (1 + pressMod);
+  const oppStop = stoppageStrength(oppLineup) * (1 + oppPressMod);
+  const homeStop = isPlayerHome ? playerStop : oppStop;
+  const awayStop = isPlayerHome ? oppStop : playerStop;
+  const total = Math.max(1, homeStop + awayStop);
+  const homeShare = homeStop / total;
+  const chains = 3 + rand(0, 3);
+  const homeClearances = Math.round(chains * homeShare);
+  const awayClearances = chains - homeClearances;
+  const margin = clamp((homeClearances - awayClearances) / Math.max(1, chains), -1, 1);
+  return { margin, homeClearances, awayClearances };
+}
+
+/** Interchange rotation — Q2/Q4 boost when bench is strong. */
+export function interchangeRotationBonus(squad, lineupIds, quarterNum) {
+  if (quarterNum !== 2 && quarterNum !== 4) return 0;
+  return benchStrengthBonus(squad, lineupIds, 4) * 0.85;
 }
 
 const KEY_MOMENT_KINDS = [
@@ -238,7 +278,9 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
       aStr = playerStrNow;
     }
     const diff = (hStr - aStr) + momentum * 9; // momentum tilts effective strength (~9 pts at full swing)
-    const rates = shotRates(diff);
+    const stop = resolveStoppageQuarter(playerLineup, oppLineup, tactic, oppTactic, isPlayerHome);
+    const diffWithStop = diff + stop.margin * 6;
+    const rates = shotRates(diffWithStop);
 
     // Apply tactic shot-rate adjustments
     const homeShotMean = isPlayerHome
@@ -260,10 +302,19 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
 
     let hG = 0, hB = 0, aG = 0, aB = 0;
     const qEvents = [];
+    if (stop.homeClearances + stop.awayClearances > 0) {
+      qEvents.push({
+        q: quarterNum,
+        minute: rand(q * 25, q * 25 + 8),
+        side: stop.margin >= 0 ? 'home' : 'away',
+        kind: 'stoppage',
+        text: `Contested ball — ${stop.homeClearances}–${stop.awayClearances} clearances this quarter`,
+      });
+    }
 
     // Resolve home shots
     for (let i = 0; i < homeShots; i++) {
-      const accuracy = clamp((0.42 + diff * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy, 0.10, 0.78);
+      const accuracy = clamp((0.42 + diffWithStop * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy, 0.10, 0.78);
       const minute = rand(q * 25, q * 25 + 24);
       const r = rng();
       if (r < accuracy) {
@@ -291,7 +342,7 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
     }
     // Resolve away shots
     for (let i = 0; i < awayShots; i++) {
-      const accuracy = clamp((0.42 - diff * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy, 0.10, 0.78);
+      const accuracy = clamp((0.42 - diffWithStop * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy, 0.10, 0.78);
       const minute = rand(q * 25, q * 25 + 24);
       const r = rng();
       if (r < accuracy) {

@@ -7,6 +7,8 @@ import { groundConditionBand } from "../lib/community.js";
 import { avgFacilities, avgStaff } from "../lib/format.js";
 import { matchPrepStaffLine } from "../lib/staffModifiers.js";
 import { turningPointRibbon } from "../lib/gameDepth.js";
+import { buildOppositionReport, runOppositionScoutPatch, SCOUT_COST } from "../lib/oppositionScout.js";
+import { derbyLabel } from "../lib/derbies.js";
 import { DataTable, css } from "./primitives.jsx";
 
 const TACTIC_LABEL = {
@@ -24,7 +26,7 @@ function nextMatchEvent(career) {
   return (career.eventQueue || []).find((e) => !e.completed && (e.type === "round" || e.type === "preseason_match"));
 }
 
-export default function MatchPreviewPanel({ career, league }) {
+export default function MatchPreviewPanel({ career, league, onUpdateCareer }) {
   const preview = useMemo(() => {
     const ev = nextMatchEvent(career);
     if (!ev) return null;
@@ -33,29 +35,36 @@ export default function MatchPreviewPanel({ career, league }) {
     let isHome = false;
     let label = "";
     let extraTags = [];
+    let oppId = null;
 
     if (ev.type === "round") {
       const m = (ev.matches || []).find((m2) => m2.home === career.clubId || m2.away === career.clubId);
       if (!m) return null;
       isHome = m.home === career.clubId;
-      opp = findClub(isHome ? m.away : m.home);
+      oppId = isHome ? m.away : m.home;
+      opp = findClub(oppId);
       const tr = ev.themedRound?.short;
       label = tr
         ? `Round ${ev.round} (${tr}) · ${isHome ? "vs" : "@"} ${opp?.short || ""}`
         : `Round ${ev.round} · ${isHome ? "vs" : "@"} ${opp?.short || ""}`;
       const tp = m.turningPoint ? turningPointRibbon(m.turningPoint) : null;
       const bogey = opp?.id && career.bogeyTeamId === opp.id;
+      const derby = derbyLabel(m.home, m.away);
       extraTags = [
         tp ? `${tp.emoji} ${tp.ribbon}` : null,
         bogey ? "👻 Bogey team" : null,
+        derby,
       ].filter(Boolean);
     } else {
       isHome = ev.homeId === career.clubId;
-      const oppId = isHome ? ev.awayId : ev.homeId;
+      oppId = isHome ? ev.awayId : ev.homeId;
       opp = findClub(oppId);
       label = `${ev.label || "Practice match"} · ${isHome ? "vs" : "@"} ${opp?.short || ""}`;
     }
     if (!opp) return null;
+
+    const scoutTier = career.opponentScout?.[oppId]?.tier ?? 0;
+    const scoutReport = buildOppositionReport(career, league, { tier: scoutTier });
 
     const aiSquads = ensureSquadsForLeague(career, league);
     const oppSquad = aiSquads?.[opp.id];
@@ -91,19 +100,31 @@ export default function MatchPreviewPanel({ career, league }) {
     const staffPrep = matchPrepStaffLine(career.staff, career);
 
     const factorRows = [
-      { factor: "Match strength", you: myRating.toFixed(1), opp: oppRating.toFixed(1) },
+      { factor: "Match strength", you: myRating.toFixed(1), opp: scoutReport?.oppRating ?? oppRating.toFixed(1) },
       {
         factor: "Tactics",
         you: TACTIC_LABEL[playerTactic] || TACTIC_LABEL.balanced,
         opp: TACTIC_LABEL[oppTacticKey] || TACTIC_LABEL.balanced,
       },
+      { factor: "Form (last 5)", you: scoutReport?.myForm ?? "—", opp: scoutReport?.form ?? "—" },
       { factor: "Deck / ground", you: condYou, opp: condOpp },
+      ...(scoutReport?.injuredCount != null
+        ? [{ factor: "Injuries (opp)", you: "—", opp: String(scoutReport.injuredCount) }]
+        : []),
       ...(staffPrep
         ? [{ factor: "Staff prep", you: staffPrep, opp: "—" }]
         : []),
     ];
 
-    return { label, factorRows, barYou: pct(myRating), barOpp: pct(oppRating), extraTags };
+    return {
+      label,
+      factorRows,
+      barYou: pct(myRating),
+      barOpp: pct(oppRating),
+      extraTags,
+      scoutReport,
+      scoutTier,
+    };
   }, [career, league]);
 
   if (!preview) return null;
@@ -113,6 +134,8 @@ export default function MatchPreviewPanel({ career, league }) {
     { key: "you", header: "You", render: (r) => <span className="text-aaccent">{r.you}</span> },
     { key: "opp", header: "Opp", render: (r) => <span className="text-atext">{r.opp}</span> },
   ];
+
+  const canScout = (career.cash ?? 0) >= SCOUT_COST && (preview.scoutTier ?? 0) < 2;
 
   return (
     <div className={`${css.panel} p-4 md:p-5 space-y-4`}>
@@ -127,6 +150,15 @@ export default function MatchPreviewPanel({ career, league }) {
               {t}
             </span>
           ))}
+        </div>
+      )}
+      {preview.scoutReport?.matchupNote && (
+        <p className="text-xs text-atext-mute border-l-2 border-aaccent pl-3">{preview.scoutReport.matchupNote}</p>
+      )}
+      {preview.scoutReport?.keyPlayers?.length > 0 && (
+        <div className="text-xs text-atext-mute">
+          <span className="font-bold text-atext">Key players: </span>
+          {preview.scoutReport.keyPlayers.join(" · ")}
         </div>
       )}
       <div className="flex gap-4 md:gap-6 items-end">
@@ -156,6 +188,24 @@ export default function MatchPreviewPanel({ career, league }) {
         </div>
       </div>
       <DataTable bare columns={columns} rows={preview.factorRows} rowKey={(r) => r.factor} />
+      {onUpdateCareer && (
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <span className="text-[11px] text-atext-mute">
+            Scout intel tier {preview.scoutTier ?? 0}/2
+          </span>
+          <button
+            type="button"
+            disabled={!canScout}
+            onClick={() => {
+              const patch = runOppositionScoutPatch(career, league);
+              if (patch) onUpdateCareer(patch);
+            }}
+            className={canScout ? `${css.btnSecondary} text-xs px-3 py-1.5` : "text-xs px-3 py-1.5 rounded-lg bg-apanel-2 text-atext-mute cursor-not-allowed"}
+          >
+            Scout opponent (${(SCOUT_COST / 1000).toFixed(0)}k)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

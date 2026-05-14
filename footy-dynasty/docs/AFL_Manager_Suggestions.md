@@ -7,35 +7,45 @@ Living backlog aligned with current code. Priorities shift; tick items off as yo
 - [x] Quarter-by-quarter flow, momentum, key moments (in `matchEngine.js`)
 - [x] Tactic families with quarter-by-quarter shape (late `run`/`attack` lift, early `defensive` edge)
 - [x] Bench depth nudge in Q3–Q4 (strength from top bench vs starters)
-- [ ] On-ball phases (centre bounce vs stoppage vs inside-50) as separate shot chains
-- [ ] Interchange carousel UI (who sits, fatigue visibility)
+- [x] On-ball phases (centre bounce vs stoppage vs inside-50) as separate shot chains — stoppage clearances in `resolveStoppageQuarter`
+- [x] Interchange rotation bonus Q2/Q4 (`interchangeRotationBonus`); 18+5 squad UI unchanged
 
 ## List & finance
 
 - [x] Wage cap, `effectiveWageCap`, scaling (`lib/finance/engine.js`)
 - [x] Hub cap % + tight-cap copy
-- [ ] Hard cap breaches with forced delisting / penalties (board-driven)
-- [ ] Rookie salary bands and SSP-style list spots by tier
+- [x] Hard cap breaches with forced delisting / penalties (`listRules.capBreachSanctionPatch`)
+- [x] Rookie salary bands and SSP-style list spots by tier (`listRules.js` senior/rookie caps)
 
 ## AI & world
 
 - [x] Stable per-club tactical personality blended with rating-based heuristics (`lib/aiPersonality.js`)
-- [ ] Trade/draft aggression tied to personality + ladder position
+- [x] Trade/draft aggression tied to personality + ladder position (`tradeEngine.js`, `draftEngine` needs bias)
 - [ ] Rival clubs remember past finals
 
 ## Calendar & flavour
 
 - [x] Themed round tags on schedule events (`lib/themedRounds.js`)
-- [ ] Derbies: auto-detect same-city pairs for flavour text
+- [x] Derbies: auto-detect same-city pairs for flavour text (`derbies.js`)
 - [ ] Weather / travel fatigue by distance
 
 ## Career history
 
 - [x] Season rows in `career.history` with ladder, flags, top scorer, Brownlow
-- [ ] Finals brackets archived per year
-- [ ] Club best-and-fairest from in-game votes
+- [x] Finals brackets archived per year (`finalsBracketArchiveSnapshot`)
+- [x] Club best-and-fairest from in-game votes (Brownlow vote totals → season B&F)
 
 ## Meta
 
 - [ ] PWA offline conflict resolution for saves
 - [ ] Expand automated tests around full season loops
+
+## Hub / prep
+
+- [x] Opposition scout report + paid intel tiers (`oppositionScout.js`, `MatchPreviewPanel`)
+- [x] Finals magic number widget (`magicNumber.js`, Hub)
+- [x] Challenge scenarios at career setup (under the pump, flag or sack, rebuild, local hero)
+
+## Finals
+
+- [x] Tier-1 AFL final eight paths (QF → SF → PF → GF, 4 weeks, `finalsBracket.aflState`)

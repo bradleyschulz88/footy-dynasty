@@ -2,6 +2,7 @@
  * National draft runtime: seeding guards, single-pick resolution, pick / skip, history.
  */
 import { rand, rng } from './rng.js';
+import { aiPersonalityForClub, hashClubId } from './aiPersonality.js';
 import { findClub } from '../data/pyramid.js';
 import { seedNationalDraft, DRAFT_POOL_SIZE, DRAFT_ROUNDS } from './draftSeed.js';
 import {
@@ -12,6 +13,8 @@ import {
   isDraftScoutingPhase,
 } from './recruitPhase.js';
 import { rookieDraftWage, canAffordSigning, leagueTierOf } from './finance/engine.js';
+import { isForwardPreferred } from './playerGen.js';
+import { canAddToList } from './listRules.js';
 
 export { DRAFT_ROUNDS, DRAFT_POOL_SIZE } from './draftSeed.js';
 export {
@@ -97,10 +100,36 @@ function appendHistory(history, entry) {
   return [entry, ...(history || [])].slice(0, 40);
 }
 
-function aiPickFromPool(currentPool) {
+function squadPositionNeeds(squad) {
+  const counts = {};
+  for (const p of squad || []) {
+    const pos = p.position || 'C';
+    counts[pos] = (counts[pos] || 0) + 1;
+  }
+  const needs = [];
+  if ((counts.RU || 0) < 1) needs.push('RU');
+  if ((counts.KF || 0) + (counts.HF || 0) < 4) needs.push('KF', 'HF');
+  if ((counts.C || 0) < 3) needs.push('C');
+  return needs;
+}
+
+function aiPickFromPool(currentPool, clubId, aiSquad) {
   if (!currentPool.length) return null;
-  const ranked = [...currentPool].sort((a, b) => b.overall - a.overall);
-  if (rng() < 0.72) return ranked[0];
+  const needs = squadPositionNeeds(aiSquad);
+  const { preferredTactic } = aiPersonalityForClub(clubId);
+  const h = hashClubId(clubId);
+  const ranked = [...currentPool].sort((a, b) => {
+    let sa = a.overall;
+    let sb = b.overall;
+    if (needs.includes(a.position)) sa += 4;
+    if (needs.includes(b.position)) sb += 4;
+    if (preferredTactic === 'attack' && isForwardPreferred(a)) sa += 2;
+    if (preferredTactic === 'attack' && isForwardPreferred(b)) sb += 2;
+    if (preferredTactic === 'defensive' && (a.position === 'KB' || a.position === 'HB')) sa += 2;
+    if (preferredTactic === 'defensive' && (b.position === 'KB' || b.position === 'HB')) sb += 2;
+    return sb - sa;
+  });
+  if (rng() < 0.68 + (h % 5) * 0.02) return ranked[0];
   const k = Math.min(5, ranked.length);
   return ranked[rand(0, k - 1)];
 }
@@ -112,7 +141,7 @@ function markPickUsed(order, pickIndex, meta) {
 function applyAiPickAt(order, pool, aiSquads, pickIndex) {
   const pickEntry = order[pickIndex];
   if (!pickEntry || pickEntry.used) return { order, pool, aiSquads, news: null, historyEntry: null };
-  const aiPick = aiPickFromPool(pool);
+  const aiPick = aiPickFromPool(pool, pickEntry.clubId, aiSquads?.[pickEntry.clubId]);
   if (!aiPick) {
     return {
       order: markPickUsed(order, pickIndex, { skipped: true, prospectName: 'PASS (empty pool)' }),
@@ -237,7 +266,8 @@ export function draftProspectOnClock(career, club, prospect) {
   if (idx < 0) return { error: 'no_pick' };
   const pickEntry = career.draftOrder[idx];
   if (pickEntry.clubId !== career.clubId) return { error: 'not_your_turn' };
-  if (career.squad.length >= 40) return { error: 'squad_full' };
+  const listCheck = canAddToList(career, { rookie: true });
+  if (!listCheck.ok) return { error: listCheck.reason || 'squad_full' };
 
   const dTier = leagueTierOf(career);
   const rw = rookieDraftWage(prospect.overall, dTier);

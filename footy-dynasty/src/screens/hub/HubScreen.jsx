@@ -35,6 +35,7 @@ import { boardObjectiveUiStatus, youthSeniorGameCount } from "../../lib/board.js
 import { themedRoundForNumber } from "../../lib/themedRounds.js";
 import { css, Pill, Stat, Jersey } from "../../components/primitives.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
+import { finalsMagicNumber } from "../../lib/magicNumber.js";
 
 const hubContainer = {
   hidden: { opacity: 1 },
@@ -234,7 +235,7 @@ function DifficultyMiniSummary({ career, cfg }) {
   );
 }
 
-export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance }) {
+export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance, updateCareer }) {
   const advanceCtx = getAdvanceContext(career, league);
   const hubRoundTheme =
     career.phase === "season" && !career.inFinals && career.week
@@ -313,6 +314,10 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                 <Pill color="#B45309">{hubRoundTheme.short}</Pill>
               )}
               <Pill color={posColor}>#{myLadderPos || "—"} on Ladder</Pill>
+              {league.tier === 1 && !career.inFinals && career.phase !== 'preseason' && (() => {
+                const mn = finalsMagicNumber(career);
+                return mn ? <Pill color={mn.clinched ? '#4AE89A' : '#F59E0B'}>{mn.label}</Pill> : null;
+              })()}
               {myRow && <Pill color="#64748B">{myRow.W}W {myRow.L}L {myRow.D}D</Pill>}
               {career.clubCulture && (
                 <Pill color="#A78BFA">
@@ -485,7 +490,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       })()}
 
       <motion.div variants={hubItem}>
-        <MatchPreviewPanel career={career} league={league} />
+        <MatchPreviewPanel career={career} league={league} onUpdateCareer={updateCareer} />
       </motion.div>
 
       {/* Last Event Result Card */}

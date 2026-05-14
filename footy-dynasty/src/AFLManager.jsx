@@ -987,6 +987,7 @@ function AFLManagerInner() {
                   setScreen={onNavScreen}
                   setTab={setTab}
                   onAdvance={advanceToNextEvent}
+                  updateCareer={updateCareer}
                 />
               )}
               {screen === "squad" && (

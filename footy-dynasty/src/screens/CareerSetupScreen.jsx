@@ -95,9 +95,17 @@ function fmtSavedAt(iso) {
   }
 }
 
+const CHALLENGE_SCENARIOS = [
+  { id: 'under_the_pump', title: 'Under the pump', sub: 'Tight cash, nervous board — survive the season.' },
+  { id: 'flag_or_sack', title: 'Flag or sack', sub: 'Top-four required or the board pulls the pin.' },
+  { id: 'rebuild', title: 'Rebuild', sub: 'Bottom-half list, youth focus, patient board.' },
+  { id: 'local_hero', title: 'Local hero', sub: 'Tier 3 only — promotion within three years.' },
+];
+
 export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
   const saved = loadSetup();
   const [gameMode, setGameMode] = useState(saved.gameMode ?? 'normal'); // normal | sandbox | challenge
+  const [challengeId, setChallengeId] = useState(saved.challengeId ?? 'under_the_pump');
   const [prefsUi, setPrefsUi] = useState(() => getPlayerPrefs());
   const [step, _setStep] = useState(saved.step ?? 0);
   const [state, _setSelState] = useState(saved.state ?? null);
@@ -126,6 +134,10 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
   const setGameModePersist = (v) => {
     saveSetup({ gameMode: v });
     setGameMode(v);
+  };
+  const setChallengePersist = (v) => {
+    saveSetup({ challengeId: v });
+    setChallengeId(v);
   };
 
   useEffect(() => {
@@ -162,11 +174,25 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
         boardConfidence: Math.min(95, (tunedFinance.boardConfidence ?? 55) + 18),
       };
     } else if (gameMode === 'challenge') {
-      tunedFinance = {
-        ...tunedFinance,
-        cash: Math.round(tunedFinance.cash * 0.72),
-        boardConfidence: Math.max(38, (tunedFinance.boardConfidence ?? 55) - 14),
-      };
+      const ch = challengeId || 'under_the_pump';
+      if (ch === 'flag_or_sack') {
+        tunedFinance = {
+          ...tunedFinance,
+          boardConfidence: Math.max(42, (tunedFinance.boardConfidence ?? 55) - 6),
+        };
+      } else if (ch === 'rebuild') {
+        tunedFinance = {
+          ...tunedFinance,
+          cash: Math.round(tunedFinance.cash * 0.85),
+          boardConfidence: Math.min(88, (tunedFinance.boardConfidence ?? 55) + 12),
+        };
+      } else {
+        tunedFinance = {
+          ...tunedFinance,
+          cash: Math.round(tunedFinance.cash * 0.72),
+          boardConfidence: Math.max(38, (tunedFinance.boardConfidence ?? 55) - 14),
+        };
+      }
     }
     const tier3KStart = league.tier === 3 ? tier3DivisionCount(leagueKey, state) : 0;
     const startDiv = league.tier === 3 ? Math.min(localDivision, tier3KStart) : null;
@@ -262,7 +288,8 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
       // v3 additions — Gameplay Systems Spec
       difficulty,
       gameMode,
-      challengeId: gameMode === 'challenge' ? 'under_the_pump' : null,
+      challengeId: gameMode === 'challenge' ? (challengeId || 'under_the_pump') : null,
+      challengeGoal: gameMode === 'challenge' ? challengeId : null,
       tutorialStep: isFirstCareer && cfg.tutorialPolicy !== 'never' ? 0 : 6,
       tutorialComplete: !(isFirstCareer && cfg.tutorialPolicy !== 'never'),
       isFirstCareer,
@@ -416,6 +443,22 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                   </button>
                 ))}
               </div>
+              {gameMode === 'challenge' && (
+                <div className="grid md:grid-cols-2 gap-2 mt-3">
+                  {CHALLENGE_SCENARIOS.map((ch) => (
+                    <button
+                      key={ch.id}
+                      type="button"
+                      onClick={() => setChallengePersist(ch.id)}
+                      className={`${css.panelHover} p-3 text-left rounded-lg border transition`}
+                      style={{ borderColor: challengeId === ch.id ? '#E84A6F' : 'var(--A-line)' }}
+                    >
+                      <div className="font-bold text-sm text-atext">{ch.title}</div>
+                      <motion.div className="text-[10px] text-atext-dim mt-1">{ch.sub}</motion.div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <label className={`flex items-start gap-3 cursor-pointer ${css.panel} p-4 rounded-xl`}>
               <input

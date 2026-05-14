@@ -4,7 +4,7 @@
 import { seedRng, rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred, generatePlayer } from './playerGen.js';
-import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus } from './matchEngine.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus } from './matchEngine.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import {
@@ -14,7 +14,14 @@ import {
   pairFinalsRound,
   finalsRoundLabel,
   finalsSeedFor,
+  recordAflWeekResults,
+  aflFinalsAlive,
+  finalsBracketArchiveSnapshot,
+  finalsWeeksEstimate,
 } from './finalsBracket.js';
+import { capBreachSanctionPatch } from './listRules.js';
+import { generateAiTradeOffers, applyLeagueTradeNews } from './tradeEngine.js';
+import { derbyLabel } from './derbies.js';
 import { generateTradePool } from './defaults.js';
 import { seedNationalDraft } from './draftSeed.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
@@ -277,7 +284,7 @@ function startFinals(c, league) {
   c.finalsRound = 0;
   c.finalsFinalists = seedIds;
   c.finalsAlive = [...seedIds];
-  c.finalsTotalRounds = finalsWeeksEstimateFromCount(seedIds.length);
+  c.finalsTotalRounds = finalsWeeksEstimate(seedIds.length, league.tier);
   c.finalsResults = [];
   c.finalsBracket = buildFinalsBracket(seedIds, league.tier);
   c.finalsEliminated = false;
@@ -311,13 +318,6 @@ function startFinals(c, league) {
   return c;
 }
 
-function finalsWeeksEstimateFromCount(n) {
-  let alive = n;
-  let w = 0;
-  while (alive > 1) { w += 1; alive = Math.ceil(alive / 2); }
-  return w;
-}
-
 function simFinalsPair(c, league, m, roundLabel) {
   const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff))
     + getCaptainMatchBonus(c, true);
@@ -348,7 +348,8 @@ function simFinalsPair(c, league, m, roundLabel) {
     }
     const getPlayerStrengthForQuarter = (qi) =>
       teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
-      + benchStrengthBonus(c.squad, c.lineup, qi);
+      + benchStrengthBonus(c.squad, c.lineup, qi)
+      + interchangeRotationBonus(c.squad, c.lineup, qi);
     const getOppStrengthForQuarter = oppSquad?.length
       ? (qi) =>
           teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
@@ -390,13 +391,18 @@ function advanceFinalsWeek(c, league) {
   }
 
   const tier = c.finalsBracket?.tier ?? league.tier;
-  const pairs = pairFinalsRound(c.finalsFinalists, alive, tier);
-  const roundLabel = finalsRoundLabel(alive.length, tier);
+  const aflState = c.finalsBracket?.aflState ?? null;
+  const pairs = pairFinalsRound(c.finalsFinalists, alive, tier, aflState);
+  const roundLabel = aflState
+    ? finalsRoundLabel(alive.length, tier, aflState.week)
+    : finalsRoundLabel(alive.length, tier);
   const newAlive = [];
+  const winners = [];
   let playerMatchPayload = null;
 
   for (const m of pairs) {
     const { result, winnerId, isPlayerMatch, isHome } = simFinalsPair(c, league, m, roundLabel);
+    winners.push(winnerId);
     newAlive.push(winnerId);
 
     if (isPlayerMatch) {
@@ -446,11 +452,21 @@ function advanceFinalsWeek(c, league) {
         club,
       };
     }
-    c.finalsResults.push({ round: c.finalsRound, label: m.label || roundLabel, ...m });
+    c.finalsResults.push({
+      round: c.finalsRound,
+      label: m.label || roundLabel,
+      winnerId,
+      ...m,
+    });
   }
 
-  const orderedAlive = c.finalsFinalists.filter((id) => newAlive.includes(id));
-  c.finalsAlive = orderedAlive.length ? orderedAlive : newAlive;
+  if (aflState && c.finalsBracket) {
+    c.finalsBracket.aflState = recordAflWeekResults(aflState, pairs, winners);
+    c.finalsAlive = aflFinalsAlive(c.finalsBracket.aflState);
+  } else {
+    const orderedAlive = c.finalsFinalists.filter((id) => newAlive.includes(id));
+    c.finalsAlive = orderedAlive.length ? orderedAlive : newAlive;
+  }
   c.finalsRound += 1;
   c.week += 1;
   c.eventQueue = completeNextFinalsCalendarEvent(c.eventQueue, c.finalsRound - 1);
@@ -532,12 +548,12 @@ function finishSeason(c, league) {
   const pName = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Unknown'));
   const byGoals = [...c.squad].sort((a, b) => (b.goals || 0) - (a.goals || 0));
   const byDisposals = [...c.squad].sort((a, b) => (b.disposals || 0) - (a.disposals || 0));
-  const lineupSquad = c.squad.filter((p) => c.lineup.includes(p.id));
-  const bafPlayer = [...lineupSquad].sort((a, b) => {
-    const scoreA = (a.disposals || 0) / Math.max(1, a.gamesPlayed || 1);
-    const scoreB = (b.disposals || 0) / Math.max(1, b.gamesPlayed || 1);
-    return scoreB - scoreA;
-  })[0] || null;
+  const bafFromVotes = Object.entries(c.brownlow || {})
+    .map(([id, votes]) => ({ id, votes }))
+    .sort((a, b) => b.votes - a.votes)[0];
+  const bafPlayer = bafFromVotes
+    ? c.squad.find((p) => p.id === bafFromVotes.id) || null
+    : null;
   const champion = c.premiership === c.season;
   const oldLeagueKey = c.leagueKey;
   const oldLeagueName = PYRAMID[oldLeagueKey]?.name || '';
@@ -633,7 +649,9 @@ function finishSeason(c, league) {
     promoted, relegated, champion,
     topScorer: byGoals[0] ? { name: pName(byGoals[0]), goals: byGoals[0].goals || 0, games: byGoals[0].gamesPlayed || 0 } : null,
     topDisposal: byDisposals[0] ? { name: pName(byDisposals[0]), disposals: byDisposals[0].disposals || 0, games: byDisposals[0].gamesPlayed || 0 } : null,
-    baf: bafPlayer ? { name: pName(bafPlayer), overall: bafPlayer.overall, games: bafPlayer.gamesPlayed || 0 } : null,
+    baf: bafPlayer
+      ? { name: pName(bafPlayer), overall: bafPlayer.overall, games: bafPlayer.gamesPlayed || 0, votes: bafFromVotes?.votes ?? 0 }
+      : null,
   };
   c.showSeasonSummary = true;
 
@@ -721,8 +739,11 @@ function finishSeason(c, league) {
     promoted, relegated, champion,
     topScorer: byGoals[0] ? { name: pName(byGoals[0]), goals: byGoals[0].goals || 0 } : null,
     brownlow: brownlowWinner,
+    finalsBracket: finalsBracketArchiveSnapshot(c.finalsBracket),
   });
   c.brownlow = {};
+  const capPatch = capBreachSanctionPatch(c, league);
+  if (capPatch) Object.assign(c, capPatch);
   c.boardWarning = 0;
 
   const games = (myRow.W || 0) + (myRow.L || 0) + (myRow.D || 0);
@@ -1237,7 +1258,8 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         }
         const getPlayerStrengthForQuarter = (qi) =>
           teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
-          + benchStrengthBonus(c.squad, c.lineup, qi);
+          + benchStrengthBonus(c.squad, c.lineup, qi)
+      + interchangeRotationBonus(c.squad, c.lineup, qi);
         const getOppStrengthForQuarter = oppSquad?.length
           ? (qi) =>
               teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
@@ -1335,6 +1357,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 
     ensureCareerBoard(c, findClub(c.clubId), league);
     updateBoardObjectiveProgress(c, league);
+    applyLeagueTradeNews(c, league);
 
     c.aiSquads = tickAiSquads(c.aiSquads || {});
     c.squad = c.squad.map((p) => {
