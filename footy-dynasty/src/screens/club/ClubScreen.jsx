@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
-  UserCog,   Repeat, Sprout, BarChart3, Calendar, ChevronRight, ChevronLeft,
+  UserCog,   Repeat, Sprout, BarChart3, Calendar, ChevronLeft,
   Home, Play, Pause, Save, ArrowUp, ArrowDown, ArrowRight,
   Star, Zap, Heart, Target, Activity, Flame, Sparkles, Crown,
   TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
@@ -100,6 +100,7 @@ import {
   clubEffectiveTab,
   tutorialHighlightTab,
 } from "../../components/TutorialOverlay.jsx";
+import { ClubOverviewTab, CommercialKpiStrip, ClubBreadcrumb } from "./ClubNavigationHub.jsx";
 
 function clubLeafSection(leaf, showCommittee) {
   if (leaf === "overview") return "overview";
@@ -109,78 +110,6 @@ function clubLeafSection(leaf, showCommittee) {
   if (ops.includes(leaf)) return "operations";
   if (["kits", "honours", "rookies"].includes(leaf)) return "identity";
   return "overview";
-}
-
-/** Hub landing for Club — jump-off tiles instead of a single long tab strip. */
-function ClubOverviewTab({ career, club, setTab }) {
-  const cash = career.finance?.cash ?? 0;
-  const boardConf = career.finance?.boardConfidence ?? 0;
-  const sponsorsN = (career.sponsors || []).length;
-  const sponsorsAnnual = (career.sponsors || []).reduce((a, s) => a + (s.annualValue || 0), 0);
-  const facAvg = avgFacilities(career.facilities);
-  const staffAvg = avgStaff(career.staff);
-  const rookies = (career.squad || []).filter((p) => p.rookie).length;
-
-  const tile = (title, sublines, Icon, accent, go) => (
-    <button
-      type="button"
-      key={title}
-      onClick={go}
-      className={`${css.panel} p-4 text-left rounded-xl border border-aline hover:border-aaccent/45 transition w-full`}
-    >
-      <div className="flex items-start gap-3">
-        <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: `${accent}18`, border: `1px solid ${accent}40` }}
-        >
-          <Icon className="w-5 h-5" style={{ color: accent }} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="font-bold text-atext text-sm tracking-wide">{title}</div>
-          <div className="text-[11px] text-atext-dim mt-1 space-y-0.5 leading-snug">
-            {sublines.map((line) => (
-              <div key={line}>{line}</div>
-            ))}
-          </div>
-        </div>
-        <ChevronRight className="w-4 h-4 text-atext-dim flex-shrink-0 mt-1" />
-      </div>
-    </button>
-  );
-
-  return (
-    <div className="space-y-5">
-      <div>
-        <div className={`${css.h1} text-2xl md:text-3xl`}>CLUB OVERVIEW</div>
-        <div className="text-xs text-atext-dim mt-1">
-          {club.name} · Pick an area below or use the sections above
-        </div>
-      </div>
-      <div className="grid sm:grid-cols-2 gap-3">
-        {tile(
-          "Commercial",
-          [`Cash ${fmtK(cash)}`, `Board confidence ${boardConf}%`, `${sponsorsN} sponsors · contracts & cap`],
-          Briefcase,
-          "#4ADBE8",
-          () => setTab("contracts"),
-        )}
-        {tile(
-          "Operations",
-          [`Facilities avg ${facAvg.toFixed(1)}`, `Staff avg ${Math.round(staffAvg)} rating`, "Venue, medical, coaches"],
-          Wrench,
-          "#4AE89A",
-          () => setTab("facilities"),
-        )}
-        {tile(
-          "Club & list",
-          [`${rookies} rookies on list`, "Kits, honours & rookie list"],
-          Shirt,
-          "#A78BFA",
-          () => setTab("kits"),
-        )}
-      </div>
-    </div>
-  );
 }
 
 // ============================================================================
@@ -308,7 +237,14 @@ export default function ClubScreen({ career, club, updateCareer, tab, setTab, tu
         />
       )}
 
-      {t === "overview" && <ClubOverviewTab career={career} club={club} setTab={setTab} />}
+      <ClubBreadcrumb activePrimary={activePrimary} activeTab={t} />
+      {activePrimary === "commercial" && t !== "overview" && (
+        <CommercialKpiStrip career={career} />
+      )}
+
+      {t === "overview" && (
+        <ClubOverviewTab career={career} club={club} setTab={setTab} showCommittee={showCommittee} />
+      )}
       {t === "finances" && <FinancesTab career={career} />}
       {t === "contracts" && <ContractsTab career={career} updateCareer={updateCareer} />}
       {t === "board" && <BoardTab career={career} club={club} updateCareer={updateCareer} />}
