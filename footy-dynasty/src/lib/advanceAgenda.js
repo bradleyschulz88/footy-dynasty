@@ -7,9 +7,19 @@ import {
 } from "./finance/engine.js";
 import { LINEUP_CAP, LINEUP_FIELD_COUNT, lineupPlayerCount } from "./lineupHelpers.js";
 import { ensureStaffTasks } from "./staffTasks.js";
+import {
+  isPostSeasonTradePeriod,
+  isDraftLive,
+  isPlayerDraftTurn,
+  hasUnusedClubDraftPick,
+  isKeyEventNamed,
+  nextCalendarEvent,
+} from "./recruitPhase.js";
+import { hasUnackedTradePeriodOpen, hasUnackedTradeWindowOpen } from "./inbox.js";
+import { TRADE_PERIOD_DAYS } from "./tradePeriod.js";
 
 /** @typedef {'warn' | 'info'} AgendaSeverity */
-/** @typedef {'match' | 'training' | 'general'} AgendaScope */
+/** @typedef {'match' | 'training' | 'general' | 'milestone'} AgendaScope */
 
 /**
  * @typedef {{
@@ -33,7 +43,7 @@ export function advanceReminderMode(career) {
 
 /** Stable id for the next incomplete calendar event (snooze target). */
 export function nextEventAgendaSignature(career) {
-  const ev = (career?.eventQueue || []).find((e) => !e.completed);
+  const ev = nextCalendarEvent(career);
   if (!ev) return "calendar:none";
   return [
     ev.type,
@@ -63,10 +73,6 @@ function isSnoozedForNextEvent(career, itemId, sig) {
   return snooze[itemId] === sig;
 }
 
-function nextIncompleteEvent(career) {
-  return (career?.eventQueue || []).find((e) => !e.completed) ?? null;
-}
-
 function isMatchLikeEvent(ev) {
   return ev?.type === "round" || ev?.type === "preseason_match";
 }
@@ -75,77 +81,11 @@ function isTrainingEvent(ev) {
   return ev?.type === "training";
 }
 
-/**
- * Raw agenda items (before snooze / preference filtering).
- * @param {object} career
- * @param {object} [league]
- * @returns {AdvanceAgendaItem[]}
- */
-export function getAdvanceAgenda(career, league) {
-  if (!career?.clubId) return [];
+function isKeyEvent(ev) {
+  return ev?.type === "key_event";
+}
 
-  const ctx = getAdvanceContext(career, league);
-  if (ctx.mode === "trade_period" || ctx.mode === "draft_countdown" || ctx.mode === "finals") {
-    return buildOffSeasonAgenda(career);
-  }
-
-  const nextEv = nextIncompleteEvent(career);
-  const items = [];
-
-  if (nextEv && isMatchLikeEvent(nextEv)) {
-    const nLineup = lineupPlayerCount(career.lineup);
-    const nField = lineupFieldFilled(career.lineup);
-    if (nField < LINEUP_FIELD_COUNT) {
-      items.push({
-        id: "lineup_field",
-        severity: nField < Math.floor(LINEUP_FIELD_COUNT * 0.6) ? "warn" : "info",
-        scope: "match",
-        title: "On-field lineup incomplete",
-        detail: `${nField}/${LINEUP_FIELD_COUNT} on-field slots filled — match strength drops with a short XVIII.`,
-        screen: "squad",
-        tab: null,
-      });
-    } else if (nLineup < LINEUP_CAP) {
-      items.push({
-        id: "lineup_bench",
-        severity: "info",
-        scope: "match",
-        title: "Match squad short on bench",
-        detail: `${nLineup}/${LINEUP_CAP} in match squad — interchange depth may hurt late quarters.`,
-        screen: "squad",
-        tab: null,
-      });
-    }
-
-    const tasks = ensureStaffTasks(career);
-    if ((tasks.matchPrepTier ?? 0) === 0) {
-      items.push({
-        id: "match_prep",
-        severity: "info",
-        scope: "match",
-        title: "No extra match prep set",
-        detail: "Staff → match prep tier is baseline. Raise it before a big fixture for analyst-driven edges.",
-        screen: "club",
-        tab: "staff",
-      });
-    }
-  }
-
-  if (nextEv && isTrainingEvent(nextEv)) {
-    const tasks = ensureStaffTasks(career);
-    if (!tasks.trainingLeadId) {
-      items.push({
-        id: "training_lead",
-        severity: "info",
-        scope: "training",
-        title: "No training lead assigned",
-        detail: "Assign a training lead on Club → Staff so weekly loads get coaching bonuses.",
-        screen: "club",
-        tab: "staff",
-      });
-    }
-  }
-
+function appendCapAndCashItems(career, items) {
   const renewals = pendingRenewalCount(career);
   if (renewals > 0) {
     items.push({
@@ -201,34 +141,231 @@ export function getAdvanceAgenda(career, league) {
       tab: "finances",
     });
   }
-
-  return items;
 }
 
-function buildOffSeasonAgenda(career) {
+function buildMilestoneAgenda(career, nextEv) {
   const items = [];
-  const renewals = pendingRenewalCount(career);
-  if (renewals > 0) {
+  if (!nextEv || !isKeyEvent(nextEv)) return items;
+
+  if (nextEv.name === "Transfer Window Opens") {
     items.push({
-      id: "renewals",
+      id: "milestone_trade_window",
       severity: "warn",
-      scope: "general",
-      title: `${renewals} renewal${renewals === 1 ? "" : "s"} pending`,
-      detail: "Clear the contract queue before list rules tighten for the new season.",
-      screen: "club",
-      tab: "contracts",
+      scope: "milestone",
+      title: "Transfer window opens today",
+      detail: "Pre-season list moves are live — review Recruit → Trades before advancing.",
+      screen: "recruit",
+      tab: "trade",
     });
+  }
+  if (nextEv.name === "National Draft Day") {
+    items.push({
+      id: "milestone_draft_day",
+      severity: isPlayerDraftTurn(career) ? "warn" : "info",
+      scope: "milestone",
+      title: "National draft day",
+      detail: isDraftLive(career)
+        ? isPlayerDraftTurn(career)
+          ? "Your pick is on the clock — Recruit → Draft."
+          : "Draft board is live — check Recruit → Draft for your upcoming pick."
+        : "Draft pool will populate after off-season rollover if not already live.",
+      screen: "recruit",
+      tab: "draft",
+    });
+  }
+  if (nextEv.name === "Transfer Window Closes") {
+    const pending = (career.pendingTradeOffers || []).filter((o) => o.status === "pending").length;
+    if (pending > 0) {
+      items.push({
+        id: "milestone_trade_close",
+        severity: "warn",
+        scope: "milestone",
+        title: `${pending} trade offer${pending === 1 ? "" : "s"} still open`,
+        detail: "Window closes on this date — resolve Recruit → Trades before advancing.",
+        screen: "recruit",
+        tab: "trade",
+      });
+    }
   }
   return items;
 }
 
-function shouldShowAgendaModal(career, nextEv) {
+function buildOffSeasonAgenda(career, league) {
+  const items = [];
+  const ctx = getAdvanceContext(career, league);
+
+  if (isPostSeasonTradePeriod(career)) {
+    const day = career.tradePeriodDay ?? 0;
+    if (hasUnackedTradePeriodOpen(career)) {
+      items.push({
+        id: "trade_period_open",
+        severity: "warn",
+        scope: "milestone",
+        title: "Trade period open",
+        detail: `Post-season day ${day}/${TRADE_PERIOD_DAYS} — open Recruit → Trades before advancing.`,
+        screen: "recruit",
+        tab: "trade",
+      });
+    }
+    const pending = (career.pendingTradeOffers || []).filter((o) => o.status === "pending" && o.tradePeriod).length;
+    if (pending > 0) {
+      items.push({
+        id: "trade_period_offers",
+        severity: "warn",
+        scope: "milestone",
+        title: `${pending} trade offer${pending === 1 ? "" : "s"} need a reply`,
+        detail: "Recruit → Trades — accept, decline, or counter before advancing.",
+        screen: "recruit",
+        tab: "trade",
+      });
+    }
+  }
+
+  if (ctx.mode === "draft_countdown") {
+    items.push({
+      id: "draft_countdown",
+      severity: "info",
+      scope: "milestone",
+      title: "National draft / list reset approaching",
+      detail: "Keep advancing — new season calendar and draft pool follow this countdown.",
+      screen: "recruit",
+      tab: "draft",
+    });
+  }
+
+  if (isDraftLive(career) && hasUnusedClubDraftPick(career)) {
+    items.push({
+      id: "draft_live",
+      severity: isPlayerDraftTurn(career) ? "warn" : "info",
+      scope: "milestone",
+      title: isPlayerDraftTurn(career) ? "Your draft pick is due" : "National draft in progress",
+      detail: isPlayerDraftTurn(career)
+        ? "You are on the clock — Recruit → Draft."
+        : "Unused picks remain on your board — Recruit → Draft.",
+      screen: "recruit",
+      tab: "draft",
+    });
+  }
+
+  appendCapAndCashItems(career, items);
+  return items;
+}
+
+/**
+ * Raw agenda items (before snooze / preference filtering).
+ * @param {object} career
+ * @param {object} [league]
+ * @returns {AdvanceAgendaItem[]}
+ */
+export function getAdvanceAgenda(career, league) {
+  if (!career?.clubId) return [];
+
+  const ctx = getAdvanceContext(career, league);
+  if (ctx.mode === "trade_period" || ctx.mode === "draft_countdown" || ctx.mode === "finals") {
+    return buildOffSeasonAgenda(career, league);
+  }
+
+  const nextEv = nextCalendarEvent(career);
+  const items = [...buildMilestoneAgenda(career, nextEv)];
+
+  if (hasUnackedTradeWindowOpen(career)) {
+    items.push({
+      id: "trade_window_pending",
+      severity: "warn",
+      scope: "milestone",
+      title: "Transfer window briefing",
+      detail: "Open Recruit → Trades to clear the transfer-window gate.",
+      screen: "recruit",
+      tab: "trade",
+    });
+  }
+
+  if (isDraftLive(career) && hasUnusedClubDraftPick(career) && !isKeyEventNamed(career, "National Draft Day")) {
+    items.push({
+      id: "draft_live",
+      severity: isPlayerDraftTurn(career) ? "warn" : "info",
+      scope: "milestone",
+      title: isPlayerDraftTurn(career) ? "Your draft pick is due" : "National draft in progress",
+      detail: "Recruit → Draft — selections remain on the board.",
+      screen: "recruit",
+      tab: "draft",
+    });
+  }
+
+  if (nextEv && isMatchLikeEvent(nextEv)) {
+    const nLineup = lineupPlayerCount(career.lineup);
+    const nField = lineupFieldFilled(career.lineup);
+    if (nField < LINEUP_FIELD_COUNT) {
+      items.push({
+        id: "lineup_field",
+        severity: nField < Math.floor(LINEUP_FIELD_COUNT * 0.6) ? "warn" : "info",
+        scope: "match",
+        title: "On-field lineup incomplete",
+        detail: `${nField}/${LINEUP_FIELD_COUNT} on-field slots filled — match strength drops with a short XVIII.`,
+        screen: "squad",
+        tab: null,
+      });
+    } else if (nLineup < LINEUP_CAP) {
+      items.push({
+        id: "lineup_bench",
+        severity: "info",
+        scope: "match",
+        title: "Match squad short on bench",
+        detail: `${nLineup}/${LINEUP_CAP} in match squad — interchange depth may hurt late quarters.`,
+        screen: "squad",
+        tab: null,
+      });
+    }
+
+    const tasks = ensureStaffTasks(career);
+    if ((tasks.matchPrepTier ?? 0) === 0) {
+      items.push({
+        id: "match_prep",
+        severity: "info",
+        scope: "match",
+        title: "No extra match prep set",
+        detail: "Staff → match prep tier is baseline. Raise it before a big fixture for analyst-driven edges.",
+        screen: "club",
+        tab: "staff",
+      });
+    }
+  }
+
+  if (nextEv && isTrainingEvent(nextEv)) {
+    const tasks = ensureStaffTasks(career);
+    if (!tasks.trainingLeadId) {
+      items.push({
+        id: "training_lead",
+        severity: "info",
+        scope: "training",
+        title: "No training lead assigned",
+        detail: "Assign a training lead on Club → Staff so weekly loads get coaching bonuses.",
+        screen: "club",
+        tab: "staff",
+      });
+    }
+  }
+
+  appendCapAndCashItems(career, items);
+  return items;
+}
+
+function shouldShowAgendaModal(career, nextEv, league) {
   const mode = advanceReminderMode(career);
   if (mode === "minimal") return false;
+  const ctx = getAdvanceContext(career, league);
+  if (ctx.mode === "trade_period" || ctx.mode === "draft_countdown" || ctx.mode === "finals") {
+    return true;
+  }
   if (mode === "all_events") return true;
-  // before_matches
-  if (!nextEv) return false;
-  return isMatchLikeEvent(nextEv) || isTrainingEvent(nextEv);
+  // before_matches — matches, training, and recruit milestones
+  if (!nextEv) return isDraftLive(career) || hasUnackedTradeWindowOpen(career);
+  return (
+    isMatchLikeEvent(nextEv) ||
+    isTrainingEvent(nextEv) ||
+    isKeyEvent(nextEv) ||
+    isDraftLive(career)
+  );
 }
 
 /**
@@ -240,8 +377,8 @@ function shouldShowAgendaModal(career, nextEv) {
 export function getVisibleAdvanceAgenda(career, league) {
   if (advanceReminderMode(career) === "minimal") return [];
   const sig = nextEventAgendaSignature(career);
-  const nextEv = nextIncompleteEvent(career);
-  if (!shouldShowAgendaModal(career, nextEv)) return [];
+  const nextEv = nextCalendarEvent(career);
+  if (!shouldShowAgendaModal(career, nextEv, league)) return [];
 
   return getAdvanceAgenda(career, league).filter((item) => !isSnoozedForNextEvent(career, item.id, sig));
 }

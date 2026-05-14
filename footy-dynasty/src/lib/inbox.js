@@ -3,6 +3,8 @@
  * Mirrors some Board / trade-period signals so the Hub banner stays unified.
  */
 
+import { draftPickBlocksAdvance, isPostSeasonTradePeriod } from "./recruitPhase.js";
+
 /** Pending trade-period offers that still need accept / decline / counter. */
 export function hasBlockingTradePeriodOffers(career) {
   return (career?.pendingTradeOffers || []).some((t) => t.status === "pending" && t.tradePeriod);
@@ -22,17 +24,38 @@ export function hasBlockingBoardInbox(career) {
 export function advanceBlockedByCareerNeeds(career) {
   if (hasBlockingTradePeriodOffers(career)) return true;
   if (hasBlockingBoardInbox(career)) return true;
+  if (draftPickBlocksAdvance(career)) return true;
+  if (hasUnackedTradePeriodOpen(career)) return true;
+  if (hasUnackedTradeWindowOpen(career)) return true;
   return (career?.inbox || []).some(
     (m) =>
       m.blocking &&
       !m.resolved &&
       m.kind !== "board" &&
-      m.kind !== "trade_period",
+      m.kind !== "trade_period" &&
+      m.kind !== "trade_open" &&
+      m.kind !== "trade_window" &&
+      m.kind !== "draft_pick",
   );
+}
+
+/** Post-season trade period — acknowledge Recruit before advancing past day 1. */
+export function hasUnackedTradePeriodOpen(career) {
+  if (!isPostSeasonTradePeriod(career)) return false;
+  const day = career.tradePeriodDay ?? 0;
+  return day <= 1 && !career.tradePeriodBriefingAck;
+}
+
+/** Pre-season calendar Transfer Window Opens — visit Recruit once. */
+export function hasUnackedTradeWindowOpen(career) {
+  return !!career.tradeWindowBriefingPending && !career.tradeWindowBriefingAck;
 }
 
 /** Stable id for the trade-period mirror row in career.inbox */
 export const MANAGER_INBOX_TRADE_PERIOD_ID = "mgr_trade_period";
+export const MANAGER_INBOX_TRADE_OPEN_ID = "mgr_trade_open";
+export const MANAGER_INBOX_TRADE_WINDOW_ID = "mgr_trade_window";
+export const MANAGER_INBOX_DRAFT_PICK_ID = "mgr_draft_pick";
 
 /** Prefix for board-linked mirror ids */
 export function managerInboxBoardMirrorId(boardMessageId) {
@@ -97,13 +120,100 @@ export function syncTradePeriodManagerInboxRow(career) {
   career.inbox = inbox;
 }
 
+/** Post-season: Trade Period just opened — block until Recruit → Trades briefing ack. */
+export function syncTradePeriodOpenInboxRow(career) {
+  if (!career) return;
+  const show = isPostSeasonTradePeriod(career) && (career.tradePeriodDay ?? 0) <= 1 && !career.tradePeriodBriefingAck;
+  let inbox = [...(career.inbox || [])];
+  const idx = inbox.findIndex((m) => m.id === MANAGER_INBOX_TRADE_OPEN_ID);
+  if (show) {
+    const row = {
+      id: MANAGER_INBOX_TRADE_OPEN_ID,
+      kind: "trade_open",
+      blocking: true,
+      resolved: false,
+      title: "Trade period open",
+      detail: "Post-season list shaping is live — open Recruit → Trades before advancing (14-day window).",
+    };
+    if (idx >= 0) inbox[idx] = { ...inbox[idx], ...row, resolved: false };
+    else inbox.unshift(row);
+  } else if (idx >= 0) {
+    inbox.splice(idx, 1);
+  }
+  career.inbox = inbox;
+}
+
+/** Pre-season calendar transfer window milestone. */
+export function syncTradeWindowOpenInboxRow(career) {
+  if (!career) return;
+  const show = !!career.tradeWindowBriefingPending && !career.tradeWindowBriefingAck;
+  let inbox = [...(career.inbox || [])];
+  const idx = inbox.findIndex((m) => m.id === MANAGER_INBOX_TRADE_WINDOW_ID);
+  if (show) {
+    const row = {
+      id: MANAGER_INBOX_TRADE_WINDOW_ID,
+      kind: "trade_window",
+      blocking: true,
+      resolved: false,
+      title: "Transfer window open",
+      detail: "Pre-season trades and free agency — Recruit → Trades before you continue the calendar.",
+    };
+    if (idx >= 0) inbox[idx] = { ...inbox[idx], ...row, resolved: false };
+    else inbox.unshift(row);
+  } else if (idx >= 0) {
+    inbox.splice(idx, 1);
+  }
+  career.inbox = inbox;
+}
+
+/** National draft — block advance while your pick is on the clock. */
+export function syncDraftPickInboxRow(career) {
+  if (!career) return;
+  const due = draftPickBlocksAdvance(career);
+  let inbox = [...(career.inbox || [])];
+  const idx = inbox.findIndex((m) => m.id === MANAGER_INBOX_DRAFT_PICK_ID);
+  if (due) {
+    const row = {
+      id: MANAGER_INBOX_DRAFT_PICK_ID,
+      kind: "draft_pick",
+      blocking: true,
+      resolved: false,
+      title: "National draft — your pick",
+      detail: "You are on the clock. Open Recruit → Draft and select a prospect.",
+    };
+    if (idx >= 0) inbox[idx] = { ...inbox[idx], ...row, resolved: false };
+    else inbox.unshift(row);
+  } else if (idx >= 0) {
+    inbox.splice(idx, 1);
+  }
+  career.inbox = inbox;
+}
+
+/** Refresh all recruit-phase inbox mirrors (call after draft/trade state changes). */
+export function syncRecruitPhaseInboxRows(career) {
+  if (!career) return;
+  syncTradePeriodManagerInboxRow(career);
+  syncTradePeriodOpenInboxRow(career);
+  syncTradeWindowOpenInboxRow(career);
+  syncDraftPickInboxRow(career);
+}
+
 /**
  * Merge a shallow patch into career and refresh derived trade-period inbox mirrors when needed.
  */
 export function mergeCareerPatchWithInboxSync(prevCareer, patch) {
   const next = { ...prevCareer, ...patch };
-  if (Object.prototype.hasOwnProperty.call(patch, "pendingTradeOffers")) {
-    syncTradePeriodManagerInboxRow(next);
+  if (
+    Object.prototype.hasOwnProperty.call(patch, "pendingTradeOffers") ||
+    Object.prototype.hasOwnProperty.call(patch, "draftOrder") ||
+    Object.prototype.hasOwnProperty.call(patch, "draftPool") ||
+    Object.prototype.hasOwnProperty.call(patch, "tradePeriodBriefingAck") ||
+    Object.prototype.hasOwnProperty.call(patch, "tradeWindowBriefingAck") ||
+    Object.prototype.hasOwnProperty.call(patch, "tradeWindowBriefingPending") ||
+    Object.prototype.hasOwnProperty.call(patch, "inTradePeriod") ||
+    Object.prototype.hasOwnProperty.call(patch, "tradePeriodDay")
+  ) {
+    syncRecruitPhaseInboxRows(next);
   }
   return next;
 }
@@ -125,6 +235,15 @@ export function canAcknowledgeBlockingInboxItem(career, item) {
   }
   if (item.kind === "trade_period") {
     return !hasBlockingTradePeriodOffers(career);
+  }
+  if (item.kind === "trade_open") {
+    return !hasUnackedTradePeriodOpen(career);
+  }
+  if (item.kind === "trade_window") {
+    return !hasUnackedTradeWindowOpen(career);
+  }
+  if (item.kind === "draft_pick") {
+    return !draftPickBlocksAdvance(career);
   }
   return true;
 }

@@ -49,8 +49,30 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
 
   const won = result.won;
   const drew = result.drew;
-  const resultLabel = won ? "WIN" : drew ? "DRAW" : "LOSS";
   const resultColor = won ? "#4AE89A" : drew ? "var(--A-accent)" : "#E84A6F";
+
+  const fullTime = quarters.length === 0 || revealed >= quarters.length;
+  const scoreIdx = fullTime
+    ? quarters.length - 1
+    : revealed > 0
+      ? revealed - 1
+      : -1;
+  const headerHome =
+    scoreIdx >= 0 && cumHome[scoreIdx] ? cumHome[scoreIdx].total : null;
+  const headerAway =
+    scoreIdx >= 0 && cumAway[scoreIdx] ? cumAway[scoreIdx].total : null;
+  const headerScore =
+    headerHome != null && headerAway != null ? `${headerHome} – ${headerAway}` : "— – —";
+  const headerStatus = fullTime
+    ? won
+      ? "WIN"
+      : drew
+        ? "DRAW"
+        : "LOSS"
+    : revealed === 0
+      ? "READY"
+      : `END Q${revealed}`;
+  const headerColor = fullTime ? resultColor : "var(--A-accent)";
 
   const commentary =
     result.isAFL
@@ -103,11 +125,11 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
           </div>
 
           <div className="text-center px-6">
-            <div className="font-display text-6xl leading-none" style={{ color: resultColor }}>
-              {result.homeTotal} – {result.awayTotal}
+            <div className="font-display text-6xl leading-none" style={{ color: headerColor }}>
+              {headerScore}
             </div>
-            <div className="text-[11px] font-bold uppercase tracking-widest mt-1" style={{ color: resultColor }}>
-              {resultLabel}
+            <div className="text-[11px] font-bold uppercase tracking-widest mt-1" style={{ color: headerColor }}>
+              {headerStatus}
             </div>
           </div>
 
@@ -349,13 +371,16 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
           ) : null}
           <button
             onClick={onContinue}
-            className="flex-1 py-3 rounded-xl font-bold uppercase tracking-widest text-white transition-all"
+            disabled={!fullTime && quarters.length > 0}
+            className="flex-1 py-3 rounded-xl font-bold uppercase tracking-widest text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              background: `linear-gradient(135deg,${resultColor}CC,${resultColor})`,
-              boxShadow: `0 4px 20px ${resultColor}44`,
+              background: fullTime
+                ? `linear-gradient(135deg,${resultColor}CC,${resultColor})`
+                : "linear-gradient(135deg,#475569,#334155)",
+              boxShadow: fullTime ? `0 4px 20px ${resultColor}44` : "none",
             }}
           >
-            Continue →
+            {fullTime ? "Continue →" : "Reveal all quarters first"}
           </button>
         </div>
       </div>

@@ -94,6 +94,7 @@ import {
   recalcBoardConfidence,
 } from './lib/board.js';
 import { getClubGround } from './data/grounds.js';
+import { buildPendingPlayerMatchPatch } from './lib/matchDayFinalize.js';
 import { advanceCareerNextEvent, triggerSackState } from './lib/careerAdvance.js';
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
@@ -151,17 +152,17 @@ function AFLManagerInner() {
 
   const bumpSlotMeta = useCallback(() => setSlotMetaTick((t) => t + 1), []);
 
-  const advanceShellRef = useRef({ career: null, setCareer, setScreen });
+  const advanceShellRef = useRef({ career: null, setCareer, setScreen, setTab });
   useEffect(() => {
-    advanceShellRef.current = { career, setCareer, setScreen };
-  }, [career, setCareer, setScreen]);
+    advanceShellRef.current = { career, setCareer, setScreen, setTab };
+  }, [career, setCareer, setScreen, setTab]);
 
   const performAdvance = useCallback(() => {
-    const { career: c, setCareer: sc, setScreen: ss } = advanceShellRef.current;
+    const { career: c, setCareer: sc, setScreen: ss, setTab: st } = advanceShellRef.current;
     if (!c?.clubId) return;
     const advClub = findClub(c.clubId);
     const advLeague = PYRAMID[c.leagueKey];
-    advanceCareerNextEvent({ career: c, league: advLeague, club: advClub, setCareer: sc, setScreen: ss });
+    advanceCareerNextEvent({ career: c, league: advLeague, club: advClub, setCareer: sc, setScreen: ss, setTab: st });
   }, []);
 
   const requestAdvance = useCallback(() => {
@@ -188,7 +189,7 @@ function AFLManagerInner() {
   const handleAdvanceAgendaAnyway = useCallback((snooze, itemIds) => {
     setAdvanceAgendaOpen(false);
     setAdvanceAgendaItems([]);
-    const { career: c, setCareer: sc, setScreen: ss } = advanceShellRef.current;
+    const { career: c, setCareer: sc, setScreen: ss, setTab: st } = advanceShellRef.current;
     if (!c?.clubId) return;
     const nextCareer =
       snooze && itemIds?.length ? { ...c, ...snoozeAdvanceAgendaItems(c, itemIds) } : c;
@@ -200,7 +201,18 @@ function AFLManagerInner() {
       club: advClub,
       setCareer: sc,
       setScreen: ss,
+      setTab: st,
     });
+  }, []);
+
+  const finalizeMatchDayExit = useCallback((careerSnap) => {
+    const patch = buildPendingPlayerMatchPatch(careerSnap) || {};
+    return {
+      ...patch,
+      inMatchDay: false,
+      currentMatchResult: null,
+      lastMatchSummary: null,
+    };
   }, []);
 
   const handleAdvanceAgendaGoTo = useCallback((item) => {
@@ -722,11 +734,10 @@ function AFLManagerInner() {
           career={career}
           club={club}
           onContinue={() => {
-            // Show post-match summary first if we have one (regular-season player matches)
             if (career.lastMatchSummary && !career.currentMatchResult.isPreseason) {
               setShowPostMatch(true);
             } else {
-              updateCareer({ inMatchDay: false, currentMatchResult: null, lastMatchSummary: null });
+              updateCareer((c) => finalizeMatchDayExit(c));
             }
           }}
         />
@@ -736,7 +747,7 @@ function AFLManagerInner() {
             onReview={() => setShowPostMatch(false)}
             onContinue={() => {
               setShowPostMatch(false);
-              updateCareer({ inMatchDay: false, currentMatchResult: null, lastMatchSummary: null });
+              updateCareer((c) => finalizeMatchDayExit(c));
             }}
           />
         )}

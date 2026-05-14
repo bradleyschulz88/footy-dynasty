@@ -3,7 +3,7 @@ import { seedRng, rand, rng, pick } from './rng.js';
 import { generatePlayer } from './playerGen.js';
 import { generateTradePool } from './defaults.js';
 import { sortedLadder, competitionClubsForCareer } from './leagueEngine.js';
-import { syncTradePeriodManagerInboxRow } from './inbox.js';
+import { syncRecruitPhaseInboxRows } from './inbox.js';
 import { LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 
 export const TRADE_PERIOD_DAYS = 14;
@@ -73,7 +73,7 @@ function seedAiTradeOffers(c, league) {
       ...(c.news || []),
     ].slice(0, 20);
   }
-  syncTradePeriodManagerInboxRow(c);
+  syncRecruitPhaseInboxRows(c);
 }
 
 function makePick({ id, season, round, selection, clubId, type = 'standard', tradeable = true }) {
@@ -186,11 +186,12 @@ export function beginPostSeasonTradePeriod(c, league, leagueKey) {
     ].slice(0, 20);
   }
   seedAiTradeOffers(c, league);
+  syncRecruitPhaseInboxRows(c);
   c.news = [
     {
       week: c.week,
       type: 'info',
-      text: '📣 Trade Period is open — 14 steps to reshape the list. Free agency through Day 7; trades-only Days 8–14. Use Recruit → advance time on the Hub.',
+      text: '📣 Trade period is open — 14 steps to reshape the list. Open Recruit → Trades before advancing (free agency through Day 7).',
     },
     ...(c.news || []),
   ].slice(0, 20);
@@ -229,7 +230,7 @@ export function closeTradePeriodStartDraftCountdown(c) {
     ].slice(0, 20);
   }
   c.pendingTradeOffers = (c.pendingTradeOffers || []).filter((o) => o.status !== 'pending');
-  syncTradePeriodManagerInboxRow(c);
+  syncRecruitPhaseInboxRows(c);
   c.news = [
     {
       week: c.week,

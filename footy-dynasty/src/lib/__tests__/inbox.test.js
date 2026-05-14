@@ -3,8 +3,9 @@ import {
   advanceBlockedByCareerNeeds,
   hasBlockingBoardInbox,
   mergeCareerPatchWithInboxSync,
-  syncTradePeriodManagerInboxRow,
+  syncRecruitPhaseInboxRows,
   MANAGER_INBOX_TRADE_PERIOD_ID,
+  MANAGER_INBOX_DRAFT_PICK_ID,
   pushManagerInboxBoardMirror,
   pruneStaleBoardMirrors,
   removeManagerInboxBoardMirrors,
@@ -37,11 +38,25 @@ describe("advanceBlockedByCareerNeeds", () => {
   });
 });
 
-describe("syncTradePeriodManagerInboxRow / mergeCareerPatchWithInboxSync", () => {
+describe("syncRecruitPhaseInboxRows / mergeCareerPatchWithInboxSync", () => {
   it("inserts mirror row when pending trade-period offers exist", () => {
     const c = { inbox: [], pendingTradeOffers: [{ status: "pending", tradePeriod: true }] };
-    syncTradePeriodManagerInboxRow(c);
+    syncRecruitPhaseInboxRows(c);
     expect(c.inbox.some((m) => m.id === MANAGER_INBOX_TRADE_PERIOD_ID)).toBe(true);
+  });
+
+  it("blocks advance when player draft pick is due", () => {
+    const career = {
+      clubId: 'c1',
+      board: { inbox: [] },
+      pendingTradeOffers: [],
+      draftOrder: [{ pick: 1, clubId: 'c1', used: false }],
+      draftPool: [{ id: 'p1' }],
+      inbox: [],
+    };
+    syncRecruitPhaseInboxRows(career);
+    expect(career.inbox.some((m) => m.id === MANAGER_INBOX_DRAFT_PICK_ID)).toBe(true);
+    expect(advanceBlockedByCareerNeeds(career)).toBe(true);
   });
 
   it("mergeCareerPatchWithInboxSync refreshes mirror when pendingTradeOffers changes", () => {

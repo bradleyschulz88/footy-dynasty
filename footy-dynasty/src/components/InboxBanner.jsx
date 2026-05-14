@@ -81,6 +81,11 @@ export function InboxBanner({ career, updateCareer, onGoRecruit, onGoClubBoard }
                 </div>
               )}
             </div>
+            {m.blocking && !canAck && (m.kind === "draft_pick" || m.kind === "trade_open" || m.kind === "trade_window") && onGoRecruit && (
+              <button type="button" className={`${css.btnPrimary} text-xs shrink-0`} onClick={onGoRecruit}>
+                Open Recruit
+              </button>
+            )}
             {m.blocking && canAck && (
               <button
                 type="button"

@@ -144,6 +144,19 @@ export default function RecruitScreen({ career, club, updateCareer, tab, setTab 
   const inTradePeriod = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
   const showPicks = !!career.draftPickBank;
   const t = tab || (offerCount > 0 ? "offers" : "trade");
+
+  useEffect(() => {
+    if (t !== "trade" && t !== "draft" && t !== "offers") return;
+    const patch = {};
+    if (t === "trade" || t === "offers") {
+      if (!career.tradePeriodBriefingAck && inTradePeriod) patch.tradePeriodBriefingAck = true;
+      if (!career.tradeWindowBriefingAck && career.tradeWindowBriefingPending) {
+        patch.tradeWindowBriefingAck = true;
+        patch.tradeWindowBriefingPending = false;
+      }
+    }
+    if (Object.keys(patch).length > 0) updateCareer(patch);
+  }, [t, career.tradePeriodBriefingAck, career.tradeWindowBriefingAck, career.tradeWindowBriefingPending, inTradePeriod, updateCareer]);
   const tabs = [
     { key: "offers", label: `Offers${offerCount ? ` (${offerCount})` : ''}`, icon: Newspaper },
     ...(inTradePeriod ? [{ key: "freeagents", label: career.freeAgencyOpen ? "Free agents" : "Free agents (closed)", icon: UserPlus }] : []),

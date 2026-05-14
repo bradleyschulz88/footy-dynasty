@@ -9,7 +9,7 @@ import { resolveAiOppTactic } from './aiPersonality.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, finalsLabel, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { generateTradePool } from './defaults.js';
 import { withDraftScoutingDefaults } from './draftScouting.js';
-import { syncTradePeriodManagerInboxRow } from './inbox.js';
+import { syncRecruitPhaseInboxRows } from './inbox.js';
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
 import { ensureSquadsForLeague, tickAiSquads, ageAiSquads, selectAiLineup } from './aiSquads.js';
@@ -570,6 +570,7 @@ function finishSeason(c, league) {
   const draftOrder = sortedLadder(c.ladder.length ? c.ladder : blankLadder(draftBase))
     .slice().reverse().map((r) => r.id);
   c.draftOrder = draftOrder.map((clubId, i) => ({ pick: i + 1, clubId, used: false }));
+  syncRecruitPhaseInboxRows(c);
 
   c.history = c.history || [];
   c.history.push({
@@ -743,9 +744,9 @@ export function primeSeasonStoryState(career) {
 
 /**
  * Advance the career one step (finals, trade period, draft countdown, or next calendar event).
- * @param {{ career: object, league: object, club: object, setCareer: function, setScreen: function }} ctx
+ * @param {{ career: object, league: object, club: object, setCareer: function, setScreen: function, setTab?: function }} ctx
  */
-export function advanceCareerNextEvent({ career, league, club, setCareer, setScreen }) {
+export function advanceCareerNextEvent({ career, league, club, setCareer, setScreen, setTab }) {
   const c = JSON.parse(JSON.stringify(career));
 
   ensureDynastyAssignments(c, league?.tier ?? 3, competitionClubsForCareer(c).length || (league?.clubs?.length ?? 0));
@@ -922,6 +923,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
   if (ev.type === 'key_event') {
     const extraNews = [];
     if (ev.name === 'Transfer Window Opens') {
+      c.tradeWindowBriefingPending = true;
       const comp = competitionClubsForCareer(c);
       const aiClubs = (comp.length ? comp : (league.clubs || [])).filter((cl) => cl.id !== c.clubId).slice(0, 4);
       aiClubs.forEach((cl) => {
@@ -956,10 +958,29 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         });
       }
       c.pendingTradeOffers = [...(c.pendingTradeOffers || []), ...offers];
-      syncTradePeriodManagerInboxRow(c);
+      syncRecruitPhaseInboxRows(c);
       if (offers.length > 0) {
-        extraNews.push({ week: c.week, type: 'info', text: `📨 ${offers.length} new trade offer${offers.length > 1 ? 's' : ''} on the table — check the Trades screen.` });
+        extraNews.push({ week: c.week, type: 'info', text: `📨 ${offers.length} new trade offer${offers.length > 1 ? 's' : ''} on the table — check Recruit → Trades.` });
       }
+    }
+    if (ev.name === 'National Draft Day') {
+      syncRecruitPhaseInboxRows(c);
+      extraNews.push({
+        week: c.week,
+        type: 'info',
+        text: '📋 National Draft Day — your club is on the clock when picks reach you. Open Recruit → Draft.',
+      });
+      c.lastEvent = { type: 'key_event', name: ev.name, description: ev.description, action: ev.action, date: ev.date };
+      c.news = [
+        { week: c.week, type: 'info', text: `📅 ${ev.name}: ${ev.description}` },
+        ...extraNews,
+        ...(c.news || []),
+      ].slice(0, 20);
+      markTutorialCompleteAfterAdvance(c);
+      setCareer(c);
+      setScreen('recruit');
+      if (setTab) setTab('draft');
+      return;
     }
     if (ev.name === 'Transfer Window Closes') {
       if (!c.footyTripUsed && league.tier <= 3 && (c.committee || []).length > 0) {
@@ -975,7 +996,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         extraNews.push({ week: c.week, type: 'info', text: `📨 ${stale.length} trade offer${stale.length > 1 ? 's' : ''} expired with the window.` });
       }
       c.pendingTradeOffers = (c.pendingTradeOffers || []).filter((o) => o.status !== 'pending');
-      syncTradePeriodManagerInboxRow(c);
+      syncRecruitPhaseInboxRows(c);
       const pool2 = competitionClubsForCareer(c);
       const aiClubs2 = (pool2.length ? pool2 : (league.clubs || [])).filter((cl) => cl.id !== c.clubId).slice(0, 3);
       aiClubs2.forEach((cl) => {
@@ -988,6 +1009,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       ...extraNews,
       ...(c.news || []),
     ].slice(0, 20);
+    syncRecruitPhaseInboxRows(c);
     markTutorialCompleteAfterAdvance(c);
     setCareer(c);
     setScreen('hub');
@@ -1097,8 +1119,13 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         const oppTotal = isHome ? result.awayTotal : result.homeTotal;
         const won = myTotal > oppTotal;
         const drew = myTotal === oppTotal;
-        c.ladder = applyResultToLadder(c.ladder, m.home, m.away, result.homeTotal, result.awayTotal);
-        m.result = { hScore: result.homeTotal, aScore: result.awayTotal };
+        c.pendingPlayerMatchResult = {
+          home: m.home,
+          away: m.away,
+          homeTotal: result.homeTotal,
+          awayTotal: result.awayTotal,
+          round: ev.round,
+        };
         myResult = { isHome, opp, result, myTotal, oppTotal, won, drew };
 
         const attribution = result.goalAttribution || {};

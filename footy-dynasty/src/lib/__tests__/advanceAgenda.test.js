@@ -66,6 +66,40 @@ describe('advanceAgenda', () => {
     expect(items.some((i) => i.id === 'training_lead')).toBe(true);
   });
 
+  it('flags national draft day milestone on calendar', () => {
+    const career = baseCareer({
+      eventQueue: [
+        {
+          type: 'key_event',
+          name: 'National Draft Day',
+          completed: false,
+          date: '2026-01-10',
+        },
+      ],
+      draftOrder: [{ pick: 1, clubId: 'c1', used: false }],
+      draftPool: [{ id: 'd1' }],
+    });
+    const items = getAdvanceAgenda(career, league);
+    expect(items.some((i) => i.id === 'milestone_draft_day')).toBe(true);
+  });
+
+  it('includes trade period open in off-season agenda', () => {
+    const career = {
+      clubId: 'c1',
+      postSeasonPhase: 'trade_period',
+      inTradePeriod: true,
+      tradePeriodDay: 0,
+      eventQueue: [],
+      squad: [],
+      staff: [],
+      finance: { cash: 0 },
+      pendingRenewals: [],
+      pendingStaffRenewals: [],
+    };
+    const items = getAdvanceAgenda(career, league);
+    expect(items.some((i) => i.id === 'trade_period_open')).toBe(true);
+  });
+
   it('flags match prep tier zero before round', () => {
     const items = getAdvanceAgenda(baseCareer(), league);
     expect(items.some((i) => i.id === 'match_prep')).toBe(true);
