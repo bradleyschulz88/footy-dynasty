@@ -63,9 +63,10 @@ export function finalsRivalryPreviewLine(career, oppClubId) {
  * Post-match journo flavour when `result` includes finals flags from {@link careerAdvance}.
  * @param {object} career
  * @param {{ isFinals?: boolean, matchLabel?: string, won?: boolean, drew?: boolean }} result
+ * @param {{ short?: string, name?: string }} club
  * @param {{ short?: string, name?: string }} opp
  */
-export function journalistFinalsRivalryLine(career, result, opp) {
+export function journalistFinalsRivalryLine(career, result, club, opp) {
   if (!result?.isFinals || !opp?.id) return null;
   const j = career.journalist || { name: 'Press', satisfaction: 50, tone: 'neutral' };
   const name = j.name || 'Press';

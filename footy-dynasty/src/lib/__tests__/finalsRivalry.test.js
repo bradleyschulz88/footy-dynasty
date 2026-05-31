@@ -68,9 +68,24 @@ describe('journalistFinalsRivalryLine', () => {
     const line = journalistFinalsRivalryLine(
       career,
       { isFinals: true, matchLabel: 'Grand Final', won: true, drew: false },
+      club,
       opp,
     );
     expect(line).toContain('Pat');
     expect(line).toContain('Premiership');
+  });
+
+  it('returns elimination copy without throwing on a finals loss', () => {
+    const career = { journalist: { name: 'Pat' } };
+    const club = { short: 'BL' };
+    const opp = { short: 'COL', id: 'col' };
+    const line = journalistFinalsRivalryLine(
+      career,
+      { isFinals: true, matchLabel: 'Semi Final', won: false, drew: false },
+      club,
+      opp,
+    );
+    expect(line).toContain('BL');
+    expect(line).toContain('COL');
   });
 });
