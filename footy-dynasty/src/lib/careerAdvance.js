@@ -1,9 +1,9 @@
 // Season calendar advancement: event loop, finals, end-of-season rollover.
 // Extracted from AFLManager.jsx so the shell stays UI-focused.
 
-import { seedRng, rand, pick, rng, TIER_SCALE } from './rng.js';
+import { rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub } from '../data/pyramid.js';
-import { isForwardPreferred, isMidPreferred, generatePlayer } from './playerGen.js';
+import { isForwardPreferred, isMidPreferred } from './playerGen.js';
 import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus } from './matchEngine.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
@@ -23,7 +23,6 @@ import { capBreachSanctionPatch } from './listRules.js';
 import { applyLeagueTradeNews } from './tradeEngine.js';
 import { recordFinalsRivalryEvent, clubFinalsGrudgeTowardPlayer } from './finalsRivalry.js';
 import { awayTravelRatingPenalty } from './travelFatigue.js';
-import { derbyLabel } from './derbies.js';
 import { generateTradePool } from './defaults.js';
 import { seedNationalDraft } from './draftSeed.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
@@ -320,7 +319,7 @@ function startFinals(c, league) {
   return c;
 }
 
-function simFinalsPair(c, league, m, roundLabel) {
+function simFinalsPair(c, league, m, _roundLabel) {
   const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff))
     + getCaptainMatchBonus(c, true);
   const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
@@ -620,7 +619,6 @@ function finishSeason(c, league) {
       relegated = true;
       const newLeagueKey = pickRelegationLeague(league);
       if (newLeagueKey) {
-        const newLeague = PYRAMID[newLeagueKey];
         c.leagueKey = newLeagueKey;
         c.localDivision = localDivisionForClub(c.clubId, newLeagueKey, region);
         const clubs = getCompetitionClubs(newLeagueKey, region, c.localDivision);
@@ -652,7 +650,6 @@ function finishSeason(c, league) {
         promoted = true;
         const newLeagueKey = pickPromotionLeague(league);
         if (newLeagueKey) {
-          const newLeague = PYRAMID[newLeagueKey];
           c.leagueKey = newLeagueKey;
           c.localDivision = null;
           const clubs = getCompetitionClubs(newLeagueKey, region, null);
@@ -808,9 +805,14 @@ function finishSeason(c, league) {
   c.footyTripUsed = false;
   c.footyTripAvailable = false;
 
+  const gfResult = (c.finalsResults || []).find((r) => r.label === 'Grand Final');
+  const inGrandFinal = !!gfResult && (gfResult.home === c.clubId || gfResult.away === c.clubId);
+  const madeFinalsRound = (c.finalsFinalists || []).includes(c.clubId) || champion;
   const prizeArgs = {
-    premiership: champion, runnerUp: !champion && myPos === 2,
-    finals: myPos >= 3 && myPos <= 4, woodenSpoon: myPos === sorted.length,
+    premiership: champion,
+    runnerUp: !champion && inGrandFinal,
+    finals: !champion && !inGrandFinal && madeFinalsRound,
+    woodenSpoon: myPos === sorted.length,
   };
   const prize = applyPrizeMoney(c, prizeArgs);
   c.finance.cash = prize.cash;
@@ -939,7 +941,7 @@ export function primeSeasonStoryState(career) {
  * Advance the career one step (finals, trade period, draft countdown, or next calendar event).
  * @param {{ career: object, league: object, club: object, setCareer: function, setScreen: function, setTab?: function }} ctx
  */
-export function advanceCareerNextEvent({ career, league, club, setCareer, setScreen, setTab }) {
+export function advanceCareerNextEvent({ career, league, club, setCareer, setScreen }) {
   const c = JSON.parse(JSON.stringify(career));
 
   ensureDynastyAssignments(c, league?.tier ?? 3, competitionClubsForCareer(c).length || (league?.clubs?.length ?? 0));

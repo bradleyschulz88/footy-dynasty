@@ -4,7 +4,7 @@ import { findClub } from "../data/pyramid.js";
 import { POSITIONS, formatPositionSlash } from "../lib/playerGen.js";
 import { fmtK } from "../lib/format.js";
 import { formatDate } from "../lib/calendar.js";
-import { css, Bar, RatingDot, Pill, Stat } from "../components/primitives.jsx";
+import { css, RatingDot, Stat } from "../components/primitives.jsx";
 import { ClubBadge } from "../components/ClubBadge.jsx";
 import {
   COMBINE_SCOUT_COST,

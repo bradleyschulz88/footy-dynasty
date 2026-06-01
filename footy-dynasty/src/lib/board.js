@@ -550,7 +550,7 @@ export function youthSeniorGameCount(squad) {
   return (squad || []).filter((p) => (p.age ?? 99) <= 22 && (p.gamesPlayed || 0) >= 5).length;
 }
 
-export function updateBoardObjectiveProgress(career, league) {
+export function updateBoardObjectiveProgress(career, _league) {
   if (!career.board?.objectives?.length) return;
   const sorted = sortedLadder(career.ladder || []);
   const myPos = sorted.findIndex((r) => r.id === career.clubId) + 1;

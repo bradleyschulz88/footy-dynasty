@@ -252,7 +252,7 @@ describe('promotion / relegation ripple', () => {
 
 describe('cashCrisisLevel', () => {
   it('returns 0 when cash is non-negative', () => {
-    expect(cashCrisisLevel(baseCareer({ finance: { cash: 100, ...baseCareer().finance, cash: 100 } }))).toBe(0);
+    expect(cashCrisisLevel(baseCareer({ finance: { ...baseCareer().finance, cash: 100 } }))).toBe(0);
   });
 
   it('escalates with consecutive negative weeks', () => {

@@ -2,7 +2,7 @@
 // Sponsor lifecycle — yearly tick, expiry, renewal proposals,
 // performance-weighted new offers.
 // ---------------------------------------------------------------------------
-import { rand, rng, pick } from '../rng.js';
+import { rand, rng } from '../rng.js';
 import { getDifficultyConfig } from '../difficulty.js';
 import { SPONSOR_RENEWAL } from './constants.js';
 import { generateSponsors } from '../defaults.js';
@@ -105,6 +105,6 @@ export function applyRenewalDecline(career, proposal) {
 // Add a brand-new sponsor offer to the active list.
 export function applySponsorOfferAcceptance(career, offer) {
   // Strip the "offer*" fields; persist as a real sponsor.
-  const { offerKind, offerId, ...sponsor } = offer;
+  const { offerKind: _offerKind, offerId: _offerId, ...sponsor } = offer;
   return { sponsors: [...(career.sponsors || []), sponsor] };
 }

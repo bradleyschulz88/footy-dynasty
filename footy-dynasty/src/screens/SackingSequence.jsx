@@ -4,7 +4,7 @@
 // Driven by career.sackingStep (0..4). Step 4 hands off to JobMarket.
 // ---------------------------------------------------------------------------
 import React, { useState, useMemo } from "react";
-import { ChevronRight, Trophy, AlertCircle, Newspaper, Award, Briefcase, Star } from "lucide-react";
+import { ChevronRight, Trophy, AlertCircle, Newspaper, Briefcase, Star } from "lucide-react";
 import { css } from "../components/primitives.jsx";
 import { getJobInterviewQuestion, getJobFollowUpInterview } from "../lib/coachReputation.js";
 
@@ -201,7 +201,7 @@ function LegacyTile({ label, value, accent = 'var(--A-accent)', icon: Icon }) {
 // Step 5 — Job Market
 // =============================================================================
 function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff, onRerollJobMarket }) {
-  const offers = career.jobOffers || [];
+  const offers = useMemo(() => career.jobOffers || [], [career.jobOffers]);
   const coachRep = career.coachReputation ?? 30;
   const [starredIds, setStarredIds] = useState([]);
   const [stage, setStage] = useState("list");

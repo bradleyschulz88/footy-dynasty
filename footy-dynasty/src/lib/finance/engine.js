@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 import {
   TIER_FINANCE, FACILITY_UPKEEP_PER_LEVEL_ANNUAL, INCOME_MIX,
-  PRIZE_MONEY, INSOLVENCY, TICKET_PRICE, BASE_ATTENDANCE,
+  PRIZE_MONEY, INSOLVENCY,
   TRANSFER_BUDGET_ROLLOVER_FRACTION,
 } from './constants.js';
 import { getDifficultyConfig } from '../difficulty.js';

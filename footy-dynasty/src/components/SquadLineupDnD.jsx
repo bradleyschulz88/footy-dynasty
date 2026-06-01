@@ -211,8 +211,8 @@ function dragSummary(activePlayer) {
  * Bench ↔ match squad (18 + 5) builder for Squad → Players tab.
  */
 export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitch, onSelectPlayer }) {
-  const lineup = career.lineup || [];
-  const squad = career.squad || [];
+  const lineup = useMemo(() => career.lineup || [], [career.lineup]);
+  const squad = useMemo(() => career.squad || [], [career.squad]);
   const benchPlayers = useMemo(
     () => benchPlayerIds.map((id) => squad.find((p) => p.id === id)).filter(Boolean),
     [benchPlayerIds, squad],
@@ -403,8 +403,8 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
  * Reorder-only sortable list for Tactics tab (same lineup order as career).
  */
 export function LineupSortablePanel({ career, updateCareer, stitch }) {
-  const full = career.lineup || [];
-  const squad = career.squad || [];
+  const full = useMemo(() => career.lineup || [], [career.lineup]);
+  const squad = useMemo(() => career.squad || [], [career.squad]);
   const lineupIds = useMemo(() => full.filter((id) => id != null && id !== ""), [full]);
   const players = useMemo(
     () => lineupIds.map((id) => squad.find((p) => p.id === id)).filter(Boolean),

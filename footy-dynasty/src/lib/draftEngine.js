@@ -4,12 +4,11 @@
 import { rand, rng } from './rng.js';
 import { aiPersonalityForClub, hashClubId } from './aiPersonality.js';
 import { findClub } from '../data/pyramid.js';
-import { seedNationalDraft, DRAFT_POOL_SIZE, DRAFT_ROUNDS } from './draftSeed.js';
+import { seedNationalDraft, DRAFT_ROUNDS } from './draftSeed.js';
 import {
   isDraftLive,
   isPlayerDraftTurn,
   nextDraftPickIndex,
-  hasUnusedClubDraftPick,
   isDraftScoutingPhase,
 } from './recruitPhase.js';
 import { rookieDraftWage, canAffordSigning, leagueTierOf } from './finance/engine.js';

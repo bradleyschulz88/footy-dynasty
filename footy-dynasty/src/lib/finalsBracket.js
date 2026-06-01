@@ -13,7 +13,7 @@ export function finalsRoundLabel(aliveCount, tier = 1, weekIndex = null) {
 }
 
 /** Per-match label (tier-1 opening week uses QF/EF). */
-export function finalsMatchLabel(aliveCount, tier, slotIndex, slotsInRound) {
+export function finalsMatchLabel(aliveCount, tier, slotIndex, _slotsInRound) {
   if (aliveCount <= 2) return 'Grand Final';
   if (tier === 1 && aliveCount === 8) {
     if (slotIndex < 2) return 'Qualifying Final';

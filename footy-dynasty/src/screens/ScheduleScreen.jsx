@@ -15,7 +15,7 @@ import {
 import { css } from "../components/primitives.jsx";
 import { ClubBadge } from "../components/ClubBadge.jsx";
 
-export default function ScheduleScreen({ career, club, league, onOpenCompetition }) {
+export default function ScheduleScreen({ career, club: _club, league: _league, onOpenCompetition }) {
   const startDate = career.currentDate || `${career.season - 1}-12-01`;
   const [viewDate, setViewDate] = React.useState(startOfMonth(startDate));
 

@@ -178,15 +178,6 @@ describe('applyTraining', () => {
   });
 
   it('a player aged 19 triggers a youth boost entry in devNotes containing their last name', () => {
-    const squad = [makePlayer('p1', {
-      age: 19,
-      fitness: 90,
-      overall: 50,
-      potential: 99,
-      name: 'J. Nguyen',
-      attrs: { kicking: 50, marking: 50, handball: 50 },
-    })];
-
     let found = false;
     for (let i = 0; i < 20; i++) {
       const freshSquad = [makePlayer('p1', {

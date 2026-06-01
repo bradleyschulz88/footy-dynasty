@@ -1,88 +1,42 @@
 import React, { useState, useEffect } from "react";
 import {
   Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
-  UserCog,   Repeat, Sprout, BarChart3, Calendar, ChevronLeft,
-  Home, Play, Pause, Save, ArrowUp, ArrowDown, ArrowRight,
-  Star, Zap, Heart, Target, Activity, Flame, Sparkles, Crown,
-  TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
-  Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
-  Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus,
-  Landmark, GripVertical, LayoutDashboard, Wrench, MessageCircle,
+  UserCog,   Sprout, Calendar,
+  Heart, Activity, Sparkles,
+  GraduationCap, Briefcase,
+  Award, AlertCircle, ChevronsUp, FileText,
+  Landmark, LayoutDashboard, Wrench, MessageCircle,
 } from "lucide-react";
-import { seedRng, rand, pick, rng, TIER_SCALE } from '../../lib/rng.js';
-import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf, findClubByShort } from '../../data/pyramid.js';
-import { pyramidNoteForLeague } from '../../data/pyramidMeta.js';
-import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from '../../lib/playerGen.js';
-import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET, TIER3_MIN_CLUBS_PER_DIVISION } from '../../lib/leagueEngine.js';
-import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool, STAFF_BLUEPRINT, EXPANDABLE_ROLE_IDS_BY_TIER } from '../../lib/defaults.js';
-import { fmt, fmtK, clamp, avgFacilities, avgStaff } from '../../lib/format.js';
-import { generateSeasonCalendar, TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
-import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from '../../lib/save.js';
-import {
-  playerBlockedFromTrade,
-  TRADE_PERIOD_DAYS,
-  POST_TRADE_DRAFT_COUNTDOWN_DAYS,
-} from '../../lib/tradePeriod.js';
-import { css, Bar, RatingDot, Pill, Stat, Jersey, GlobalStyle } from '../../components/primitives.jsx';
-import { SquadLineupBuilder, LineupSortablePanel } from '../../components/SquadLineupDnD.jsx';
+import { seedRng, rand, pick } from '../../lib/rng.js';
+import { STATES, PYRAMID, findClub, findLeagueOf } from '../../data/pyramid.js';
+import { FIRST_NAMES, LAST_NAMES, formatPositionSlash } from '../../lib/playerGen.js';
+import { fmtK, clamp } from '../../lib/format.js';
+import { defaultKits, STAFF_BLUEPRINT, EXPANDABLE_ROLE_IDS_BY_TIER } from '../../lib/defaults.js';
+import { css, Bar, RatingDot, Pill, Stat, Jersey } from '../../components/primitives.jsx';
 import TabNav from '../../components/TabNav.jsx';
-import { ClubBadge } from '../../components/ClubBadge.jsx';
 import { ContractsTab, StaffRenewalsPanel } from '../contracts/ContractRenewals.jsx';
-import GameOverScreen from '../../screens/GameOverScreen.jsx';
-import SackingSequence from '../../screens/SackingSequence.jsx';
-import VoteOfConfidenceFlow from '../../screens/VoteOfConfidenceFlow.jsx';
-import BoardMeetingScreen from '../../screens/BoardMeetingScreen.jsx';
-import ArrivalBriefingFlow from '../../screens/ArrivalBriefingFlow.jsx';
 import { getDifficultyConfig } from '../../lib/difficulty.js';
 import {
-  generateCommittee, getCommitteeMember, bumpCommitteeMood, committeeMoodAverage,
-  committeeMessage, FOOTY_TRIP_OPTIONS, applyFootyTrip, postMatchFundraiser,
-  ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
-  groundConditionBand, stadiumDescription, generateJournalist, journalistMatchLine,
-  rollPlayerTrait,
+  bumpCommitteeMood, committeeMoodAverage,
+  FOOTY_TRIP_OPTIONS, applyFootyTrip,
 } from '../../lib/community.js';
-import {
-  generateJobMarket, takeSeasonOff,
-} from '../../lib/coachReputation.js';
 // --- Finance system rebuild ---
 import {
-  effectiveWageCap, capHeadroom,
+  effectiveWageCap,
   currentPlayerWageBill,
-  canAffordSigning, makeStartingFinance, scoutedOverall,
+  canAffordSigning,
   incomeBreakdown, expenseBreakdown,
-  annualWageBill, leagueTierOf,
-  scaledSquadToFitCap, rookieDraftWage,
+  annualWageBill,
 } from '../../lib/finance/engine.js';
 import {
-  tickSponsorYears, proposalForRenewal, generateSponsorOffers,
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
-  buildInitialSponsorOffers,
 } from '../../lib/finance/sponsors.js';
-import { proposeRenewal, renewalExtensionStableKey, applyRenewal, applyRenewalRejection, canAffordRenewal } from '../../lib/finance/contracts.js';
-import { getAdvanceContext } from '../../lib/advanceContext.js';
 import {
-  ensureCareerBoard,
-  resetExecutiveBoard,
-  applyBoardConfidenceDelta,
-  generateSeasonObjectives,
-  resolveBoardObjectivesAtSeasonEnd,
-  youthSeniorGameCount,
   boardObjectiveUiStatus,
-  maybeEnqueueBoardMessage,
-  maybeEnqueueBoardCrisisPrep,
   resolveBoardInboxChoice,
-  planSeasonBoardMeetings,
-  findDueBoardMeetingSlot,
-  openBoardMeetingBlockingFromSlot,
-  catchUpBoardMeetingForCurrentWeek,
-  applyVoteSurvivalMutate,
-  resolveRoutineBoardMeeting,
-  alignBoardMembersToTarget,
-  recalcBoardConfidence,
   applyMemberConfidenceDelta,
 } from '../../lib/board.js';
 import { getClubGround } from '../../data/grounds.js';
-import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from '../../lib/careerAdvance.js';
 import { ensureStaffTasks } from '../../lib/staffTasks.js';
 import {
   listExpandableHires,
@@ -94,8 +48,6 @@ import {
   VOLUNTEER_ROLE_TEMPLATES,
   MAX_STAFF_ROWS,
 } from '../../lib/staffHiring.js';
-import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from '../../lib/gameDepth.js';
-import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, LINEUP_FIELD_COUNT, LINEUP_OVAL_SLOT_COUNT, removeIdFromLineup } from '../../lib/lineupHelpers.js';
 import {
   clubEffectiveTab,
   tutorialHighlightTab,
@@ -665,7 +617,7 @@ function FootyTripCard({ career, updateCareer }) {
   );
 }
 
-function HonoursTab({ career, club }) {
+function HonoursTab({ career, club: _club }) {
   const history = career.history || [];
   const titles  = history.filter(h => h.champion).length;
   const promotions = history.filter(h => h.promoted).length;
@@ -761,7 +713,7 @@ function RookieListTab({ career, updateCareer }) {
         </div>
       ) : (
         <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
-          {rookies.map((p, i) => (
+          {rookies.map((p) => (
             <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center" style={{borderBottom:"1px solid var(--A-line)"}}>
               <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">age {p.age}</span></div>
               <div className="col-span-1"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
@@ -1324,7 +1276,6 @@ function StaffTab({ career, updateCareer }) {
       news: [{ week: career.week, type: "info", text: `🤝 Hired new ${old.role}: ${newStaff[idx].name} (${newRating} OVR)` }, ...career.news].slice(0,15),
     });
   };
-  const totalWage = career.staff.reduce((a,s)=>a+s.wage,0);
   const avgRating = Math.round(career.staff.reduce((a,s)=>a+s.rating,0) / career.staff.length);
   const tasks = ensureStaffTasks(career);
   const clubState = findClub(career.clubId)?.state ?? null;

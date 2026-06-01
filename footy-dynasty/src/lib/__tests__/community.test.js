@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   generateCommittee, getCommitteeMember, bumpCommitteeMood, committeeMoodAverage,
-  committeeMessage, FOOTY_TRIP_OPTIONS, applyFootyTrip, postMatchFundraiser,
+  committeeMessage, applyFootyTrip, postMatchFundraiser,
   rollWeeklyWeather, applyGroundDegradation, recoverGroundPreseason,
   groundConditionBand, stadiumDescription, generateJournalist, journalistMatchLine,
 } from '../community.js';
