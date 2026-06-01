@@ -321,4 +321,14 @@ describe('leagueTierOf', () => {
   it('falls back to 2 for unknown clubs', () => {
     expect(leagueTierOf({ clubId: 'nope' })).toBe(2);
   });
+  it('uses the ACTIVE leagueKey over the club home league (promotion)', () => {
+    // A community club (home tier 3) managed up into the AFL should be tier 1.
+    expect(leagueTierOf({ clubId: 'efnl_balwyn', leagueKey: 'AFL' })).toBe(1);
+    // A relegated AFL club now playing in the VFL should be tier 2.
+    expect(leagueTierOf({ clubId: 'col', leagueKey: 'VFL' })).toBe(2);
+  });
+  it('falls back to the club home league when leagueKey is absent/unknown', () => {
+    expect(leagueTierOf({ clubId: 'col' })).toBe(1);
+    expect(leagueTierOf({ clubId: 'col', leagueKey: 'NOT_A_LEAGUE' })).toBe(1);
+  });
 });

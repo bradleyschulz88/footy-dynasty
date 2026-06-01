@@ -405,6 +405,18 @@ function advanceFinalsWeek(c, league) {
   let playerMatchPayload = null;
 
   for (const m of pairs) {
+    // A bye (odd alive count) advances the top seed without a match.
+    if (m.bye) {
+      newAlive.push(m.bye);
+      if (m.bye === c.clubId) {
+        c.news = [{
+          week: c.week,
+          type: 'info',
+          text: `🎟️ ${findClub(c.clubId)?.name || 'Your club'} earn a finals bye and advance straight to the next week.`,
+        }, ...(c.news || [])].slice(0, 40);
+      }
+      continue;
+    }
     const { result, winnerId, isPlayerMatch, isHome } = simFinalsPair(c, league, m, roundLabel);
     winners.push(winnerId);
     newAlive.push(winnerId);
@@ -521,7 +533,11 @@ function advanceFinalsWeek(c, league) {
       drew,
     };
     c.lastMatchSummary = buildPostMatchSummary(c, league, club, myResult, matchLabel);
-    if (!won && matchLabel !== 'Grand Final') {
+    // Eliminated iff we're no longer among the alive finalists (and it wasn't
+    // the GF). Deriving from finalsAlive — rather than `!won` — correctly keeps
+    // a drawing HOME side alive (draws resolve to the home team) while still
+    // eliminating a drawing AWAY side.
+    if (matchLabel !== 'Grand Final' && !c.finalsAlive.includes(c.clubId)) {
       c.finalsEliminated = true;
     }
     return c;
@@ -1485,7 +1501,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 
     if (myResult && myResult.isHome) {
       const weather = ensureWeatherForWeek(c, ev.round);
-      c.groundCondition = applyGroundDegradation(c.groundCondition ?? 85, weather, c.facilities?.stadium ?? 1);
+      c.groundCondition = applyGroundDegradation(c.groundCondition ?? 85, weather, c.facilities?.stadium?.level ?? 1);
     }
 
     const inBoardCrisis = c.boardCrisis?.phase === 'active';

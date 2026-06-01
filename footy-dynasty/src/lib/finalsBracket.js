@@ -148,11 +148,24 @@ export function pairFinalsRound(seedOrder, aliveIds, tier, aflState = null) {
 
   const weekLabel = finalsRoundLabel(n, tier);
   const pairs = [];
-  for (let i = 0; i < n / 2; i++) {
+
+  // Odd number of teams alive: the top seed earns a bye (reward for finishing
+  // higher) and the remaining even pool is paired high-vs-low. Without this the
+  // old loop paired the middle seed against ITSELF (home === away), producing a
+  // nonsense fixture that auto-advanced a phantom winner. (e.g. tier-2 top-6
+  // → 3 alive in week 2.)
+  let pool = ordered;
+  if (n % 2 === 1) {
+    pairs.push({ bye: ordered[0], label: weekLabel });
+    pool = ordered.slice(1);
+  }
+
+  const m = pool.length;
+  for (let i = 0; i < m / 2; i++) {
     pairs.push({
-      home: ordered[i],
-      away: ordered[n - 1 - i],
-      label: finalsMatchLabel(n, tier, i, n / 2) || weekLabel,
+      home: pool[i],
+      away: pool[m - 1 - i],
+      label: finalsMatchLabel(n, tier, i, m / 2) || weekLabel,
     });
   }
   return pairs;

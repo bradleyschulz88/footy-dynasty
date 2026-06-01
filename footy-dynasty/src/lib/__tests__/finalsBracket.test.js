@@ -32,6 +32,30 @@ describe('pairFinalsRound', () => {
     expect(pairs).toHaveLength(1);
     expect(pairs[0].label).toBe('Grand Final');
   });
+  it('gives the top seed a bye on an odd alive count (no self-match)', () => {
+    // tier-2 top-6 → 3 teams alive in the next week
+    const pairs = pairFinalsRound(seeds, ['a', 'b', 'c'], 2);
+    // No pair may have home === away.
+    for (const p of pairs) {
+      if (p.home || p.away) expect(p.home).not.toBe(p.away);
+    }
+    // Top seed byes; the other two play each other.
+    const bye = pairs.find((p) => p.bye);
+    expect(bye?.bye).toBe('a');
+    const match = pairs.find((p) => p.home && p.away);
+    expect(match).toMatchObject({ home: 'b', away: 'c' });
+    // Every alive team is accounted for exactly once.
+    const seen = pairs.flatMap((p) => (p.bye ? [p.bye] : [p.home, p.away]));
+    expect(seen.sort()).toEqual(['a', 'b', 'c']);
+  });
+  it('handles 5 alive (top seed bye + two matches, all distinct)', () => {
+    const pairs = pairFinalsRound(seeds, ['a', 'b', 'c', 'd', 'e'], 1);
+    const seen = pairs.flatMap((p) => (p.bye ? [p.bye] : [p.home, p.away]));
+    expect(seen.sort()).toEqual(['a', 'b', 'c', 'd', 'e']);
+    for (const p of pairs) {
+      if (p.home || p.away) expect(p.home).not.toBe(p.away);
+    }
+  });
 });
 
 describe('finalsWeeksEstimate', () => {

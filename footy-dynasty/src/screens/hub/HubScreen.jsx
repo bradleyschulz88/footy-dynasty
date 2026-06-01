@@ -65,7 +65,7 @@ function HubGroundStrip({ career, club, league, setScreen, setTab }) {
   const cfg = getDifficultyConfig(career.difficulty);
   const showCommunity = league.tier <= 3 && Array.isArray(career.committee) && career.committee.length > 0;
   const band = groundConditionBand(career.groundCondition ?? 85);
-  const stadiumLevel = career.facilities?.stadium ?? 1;
+  const stadiumLevel = career.facilities?.stadium?.level ?? 1;
   return (
     <div className="grid sm:grid-cols-2 gap-3">
       {/* Ground conditions */}
