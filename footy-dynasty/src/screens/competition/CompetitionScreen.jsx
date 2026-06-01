@@ -51,7 +51,7 @@ export default function CompetitionScreen({ career, club, league, tab, setTab, o
   );
 }
 
-function LadderTab({ career, club, league }) {
+function LadderTab({ career, club: _club, league }) {
   const sorted = sortedLadder(career.ladder);
   const promoCutoff = league.tier > 1 ? 1 : 8; // top 1 promoted; top 8 finals at tier 1
   const relegCutoff = league.tier === 1 ? 999 : sorted.length; // bottom 1 relegated except tier 1
@@ -113,7 +113,7 @@ function LadderTab({ career, club, league }) {
   );
 }
 
-function FixturesTab({ career, club, league }) {
+function FixturesTab({ career, club: _club, league: _league }) {
   const { lastPlayedRoundIdx, nextRoundIdx } = useMemo(() => {
     let last = -1;
     for (const e of career.eventQueue || []) {

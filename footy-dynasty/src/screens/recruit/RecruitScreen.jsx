@@ -1,58 +1,30 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
-  UserCog,   Repeat, Sprout, BarChart3, Calendar, ChevronRight, ChevronLeft,
-  Home, Settings, Play, Pause, Save, ArrowUp, ArrowDown, ArrowRight,
-  Star, Zap, Heart, Target, Activity, Flame, Sparkles, Crown,
-  TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
-  Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
-  Map, Plane, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus,
-  Landmark, GripVertical, LayoutDashboard, Wrench,
+  Repeat, Target, ArrowRight,
+  Sprout, Newspaper, GraduationCap,
+  Map, Plane, Award, FileText, UserPlus,
 } from "lucide-react";
-import { seedRng, rand, pick, rng, TIER_SCALE } from '../../lib/rng.js';
-import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf, findClubByShort } from '../../data/pyramid.js';
-import { pyramidNoteForLeague } from '../../data/pyramidMeta.js';
-import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from '../../lib/playerGen.js';
-import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET, TIER3_MIN_CLUBS_PER_DIVISION } from '../../lib/leagueEngine.js';
-import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, defaultKits, generateTradePool } from '../../lib/defaults.js';
-import { fmt, fmtK, clamp, avgFacilities, avgStaff } from '../../lib/format.js';
-import { generateSeasonCalendar, TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
-import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from '../../lib/save.js';
+import { seedRng, rand, rng } from '../../lib/rng.js';
+import { STATES, PYRAMID, LEAGUES_BY_STATE, findClub, findLeagueOf } from '../../data/pyramid.js';
+import { POSITIONS, generatePlayer, playerHasPosition, formatPositionSlash } from '../../lib/playerGen.js';
+import { getCompetitionClubs } from '../../lib/leagueEngine.js';
+import { fmtK } from '../../lib/format.js';
+import { formatDate } from '../../lib/calendar.js';
 import {
   playerBlockedFromTrade,
-  TRADE_PERIOD_DAYS,
-  POST_TRADE_DRAFT_COUNTDOWN_DAYS,
   playerFromTradeSnapshot,
 } from '../../lib/tradePeriod.js';
 import RecruitPlayerProfile from '../../components/RecruitPlayerProfile.jsx';
-import { css, Bar, RatingDot, Pill, Stat, Jersey, GlobalStyle } from '../../components/primitives.jsx';
-import { SquadLineupBuilder, LineupSortablePanel } from '../../components/SquadLineupDnD.jsx';
+import { css, Bar, RatingDot, Pill, Stat } from '../../components/primitives.jsx';
 import TabNav from '../../components/TabNav.jsx';
 import { ClubBadge } from '../../components/ClubBadge.jsx';
-import GameOverScreen from '../../screens/GameOverScreen.jsx';
-import SackingSequence from '../../screens/SackingSequence.jsx';
-import VoteOfConfidenceFlow from '../../screens/VoteOfConfidenceFlow.jsx';
-import BoardMeetingScreen from '../../screens/BoardMeetingScreen.jsx';
-import ArrivalBriefingFlow from '../../screens/ArrivalBriefingFlow.jsx';
-import { DIFFICULTY_IDS, DIFFICULTY_META, getDifficultyConfig, getDifficultyProfile, shouldShowTutorial } from '../../lib/difficulty.js';
-import {
-  generateCommittee, getCommitteeMember, bumpCommitteeMood, committeeMoodAverage,
-  committeeMessage, FOOTY_TRIP_OPTIONS, applyFootyTrip, postMatchFundraiser,
-  ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
-  groundConditionBand, stadiumDescription, generateJournalist, journalistMatchLine,
-  rollPlayerTrait,
-} from '../../lib/community.js';
-import {
-  generateJobMarket, takeSeasonOff,
-} from '../../lib/coachReputation.js';
 // --- Finance system rebuild ---
 import {
-  effectiveWageCap, capHeadroom,
+  effectiveWageCap,
   currentPlayerWageBill,
-  canAffordSigning, makeStartingFinance, scoutedOverall,
-  incomeBreakdown, expenseBreakdown,
-  annualWageBill, leagueTierOf,
-  scaledSquadToFitCap, rookieDraftWage,
+  canAffordSigning, scoutedOverall,
+  leagueTierOf,
+  rookieDraftWage,
 } from '../../lib/finance/engine.js';
 import {
   tradeCapCheckListedWage,
@@ -70,38 +42,7 @@ import {
   applyCombineScoutingRound,
   scoutRevealTier,
 } from '../../lib/draftScouting.js';
-import {
-  tickSponsorYears, proposalForRenewal, generateSponsorOffers,
-  applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
-  buildInitialSponsorOffers,
-} from '../../lib/finance/sponsors.js';
-import { proposeRenewal, renewalExtensionStableKey, applyRenewal, applyRenewalRejection, canAffordRenewal } from '../../lib/finance/contracts.js';
-import { getAdvanceContext } from '../../lib/advanceContext.js';
-import {
-  ensureCareerBoard,
-  resetExecutiveBoard,
-  applyBoardConfidenceDelta,
-  generateSeasonObjectives,
-  updateBoardObjectiveProgress,
-  resolveBoardObjectivesAtSeasonEnd,
-  youthSeniorGameCount,
-  boardObjectiveUiStatus,
-  maybeEnqueueBoardMessage,
-  maybeEnqueueBoardCrisisPrep,
-  resolveBoardInboxChoice,
-  planSeasonBoardMeetings,
-  findDueBoardMeetingSlot,
-  openBoardMeetingBlockingFromSlot,
-  catchUpBoardMeetingForCurrentWeek,
-  applyVoteSurvivalMutate,
-  resolveRoutineBoardMeeting,
-  alignBoardMembersToTarget,
-  recalcBoardConfidence,
-  applyMemberConfidenceDelta,
-} from '../../lib/board.js';
-import { getClubGround } from '../../data/grounds.js';
-import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from '../../lib/careerAdvance.js';
-import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from '../../lib/gameDepth.js';
+import { findClubByShort } from '../../data/pyramid.js';
 import {
   ensureDraftSeeded,
   needsDraftSeed,
@@ -175,6 +116,7 @@ export default function RecruitScreen({ career, club, updateCareer, tab, setTab,
       patch.draftBriefingAck = true;
     }
     if (Object.keys(patch).length > 0) updateCareer(patch);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t, career.tradePeriodBriefingAck, career.tradeWindowBriefingAck, career.tradeWindowBriefingPending, career.draftBriefingAck, inTradePeriod, updateCareer]);
   const tabs = [
     { key: "offers", label: `Offers${offerCount ? ` (${offerCount})` : ''}`, icon: Newspaper },
@@ -335,7 +277,7 @@ function FreeAgentsTab({ career, updateCareer }) {
   );
 }
 
-function OffersTab({ career, club, updateCareer }) {
+function OffersTab({ career, club: _club, updateCareer }) {
   const offers = (career.pendingTradeOffers || []).filter(o => o.status === 'pending');
   const finance = career.finance;
   const [inspectOffer, setInspectOffer] = useState(null);

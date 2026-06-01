@@ -1,89 +1,25 @@
 import React, { useState, useMemo } from "react";
 import {
-  Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
-  UserCog,   Repeat, Sprout, BarChart3, Calendar, ChevronRight, ChevronLeft,
-  Home, Settings, Play, Pause, Save, ArrowUp, ArrowDown, ArrowRight,
-  Star, Zap, Heart, Target, Activity, Flame, Sparkles, Crown,
-  TrendingUp, TrendingDown, Plus, Minus, X, Check, Clock, MapPin,
-  Newspaper, ShieldCheck, Gauge, Palette, Briefcase, GraduationCap,
-  Map, Award, AlertCircle, ChevronsUp, FileText, RefreshCw, UserPlus,
-  Landmark, GripVertical, LayoutDashboard, Wrench,
+  Users, Dumbbell,
+  Zap, Heart, Target, Activity, Flame,
+  TrendingUp, X,
+  ShieldCheck,
+  FileText,
 } from "lucide-react";
-import { seedRng, rand, pick, rng, TIER_SCALE } from '../../lib/rng.js';
-import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub, findLeagueOf, findClubByShort } from '../../data/pyramid.js';
-import { pyramidNoteForLeague } from '../../data/pyramidMeta.js';
-import { POSITIONS, POSITION_NAMES, FIRST_NAMES, LAST_NAMES, generatePlayer, generateSquad, playerHasPosition, formatPositionSlash, isForwardPreferred, isMidPreferred } from '../../lib/playerGen.js';
-import { generateFixtures, blankLadder, sortedLadder, finalsLabel, pickPromotionLeague, pickRelegationLeague, getCompetitionClubs, localDivisionForClub, tier3DivisionCount, tier3DivisionTeamCounts, LOCAL_DIVISION_COUNT, TIER3_CLUBS_PER_DIVISION_TARGET, TIER3_MIN_CLUBS_PER_DIVISION } from '../../lib/leagueEngine.js';
-import { DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff, generateTradePool } from '../../lib/defaults.js';
-import { fmt, fmtK, clamp, avgFacilities, avgStaff } from '../../lib/format.js';
-import { generateSeasonCalendar, TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
-import { SAVE_VERSION, SLOT_IDS, readSlot, writeSlot, deleteSlot, readSlotMeta, getActiveSlot, setActiveSlot, migrateLegacy, migrate as migrateSave } from '../../lib/save.js';
-import {
-  playerBlockedFromTrade,
-  TRADE_PERIOD_DAYS,
-  POST_TRADE_DRAFT_COUNTDOWN_DAYS,
-} from '../../lib/tradePeriod.js';
-import { css, Bar, RatingDot, Pill, Stat, Jersey, GlobalStyle } from '../../components/primitives.jsx';
+import { PYRAMID, findClub } from '../../data/pyramid.js';
+import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash } from '../../lib/playerGen.js';
+import { fmtK, clamp } from '../../lib/format.js';
+import { TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
+import { css, RatingDot, Pill } from '../../components/primitives.jsx';
 import { SquadLineupBuilder, LineupSortablePanel } from '../../components/SquadLineupDnD.jsx';
 import TabNav from '../../components/TabNav.jsx';
-import { ClubBadge } from '../../components/ClubBadge.jsx';
-import GameOverScreen from '../../screens/GameOverScreen.jsx';
-import SackingSequence from '../../screens/SackingSequence.jsx';
-import VoteOfConfidenceFlow from '../../screens/VoteOfConfidenceFlow.jsx';
-import BoardMeetingScreen from '../../screens/BoardMeetingScreen.jsx';
-import ArrivalBriefingFlow from '../../screens/ArrivalBriefingFlow.jsx';
-import { DIFFICULTY_IDS, DIFFICULTY_META, getDifficultyConfig, getDifficultyProfile, shouldShowTutorial } from '../../lib/difficulty.js';
-import {
-  generateCommittee, getCommitteeMember, bumpCommitteeMood, committeeMoodAverage,
-  committeeMessage, FOOTY_TRIP_OPTIONS, applyFootyTrip, postMatchFundraiser,
-  ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
-  groundConditionBand, stadiumDescription, generateJournalist, journalistMatchLine,
-  rollPlayerTrait,
-} from '../../lib/community.js';
-import {
-  generateJobMarket, takeSeasonOff,
-} from '../../lib/coachReputation.js';
 // --- Finance system rebuild ---
-import {
-  effectiveWageCap, capHeadroom,
-  currentPlayerWageBill,
-  canAffordSigning, makeStartingFinance, scoutedOverall,
-  incomeBreakdown, expenseBreakdown,
-  annualWageBill, leagueTierOf,
-  scaledSquadToFitCap, rookieDraftWage,
-} from '../../lib/finance/engine.js';
-import {
-  tickSponsorYears, proposalForRenewal, generateSponsorOffers,
-  applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
-  buildInitialSponsorOffers,
-} from '../../lib/finance/sponsors.js';
-import { proposeRenewal, renewalExtensionStableKey, applyRenewal, applyRenewalRejection, canAffordRenewal } from '../../lib/finance/contracts.js';
-import { getAdvanceContext } from '../../lib/advanceContext.js';
+import { proposeRenewal, renewalExtensionStableKey, applyRenewal, canAffordRenewal } from '../../lib/finance/contracts.js';
 import {
   ensureCareerBoard,
-  resetExecutiveBoard,
-  applyBoardConfidenceDelta,
-  generateSeasonObjectives,
-  updateBoardObjectiveProgress,
-  resolveBoardObjectivesAtSeasonEnd,
-  youthSeniorGameCount,
-  boardObjectiveUiStatus,
-  maybeEnqueueBoardMessage,
-  maybeEnqueueBoardCrisisPrep,
-  resolveBoardInboxChoice,
-  planSeasonBoardMeetings,
-  findDueBoardMeetingSlot,
-  openBoardMeetingBlockingFromSlot,
-  catchUpBoardMeetingForCurrentWeek,
-  applyVoteSurvivalMutate,
-  resolveRoutineBoardMeeting,
-  alignBoardMembersToTarget,
   recalcBoardConfidence,
   applyMemberConfidenceDelta,
 } from '../../lib/board.js';
-import { getClubGround } from '../../data/grounds.js';
-import { advanceCareerNextEvent, triggerSackState, primeSeasonStoryState } from '../../lib/careerAdvance.js';
-import { assignDefaultCaptains, defaultClubCulture, turningPointRibbon } from '../../lib/gameDepth.js';
 import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, removeIdFromLineup } from '../../lib/lineupHelpers.js';
 import { trainingStaffSupportLine } from '../../lib/staffModifiers.js';
 import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
@@ -403,6 +339,7 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
   const extensionStableKey = renewalExtensionStableKey(career, player.id);
   const extensionPreview = useMemo(
     () => proposeRenewal(player, { stableKey: extensionStableKey }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [extensionStableKey, player.id, player.wage, player.age, player.form, player.contract, player.overall, player.position],
   );
   const toggleLineup = () => {

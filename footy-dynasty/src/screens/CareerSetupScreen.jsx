@@ -1,9 +1,8 @@
 ﻿import React, { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Trophy, ChevronRight, ChevronLeft } from "lucide-react";
-import { seedRng, rand, pick } from "../lib/rng.js";
-import { STATES, PYRAMID, LEAGUES_BY_STATE, ALL_CLUBS, findClub } from "../data/pyramid.js";
-import { generatePlayer, generateSquad } from "../lib/playerGen.js";
+import { STATES, PYRAMID, LEAGUES_BY_STATE, findClub } from "../data/pyramid.js";
+import { generateSquad } from "../lib/playerGen.js";
 import {
   generateFixtures,
   blankLadder,

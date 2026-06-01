@@ -11,7 +11,7 @@ import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { migrateDraftPoolScouting } from './draftScouting.js';
 import { seedNationalDraft } from './draftSeed.js';
 import { nationalDraftDayDate, isBeforeDraftDay } from './recruitPhase.js';
-import { pushManagerInboxBoardMirror, syncTradePeriodManagerInboxRow } from './inbox.js';
+import { pushManagerInboxBoardMirror } from './inbox.js';
 import { DEFAULT_STAFF_TASKS, ensureStaffTasks } from './staffTasks.js';
 import { SLOT_IDS, getLatestSavedSlotMeta, SAVE_VERSION } from './setupConstants.js';
 

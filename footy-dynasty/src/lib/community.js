@@ -354,7 +354,7 @@ export function bumpJournalist(j, delta) {
 }
 
 export function journalistMatchLine(career, result, club, opp) {
-  const finalsLine = journalistFinalsRivalryLine(career, result, opp);
+  const finalsLine = journalistFinalsRivalryLine(career, result, club, opp);
   if (finalsLine) return finalsLine;
 
   const j = career.journalist || generateJournalist();

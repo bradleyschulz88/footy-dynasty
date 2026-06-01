@@ -92,7 +92,7 @@ export function buildOppositionReport(career, league, opts = {}) {
 }
 
 /** Spend cash to deepen scout intel on next opponent. Returns patch or null. */
-export function runOppositionScoutPatch(career, league) {
+export function runOppositionScoutPatch(career, _league) {
   const fx = nextRoundMatch(career);
   if (!fx) return null;
   const cash = career.cash ?? 0;

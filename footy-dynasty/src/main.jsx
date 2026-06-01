@@ -11,6 +11,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 
 if (import.meta.env.PROD) {
   import('virtual:pwa-register').then(({ registerSW }) => {
-    registerSW({ immediate: true })
-  }).catch(() => {})
+    const updateSW = registerSW({
+      onNeedRefresh() {
+        window.__pwaUpdateSW = () => updateSW(true);
+        window.dispatchEvent(new CustomEvent('pwa-need-refresh'));
+      },
+      onOfflineReady() {},
+    });
+  }).catch(() => {});
 }

@@ -299,7 +299,7 @@ export function closeTradePeriodStartDraftCountdown(c) {
   ].slice(0, 20);
 }
 
-export function advanceTradePeriodDay(c, league, leagueKey) {
+export function advanceTradePeriodDay(c, league, _leagueKey) {
   const day = (c.tradePeriodDay || 0) + 1;
   c.tradePeriodDay = day;
   if (day === FREE_AGENCY_END_DAY) {

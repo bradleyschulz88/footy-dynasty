@@ -5,11 +5,11 @@
 // ---------------------------------------------------------------------------
 import {
   TIER_FINANCE, FACILITY_UPKEEP_PER_LEVEL_ANNUAL, INCOME_MIX,
-  PRIZE_MONEY, INSOLVENCY, TICKET_PRICE, BASE_ATTENDANCE,
+  PRIZE_MONEY, INSOLVENCY,
   TRANSFER_BUDGET_ROLLOVER_FRACTION,
 } from './constants.js';
 import { getDifficultyConfig } from '../difficulty.js';
-import { findLeagueOf } from '../../data/pyramid.js';
+import { findLeagueOf, PYRAMID } from '../../data/pyramid.js';
 import { clamp } from '../format.js';
 import { rng } from '../rng.js';
 import { scoutAccuracyBonus, ensureStaffTasks } from '../staffTasks.js';
@@ -19,7 +19,11 @@ import { scoutAccuracyBonus, ensureStaffTasks } from '../staffTasks.js';
 // =============================================================================
 
 // Resolve the league tier for a career (handles missing league cleanly).
+// Prefer the ACTIVE competition (career.leagueKey) so promotion/relegation is
+// reflected in all tier-keyed finances; fall back to the club's home league.
 export function leagueTierOf(career) {
+  const activeTier = PYRAMID[career?.leagueKey]?.tier;
+  if (activeTier != null) return activeTier;
   const lg = findLeagueOf(career?.clubId);
   return lg?.tier ?? 2;
 }

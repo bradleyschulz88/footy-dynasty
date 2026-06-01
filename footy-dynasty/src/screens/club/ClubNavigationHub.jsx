@@ -2,7 +2,7 @@
 import React from "react";
 import {
   Briefcase, DollarSign, FileText, Handshake, Wrench, Building2, UserCog, Users,
-  Shirt, Award, Sprout, ChevronRight, LayoutDashboard, Landmark,
+  Shirt, Award, Sprout, ChevronRight, LayoutDashboard,
 } from "lucide-react";
 import { css, Pill } from "../../components/primitives.jsx";
 import { fmtK, avgFacilities, avgStaff } from "../../lib/format.js";
@@ -52,7 +52,6 @@ function sectionLabel(text) {
 /** Hub landing — tiles jump to specific leaf tabs (matches primary nav defaults). */
 export function ClubOverviewTab({ career, club, setTab, showCommittee }) {
   const cash = career.finance?.cash ?? 0;
-  const boardConf = career.finance?.boardConfidence ?? 0;
   const sponsorsN = (career.sponsors || []).length;
   const sponsorsAnnual = (career.sponsors || []).reduce((a, s) => a + (s.annualValue || 0), 0);
   const facAvg = avgFacilities(career.facilities);

@@ -22,7 +22,7 @@ export function TopBar({
   career,
   club,
   league,
-  myLadderPos,
+  myLadderPos: _myLadderPos,
   onAdvance,
   advanceDisabled,
   advanceDisabledReason,

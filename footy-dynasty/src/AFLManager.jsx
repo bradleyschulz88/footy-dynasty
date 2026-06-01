@@ -154,6 +154,13 @@ function AFLManagerInner() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [advanceAgendaOpen, setAdvanceAgendaOpen] = useState(false);
   const [advanceAgendaItems, setAdvanceAgendaItems] = useState([]);
+  const [pwaNeedsUpdate, setPwaNeedsUpdate] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setPwaNeedsUpdate(true);
+    window.addEventListener('pwa-need-refresh', handler);
+    return () => window.removeEventListener('pwa-need-refresh', handler);
+  }, []);
 
   const bumpSlotMeta = useCallback(() => setSlotMetaTick((t) => t + 1), []);
 
@@ -209,8 +216,6 @@ function AFLManagerInner() {
       setTab: st,
     });
   }, []);
-
-  const finalizeMatchDayExit = useCallback((careerSnap) => buildMatchDayExitPatch(careerSnap), []);
 
   const completeMatchDay = useCallback((autoAdvanceCalendar = false) => {
     const { career: c, setCareer: sc, setScreen: ss, setTab: st } = advanceShellRef.current;
@@ -592,6 +597,7 @@ function AFLManagerInner() {
     return i >= 0 ? i + 1 : 0;
   }, [sortedLadderRows, career?.clubId]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const slotMetaSnapshot = useMemo(() => readSlotMeta(), [slotMetaTick]);
   const lastHubDiagSigRef = useRef("");
 
@@ -1087,6 +1093,36 @@ function AFLManagerInner() {
           }}
           onSkip={() => updateCareer({ tutorialStep: TUTORIAL_STEPS.length, tutorialComplete: true })}
         />
+      )}
+      {pwaNeedsUpdate && (
+        <div style={{
+          position: 'fixed', bottom: '1rem', left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--A-surface-2, #1e2a3a)', color: 'var(--A-text, #e8edf4)',
+          border: '1px solid var(--A-accent, #3b82f6)',
+          borderRadius: '0.5rem', padding: '0.75rem 1.25rem',
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.5)', zIndex: 9999,
+          fontSize: '0.875rem', whiteSpace: 'nowrap',
+        }}>
+          <span>New version available</span>
+          <button
+            onClick={() => { window.__pwaUpdateSW?.(); }}
+            style={{
+              background: 'var(--A-accent, #3b82f6)', color: '#fff',
+              border: 'none', borderRadius: '0.375rem',
+              padding: '0.375rem 0.75rem', cursor: 'pointer', fontWeight: 600,
+            }}
+          >
+            Reload
+          </button>
+          <button
+            onClick={() => setPwaNeedsUpdate(false)}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--A-text-dim, #8899aa)', fontSize: '1rem', lineHeight: 1 }}
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
       )}
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <AdvanceAgendaModal
