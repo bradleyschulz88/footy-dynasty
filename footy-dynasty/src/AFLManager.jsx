@@ -1018,6 +1018,7 @@ function AFLManagerInner() {
                     tab={tab}
                     setTab={setTab}
                     tutorialActive={tutorialActive}
+                    onNavigate={setScreen}
                     onOpenClubStaff={() => {
                       setScreen('club');
                       setTab('staff');

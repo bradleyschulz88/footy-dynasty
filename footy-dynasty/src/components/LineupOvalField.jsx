@@ -443,11 +443,10 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
             return (
               <div key={row.key} className="flex-1 min-h-min flex flex-col min-w-0">
                 <div
-                  className="grid flex-1 min-h-min gap-x-1 sm:gap-x-1.5 gap-y-0 items-stretch"
-                  style={{ gridTemplateColumns: "2rem minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)" }}
+                  className="grid flex-1 min-h-min gap-x-1 sm:gap-x-1.5 gap-y-0 items-stretch [grid-template-columns:minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] sm:[grid-template-columns:2rem_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]"
                 >
                   <div
-                    className={`flex min-h-0 min-w-0 items-center justify-center rounded-md px-0.5 text-center text-[8px] sm:text-[9px] font-black uppercase leading-none tracking-tight ${
+                    className={`hidden sm:flex min-h-0 min-w-0 items-center justify-center rounded-md px-0.5 text-center text-[8px] sm:text-[9px] font-black uppercase leading-none tracking-tight ${
                       stitch ? "bg-[rgba(255,255,255,0.14)] text-[rgba(200,255,61,0.98)]" : "bg-white/30 text-white shadow-sm"
                     }`}
                   >
