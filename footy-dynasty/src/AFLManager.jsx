@@ -105,9 +105,9 @@ import { advanceCareerNextEvent, triggerSackState, fastForwardFinals } from './l
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
 
-/** Single light UI — always `dirA` (see tokens.css `--A-*`). */
+/** Deep-space dark theme — dirC maps --A-* tokens to neon teal palette. */
 function themeWrapperClass() {
-  return 'dirA';
+  return 'dirC';
 }
 
 function AppMotionConfig({ reducedMotion, children }) {
