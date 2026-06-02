@@ -54,6 +54,7 @@ import {
   effectiveInjuryRate, annualNetProjection,
   refillTransferBudget,
   effectiveWageCap, currentPlayerWageBill,
+  matchDayRevenue,
 } from './finance/engine.js';
 import {
   tickSponsorYears, proposalForRenewal, generateSponsorOffers,
@@ -61,7 +62,7 @@ import {
 import { buildRenewalQueue } from './finance/contracts.js';
 import { buildStaffRenewalQueue, flushUnhandledStaffRenewals } from './staffRenewals.js';
 import {
-  INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, TICKET_PRICE, BASE_ATTENDANCE,
+  INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT,
 } from './finance/constants.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
@@ -1424,23 +1425,36 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       return { ...p, fitness: clamp(p.fitness + rand(8, 14), 30, 100), injured: Math.max(0, p.injured - 1) };
     });
 
-    const isHomeMatch = myMatch && myMatch.home === c.clubId;
-    if (isHomeMatch) {
-      const stadiumLevel = c.facilities.stadium.level;
-      const baseAtt = BASE_ATTENDANCE[league.tier] ?? 600;
-      const att = Math.round(baseAtt * (0.6 + stadiumLevel * 0.15) * (0.7 + c.finance.fanHappiness / 200));
-      const ticketRev = Math.round(att * (TICKET_PRICE[league.tier] ?? 10));
-      c.finance.cash += ticketRev;
+    // Per-match revenue: gate (home only) + broadcast/TV (every match) +
+    // sponsor activation (every match). This is the club's live, event-driven
+    // income — earned each time it plays, not smoothed across the calendar.
+    if (myMatch) {
+      const isHome = myMatch.home === c.clubId;
+      const rev = matchDayRevenue(c, { isHome, leagueTier: league.tier });
+      c.finance.cash += rev.total;
+      c.lastMatchRevenue = {
+        ...rev,
+        round: ev.round,
+        opp: myResult?.opp?.short || null,
+      };
       if (Array.isArray(c.weeklyHistory) && c.weeklyHistory.length > 0) {
         const last = c.weeklyHistory[c.weeklyHistory.length - 1];
         c.weeklyHistory[c.weeklyHistory.length - 1] = {
           ...last,
-          profit: (last.profit ?? 0) + ticketRev,
+          profit: (last.profit ?? 0) + rev.total,
           cash: c.finance.cash,
-          ticketRev,
-          attendance: att,
+          matchRevenue: rev.total,
+          ticketRev: rev.gate,
+          attendance: rev.attendance,
         };
       }
+      const bits = [];
+      if (rev.gate) bits.push(`gate ${fmtK(rev.gate)}`);
+      if (rev.broadcast) bits.push(`TV ${fmtK(rev.broadcast)}`);
+      if (rev.sponsor) bits.push(`sponsor ${fmtK(rev.sponsor)}`);
+      c.news = [{ week: ev.round, type: 'info',
+        text: `💰 Match-day income +${fmtK(rev.total)}${bits.length ? ` (${bits.join(', ')})` : ''}` },
+      ...(c.news || [])].slice(0, 14);
     }
 
     const cfg = getDifficultyConfig(c.difficulty);

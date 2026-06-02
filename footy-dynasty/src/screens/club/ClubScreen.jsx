@@ -26,7 +26,7 @@ import {
   currentPlayerWageBill,
   canAffordSigning,
   incomeBreakdown, expenseBreakdown,
-  annualWageBill,
+  annualWageBill, matchDayRevenue, expectedAttendance,
 } from '../../lib/finance/engine.js';
 import {
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
@@ -751,7 +751,7 @@ function FinancesTab({ career }) {
   return (
     <div className="space-y-4">
       <div className="text-xs text-atext-dim -mt-1">
-        Commercial income (broadcast, memberships, merch) tracks your ladder spot, fan mood, and stadium. Cash ticks on each new calendar day as you advance the schedule.
+        Gate, TV rights and sponsor money are banked <span className="text-atext font-medium">every match</span> — home games add gate takings on top. Memberships &amp; merch tick over each calendar day. Win, fill the ground and climb the ladder to grow all of them.
       </div>
       {/* Cash crisis banner */}
       {crisis > 0 && (
@@ -775,6 +775,54 @@ function FinancesTab({ career }) {
         <Stat label="Annual Net (proj)" value={fmtK(net)} accent={net > 0 ? "#4AE89A" : "#E84A6F"} />
         <Stat label="Wage Bill" value={fmtK(playerWages + exp.staffWages)} sub="players + staff" accent="var(--A-accent)" />
         <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="#4ADBE8" />
+      </div>
+
+      {/* Match-day income model */}
+      <div className={`${css.panel} p-5`}>
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h3 className={`${css.h1} text-2xl`}>MATCH-DAY INCOME</h3>
+          {career.lastMatchRevenue && (
+            <Pill color="#4AE89A">
+              Last match +{fmtK(career.lastMatchRevenue.total)}
+            </Pill>
+          )}
+        </div>
+        {(() => {
+          const home = matchDayRevenue(career, { isHome: true });
+          const away = matchDayRevenue(career, { isHome: false });
+          const att = expectedAttendance(career);
+          return (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className={`${css.inset} p-3`}>
+                  <div className="text-[10px] uppercase tracking-widest text-atext-mute font-bold mb-1">Home game</div>
+                  <div className="font-display text-2xl text-[#4AE89A]">{fmtK(home.total)}</div>
+                  <div className="text-[11px] text-atext-dim mt-1 leading-relaxed">
+                    Gate {fmtK(home.gate)} · TV {fmtK(home.broadcast)} · Sponsor {fmtK(home.sponsor)}
+                  </div>
+                  <div className="text-[10px] text-atext-mute mt-1">~{att.toLocaleString('en-AU')} crowd</div>
+                </div>
+                <div className={`${css.inset} p-3`}>
+                  <div className="text-[10px] uppercase tracking-widest text-atext-mute font-bold mb-1">Away game</div>
+                  <div className="font-display text-2xl text-[#4ADBE8]">{fmtK(away.total)}</div>
+                  <div className="text-[11px] text-atext-dim mt-1 leading-relaxed">
+                    TV {fmtK(away.broadcast)} · Sponsor {fmtK(away.sponsor)}
+                  </div>
+                  <div className="text-[10px] text-atext-mute mt-1">No gate share away</div>
+                </div>
+              </div>
+              {career.lastMatchRevenue && (
+                <div className="text-[11px] text-atext-dim mt-3">
+                  Last match (Rd {career.lastMatchRevenue.round}{career.lastMatchRevenue.opp ? ` vs ${career.lastMatchRevenue.opp}` : ''}): banked{' '}
+                  <span className="text-[#4AE89A] font-bold">{fmtK(career.lastMatchRevenue.total)}</span>
+                  {career.lastMatchRevenue.isHome
+                    ? ` from ${career.lastMatchRevenue.attendance?.toLocaleString('en-AU')} fans + TV + sponsors.`
+                    : ` from TV + sponsors (away).`}
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Salary cap with overflow indicator */}

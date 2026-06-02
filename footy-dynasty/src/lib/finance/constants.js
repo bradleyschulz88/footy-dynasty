@@ -36,15 +36,35 @@ export const FACILITY_UPKEEP_PER_LEVEL_ANNUAL = {
   3: 6_000,
 };
 
-// Income mix — fraction of annualIncome that comes from each line.
-// Sponsors are tracked separately on top of annualIncome (they're an explicit
-// line in `career.sponsors`).
+// Income mix — fraction of the headline annual income that each line represents.
+// Gate, broadcast and sponsorship are now paid PER MATCH (see matchDayRevenue),
+// so only membership + merchandise accrue continuously each calendar day.
+// `broadcast`/`gate` here are retained purely so the FinancesTab annual
+// projection can scale the smoothed slice; the live money comes match by match.
 export const INCOME_MIX = {
   broadcast: 0.45,
   gate:      0.35,
   membership: 0.15,
   merchandise: 0.05,
 };
+
+// Fraction of the headline annual income that accrues continuously (smoothed)
+// each calendar day — memberships + merch. The rest is earned on match day.
+export const CONTINUOUS_INCOME_FRACTION = INCOME_MIX.membership + INCOME_MIX.merchandise; // 0.20
+
+// Broadcast / TV-rights money paid for EVERY match played (home and away), by tier.
+// This is the single biggest match-day line at tier 1 and the reason a deep
+// finals run is so lucrative.
+export const BROADCAST_PER_MATCH = {
+  1: 1_900_000,
+  2: 110_000,
+  3: 1_800,
+};
+
+// Approximate matches per season (home + away) used to (a) project per-match
+// income to an annual figure for the FinancesTab and (b) spread annual sponsor
+// value into per-match activation payments.
+export const SEASON_MATCHES_EST = 22;
 
 // Prize money by tier — paid in finishSeason()
 export const PRIZE_MONEY = {
