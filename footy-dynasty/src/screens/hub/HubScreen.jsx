@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Medal,
 } from "lucide-react";
+import { TaskList } from "../../components/TaskList.jsx";
 import { findClub } from "../../data/pyramid.js";
 import { finalsRoundLabel, playerFinalsOpponent, finalsSeedFor } from "../../lib/finalsBracket.js";
 import { fmtK, avgFacilities, avgStaff } from "../../lib/format.js";
@@ -316,6 +317,11 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
     });
   }, [career, sorted]);
 
+  const handleTaskNavigate = (screen, tab) => {
+    setScreen(screen);
+    if (tab) setTab(tab);
+  };
+
   return (
     <motion.div className="space-y-5" variants={hubContainer} initial="hidden" animate="show">
       {/* Hero Banner */}
@@ -386,6 +392,11 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       <HubSimulationSnippet career={career} />
 
       {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
+      {/* Action board + coaching suggestions */}
+      <motion.div variants={hubItem}>
+        <TaskList career={career} onNavigate={handleTaskNavigate} myLadderPos={myLadderPos} league={league} />
+      </motion.div>
+
       <motion.div variants={hubItem}>
         <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} setTab={setTab} />
       </motion.div>

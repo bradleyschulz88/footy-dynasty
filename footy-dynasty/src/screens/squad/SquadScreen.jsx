@@ -5,6 +5,7 @@ import {
   TrendingUp, X,
   ShieldCheck,
   FileText,
+  UserPlus, Wand2,
 } from "lucide-react";
 import { PYRAMID, findClub } from '../../data/pyramid.js';
 import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash } from '../../lib/playerGen.js';
@@ -31,7 +32,7 @@ import { RenewalsTab } from "../contracts/ContractRenewals.jsx";
 // ============================================================================
 // SQUAD SCREEN — players, tactics, training
 // ============================================================================
-export default function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive, onOpenClubStaff }) {
+export default function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive, onOpenClubStaff, onNavigate }) {
   const playerRenewals = (career.pendingRenewals || []).filter(r => !r._handled).length;
   const staffRenewals = (career.pendingStaffRenewals || []).filter((r) => !r._handled).length;
   const renewalCount = playerRenewals + staffRenewals;
@@ -43,13 +44,19 @@ export default function SquadScreen({ career, club, updateCareer, tab, setTab, t
       ? `Renewals${playerRenewals && staffRenewals ? ` (${playerRenewals}p/${staffRenewals}s)` : ` (${renewalCount})`}`
       : 'Renewals';
   const tabs = [
-    { key: "players", label: "Players", icon: Users },
-    { key: "tactics", label: "Tactics", icon: Target },
+    { key: "players",  label: "Players",  icon: Users },
+    { key: "tactics",  label: "Tactics",  icon: Target },
     { key: "training", label: "Training", icon: Dumbbell },
+    { key: "recruit",  label: "Recruit",  icon: UserPlus },
     ...(renewalCount > 0 || (career.pendingRenewals?.length ?? 0) > 0 || (career.pendingStaffRenewals?.length ?? 0) > 0
       ? [{ key: "renewals", label: renewalTabLabel, icon: FileText }]
       : []),
   ];
+  const handleTabChange = (key) => {
+    if (key === "recruit") { onNavigate?.("recruit"); return; }
+    setTab(key);
+  };
+
   return (
     <div className="anim-in space-y-6">
       <header className="space-y-1">
@@ -62,9 +69,10 @@ export default function SquadScreen({ career, club, updateCareer, tab, setTab, t
       <TabNav
         tabs={tabs}
         active={t}
-        onChange={setTab}
+        onChange={handleTabChange}
         tutorialAllowOnly={squadTutorialTab}
         tutorialHighlightKey={squadTutorialTab}
+        growButtons={false}
       />
       {t === "players"  && <PlayersTab career={career} updateCareer={updateCareer} />}
       {t === "tactics"  && <TacticsTab career={career} updateCareer={updateCareer} onOpenClubStaff={onOpenClubStaff} />}
@@ -496,51 +504,107 @@ const TACTIC_CARDS = [
   { key: 'attack',    label: 'All-Out Attack', icon: Flame,  color: '#E84A6F',  desc: 'Pump it long. Big upside, leakier defensively.' },
 ];
 
+// Suggest the best tactic for a zone based on avg overall of players in that zone.
+function autoSuggestTactic(avgOvr) {
+  if (avgOvr >= 80) return 'press';
+  if (avgOvr >= 74) return 'balanced';
+  if (avgOvr >= 68) return 'flood';
+  return 'defensive';
+}
+
+function ZoneTacticPicker({ zone, label, zoneColor, currentKey, onSelect, players }) {
+  const avgOvr = players.length
+    ? Math.round(players.reduce((s, p) => s + (p.overall || 70), 0) / players.length)
+    : null;
+
+  return (
+    <div className={`${css.panel} p-4`}>
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ background: zoneColor }} />
+          <h4 className="font-display text-lg tracking-wide text-atext">{label.toUpperCase()}</h4>
+        </div>
+        <div className="flex items-center gap-2">
+          {avgOvr && <span className="text-[10px] font-mono text-atext-mute">Avg OVR {avgOvr}</span>}
+          <Pill color={zoneColor}>{TACTIC_CARDS.find(t => t.key === currentKey)?.label || 'Balanced'}</Pill>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {TACTIC_CARDS.map(tc => {
+          const Icon = tc.icon;
+          const active = currentKey === tc.key;
+          return (
+            <button key={tc.key} type="button" onClick={() => onSelect(tc.key)}
+              className={`text-left p-3 rounded-xl border transition-all min-h-[44px] ${active ? 'ring-2 ring-aaccent' : 'hover:border-aaccent/30'}`}
+              style={{ background: active ? `${tc.color}15` : 'var(--A-panel-2)', borderColor: active ? tc.color : 'var(--A-line)' }}>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: tc.color }} />
+                <span className="font-bold text-[11px] text-atext">{tc.label}</span>
+              </div>
+              <div className="text-[10px] text-atext-dim leading-snug">{tc.desc}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TacticsTab({ career, updateCareer, onOpenClubStaff }) {
   const squad = career.squad || [];
   const rawLineup = career.lineup || [];
   const lineup = lineupPlayersOrdered(squad, rawLineup);
   const byPos = POSITIONS.reduce((acc, p) => ({ ...acc, [p]: lineup.filter(pl => pl.position === p) }), {});
-  const currentTactic = career.tacticChoice || 'balanced';
+
+  // Zone tactic keys — fall back to global tacticChoice for backward compat.
+  const global = career.tacticChoice || 'balanced';
+  const defTactic = career.defenceTactic || global;
+  const midTactic = career.tacticChoice || 'balanced';
+  const fwdTactic = career.forwardTactic || global;
+
+  const setDefence  = (key) => updateCareer({ defenceTactic: key });
+  const setMidfield = (key) => updateCareer({ tacticChoice: key });
+  const setForward  = (key) => updateCareer({ forwardTactic: key });
+
+  const backPlayers  = lineup.filter(p => ['KB','HB'].includes(p.position));
+  const midPlayers   = lineup.filter(p => ['C','R','WG'].includes(p.position));
+  const fwdPlayers   = lineup.filter(p => ['KF','HF'].includes(p.position));
+
+  const autoAssignTactics = () => {
+    updateCareer({
+      defenceTactic:  autoSuggestTactic(backPlayers.length ? backPlayers.reduce((s,p)=>s+p.overall,0)/backPlayers.length : 70),
+      tacticChoice:   autoSuggestTactic(midPlayers.length  ? midPlayers.reduce((s,p)=>s+p.overall,0)/midPlayers.length  : 70),
+      forwardTactic:  autoSuggestTactic(fwdPlayers.length  ? fwdPlayers.reduce((s,p)=>s+p.overall,0)/fwdPlayers.length  : 70),
+    });
+  };
+
   return (
     <div className="space-y-6 touch-manipulation">
-      <div className={`${css.panel} p-5`}>
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <h3 className={`${css.h1} text-2xl`}>MATCH-DAY APPROACH</h3>
-          <Pill color="var(--A-accent)">Active: {TACTIC_CARDS.find(t => t.key === currentTactic)?.label || 'Balanced'}</Pill>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className={`${css.h1} text-2xl`}>ZONE TACTICS</h3>
+          <p className="text-xs text-atext-dim mt-1">Set the approach for each zone independently. Midfield tactic drives the overall match engine.</p>
         </div>
-        <p className="text-xs text-atext-dim mb-4">Sets shot rate, momentum gain and risk for every match. Switch tactics to suit the opposition.</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {TACTIC_CARDS.map(t => {
-            const Icon = t.icon;
-            const active = currentTactic === t.key;
-            return (
-              <button key={t.key} type="button" onClick={() => updateCareer({ tacticChoice: t.key })}
-                className={`text-left p-4 rounded-2xl border transition-all min-h-[44px] ${active ? 'ring-2 ring-aaccent' : 'hover:border-aaccent/40'}`}
-                style={{ background: active ? `${t.color}15` : 'var(--A-panel)', borderColor: active ? t.color : 'var(--A-line)' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${t.color}22`, color: t.color, border: `1px solid ${t.color}55` }}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <div className="font-display text-xl text-atext tracking-wide">{t.label.toUpperCase()}</div>
-                </div>
-                <div className="text-[12px] text-atext-dim leading-relaxed">{t.desc}</div>
-              </button>
-            );
-          })}
-        </div>
+        <button type="button" onClick={autoAssignTactics}
+          className={`${css.btnGhost} flex items-center gap-1.5 text-xs min-h-[44px]`}>
+          <Wand2 className="w-4 h-4" /> Auto-suggest
+        </button>
       </div>
+
+      <ZoneTacticPicker zone="defence"  label="Defence"  zoneColor="#4AE89A" currentKey={defTactic} onSelect={setDefence}  players={backPlayers} />
+      <ZoneTacticPicker zone="midfield" label="Midfield" zoneColor="var(--A-accent)" currentKey={midTactic} onSelect={setMidfield} players={midPlayers} />
+      <ZoneTacticPicker zone="forward"  label="Forward"  zoneColor="#E84A6F" currentKey={fwdTactic} onSelect={setForward}  players={fwdPlayers} />
 
       <div className={`${css.panel} p-4 md:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`}>
         <div className="text-xs text-atext-dim max-w-xl leading-snug">
-          <span className="text-atext font-semibold">Coaching staff</span> are hired under{' '}
-          <span className="text-atext font-semibold">Club → Operations → Staff</span>. Better assistants lift prep notes here and on the Training tab — they are not picked on this screen.
+          <span className="text-atext font-semibold">Coaching staff</span> amplify zone tactics — hire specialists under{' '}
+          <span className="text-atext font-semibold">Club → Operations → Staff</span>.
         </div>
-        {typeof onOpenClubStaff === 'function' ? (
-          <button type="button" className={`${css.btnPrimary} text-xs px-4 py-2.5 font-bold shrink-0 min-h-[44px]`} onClick={() => onOpenClubStaff()}>
+        {typeof onOpenClubStaff === 'function' && (
+          <button type="button" className={`${css.btnPrimary} text-xs px-4 py-2.5 shrink-0 min-h-[44px]`} onClick={onOpenClubStaff}>
             Open Staff
           </button>
-        ) : null}
+        )}
       </div>
 
     <div className="grid md:grid-cols-2 gap-4">
@@ -635,18 +699,40 @@ function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
     (intensity - 50) * 0.0014 + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008,
   );
 
+  // Auto-assign: pick the highest-rated staff member as training lead.
+  const autoAssignTrainingStaff = () => {
+    const staff = career.staff || [];
+    if (!staff.length) return;
+    const best = [...staff].sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+    updateCareer({ staffTasks: { ...(career.staffTasks || {}), trainingLeadId: best.id } });
+  };
+  const currentTrainer = (career.staff || []).find(s => s.id === career.staffTasks?.trainingLeadId);
+
   return (
     <div className="space-y-6 touch-manipulation">
-      <div className={`${css.panel} p-4 md:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`}>
-        <div className="text-xs text-atext-dim max-w-xl leading-snug">
-          Training sliders set weekly load. Staff ratings (especially fitness and tactics coaches) modify how hard those sessions land — hire and renew them under{' '}
-          <span className="text-atext font-semibold">Club → Staff</span>.
+      <div className={`${css.panel} p-4 md:p-5`}>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-atext-mute mb-1">Training Lead</div>
+            <div className="text-sm font-semibold text-atext">
+              {currentTrainer ? `${currentTrainer.name} (${currentTrainer.role}) · ${currentTrainer.rating}` : 'Not assigned'}
+            </div>
+            <div className="text-[11px] text-atext-dim mt-0.5 leading-snug">
+              {staffTrainingNote || 'Hire fitness/tactics coaches under Club → Staff to improve sessions.'}
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <button type="button" onClick={autoAssignTrainingStaff}
+              className={`${css.btnGhost} flex items-center gap-1.5 text-xs min-h-[44px]`}>
+              <Wand2 className="w-4 h-4" /> Auto-assign
+            </button>
+            {typeof onOpenClubStaff === 'function' && (
+              <button type="button" className={`${css.btnPrimary} text-xs px-4 py-2.5 shrink-0 min-h-[44px]`} onClick={onOpenClubStaff}>
+                Manage Staff
+              </button>
+            )}
+          </div>
         </div>
-        {typeof onOpenClubStaff === 'function' ? (
-          <button type="button" className={`${css.btnPrimary} text-xs px-4 py-2.5 font-bold shrink-0 min-h-[44px]`} onClick={() => onOpenClubStaff()}>
-            Open Staff
-          </button>
-        ) : null}
       </div>
       <div className={`${css.panel} p-4 md:p-5`}>
         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute mb-2">Quick presets</div>

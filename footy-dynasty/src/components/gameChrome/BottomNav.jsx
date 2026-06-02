@@ -19,9 +19,8 @@ const PRIMARY = [
 ];
 
 const MORE = [
+  { key: "schedule", label: "Schedule",    icon: Calendar,  desc: "Calendar & upcoming events" },
   { key: "compete",  label: "Competition", icon: Trophy,    desc: "Ladder, fixtures & pyramid" },
-  { key: "recruit",  label: "Recruit",     icon: Repeat,    desc: "Trade period & draft" },
-  { key: "schedule", label: "Schedule",    icon: Calendar,  desc: "Calendar & upcoming queue" },
   { key: "settings", label: "Settings",    icon: Settings,  desc: "Save slots & preferences" },
 ];
 
