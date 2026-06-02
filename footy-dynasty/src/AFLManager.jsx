@@ -155,11 +155,24 @@ function AFLManagerInner() {
   const [advanceAgendaOpen, setAdvanceAgendaOpen] = useState(false);
   const [advanceAgendaItems, setAdvanceAgendaItems] = useState([]);
   const [pwaNeedsUpdate, setPwaNeedsUpdate] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const installPromptRef = useRef(null);
 
   useEffect(() => {
     const handler = () => setPwaNeedsUpdate(true);
     window.addEventListener('pwa-need-refresh', handler);
     return () => window.removeEventListener('pwa-need-refresh', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      installPromptRef.current = e;
+      const dismissed = localStorage.getItem('pwa-install-dismissed');
+      if (!dismissed) setShowInstallPrompt(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   const bumpSlotMeta = useCallback(() => setSlotMetaTick((t) => t + 1), []);
@@ -1093,6 +1106,39 @@ function AFLManagerInner() {
           }}
           onSkip={() => updateCareer({ tutorialStep: TUTORIAL_STEPS.length, tutorialComplete: true })}
         />
+      )}
+      {showInstallPrompt && (
+        <div style={{
+          position: 'fixed', bottom: pwaNeedsUpdate ? '4.5rem' : '1rem',
+          left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--A-surface-2, #1e2a3a)',
+          color: 'var(--A-text, #e8edf4)',
+          border: '1px solid var(--A-accent-2, #06b6d4)',
+          borderRadius: '0.5rem', padding: '0.75rem 1.25rem',
+          display: 'flex', alignItems: 'center', gap: '0.75rem',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.5)', zIndex: 9998,
+          fontSize: '0.875rem', whiteSpace: 'nowrap',
+        }}>
+          <span>📱 Add to Home Screen</span>
+          <button
+            onClick={async () => {
+              if (installPromptRef.current) {
+                await installPromptRef.current.prompt();
+                installPromptRef.current = null;
+              }
+              setShowInstallPrompt(false);
+              localStorage.setItem('pwa-install-dismissed', '1');
+            }}
+            style={{ background: 'var(--A-accent-2, #06b6d4)', color: '#fff', border: 'none', borderRadius: '0.375rem', padding: '0.375rem 0.75rem', cursor: 'pointer', fontWeight: 600 }}
+          >
+            Install
+          </button>
+          <button
+            onClick={() => { setShowInstallPrompt(false); localStorage.setItem('pwa-install-dismissed', '1'); }}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--A-text-dim, #8899aa)', fontSize: '1rem', lineHeight: 1 }}
+            aria-label="Dismiss"
+          >✕</button>
+        </div>
       )}
       {pwaNeedsUpdate && (
         <div style={{

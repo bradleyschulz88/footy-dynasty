@@ -98,6 +98,19 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
         ].filter(Boolean)
       : [];
 
+  const matchWeather = career.weeklyWeather?.[career.week] ?? null;
+
+  function weatherEmoji(condition) {
+    if (!condition) return '🌤️';
+    const c = condition.toLowerCase();
+    if (c === 'sunny' || c === 'fine') return '☀️';
+    if (c === 'cloudy' || c === 'overcast') return '⛅️';
+    if (c === 'windy' || c === 'wind') return '💨';
+    if (c === 'rainy' || c === 'wet' || c === 'rain') return '🌧️';
+    if (c === 'stormy') return '⛈️';
+    return '🌤️';
+  }
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, #0F172A 0%, #1E293B 100%)" }}>
       <div className="px-6 py-5 text-center" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
@@ -108,6 +121,11 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
           {result.label} · {career.currentDate ? formatDate(career.currentDate) : ""}
           {result.isPreseason && " · Pre-Season"}
         </div>
+        {matchWeather && (
+          <div className="text-[10px] text-slate-400 mb-1">
+            Conditions: {weatherEmoji(matchWeather)} <span className="capitalize">{matchWeather}</span>
+          </div>
+        )}
 
         <div className="flex items-center justify-center gap-6 mt-4">
           <div className="text-center flex-1">

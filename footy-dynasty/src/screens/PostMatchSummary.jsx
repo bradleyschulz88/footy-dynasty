@@ -1,17 +1,18 @@
 // ---------------------------------------------------------------------------
 // Post-Match Summary overlay (Spec Section 3E)
 // Renders on top of MatchDayScreen after the score is revealed.
-// REVIEW MATCH → returns to MatchDayScreen so the player can scroll the feed.
-// NEXT WEEK    → clears the match-day state and advances to the main app.
+// CONTINUE → clears the match-day state and advances to the main app.
+// "Show full report" toggle → expands detailed breakdown inline.
 // ---------------------------------------------------------------------------
-import React, { useEffect, useRef, useCallback } from "react";
-import { Award, Trophy, Newspaper, Users, ChevronRight } from "lucide-react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Award, Trophy, Newspaper, Users, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
 import { css } from "../components/primitives.jsx";
 import { collectFocusables } from "../lib/hotkeysHelpers.js";
 
 export default function PostMatchSummary({ summary, onReview, onContinue }) {
   const panelRef = useRef(null);
   const primaryRef = useRef(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   const handleContinue = useCallback(() => {
     onContinue?.();
@@ -37,7 +38,7 @@ export default function PostMatchSummary({ summary, onReview, onContinue }) {
       }
       if (ev.key === "Escape") {
         ev.preventDefault();
-        onReview?.();
+        handleContinue();
         return;
       }
       if (ev.key === "Tab" && panelRef.current) {
@@ -56,7 +57,7 @@ export default function PostMatchSummary({ summary, onReview, onContinue }) {
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [summary, onReview, handleContinue]);
+  }, [summary, handleContinue]);
 
   if (!summary) return null;
 
@@ -132,69 +133,91 @@ export default function PostMatchSummary({ summary, onReview, onContinue }) {
           {summary.crowd.toLocaleString()} in attendance
         </div>
 
-        {/* Best on ground + Top scorer */}
-        <div className="px-6 py-4 grid sm:grid-cols-2 gap-3" style={{ borderBottom: "1px solid var(--A-line)" }}>
-          <SummaryCard icon={Award} label="Best on Ground" accent="#FFD200">
-            {summary.bog ? (
-              <div>
-                <div className="font-bold text-atext leading-tight">
-                  {summary.bog.firstName} {summary.bog.lastName}
-                </div>
-                <div className="text-[11px] text-atext-dim">
-                  {summary.bog.position} · OVR {summary.bog.overall}
-                </div>
-              </div>
-            ) : (
-              <div className="text-atext-dim text-sm">—</div>
-            )}
-          </SummaryCard>
-          <SummaryCard icon={Trophy} label="Top Scorer" accent="var(--A-accent)">
-            {summary.topScorer ? (
-              <div>
-                <div className="font-bold text-atext leading-tight">
-                  {summary.topScorer.firstName} {summary.topScorer.lastName}
-                </div>
-                <div className="text-[11px] text-atext-dim">
-                  {summary.topGoals} goal{summary.topGoals === 1 ? "" : "s"}
-                </div>
-              </div>
-            ) : (
-              <div className="text-atext-dim text-sm">No goalkickers from your squad</div>
-            )}
-          </SummaryCard>
+        {/* Board reaction — always visible */}
+        <div className="px-6 py-3 flex items-start gap-3" style={{ borderBottom: "1px solid var(--A-line)" }}>
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-base"
+            style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}
+          >
+            {summary.boardReaction.emoji || <Users className="w-4 h-4 text-atext-dim" />}
+          </div>
+          <div className="flex-1 text-sm leading-snug">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-atext-mute mr-2">Board</span>
+            <span className="text-atext">{summary.boardReaction.text}</span>
+          </div>
         </div>
 
-        {/* Reactions */}
-        <div className="px-6 py-4 space-y-2" style={{ borderBottom: "1px solid var(--A-line)" }}>
-          <ReactionRow icon={Users} label="Board" tone={summary.boardReaction.emoji}>
-            {summary.boardReaction.text}
-          </ReactionRow>
-          <ReactionRow icon={Newspaper} label="Press">
-            {summary.journalistLine}
-          </ReactionRow>
-          {summary.committeeReaction && (
-            <ReactionRow icon={Users} label="Committee">
-              {summary.committeeReaction}
-            </ReactionRow>
+        {/* Toggleable full report */}
+        <div style={{ borderBottom: "1px solid var(--A-line)" }}>
+          <button
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+            className="w-full px-6 py-2 flex items-center justify-between text-[11px] font-mono font-bold uppercase tracking-widest text-atext-dim hover:text-atext transition-colors"
+          >
+            <span>Show full report</span>
+            {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {showDetails && (
+            <div className="px-6 pb-4 space-y-4">
+              {/* Best on ground + Top scorer */}
+              <div className="grid sm:grid-cols-2 gap-3">
+                <SummaryCard icon={Award} label="Best on Ground" accent="#FFD200">
+                  {summary.bog ? (
+                    <div>
+                      <div className="font-bold text-atext leading-tight">
+                        {summary.bog.firstName} {summary.bog.lastName}
+                      </div>
+                      <div className="text-[11px] text-atext-dim">
+                        {summary.bog.position} · OVR {summary.bog.overall}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-atext-dim text-sm">—</div>
+                  )}
+                </SummaryCard>
+                <SummaryCard icon={Trophy} label="Top Scorer" accent="var(--A-accent)">
+                  {summary.topScorer ? (
+                    <div>
+                      <div className="font-bold text-atext leading-tight">
+                        {summary.topScorer.firstName} {summary.topScorer.lastName}
+                      </div>
+                      <div className="text-[11px] text-atext-dim">
+                        {summary.topGoals} goal{summary.topGoals === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-atext-dim text-sm">No goalkickers from your squad</div>
+                  )}
+                </SummaryCard>
+              </div>
+              {/* Press + Committee */}
+              <div className="space-y-2">
+                <ReactionRow icon={Newspaper} label="Press">
+                  {summary.journalistLine}
+                </ReactionRow>
+                {summary.committeeReaction && (
+                  <ReactionRow icon={Users} label="Committee">
+                    {summary.committeeReaction}
+                  </ReactionRow>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Actions */}
-        <div className="px-6 py-4 flex flex-col sm:flex-row gap-3 justify-end">
-          <button type="button" onClick={onReview} className={`${css.btnGhost} flex items-center gap-2 justify-center`}>
-            REVIEW MATCH
-          </button>
+        {/* Actions — single Continue button */}
+        <div className="px-6 py-4 flex justify-end">
           <button
             ref={primaryRef}
             type="button"
             onClick={handleContinue}
             className={`${css.btnPrimary} flex items-center gap-2 justify-center`}
           >
-            NEXT WEEK <ChevronRight className="w-4 h-4" />
+            Continue <ChevronRight className="w-4 h-4" />
           </button>
         </div>
         <p className="px-6 pb-4 text-[10px] text-atext-mute text-center font-mono uppercase tracking-wider">
-          Enter · next week · Escape · review match
+          Enter · continue
         </p>
       </div>
     </div>
