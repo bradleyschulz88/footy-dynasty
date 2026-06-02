@@ -5,11 +5,12 @@
 // "Show full report" toggle → expands detailed breakdown inline.
 // ---------------------------------------------------------------------------
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Award, Trophy, Newspaper, Users, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
+import { Award, Trophy, Newspaper, Users, ChevronRight, ChevronDown, ChevronUp, Banknote, Tv, Handshake, Ticket } from "lucide-react";
 import { css } from "../components/primitives.jsx";
 import { collectFocusables } from "../lib/hotkeysHelpers.js";
+import { fmtK } from "../lib/format.js";
 
-export default function PostMatchSummary({ summary, onReview, onContinue }) {
+export default function PostMatchSummary({ summary, onContinue }) {
   const panelRef = useRef(null);
   const primaryRef = useRef(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -133,6 +134,24 @@ export default function PostMatchSummary({ summary, onReview, onContinue }) {
           {summary.crowd.toLocaleString()} in attendance
         </div>
 
+        {/* Match-day income — always visible */}
+        {summary.revenue && (
+          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--A-line)" }}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Banknote className="w-4 h-4 text-[#4AE89A]" />
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-atext-mute">Match-day income</span>
+              </div>
+              <span className="font-display text-2xl text-[#4AE89A] tabular-nums">+{fmtK(summary.revenue.total)}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <RevenueChip icon={Ticket} label="Gate" value={summary.revenue.gate} color="#4ADBE8" dim={!summary.isHome} dimLabel="Away" />
+              <RevenueChip icon={Tv} label="TV rights" value={summary.revenue.broadcast} color="#A78BFA" />
+              <RevenueChip icon={Handshake} label="Sponsors" value={summary.revenue.sponsor} color="var(--A-accent)" />
+            </div>
+          </div>
+        )}
+
         {/* Board reaction — always visible */}
         <div className="px-6 py-3 flex items-start gap-3" style={{ borderBottom: "1px solid var(--A-line)" }}>
           <div
@@ -219,6 +238,23 @@ export default function PostMatchSummary({ summary, onReview, onContinue }) {
         <p className="px-6 pb-4 text-[10px] text-atext-mute text-center font-mono uppercase tracking-wider">
           Enter · continue
         </p>
+      </div>
+    </div>
+  );
+}
+
+function RevenueChip({ icon: Icon, label, value, color, dim, dimLabel }) {
+  return (
+    <div
+      className="rounded-xl px-3 py-2 flex items-center gap-2"
+      style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)", opacity: dim ? 0.5 : 1 }}
+    >
+      <Icon className="w-4 h-4 flex-shrink-0" style={{ color }} />
+      <div className="min-w-0">
+        <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-atext-mute leading-none">{label}</div>
+        <div className="font-display text-base tabular-nums leading-tight" style={{ color: dim ? "var(--A-text-mute)" : "var(--A-text)" }}>
+          {dim ? (dimLabel || "—") : fmtK(value)}
+        </div>
       </div>
     </div>
   );

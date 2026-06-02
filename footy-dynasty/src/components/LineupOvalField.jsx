@@ -9,14 +9,76 @@ import {
 } from "../lib/lineupHelpers.js";
 import { css } from "./primitives.jsx";
 
-/** Club-app style: backs toward top of oval, forwards toward bottom (five rows × three). */
 const ROWS_BACK_TO_FWD = [
-  { key: "B", label: "B" },
+  { key: "B",  label: "B"  },
   { key: "HB", label: "HB" },
-  { key: "C", label: "C" },
+  { key: "C",  label: "C"  },
   { key: "HF", label: "HF" },
-  { key: "F", label: "F" },
+  { key: "F",  label: "F"  },
 ];
+
+// ── Zone helpers ───────────────────────────────────────────────────────────────
+
+function slotZone(idx) {
+  if (idx < 3)  return "B";
+  if (idx < 6)  return "HB";
+  if (idx < 9)  return "C";
+  if (idx < 12) return "HF";
+  if (idx < 15) return "F";
+  if (idx < 18) return "RUCK";
+  return "IC";
+}
+
+function zoneTintBg(zone) {
+  switch (zone) {
+    case "B":    return "rgba(74,232,154,0.08)";
+    case "HB":   return "rgba(74,232,154,0.04)";
+    case "C":    return "rgba(0,224,255,0.06)";
+    case "HF":   return "rgba(232,212,74,0.04)";
+    case "F":    return "rgba(232,74,111,0.08)";
+    case "RUCK": return "rgba(167,139,250,0.07)";
+    default:     return "transparent";
+  }
+}
+
+// Positions that naturally fit each field zone (soft guidance only).
+const ZONE_POSITIONS = {
+  B:    new Set(["KB", "UT"]),
+  HB:   new Set(["HB", "KB", "WG", "UT"]),
+  C:    new Set(["C", "R", "WG", "UT"]),
+  HF:   new Set(["HF", "KF", "WG", "UT"]),
+  F:    new Set(["KF", "HF", "UT"]),
+  RUCK: new Set(["RU", "KB", "UT"]),
+  IC:   null,
+};
+
+function positionFitsZone(position, zone) {
+  if (!zone || zone === "IC") return true;
+  const allowed = ZONE_POSITIONS[zone];
+  if (!allowed) return true;
+  return allowed.has(position);
+}
+
+const FOLLOWER_ROLES = ["Ruck", "Rover", "Ruck-Rover"];
+
+// ── OVR / form colour helpers ──────────────────────────────────────────────────
+
+function ratingColor(ovr) {
+  if (ovr >= 85) return "#4AE89A";
+  if (ovr >= 75) return "#4ADBE8";
+  if (ovr >= 65) return "var(--A-accent)";
+  if (ovr >= 55) return "#E8D44A";
+  return "#E84A6F";
+}
+
+// Circle border encodes form at a glance.
+function formBorderColor(form) {
+  if (form >= 70) return "rgba(74,232,154,0.72)";
+  if (form >= 45) return "rgba(255,255,255,0.52)";
+  return "rgba(232,212,74,0.72)";
+}
+
+// ── Name helpers ───────────────────────────────────────────────────────────────
 
 function initials(p) {
   const a = p.firstName?.[0] || "";
@@ -31,7 +93,6 @@ function shortName(p) {
   return p.name || "Player";
 }
 
-/** Deterministic pseudo jumper when no `number` on player. */
 function squadNumberDisplay(p) {
   if (p.number != null && p.number !== "") return String(p.number);
   const s = String(p.id ?? "");
@@ -49,23 +110,27 @@ function mergeRefs(...refs) {
   };
 }
 
-/**
- * AFL club–style card: circular “headshot”, white nameplate overlapping below with [#] + name.
- * `compact` tightens sizes for the 5×3 grid inside the oval.
- */
+// ── Player card body ───────────────────────────────────────────────────────────
+
 function ClubPlayerCardBody({ player, stitch, compact, onSelectPlayer, dragProps }) {
   const { listeners, attributes } = dragProps;
   const num = squadNumberDisplay(player);
+  const ovrColor = ratingColor(player.overall);
+  const fBorder = formBorderColor(player.form ?? 60);
 
   const circle = compact
     ? "w-8 h-8 sm:w-9 sm:h-9 min-w-0 min-h-0 max-w-[2.6rem] max-h-[2.6rem]"
     : "w-12 h-12 sm:w-14 sm:h-14";
   const iniSz = compact ? "text-[9px] sm:text-[10px]" : "text-xs sm:text-sm";
   const plateText = compact ? "text-[7px] sm:text-[8px] leading-[1.2]" : "text-[8px] sm:text-[10px] leading-snug";
-  const numBox = compact ? "w-[1.25rem] min-w-[1.25rem] text-[7px] sm:text-[8px]" : "w-6 sm:w-7 text-[9px] sm:text-[10px]";
+  const numBox = compact
+    ? "w-[1.25rem] min-w-[1.25rem] text-[7px] sm:text-[8px]"
+    : "w-6 sm:w-7 text-[9px] sm:text-[10px]";
   const overlap = compact ? "-mt-1.5" : "-mt-2";
   const plateWidth = compact ? "w-full max-w-none" : "w-full max-w-[6.25rem]";
-  const nameLine = compact ? "break-words [overflow-wrap:anywhere] leading-snug" : "line-clamp-2 break-words [overflow-wrap:anywhere]";
+  const nameLine = compact
+    ? "break-words [overflow-wrap:anywhere] leading-snug"
+    : "line-clamp-2 break-words [overflow-wrap:anywhere]";
 
   if (stitch) {
     return (
@@ -76,10 +141,21 @@ function ClubPlayerCardBody({ player, stitch, compact, onSelectPlayer, dragProps
         {...attributes}
         onClick={() => onSelectPlayer?.(player)}
       >
-        <div
-          className={`relative z-[1] shrink-0 rounded-full border-2 border-[rgba(200,255,61,0.55)] shadow-md flex items-center justify-center bg-gradient-to-b from-[#1a2820] to-[#0d1510] ${circle}`}
-        >
-          <span className={`font-black text-[rgba(200,255,61,0.95)] tracking-wide ${iniSz}`}>{initials(player)}</span>
+        <div className="relative shrink-0">
+          <div
+            className={`relative z-[1] rounded-full border-2 shadow-md flex items-center justify-center bg-gradient-to-b from-[#1a2820] to-[#0d1510] ${circle}`}
+            style={{ borderColor: fBorder }}
+          >
+            <span className={`font-black text-[rgba(200,255,61,0.95)] tracking-wide ${iniSz}`}>{initials(player)}</span>
+          </div>
+          {compact && (
+            <span
+              className="absolute -top-1 -right-1 z-[3] text-[7px] font-black leading-none px-0.5 rounded"
+              style={{ background: `${ovrColor}22`, color: ovrColor, border: `1px solid ${ovrColor}55` }}
+            >
+              {player.overall}
+            </span>
+          )}
         </div>
         <div
           className={`relative z-[2] ${plateWidth} min-w-0 ${overlap} rounded-md border border-[rgba(200,255,61,0.35)] bg-[rgba(10,14,10,0.92)] shadow-md flex overflow-hidden`}
@@ -105,10 +181,21 @@ function ClubPlayerCardBody({ player, stitch, compact, onSelectPlayer, dragProps
       {...attributes}
       onClick={() => onSelectPlayer?.(player)}
     >
-      <div
-        className={`relative z-[1] shrink-0 rounded-full border-2 border-white shadow-md flex items-center justify-center bg-gradient-to-b from-[#f1f5f9] to-[#cbd5e1] ${circle}`}
-      >
-        <span className={`font-black text-slate-700 tracking-wide ${iniSz}`}>{initials(player)}</span>
+      <div className="relative shrink-0">
+        <div
+          className={`relative z-[1] rounded-full border-2 shadow-md flex items-center justify-center bg-gradient-to-b from-[#f1f5f9] to-[#cbd5e1] ${circle}`}
+          style={{ borderColor: fBorder }}
+        >
+          <span className={`font-black text-slate-700 tracking-wide ${iniSz}`}>{initials(player)}</span>
+        </div>
+        {compact && (
+          <span
+            className="absolute -top-1 -right-1 z-[3] text-[7px] font-black leading-none px-0.5 rounded"
+            style={{ background: `${ovrColor}22`, color: ovrColor, border: `1px solid ${ovrColor}55` }}
+          >
+            {player.overall}
+          </span>
+        )}
       </div>
       <div
         className={`relative z-[2] ${plateWidth} min-w-0 ${overlap} rounded-md border border-slate-200/90 bg-white shadow-sm flex overflow-hidden`}
@@ -124,7 +211,9 @@ function ClubPlayerCardBody({ player, stitch, compact, onSelectPlayer, dragProps
   );
 }
 
-function EmptyLineupSlot({ slotIndex, stitch, compact }) {
+// ── Empty slot ─────────────────────────────────────────────────────────────────
+
+const EmptyLineupSlot = React.memo(function EmptyLineupSlot({ slotIndex, stitch, compact, zone }) {
   const dropId = `lineup-slot-${slotIndex}`;
   const { setNodeRef, isOver } = useDroppable({ id: dropId });
   const border = stitch
@@ -139,12 +228,13 @@ function EmptyLineupSlot({ slotIndex, stitch, compact }) {
     ? "w-8 h-8 sm:w-9 sm:h-9 min-w-0 min-h-0 max-w-[2.6rem] max-h-[2.6rem]"
     : "w-12 h-12 sm:w-14 sm:h-14";
 
+  const bgStyle = stitch ? { background: "rgba(0,0,0,0.12)" } : { background: zoneTintBg(zone) };
+
   return (
     <div
       ref={setNodeRef}
-      className={`min-w-0 max-w-full h-full max-h-full flex flex-col items-center justify-center py-0.5 touch-manipulation rounded-lg border-2 border-dashed ${border} ${
-        stitch ? "bg-[rgba(0,0,0,0.12)]" : "bg-white/10"
-      }`}
+      className={`min-w-0 max-w-full h-full max-h-full flex flex-col items-center justify-center py-0.5 touch-manipulation rounded-lg border-2 border-dashed ${border}`}
+      style={bgStyle}
     >
       <div className={`rounded-full border-2 border-dashed opacity-50 ${stitch ? "border-[rgba(200,255,61,0.35)]" : "border-white/50"} ${circle}`} />
       <div
@@ -156,9 +246,13 @@ function EmptyLineupSlot({ slotIndex, stitch, compact }) {
       </div>
     </div>
   );
-}
+});
 
-function FilledLineupSlot({ slotIndex, player, stitch, onSelectPlayer, compact }) {
+// ── Filled slot ────────────────────────────────────────────────────────────────
+
+const FilledLineupSlot = React.memo(function FilledLineupSlot({
+  slotIndex, player, stitch, onSelectPlayer, compact, zone,
+}) {
   const dropId = `lineup-slot-${slotIndex}`;
   const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dropId });
   const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({ id: String(player.id) });
@@ -172,12 +266,17 @@ function FilledLineupSlot({ slotIndex, player, stitch, onSelectPlayer, compact }
       ? "ring-2 ring-aaccent border-white/60"
       : "border-white/25";
 
-  const dragging = isDragging ? "opacity-60" : "";
+  const outOfPos = zone && zone !== "IC" && player.position
+    ? !positionFitsZone(player.position, zone)
+    : false;
+
+  const bgStyle = stitch ? undefined : { background: zoneTintBg(zone) };
 
   return (
     <div
       ref={setRefs}
-      className={`min-w-0 max-w-full h-full min-h-0 flex rounded-lg border bg-transparent ${border} ${compact ? "overflow-visible" : "overflow-hidden"} touch-manipulation ${dragging}`}
+      className={`relative min-w-0 max-w-full h-full min-h-0 flex rounded-lg border ${border} ${compact ? "overflow-visible" : "overflow-hidden"} touch-manipulation ${isDragging ? "opacity-60" : ""}`}
+      style={bgStyle}
     >
       <ClubPlayerCardBody
         player={player}
@@ -186,14 +285,31 @@ function FilledLineupSlot({ slotIndex, player, stitch, onSelectPlayer, compact }
         onSelectPlayer={onSelectPlayer}
         dragProps={{ listeners, attributes }}
       />
+      {outOfPos && (
+        <span
+          className="absolute top-0 left-0 z-[4] text-[8px] leading-none px-0.5 py-0.5 rounded-br pointer-events-none"
+          style={{
+            background: "rgba(232,212,74,0.22)",
+            color: "#E8D44A",
+            border: "1px solid rgba(232,212,74,0.45)",
+            borderTop: "none",
+            borderLeft: "none",
+          }}
+          aria-label={`${player.position} is out of position for this zone`}
+        >
+          ⚠
+        </span>
+      )}
     </div>
   );
-}
+});
 
-function LineupSlotCell({ slotIndex, player, stitch, onSelectPlayer }) {
+// ── Slot cell (memoised) ───────────────────────────────────────────────────────
+
+const LineupSlotCell = React.memo(function LineupSlotCell({ slotIndex, player, stitch, onSelectPlayer, zone }) {
   const compact = slotIndex < LINEUP_OVAL_SLOT_COUNT;
   if (!player) {
-    return <EmptyLineupSlot slotIndex={slotIndex} stitch={stitch} compact={compact} />;
+    return <EmptyLineupSlot slotIndex={slotIndex} stitch={stitch} compact={compact} zone={zone} />;
   }
   return (
     <FilledLineupSlot
@@ -202,9 +318,12 @@ function LineupSlotCell({ slotIndex, player, stitch, onSelectPlayer }) {
       stitch={stitch}
       onSelectPlayer={onSelectPlayer}
       compact={compact}
+      zone={zone}
     />
   );
-}
+});
+
+// ── Section heading ────────────────────────────────────────────────────────────
 
 function SectionHeading({ children, stitch, count }) {
   return (
@@ -227,10 +346,8 @@ function SectionHeading({ children, stitch, count }) {
   );
 }
 
-/**
- * Club-style layout: 15 on oval (B→F) + 3 followers + 5 interchange.
- * Oval interior uses proportional row heights so cards stay inside the ellipse.
- */
+// ── Main oval field ────────────────────────────────────────────────────────────
+
 export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
   const map = useMemo(() => new Map((squad || []).map((p) => [p.id, p])), [squad]);
 
@@ -242,6 +359,11 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
     },
     [lineupIds, map],
   );
+
+  // Stable callback so memoised slot cells don't re-render when parent re-renders.
+  const handleSelect = useCallback((p) => onSelectPlayer?.(p), [onSelectPlayer]);
+
+  const ROW_ZONES = ["B", "HB", "C", "HF", "F"];
 
   return (
     <div
@@ -256,10 +378,10 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
             Ground map
           </h3>
           <p className="text-[11px] text-atext-dim mt-1 max-w-xl leading-snug">
-            <span className="text-atext font-semibold">15</span> on the oval (B–F),{" "}
-            <span className="text-atext font-semibold">{LINEUP_FOLLOWERS_COUNT} followers</span>,{" "}
-            <span className="text-atext font-semibold">{LINEUP_INTERCHANGE_COUNT} interchange</span>. Schematic team sheet — drag players
-            into place. If drag-and-drop is awkward, use the squad list view where available.
+            <span className="text-atext font-semibold">15</span> on the oval · {" "}
+            <span className="text-atext font-semibold">{LINEUP_FOLLOWERS_COUNT} followers</span> · {" "}
+            <span className="text-atext font-semibold">{LINEUP_INTERCHANGE_COUNT} interchange</span>.{" "}
+            Ring = form · badge = OVR · ⚠ = out of zone.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[10px] font-mono uppercase text-atext-dim shrink-0">
@@ -283,8 +405,13 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           border: stitch ? "2px solid rgba(200,255,61,0.35)" : "2px solid rgba(0,0,0,0.35)",
         }}
       >
-        {/* Goal-to-goal = vertical: B row top (back), F row bottom (forward). Same axis as white markings. */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 160" preserveAspectRatio="none" aria-hidden>
+        {/* SVG field markings */}
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          viewBox="0 0 100 160"
+          preserveAspectRatio="none"
+          aria-hidden
+        >
           <defs>
             <linearGradient id="lineGlowLm" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor="rgba(255,255,255,0.2)" />
@@ -292,34 +419,16 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
               <stop offset="100%" stopColor="rgba(255,255,255,0.2)" />
             </linearGradient>
           </defs>
-          {/* Boundary (major axis vertical — typical preference shape) */}
           <ellipse cx="50" cy="80" rx="46" ry="74" fill="none" stroke="url(#lineGlowLm)" strokeWidth="1.35" opacity="0.96" />
-          {/* Centre line: parallel to goal lines, halves ground along goal-to-goal axis */}
           <line x1="6" y1="80" x2="94" y2="80" stroke="rgba(255,255,255,0.38)" strokeWidth="1" strokeLinecap="round" />
-          {/* Centre square (schematic) */}
           <rect x="38" y="70" width="24" height="20" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="0.85" rx="0.5" />
-          {/* Centre circle + spot */}
           <ellipse cx="50" cy="80" rx="11" ry="11" fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth="0.85" />
           <ellipse cx="50" cy="80" rx="3.2" ry="3.2" fill="rgba(255,255,255,0.35)" stroke="none" />
-          {/* 50 m arcs toward each scoring end (concave toward centre) */}
-          <path
-            d="M 10 34 Q 50 44 90 34"
-            fill="none"
-            stroke="rgba(255,255,255,0.24)"
-            strokeWidth="0.75"
-            strokeLinecap="round"
-          />
-          <path
-            d="M 10 126 Q 50 116 90 126"
-            fill="none"
-            stroke="rgba(255,255,255,0.24)"
-            strokeWidth="0.75"
-            strokeLinecap="round"
-          />
-          {/* Goal posts + crossbars — top (back) and bottom (forward) */}
+          <path d="M 10 34 Q 50 44 90 34" fill="none" stroke="rgba(255,255,255,0.24)" strokeWidth="0.75" strokeLinecap="round" />
+          <path d="M 10 126 Q 50 116 90 126" fill="none" stroke="rgba(255,255,255,0.24)" strokeWidth="0.75" strokeLinecap="round" />
           <g stroke="rgba(255,255,255,0.48)" strokeLinecap="round">
-            <line x1="44" y1="6" x2="44" y2="12" strokeWidth="1.35" />
-            <line x1="56" y1="6" x2="56" y2="12" strokeWidth="1.35" />
+            <line x1="44" y1="6"   x2="44" y2="12"  strokeWidth="1.35" />
+            <line x1="56" y1="6"   x2="56" y2="12"  strokeWidth="1.35" />
             <line x1="42" y1="9.5" x2="58" y2="9.5" strokeWidth="1" />
             <line x1="44" y1="148" x2="44" y2="154" strokeWidth="1.35" />
             <line x1="56" y1="148" x2="56" y2="154" strokeWidth="1.35" />
@@ -327,34 +436,42 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           </g>
         </svg>
 
+        {/* 5×3 player grid */}
         <div className="absolute inset-x-[5%] top-[5%] bottom-[11%] flex flex-col gap-0.5 sm:gap-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pointer-events-auto [scrollbar-width:thin]">
-          {ROWS_BACK_TO_FWD.map((row, r) => (
-            <div key={row.key} className="flex-1 min-h-min flex flex-col min-w-0">
-              <div
-                className="grid flex-1 min-h-min gap-x-1 sm:gap-x-1.5 gap-y-0 items-stretch"
-                style={{
-                  gridTemplateColumns: "2rem minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
-                }}
-              >
+          {ROWS_BACK_TO_FWD.map((row, r) => {
+            const rowZone = ROW_ZONES[r];
+            return (
+              <div key={row.key} className="flex-1 min-h-min flex flex-col min-w-0">
                 <div
-                  className={`flex min-h-0 min-w-0 items-center justify-center rounded-md px-0.5 text-center text-[8px] sm:text-[9px] font-black uppercase leading-none tracking-tight ${
-                    stitch ? "bg-[rgba(255,255,255,0.14)] text-[rgba(200,255,61,0.98)]" : "bg-white/30 text-white shadow-sm"
-                  }`}
+                  className="grid flex-1 min-h-min gap-x-1 sm:gap-x-1.5 gap-y-0 items-stretch"
+                  style={{ gridTemplateColumns: "2rem minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)" }}
                 >
-                  <span className="break-words [overflow-wrap:anywhere]">{row.label}</span>
+                  <div
+                    className={`flex min-h-0 min-w-0 items-center justify-center rounded-md px-0.5 text-center text-[8px] sm:text-[9px] font-black uppercase leading-none tracking-tight ${
+                      stitch ? "bg-[rgba(255,255,255,0.14)] text-[rgba(200,255,61,0.98)]" : "bg-white/30 text-white shadow-sm"
+                    }`}
+                  >
+                    <span className="break-words [overflow-wrap:anywhere]">{row.label}</span>
+                  </div>
+                  {[0, 1, 2].map((col) => {
+                    const idx = r * 3 + col;
+                    const p = slotPlayer(idx);
+                    return (
+                      <div key={idx} className="min-h-min min-w-0 flex">
+                        <LineupSlotCell
+                          slotIndex={idx}
+                          player={p}
+                          stitch={stitch}
+                          onSelectPlayer={handleSelect}
+                          zone={rowZone}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-                {[0, 1, 2].map((col) => {
-                  const idx = r * 3 + col;
-                  const p = slotPlayer(idx);
-                  return (
-                    <div key={idx} className="min-h-min min-w-0 flex">
-                      <LineupSlotCell slotIndex={idx} player={p} stitch={stitch} onSelectPlayer={onSelectPlayer} />
-                    </div>
-                  );
-                })}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="pointer-events-none absolute inset-x-0 bottom-[3.5%] flex justify-center px-2">
@@ -364,23 +481,40 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
         </div>
       </div>
 
+      {/* Followers — labelled by role */}
       <div className={`mt-4 border-t ${stitch ? "border-[rgba(200,255,61,0.25)]" : "border-aline"} pt-3`}>
         <SectionHeading stitch={stitch} count={LINEUP_FOLLOWERS_COUNT}>
           Followers
         </SectionHeading>
         <div className="grid grid-cols-3 gap-2 md:gap-3 min-h-[7rem]">
-          {[0, 1, 2].map((k) => {
+          {FOLLOWER_ROLES.map((role, k) => {
             const idx = LINEUP_OVAL_SLOT_COUNT + k;
             const p = slotPlayer(idx);
             return (
-              <div key={idx} className="min-h-[6.5rem] flex">
-                <LineupSlotCell slotIndex={idx} player={p} stitch={stitch} onSelectPlayer={onSelectPlayer} />
+              <div key={idx} className="flex flex-col gap-1">
+                <div
+                  className={`text-[9px] font-mono font-bold uppercase tracking-widest text-center ${
+                    stitch ? "text-[rgba(200,255,61,0.55)]" : "text-atext-mute"
+                  }`}
+                >
+                  {role}
+                </div>
+                <div className="flex-1 min-h-[6rem] flex">
+                  <LineupSlotCell
+                    slotIndex={idx}
+                    player={p}
+                    stitch={stitch}
+                    onSelectPlayer={handleSelect}
+                    zone="RUCK"
+                  />
+                </div>
               </div>
             );
           })}
         </div>
       </div>
 
+      {/* Interchange */}
       <div className={`mt-4 border-t ${stitch ? "border-[rgba(200,255,61,0.25)]" : "border-aline"} pt-3`}>
         <SectionHeading stitch={stitch} count={LINEUP_INTERCHANGE_COUNT}>
           Interchange
@@ -391,7 +525,13 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
             const p = slotPlayer(idx);
             return (
               <div key={idx} className="min-h-[5.5rem] flex">
-                <LineupSlotCell slotIndex={idx} player={p} stitch={stitch} onSelectPlayer={onSelectPlayer} />
+                <LineupSlotCell
+                  slotIndex={idx}
+                  player={p}
+                  stitch={stitch}
+                  onSelectPlayer={handleSelect}
+                  zone="IC"
+                />
               </div>
             );
           })}
@@ -403,7 +543,7 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           stitch ? "border-[rgba(200,255,61,0.2)]" : "border-aline/60"
         }`}
       >
-        Markings follow goal-to-goal (backs top, forwards bottom).
+        Ring = form · badge = OVR · ⚠ = out of zone
       </div>
     </div>
   );

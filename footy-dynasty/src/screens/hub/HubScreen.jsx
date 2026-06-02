@@ -203,7 +203,7 @@ function HubSimulationSnippet({ career }) {
         {roundTheme?.short && (
           <>
             <span className="text-atext-dim"> · </span>
-            <span className="text-amber-700/90 dark:text-amber-400/90">{roundTheme.short}</span>
+            <span style={{color:"var(--A-accent-2)"}}>{roundTheme.short}</span>
           </>
         )}
         <span className="text-atext-dim"> · </span>
@@ -535,7 +535,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         <motion.div variants={hubItem} className={`${css.panel} p-4`}>
           {lastEv.type === 'training' && (
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'#F0FDF4', border:'1px solid #BBF7D0'}}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'rgba(74,232,154,0.1)', border:'1px solid rgba(74,232,154,0.25)'}}>
                 {TRAINING_INFO[lastEv.subtype]?.icon || '🏋️'}
               </div>
               <div className="flex-1">
@@ -554,7 +554,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           )}
           {lastEv.type === 'key_event' && (
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'#EFF6FF', border:'1px solid #BFDBFE'}}>📅</div>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'rgba(0,224,255,0.1)', border:'1px solid rgba(0,224,255,0.25)'}}>📅</div>
               <div className="flex-1">
                 <div className={css.label}>Event</div>
                 <div className="font-bold text-atext">{lastEv.name}</div>
@@ -568,7 +568,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           {(lastEv.type === 'round' || lastEv.type === 'preseason_match') && (
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0`}
-                style={{background: lastEv.won ? '#F0FDF4' : lastEv.drew ? '#FFFBEB' : '#FEF2F2', border: `1px solid ${lastEv.won ? '#BBF7D0' : lastEv.drew ? '#FDE68A' : '#FECACA'}`}}>
+                style={{background: lastEv.won ? 'rgba(74,232,154,0.1)' : lastEv.drew ? 'rgba(232,212,74,0.1)' : 'rgba(232,74,111,0.1)', border: `1px solid ${lastEv.won ? 'rgba(74,232,154,0.25)' : lastEv.drew ? 'rgba(232,212,74,0.25)' : 'rgba(232,74,111,0.25)'}`}}>
                 {lastEv.won ? '✅' : lastEv.drew ? '🤝' : '❌'}
               </div>
               <div className="flex-1">
@@ -869,11 +869,11 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       {/* Board Pressure */}
       <motion.div variants={hubItem} className="space-y-3">
       {career.finance.boardConfidence < 35 && (
-        <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"#FEF2F2", border:"1.5px solid #FECACA"}}>
+        <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"rgba(232,74,111,0.1)", border:"1.5px solid rgba(232,74,111,0.3)"}}>
           <span className="text-2xl">⚠️</span>
           <div>
-            <div className="font-bold text-sm text-[#DC2626]">Board On Notice — Confidence {career.finance.boardConfidence}%</div>
-            <div className="text-xs text-[#EF4444]">Win your next match or face consequences. The board is watching closely.</div>
+            <div className="font-bold text-sm" style={{color:"var(--A-neg)"}}>Board On Notice — Confidence {career.finance.boardConfidence}%</div>
+            <div className="text-xs text-atext-dim">Win your next match or face consequences. The board is watching closely.</div>
           </div>
         </div>
       )}
@@ -883,14 +883,14 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         const expiring = career.squad.filter(p => (career.lineup || []).includes(p.id) && p.contract <= 1);
         if (!expiring.length) return null;
         return (
-          <div className="rounded-2xl p-4 flex items-start gap-3" style={{background:"#FFFBEB", border:"1.5px solid #FDE68A"}}>
+          <div className="rounded-2xl p-4 flex items-start gap-3" style={{background:"rgba(232,212,74,0.1)", border:"1.5px solid rgba(232,212,74,0.3)"}}>
             <span className="text-2xl flex-shrink-0">📋</span>
             <div>
-              <div className="font-bold text-sm text-[#D97706]">Contracts Expiring — Act Now</div>
-              <div className="text-xs text-[#92400E] mt-1">
+              <div className="font-bold text-sm" style={{color:"var(--A-accent-2)"}}>Contracts Expiring — Act Now</div>
+              <div className="text-xs text-atext-dim mt-1">
                 {expiring.map(p => `${p.firstName} ${p.lastName} (${p.contract === 0 ? 'Out of contract' : '1 year left'})`).join(' · ')}
               </div>
-              <button onClick={() => setScreen('squad')} className="mt-2 text-xs font-bold text-[#D97706] hover:text-[#B45309]">Manage contracts →</button>
+              <button onClick={() => setScreen('squad')} className="mt-2 text-xs font-bold hover:opacity-80" style={{color:"var(--A-accent-2)"}}>Manage contracts →</button>
             </div>
           </div>
         );

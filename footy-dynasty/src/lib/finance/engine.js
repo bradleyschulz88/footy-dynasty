@@ -7,6 +7,8 @@ import {
   TIER_FINANCE, FACILITY_UPKEEP_PER_LEVEL_ANNUAL, INCOME_MIX,
   PRIZE_MONEY, INSOLVENCY,
   TRANSFER_BUDGET_ROLLOVER_FRACTION,
+  CONTINUOUS_INCOME_FRACTION, BROADCAST_PER_MATCH, SEASON_MATCHES_EST,
+  TICKET_PRICE, BASE_ATTENDANCE,
 } from './constants.js';
 import { getDifficultyConfig } from '../difficulty.js';
 import { findLeagueOf, PYRAMID } from '../../data/pyramid.js';
@@ -75,18 +77,56 @@ export function annualSponsorIncome(career) {
   return (career.sponsors || []).reduce((a, s) => a + (s.annualValue || 0), 0);
 }
 
-// Income / expense breakdowns for the FinancesTab UI.
-// Always derive the broadcast/commercial slice from the live ladder / fans / stadium model
-// so the screen reflects the new finance system during the season (not only at year-end).
+// Expected home-game attendance for the current tier, scaled by stadium + fan mood.
+export function expectedAttendance(career, leagueTier) {
+  const tier = leagueTier ?? leagueTierOf(career);
+  const stadiumLevel = career.facilities?.stadium?.level ?? 1;
+  const fanHappiness = career.finance?.fanHappiness ?? 60;
+  return Math.round(
+    (BASE_ATTENDANCE[tier] ?? 600) * (0.6 + stadiumLevel * 0.15) * (0.7 + fanHappiness / 200)
+  );
+}
+
+// Per-match revenue: gate (home only) + broadcast/TV (every match) + sponsor
+// activation (every match). This is the live, event-driven money the club earns
+// each time it plays. Returns each line plus the total so the post-match screen
+// and ledger can show the breakdown.
+export function matchDayRevenue(career, { isHome = true, leagueTier, finalsMultiplier = 1 } = {}) {
+  const tier = leagueTier ?? leagueTierOf(career);
+  // Finals draw bigger crowds and bigger TV money.
+  const attendance = isHome ? Math.round(expectedAttendance(career, tier) * finalsMultiplier) : 0;
+  const gate = Math.round(attendance * (TICKET_PRICE[tier] ?? 10));
+  const broadcast = Math.round((BROADCAST_PER_MATCH[tier] ?? 0) * finalsMultiplier);
+  const sponsor = Math.round((annualSponsorIncome(career) / SEASON_MATCHES_EST) * finalsMultiplier);
+  return { attendance, gate, broadcast, sponsor, total: gate + broadcast + sponsor, isHome };
+}
+
+// Income that accrues continuously (smoothed daily) — memberships + merch only.
+// Gate, broadcast and sponsorship are paid on match day, not here.
+export function continuousAnnualIncome(career) {
+  return Math.round(recomputeAnnualIncome(career) * CONTINUOUS_INCOME_FRACTION);
+}
+
+// Income breakdown for the FinancesTab UI — an ANNUAL PROJECTION built from the
+// per-match model. Gate + broadcast + sponsor are projected across a full season
+// of matches; membership + merch are the smoothed continuous lines. This keeps
+// the screen honest: the projected total is what the club will actually bank if
+// it plays out the season at its current form/stadium/fan level.
 export function incomeBreakdown(career) {
   const total = recomputeAnnualIncome(career);
+  const tier = leagueTierOf(career);
+  const homeGames = Math.round(SEASON_MATCHES_EST / 2);
+  const perMatch = matchDayRevenue(career, { isHome: true, leagueTier: tier });
+
+  const broadcast   = (BROADCAST_PER_MATCH[tier] ?? 0) * SEASON_MATCHES_EST;
+  const gate        = perMatch.gate * homeGames;
+  const membership  = Math.round(total * INCOME_MIX.membership);
+  const merchandise = Math.round(total * INCOME_MIX.merchandise);
+  const sponsors    = annualSponsorIncome(career);
+
   return {
-    broadcast:   Math.round(total * INCOME_MIX.broadcast),
-    gate:        Math.round(total * INCOME_MIX.gate),
-    membership:  Math.round(total * INCOME_MIX.membership),
-    merchandise: Math.round(total * INCOME_MIX.merchandise),
-    sponsors:    annualSponsorIncome(career),
-    grandTotal:  total + annualSponsorIncome(career),
+    broadcast, gate, membership, merchandise, sponsors,
+    grandTotal: broadcast + gate + membership + merchandise + sponsors,
   };
 }
 
@@ -131,12 +171,13 @@ export function tickWeeklyCashflow(c) {
   const day = c.currentDate;
   if (c.lastFinanceTickDay === day) return 0;
 
-  const annualIncomeFlat = recomputeAnnualIncome(c);
-  const annualSponsors   = annualSponsorIncome(c);
+  // Only memberships + merch accrue continuously. Gate, broadcast and sponsor
+  // money is banked on match day (see matchDayRevenue), so it is NOT smoothed here.
+  const continuousIncome = continuousAnnualIncome(c);
   const annualWages      = annualWageBill(c);
   const annualUpkeep     = annualFacilityUpkeep(c);
 
-  const dayIncome   = Math.round((annualIncomeFlat + annualSponsors) / 365);
+  const dayIncome   = Math.round(continuousIncome / 365);
   const dayExpenses = Math.round((annualWages + annualUpkeep) / 365);
   const delta = dayIncome - dayExpenses;
 
@@ -165,7 +206,9 @@ export function tickWeeklyCashflow(c) {
   }
   c.weeklyHistory = hist.slice(-52);
 
-  c.finance.annualIncome = annualIncomeFlat;
+  // Headline annual income shown in the UI = full season projection (per-match
+  // lines + smoothed lines), so the number matches what the club actually banks.
+  c.finance.annualIncome = incomeBreakdown(c).grandTotal;
 
   // Update insolvency tracking
   if (c.finance.cash < 0) {

@@ -346,9 +346,9 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
               onClick={() => setRevealed((r) => Math.min(r + 1, quarters.length))}
               className="mt-4 w-full rounded-xl py-3 text-sm font-bold uppercase tracking-widest transition-all"
               style={{
-                background: "rgba(232,154,74,0.15)",
+                background: "rgba(0,224,255,0.1)",
                 color: "var(--A-accent)",
-                border: "1px solid rgba(232,154,74,0.3)",
+                border: "1px solid rgba(0,224,255,0.25)",
               }}
             >
               Show {qLabels[revealed]} →

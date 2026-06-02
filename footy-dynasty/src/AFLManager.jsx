@@ -50,6 +50,7 @@ import { HubScreen } from './screens/hub/HubScreen.jsx';
 import AppErrorBoundary from './components/AppErrorBoundary.jsx';
 import { CareerSetup } from './screens/CareerSetupScreen.jsx';
 import { Sidebar } from './components/gameChrome/Sidebar.jsx';
+import { BottomNav } from './components/gameChrome/BottomNav.jsx';
 import { TopBar } from './components/gameChrome/TopBar.jsx';
 import { InboxBanner } from './components/InboxBanner.jsx';
 import { ExportReminderBanner } from './components/ExportReminderBanner.jsx';
@@ -104,9 +105,9 @@ import { advanceCareerNextEvent, triggerSackState, fastForwardFinals } from './l
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
 
-/** Single light UI — always `dirA` (see tokens.css `--A-*`). */
+/** Deep-space dark theme — dirC maps --A-* tokens to neon teal palette. */
 function themeWrapperClass() {
-  return 'dirA';
+  return 'dirC';
 }
 
 function AppMotionConfig({ reducedMotion, children }) {
@@ -852,7 +853,6 @@ function AFLManagerInner() {
         {showPostMatch && career.lastMatchSummary && (
           <PostMatchSummary
             summary={career.lastMatchSummary}
-            onReview={() => setShowPostMatch(false)}
             onContinue={() => {
               setShowPostMatch(false);
               const isFinals = career.currentMatchResult?.isFinals;
@@ -986,15 +986,15 @@ function AFLManagerInner() {
           }}
         />
         <ExportReminderBanner onGoSettings={() => setScreen("settings")} />
-        <div className="p-3 md:p-6 max-w-[1400px] mx-auto">
+        <div className="p-3 md:p-6 pb-28 md:pb-6 max-w-[1400px] mx-auto">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={screen}
               className="min-w-0"
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
             >
               {screen === "hub" && (
                 <HubScreen
@@ -1094,6 +1094,17 @@ function AFLManagerInner() {
           </AnimatePresence>
         </div>
       </main>
+      <BottomNav
+        screen={screen}
+        onNavigate={onNavScreen}
+        career={career}
+        league={league}
+        onAdvance={advanceToNextEvent}
+        advanceDisabled={
+          tutorialLocksAdvanceButton(career) || advanceBlockedByCareerNeeds(career)
+        }
+        advanceAgendaCount={visibleAdvanceAgendaCount}
+      />
       {/* Tutorial Overlay (Spec Section 1) */}
       {!career.tutorialComplete && (career.tutorialStep ?? 0) < TUTORIAL_STEPS.length && (
         <TutorialOverlay
@@ -1109,7 +1120,7 @@ function AFLManagerInner() {
       )}
       {showInstallPrompt && (
         <div style={{
-          position: 'fixed', bottom: pwaNeedsUpdate ? '4.5rem' : '1rem',
+          position: 'fixed', bottom: `calc(env(safe-area-inset-bottom, 0px) + ${pwaNeedsUpdate ? '10rem' : '6.5rem'})`,
           left: '50%', transform: 'translateX(-50%)',
           background: 'var(--A-surface-2, #1e2a3a)',
           color: 'var(--A-text, #e8edf4)',
@@ -1142,7 +1153,7 @@ function AFLManagerInner() {
       )}
       {pwaNeedsUpdate && (
         <div style={{
-          position: 'fixed', bottom: '1rem', left: '50%', transform: 'translateX(-50%)',
+          position: 'fixed', bottom: 'calc(env(safe-area-inset-bottom, 0px) + 6.5rem)', left: '50%', transform: 'translateX(-50%)',
           background: 'var(--A-surface-2, #1e2a3a)', color: 'var(--A-text, #e8edf4)',
           border: '1px solid var(--A-accent, #3b82f6)',
           borderRadius: '0.5rem', padding: '0.75rem 1.25rem',

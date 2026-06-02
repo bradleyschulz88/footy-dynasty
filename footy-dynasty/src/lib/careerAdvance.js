@@ -54,6 +54,7 @@ import {
   effectiveInjuryRate, annualNetProjection,
   refillTransferBudget,
   effectiveWageCap, currentPlayerWageBill,
+  matchDayRevenue,
 } from './finance/engine.js';
 import {
   tickSponsorYears, proposalForRenewal, generateSponsorOffers,
@@ -61,7 +62,7 @@ import {
 import { buildRenewalQueue } from './finance/contracts.js';
 import { buildStaffRenewalQueue, flushUnhandledStaffRenewals } from './staffRenewals.js';
 import {
-  INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, TICKET_PRICE, BASE_ATTENDANCE,
+  INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT,
 } from './finance/constants.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
@@ -219,8 +220,12 @@ function buildPostMatchSummary(c, league, club, myResult, roundOrLabel) {
       m.mood >= 70 ? 'Loved that.' : m.mood >= 40 ? 'Reasonable showing.' : 'Not good enough.'
     }`;
   }
+  const isHome = !!myResult.isHome;
+  const revenue = c.lastMatchRevenue && c.lastMatchRevenue.round === (typeof roundOrLabel === 'number' ? roundOrLabel : c.lastMatchRevenue.round)
+    ? c.lastMatchRevenue
+    : matchDayRevenue(c, { isHome, leagueTier: league.tier });
   const baseCrowd = league.tier === 1 ? 35000 : league.tier === 2 ? 4500 : 800;
-  const crowd = Math.round(baseCrowd * (0.6 + 0.5 * rng()));
+  const crowd = isHome && revenue.attendance ? revenue.attendance : Math.round(baseCrowd * (0.6 + 0.5 * rng()));
   const labelStr = typeof roundOrLabel === 'number' ? `Round ${roundOrLabel}` : String(roundOrLabel || 'Match');
   return {
     label: labelStr,
@@ -233,6 +238,8 @@ function buildPostMatchSummary(c, league, club, myResult, roundOrLabel) {
     resultColor: myResult.won ? '#4AE89A' : myResult.drew ? 'var(--A-accent)' : '#E84A6F',
     margin,
     crowd,
+    isHome,
+    revenue,
     bog,
     topScorer, topGoals,
     boardReaction,
@@ -531,6 +538,18 @@ function advanceFinalsWeek(c, league) {
       won,
       drew,
     };
+    // Finals match-day income — bigger crowds + premium TV money.
+    const finalsMult = matchLabel === 'Grand Final' ? 2.0 : 1.5;
+    const finalsRev = matchDayRevenue(c, { isHome, leagueTier: league.tier, finalsMultiplier: finalsMult });
+    c.finance.cash += finalsRev.total;
+    c.lastMatchRevenue = { ...finalsRev, round: matchLabel, opp: opp?.short || null };
+    const fbits = [];
+    if (finalsRev.gate) fbits.push(`gate ${fmtK(finalsRev.gate)}`);
+    if (finalsRev.broadcast) fbits.push(`TV ${fmtK(finalsRev.broadcast)}`);
+    if (finalsRev.sponsor) fbits.push(`sponsor ${fmtK(finalsRev.sponsor)}`);
+    c.news = [{ week: c.week, type: 'info',
+      text: `💰 ${matchLabel} income +${fmtK(finalsRev.total)}${fbits.length ? ` (${fbits.join(', ')})` : ''}` },
+    ...(c.news || [])].slice(0, 14);
     c.lastMatchSummary = buildPostMatchSummary(c, league, club, myResult, matchLabel);
     // Eliminated iff we're no longer among the alive finalists (and it wasn't
     // the GF). Deriving from finalsAlive — rather than `!won` — correctly keeps
@@ -1424,23 +1443,36 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       return { ...p, fitness: clamp(p.fitness + rand(8, 14), 30, 100), injured: Math.max(0, p.injured - 1) };
     });
 
-    const isHomeMatch = myMatch && myMatch.home === c.clubId;
-    if (isHomeMatch) {
-      const stadiumLevel = c.facilities.stadium.level;
-      const baseAtt = BASE_ATTENDANCE[league.tier] ?? 600;
-      const att = Math.round(baseAtt * (0.6 + stadiumLevel * 0.15) * (0.7 + c.finance.fanHappiness / 200));
-      const ticketRev = Math.round(att * (TICKET_PRICE[league.tier] ?? 10));
-      c.finance.cash += ticketRev;
+    // Per-match revenue: gate (home only) + broadcast/TV (every match) +
+    // sponsor activation (every match). This is the club's live, event-driven
+    // income — earned each time it plays, not smoothed across the calendar.
+    if (myMatch) {
+      const isHome = myMatch.home === c.clubId;
+      const rev = matchDayRevenue(c, { isHome, leagueTier: league.tier });
+      c.finance.cash += rev.total;
+      c.lastMatchRevenue = {
+        ...rev,
+        round: ev.round,
+        opp: myResult?.opp?.short || null,
+      };
       if (Array.isArray(c.weeklyHistory) && c.weeklyHistory.length > 0) {
         const last = c.weeklyHistory[c.weeklyHistory.length - 1];
         c.weeklyHistory[c.weeklyHistory.length - 1] = {
           ...last,
-          profit: (last.profit ?? 0) + ticketRev,
+          profit: (last.profit ?? 0) + rev.total,
           cash: c.finance.cash,
-          ticketRev,
-          attendance: att,
+          matchRevenue: rev.total,
+          ticketRev: rev.gate,
+          attendance: rev.attendance,
         };
       }
+      const bits = [];
+      if (rev.gate) bits.push(`gate ${fmtK(rev.gate)}`);
+      if (rev.broadcast) bits.push(`TV ${fmtK(rev.broadcast)}`);
+      if (rev.sponsor) bits.push(`sponsor ${fmtK(rev.sponsor)}`);
+      c.news = [{ week: ev.round, type: 'info',
+        text: `💰 Match-day income +${fmtK(rev.total)}${bits.length ? ` (${bits.join(', ')})` : ''}` },
+      ...(c.news || [])].slice(0, 14);
     }
 
     const cfg = getDifficultyConfig(c.difficulty);

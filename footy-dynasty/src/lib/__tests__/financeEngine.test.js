@@ -7,6 +7,7 @@ import {
   expenseBreakdown, annualNetProjection, annualWageBill, annualSponsorIncome,
   annualFacilityUpkeep, leagueTierOf, isoWeekOf,
   scaledSquadToFitCap, rookieDraftWage,
+  matchDayRevenue, expectedAttendance, continuousAnnualIncome,
 } from '../finance/engine.js';
 import { TIER_FINANCE } from '../finance/constants.js';
 import { seedRng } from '../rng.js';
@@ -99,6 +100,48 @@ describe('recomputeAnnualIncome', () => {
     const big = baseCareer({ facilities: { stadium: { level: 5, cost: 350_000, max: 5 } } });
     const small = baseCareer({ facilities: { stadium: { level: 1, cost: 350_000, max: 5 } } });
     expect(recomputeAnnualIncome(big)).toBeGreaterThan(recomputeAnnualIncome(small));
+  });
+});
+
+describe('matchDayRevenue (per-game model)', () => {
+  it('home game earns gate + broadcast + sponsor; away earns broadcast + sponsor only', () => {
+    const c = baseCareer();
+    const home = matchDayRevenue(c, { isHome: true });
+    const away = matchDayRevenue(c, { isHome: false });
+    expect(home.gate).toBeGreaterThan(0);
+    expect(away.gate).toBe(0);
+    expect(home.broadcast).toBe(away.broadcast);
+    expect(home.broadcast).toBeGreaterThan(0);
+    expect(home.total).toBe(home.gate + home.broadcast + home.sponsor);
+    expect(home.total).toBeGreaterThan(away.total);
+  });
+
+  it('bigger stadium + happier fans grow the gate', () => {
+    const small = baseCareer({ facilities: { stadium: { level: 1 } }, finance: { ...baseCareer().finance, fanHappiness: 30 } });
+    const big = baseCareer({ facilities: { stadium: { level: 5 } }, finance: { ...baseCareer().finance, fanHappiness: 95 } });
+    expect(matchDayRevenue(big, { isHome: true }).gate).toBeGreaterThan(matchDayRevenue(small, { isHome: true }).gate);
+    expect(expectedAttendance(big)).toBeGreaterThan(expectedAttendance(small));
+  });
+
+  it('sponsor activation scales with total sponsor value', () => {
+    const rich = baseCareer({ sponsors: [{ id: 'a', annualValue: 2_200_000 }] });
+    const poor = baseCareer({ sponsors: [{ id: 'a', annualValue: 110_000 }] });
+    expect(matchDayRevenue(rich, { isHome: false }).sponsor).toBeGreaterThan(matchDayRevenue(poor, { isHome: false }).sponsor);
+  });
+});
+
+describe('continuous vs match-day split (no double counting)', () => {
+  it('continuous income excludes gate/broadcast/sponsor (smoothed lines only)', () => {
+    const c = baseCareer();
+    // Continuous slice is membership + merch (20%) of the headline model — strictly
+    // less than the full projected income, which also includes match-day lines.
+    expect(continuousAnnualIncome(c)).toBeLessThan(incomeBreakdown(c).grandTotal);
+    expect(continuousAnnualIncome(c)).toBe(Math.round(recomputeAnnualIncome(c) * 0.20));
+  });
+
+  it('income projection sums all five lines', () => {
+    const inc = incomeBreakdown(baseCareer());
+    expect(inc.grandTotal).toBe(inc.broadcast + inc.gate + inc.membership + inc.merchandise + inc.sponsors);
   });
 });
 

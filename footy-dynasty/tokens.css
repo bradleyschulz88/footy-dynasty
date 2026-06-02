@@ -599,6 +599,142 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   transform: skewX(8deg);
 }
 
+/* ── Direction C scope — Deep Space / Neon Teal ─────────────── */
+/* Designed around the neon palette already hardcoded in game screens:
+   accent #00E0FF (cyan), pos #4AE89A (green), neg #E84A6F (red) */
+.dirC {
+  --A-bg:        #0A0F14;
+  --A-bg-2:      #0F1720;
+  --A-panel:     #141E28;
+  --A-panel-2:   #0F1720;
+  --A-line:      rgba(255, 255, 255, 0.08);
+  --A-line-2:    rgba(255, 255, 255, 0.15);
+  --A-text:      #F1F5F9;
+  --A-text-dim:  #94A3B8;
+  --A-text-mute: #64748B;
+  --A-accent:    #00E0FF;
+  --A-accent-2:  #E8D44A;
+  --A-pos:       #4AE89A;
+  --A-neg:       #E84A6F;
+  --A-club:      #1e3a5f;
+  --A-club-2:    #ca8a04;
+}
+.dirC {
+  background: var(--A-bg);
+  color: var(--A-text);
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: var(--font-body);
+  line-height: 1.4;
+  position: relative;
+  overflow: hidden;
+}
+.dirC::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 70% 0%, rgba(0, 224, 255, 0.05), transparent 60%),
+    radial-gradient(ellipse 80% 50% at 0% 100%, rgba(74, 232, 154, 0.04), transparent 72%);
+  pointer-events: none;
+}
+.dirC .panel {
+  background: linear-gradient(180deg, var(--A-panel), var(--A-panel-2));
+  border: 1px solid var(--A-line);
+  border-radius: var(--radius-xl);
+}
+.dirC .panel-flat {
+  background: var(--A-panel);
+  border: 1px solid var(--A-line);
+  border-radius: var(--radius-md);
+}
+.dirC .label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: var(--font-micro);
+  letter-spacing: 0.2em;
+  color: var(--A-text-mute);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.dirC .display { color: var(--A-text); }
+.dirC hr { border: 0; border-top: 1px solid var(--A-line); margin: 0; }
+.dirC .accent { color: var(--A-accent); }
+.dirC .accent-2 { color: var(--A-accent-2); }
+.dirC .pos { color: var(--A-pos); }
+.dirC .neg { color: var(--A-neg); }
+.dirC .dim { color: var(--A-text-dim); }
+.dirC .mute { color: var(--A-text-mute); }
+.dirC .pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border-radius: var(--radius-pill);
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--font-caption); letter-spacing: 0.12em; text-transform: uppercase;
+  background: rgba(0, 224, 255, 0.10);
+  color: var(--A-accent);
+  border: 1px solid rgba(0, 224, 255, 0.25);
+}
+.dirC .btn-ghost {
+  background: transparent;
+  border: 1px solid var(--A-line-2);
+  color: var(--A-text);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--font-caption);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.dirC .btn-ghost:hover { border-color: var(--A-accent); color: var(--A-accent); }
+.dirC .btn-primary {
+  background: linear-gradient(135deg, var(--A-accent), #0099b0);
+  color: #001520;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border: 0;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset, 0 4px 14px rgba(0, 224, 255, 0.28);
+}
+.dirC .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(0, 224, 255, 0.4), 0 12px 32px rgba(0, 224, 255, 0.28);
+}
+.dirC .grid-bg {
+  background-image:
+    linear-gradient(var(--A-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--A-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.dirC .panel, .dirC .panel-flat {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.dirC .row-hover { transition: background 0.12s ease; }
+.dirC .row-hover:hover { background: rgba(0, 224, 255, 0.04); }
+.dirC .player-row { transition: background 0.12s ease, padding 0.18s ease; }
+.dirC .player-row:hover { background: rgba(0, 224, 255, 0.05); }
+.dirC .tab-pill { transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease; }
+.dirC .btn-ghost, .dirC .btn-primary, .dirC .pill { transition: all 0.15s ease; }
+.dirC .feed-item { animation: feedSlide 0.35s ease; }
+.dirC .bar-fill { transform-origin: left; animation: barGrow 0.7s cubic-bezier(0.2, 0.7, 0.3, 1); }
+.dirC .glow-text {
+  background: linear-gradient(90deg, var(--A-accent) 0%, var(--A-text) 40%, var(--A-text) 60%, var(--A-accent) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shine 4s linear infinite;
+}
+.dirC .card-hover { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; cursor: pointer; }
+.dirC .card-hover:hover {
+  transform: translateY(-2px);
+  border-color: var(--A-accent);
+  box-shadow: 0 8px 24px rgba(0, 224, 255, 0.12);
+}
+.dirC .live-dot { background: var(--A-accent); }
+
 /* shared utilities */
 .row { display: flex; }
 .col { display: flex; flex-direction: column; }
