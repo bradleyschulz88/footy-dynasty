@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { GripVertical, X } from "lucide-react";
+import { GripVertical, X, ChevronDown, ChevronUp } from "lucide-react";
 import {
   DndContext,
   DragOverlay,
@@ -207,6 +207,44 @@ function dragSummary(activePlayer) {
 }
 
 
+/** Compact chip shown in the mobile horizontal bench strip. */
+function MobileBenchChip({ player, stitch, onSelect }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useSortable({ id: player.id });
+  const ovrColor = player.overall >= 85 ? "#4AE89A"
+    : player.overall >= 75 ? "#4ADBE8"
+    : player.overall >= 65 ? "var(--A-accent)"
+    : player.overall >= 55 ? "#E8D44A"
+    : "#E84A6F";
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(isDragging ? null : undefined),
+        opacity: isDragging ? 0.5 : 1,
+      }}
+      className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl border touch-manipulation cursor-grab active:cursor-grabbing select-none min-w-[52px] ${
+        stitch
+          ? "border-[rgba(200,255,61,0.3)] bg-[rgba(0,0,0,0.25)]"
+          : "border-aline bg-apanel-2"
+      }`}
+      {...attributes}
+      {...listeners}
+      onClick={() => onSelect?.(player)}
+    >
+      <span className="text-[9px] font-mono uppercase tracking-wider text-atext-mute leading-none">
+        {formatPositionSlash(player)}
+      </span>
+      <span className="text-sm font-black tabular-nums leading-tight" style={{ color: ovrColor }}>
+        {player.overall}
+      </span>
+      <span className="text-[8px] text-atext-dim truncate max-w-[48px]">
+        {player.firstName?.[0] ?? ""}{player.firstName ? "." : ""}{player.lastName?.slice(0, 6) ?? player.name ?? ""}
+      </span>
+    </div>
+  );
+}
+
 /**
  * Bench ↔ match squad (18 + 5) builder for Squad → Players tab.
  */
@@ -320,6 +358,8 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
     });
   };
 
+  const [benchOpen, setBenchOpen] = useState(true);
+
   return (
     <DndContext
       sensors={sensors}
@@ -328,7 +368,7 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
       onDragEnd={onDragEnd}
       onDragCancel={onDragCancel}
     >
-      <div className="flex flex-col xl:flex-row xl:items-start gap-5 xl:gap-6">
+      <div className="flex flex-col md:flex-row md:items-start gap-5 md:gap-6">
         <div className="flex-1 min-w-0">
           <LineupOvalField
             squad={squad}
@@ -338,16 +378,69 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
           />
         </div>
 
-        <aside className="w-full xl:w-[min(100%,19rem)] shrink-0 xl:sticky xl:top-4 space-y-3">
+        <aside className="w-full md:w-[min(100%,19rem)] shrink-0 md:sticky md:top-4 space-y-3">
+          {/* Mobile: horizontal bench strip (hidden on md+) */}
           <div
-            className={`rounded-2xl p-4 ${stitch ? "stitch-neon-card" : ""}`}
+            className={`md:hidden rounded-2xl overflow-hidden ${stitch ? "stitch-neon-card" : ""}`}
+            style={stitch ? undefined : { border: "1px solid var(--A-line)", background: "var(--A-panel)" }}
+          >
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-4 py-3 text-left"
+              onClick={() => setBenchOpen((v) => !v)}
+            >
+              <div className="flex items-center gap-2">
+                <span className={`${css.h1} text-sm tracking-wide`}>Bench pool</span>
+                <span className="text-[10px] text-atext-mute font-mono font-bold tabular-nums">
+                  {benchPlayers.length}
+                </span>
+              </div>
+              {benchOpen
+                ? <ChevronUp className="w-4 h-4 text-atext-mute" />
+                : <ChevronDown className="w-4 h-4 text-atext-mute" />}
+            </button>
+            {benchOpen && (
+              <div className="px-3 pb-3">
+                {benchPlayers.length === 0 ? (
+                  <div className="text-[11px] text-atext-mute text-center py-4">
+                    All players in the match-day {LINEUP_CAP}.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto [scrollbar-width:thin] -mx-1 px-1 pb-1">
+                    <SortableContext items={benchPlayerIds} strategy={verticalListSortingStrategy}>
+                      <div className="flex gap-2 min-w-max">
+                        {benchPlayers.map((p) => (
+                          <MobileBenchChip
+                            key={p.id}
+                            player={p}
+                            stitch={stitch}
+                            onSelect={onSelectPlayer}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
+                  </div>
+                )}
+                <TrayDropArea
+                  id={BENCH_TRAY_ID}
+                  label="Drop here to remove from squad"
+                  isEmpty={benchPlayers.length === 0}
+                  stitch={stitch}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: vertical bench list (hidden below md) */}
+          <div
+            className={`hidden md:block rounded-2xl p-4 ${stitch ? "stitch-neon-card" : ""}`}
             style={stitch ? undefined : { border: "1px solid var(--A-line)", background: "var(--A-panel)" }}
           >
             <div className="flex items-start justify-between gap-2 mb-2">
               <div>
                 <h3 className={`${css.h1} text-base tracking-wide`}>Bench pool</h3>
                 <p className="text-[10px] text-atext-dim mt-0.5 leading-snug">
-                  Not in the {LINEUP_CAP}. Drag to a slot to add; drop here to remove from the 23.
+                  Not in the {LINEUP_CAP}. Drag to a slot to add; drop here to remove.
                 </p>
               </div>
               <span className="text-[10px] text-atext-mute font-mono font-bold tabular-nums whitespace-nowrap shrink-0">
@@ -380,6 +473,7 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
               </div>
             </SortableContext>
           </div>
+
           <button
             type="button"
             onClick={autoSelect}
