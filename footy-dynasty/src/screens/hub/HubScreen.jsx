@@ -767,22 +767,31 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               const isMe = row.id === career.clubId;
               const rankColor = i === 0 ? "#FFD700" : i === 1 ? "#C0C0C0" : i === 2 ? "#CD7F32" : "#94A3B8";
               return (
-                <div key={row.id} className={`flex items-center gap-4 px-5 py-3 transition-colors ${isMe ? "" : "hover:bg-aaccent/5"}`}
-                  style={isMe ? {background:"linear-gradient(90deg, rgba(0, 224, 255, 0.06), transparent)", borderLeft:"3px solid var(--A-accent)"} : {borderLeft:"3px solid transparent"}}>
-                  <div className="font-display text-2xl w-6 text-center flex-shrink-0" style={{color: rankColor}}>{i+1}</div>
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm flex-shrink-0"
-                    style={{background:`linear-gradient(135deg,${c.colors[0]},${c.colors[1]})`, color:c.colors[2]}}>
-                    {c.short}
+                <React.Fragment key={row.id}>
+                  <div className={`flex items-center gap-4 px-5 py-3 transition-colors ${isMe ? "" : "hover:bg-aaccent/5"}`}
+                    style={isMe ? {background:"linear-gradient(90deg, rgba(0, 224, 255, 0.06), transparent)", borderLeft:"3px solid var(--A-accent)"} : {borderLeft:"3px solid transparent"}}>
+                    <div className="font-display text-2xl w-6 text-center flex-shrink-0" style={{color: rankColor}}>{i+1}</div>
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm flex-shrink-0"
+                      style={{background:`linear-gradient(135deg,${c.colors[0]},${c.colors[1]})`, color:c.colors[2]}}>
+                      {c.short}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className={`font-bold text-sm truncate ${isMe ? "text-aaccent" : "text-atext"}`}>{c.name}</div>
+                      <div className="text-[10px] text-atext-dim">{row.W}W {row.L}L {row.D}D</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-display text-2xl text-aaccent">{row.pts}</div>
+                      <div className="text-[10px] text-atext-dim">pts</div>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className={`font-bold text-sm truncate ${isMe ? "text-aaccent" : "text-atext"}`}>{c.name}</div>
-                    <div className="text-[10px] text-atext-dim">{row.W}W {row.L}L {row.D}D</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-display text-2xl text-aaccent">{row.pts}</div>
-                    <div className="text-[10px] text-atext-dim">pts</div>
-                  </div>
-                </div>
+                  {league.tier >= 2 && i === 0 && (
+                    <div className="flex items-center gap-2 mx-5 my-0.5">
+                      <div className="flex-1 border-t border-dashed border-[#4AE89A]/50" />
+                      <span className="text-[9px] text-[#4AE89A] font-mono uppercase tracking-wider">Promotion zone</span>
+                      <div className="flex-1 border-t border-dashed border-[#4AE89A]/50" />
+                    </div>
+                  )}
+                </React.Fragment>
               );
             })}
             {myLadderPos > 5 && myRow && (
@@ -886,7 +895,49 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           </div>
         );
       })()}
+
+      {/* Injury Report */}
+      {(() => {
+        const injuredPlayers = career.squad.filter(p => p.injured > 0);
+        if (!injuredPlayers.length) return null;
+        const top2 = injuredPlayers.sort((a, b) => b.injured - a.injured).slice(0, 2);
+        const names = top2.map(p => `${p.firstName ? p.firstName[0] + '.' : ''} ${p.lastName} (${p.injured}w)`).join(', ');
+        return (
+          <div className="rounded-2xl p-4 flex items-start gap-3" style={{background:"rgba(232,74,111,0.07)", border:"1.5px solid rgba(232,74,111,0.3)"}}>
+            <span className="text-2xl flex-shrink-0">🤕</span>
+            <div>
+              <div className="font-bold text-sm text-[#E84A6F]">Injury Report — {injuredPlayers.length} player{injuredPlayers.length !== 1 ? 's' : ''} out</div>
+              <div className="text-xs text-atext-dim mt-1">Out: {names}{injuredPlayers.length > 2 ? ` +${injuredPlayers.length - 2} more` : ''}</div>
+            </div>
+          </div>
+        );
+      })()}
       </motion.div>
+
+      {career.coachStats && (
+        <motion.div variants={hubItem} className={`${css.panel} p-4`}>
+          <h3 className="font-display text-lg text-atext tracking-wide mb-3">COACHING RECORD</h3>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
+            <div><div className="font-display text-2xl text-[#4AE89A]">{career.coachStats.totalWins ?? 0}</div><div className={css.label}>Wins</div></div>
+            <div><div className="font-display text-2xl text-[#E84A6F]">{career.coachStats.totalLosses ?? 0}</div><div className={css.label}>Losses</div></div>
+            <div><div className="font-display text-2xl text-atext">{career.coachStats.totalDraws ?? 0}</div><div className={css.label}>Draws</div></div>
+            <div><div className="font-display text-2xl text-[#FFD200]">{career.coachStats.premierships ?? 0}</div><div className={css.label}>Flags</div></div>
+            <div><div className="font-display text-2xl text-[#4ADBE8]">{career.coachStats.promotions ?? 0}</div><div className={css.label}>Promotions</div></div>
+            <div><div className="font-display text-2xl text-atext-dim">{career.coachStats.seasonsManaged ?? 1}</div><div className={css.label}>Seasons</div></div>
+          </div>
+          {career.history && career.history.length > 0 && (
+            <div className="mt-3 space-y-1">
+              {[...career.history].reverse().slice(0, 3).map((h, idx) => (
+                <div key={idx} className="flex items-center justify-between text-xs text-atext-dim border-t border-aline pt-1">
+                  <span>{h.season} · {h.leagueShort || h.leagueKey}</span>
+                  <span>#{h.position} · {h.W}W {h.L}L {h.D}D</span>
+                  <span>{h.champion ? '🏆' : h.promoted ? '⬆️' : h.relegated ? '⬇️' : ''}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* Quick links */}
       <motion.div variants={hubItem} className="grid grid-cols-2 md:grid-cols-4 gap-3">

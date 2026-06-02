@@ -1105,6 +1105,17 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       c.news = [{ week: c.week, type: 'win', text: `🤝 Community grant approved: +$${grant.toLocaleString()}. The council came through.` }, ...(c.news || [])].slice(0, 25);
     }
 
+    const notableGains = Object.entries(gains || {})
+      .filter(([, g]) => g.delta >= 2)
+      .map(([pid, g]) => {
+        const p = c.squad.find((pl) => pl.id === pid);
+        const name = p?.firstName ? `${p.firstName[0]}. ${p.lastName}` : (p?.name || 'Player');
+        return `${name} +${g.delta} ${g.attr}`;
+      });
+    if (notableGains.length > 0) {
+      c.news = [{ week: c.week, type: 'info', text: `🏋️ Training boost: ${notableGains.slice(0, 3).join(', ')}` }, ...(c.news || [])].slice(0, 40);
+    }
+
     const info = TRAINING_INFO[ev.subtype] || {};
     c.lastEvent = {
       type: 'training', subtype: ev.subtype, name: info.name || ev.subtype, date: ev.date, gains, staffName, staffRating, devNotes, intensity,
