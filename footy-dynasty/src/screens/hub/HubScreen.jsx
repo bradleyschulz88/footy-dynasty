@@ -57,6 +57,18 @@ const hubItem = {
 // ============================================================================
 // HUB SCREEN
 // ============================================================================
+
+function weatherEmoji(condition) {
+  if (!condition) return '🌤️';
+  const c = condition.toLowerCase();
+  if (c === 'sunny' || c === 'fine') return '☀️';
+  if (c === 'cloudy' || c === 'overcast') return '⛅️';
+  if (c === 'windy' || c === 'wind') return '💨';
+  if (c === 'rainy' || c === 'wet' || c === 'rain') return '🌧️';
+  if (c === 'stormy') return '⛈️';
+  return '🌤️';
+}
+
 // ---------------------------------------------------------------------------
 // Hub strip showing ground conditions + footy trip prompt + committee mood.
 // Spec Sections 3A, 3B, 3D.
@@ -271,6 +283,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
     const objs = career.board?.objectives;
     if (!objs?.length) return [];
     const order = sorted.findIndex((r) => r.id === career.clubId) + 1;
+    const totalTeams = sorted.length || 18;
     const youthN = youthSeniorGameCount(career.squad);
     return objs.map((obj) => {
       let current = obj.current;
@@ -281,11 +294,24 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         else if (obj.type === "premiership") current = career.premiership === career.season ? 1 : 0;
       }
       const synthetic = { ...obj, current };
+      const status = boardObjectiveUiStatus(synthetic, career);
+      let pct;
+      if (obj.type === "ladder_position" && current != null && obj.target != null) {
+        const target = obj.target;
+        pct = Math.min(100, Math.max(0, ((totalTeams - current) / Math.max(1, totalTeams - target)) * 100));
+      } else if (status === "ON TRACK" || status === "MET") {
+        pct = 75;
+      } else if (status === "AT RISK") {
+        pct = 30;
+      } else if (status === "MISSED") {
+        pct = 10;
+      }
       return {
         id: obj.id,
         description: obj.description,
         setBy: obj.setBy,
-        status: boardObjectiveUiStatus(synthetic, career),
+        status,
+        pct,
       };
     });
   }, [career, sorted]);
@@ -319,11 +345,14 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                 return mn ? <Pill color={mn.clinched ? '#4AE89A' : '#F59E0B'}>{mn.label}</Pill> : null;
               })()}
               {myRow && <Pill color="#64748B">{myRow.W}W {myRow.L}L {myRow.D}D</Pill>}
-              {career.clubCulture && (
-                <Pill color="#A78BFA">
-                  Culture: {career.clubCulture.tier} {Math.round(career.clubCulture.score ?? 60)}
-                </Pill>
-              )}
+              {career.clubCulture && (() => {
+                const cultureColor = career.clubCulture.tier === 'Elite' ? '#FFD200' : career.clubCulture.tier === 'Strong' ? '#4AE89A' : career.clubCulture.tier === 'Developing' ? 'var(--A-accent)' : '#94A3B8';
+                return (
+                  <Pill color={cultureColor}>
+                    Culture: {career.clubCulture.tier} {Math.round(career.clubCulture.score ?? 60)}
+                  </Pill>
+                );
+              })()}
             </div>
           </div>
           <div className="hidden md:flex flex-col items-end gap-1">
@@ -435,6 +464,14 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                 <div className="min-w-0 flex-1">
                   <div className="text-[10px] font-mono uppercase tracking-widest text-atext-mute">{row.setBy}</div>
                   <div className="text-sm text-atext leading-snug">{row.description}</div>
+                  {row.pct !== undefined && (
+                    <div className="mt-1 h-1 rounded-full overflow-hidden" style={{background:'var(--A-line)'}}>
+                      <div className="h-full rounded-full transition-all" style={{
+                        width: `${Math.min(100, row.pct ?? 0)}%`,
+                        background: row.status === 'MET' || row.status === 'ON TRACK' ? '#4AE89A' : row.status === 'AT RISK' ? '#FFB347' : '#E84A6F'
+                      }} />
+                    </div>
+                  )}
                 </div>
                 <span
                   className={`text-[10px] font-black font-mono uppercase tracking-wider shrink-0 px-2 py-1 rounded-md border border-aline ${
@@ -595,15 +632,23 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               } else {
                 evLabel = ev.name || 'Event';
               }
+              const matchWeather = isMatch && ev.round
+                ? (career.weeklyWeather || {})[ev.round]
+                : null;
               return (
                 <div key={ev.id} className="flex-shrink-0 rounded-xl p-3 text-center min-w-[88px]" style={{background:`${color}10`, border:`1px solid ${color}30`}}>
                   <div className="text-[9px] font-bold uppercase tracking-wider" style={{color}}>{formatDate(ev.date).split(' ').slice(0,-1).join(' ')}</div>
                   <div className="text-lg mt-1">{isTraining ? (info?.icon || '🏋️') : isKey ? '📅' : '🏉'}</div>
                   <div className="text-[10px] font-semibold text-atext mt-1 leading-tight">{evLabel}</div>
+                  {matchWeather && (
+                    <div className="text-[9px] text-atext-dim mt-1 leading-tight">{weatherEmoji(matchWeather)} {matchWeather}</div>
+                  )}
                 </div>
               );
             })}
-            <div className="flex-shrink-0 flex items-center justify-center min-w-[60px]">
+            <div className="flex-shrink-0 flex flex-col items-center justify-center min-w-[90px] gap-1">
+              <div className="text-[10px] font-mono text-atext-mute uppercase tracking-widest mb-1">Next up</div>
+              <div className="text-xs font-semibold text-atext mb-1">{advanceCtx.nextEventShort}</div>
               <button type="button" onClick={onAdvance} className="rounded-xl px-3 py-2 text-[11px] font-bold text-white flex flex-col items-center gap-1"
                 style={{background:'linear-gradient(135deg,var(--A-accent),#D07A2A)'}}>
                 <Play className="w-4 h-4" />
@@ -773,10 +818,11 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           <div className="space-y-2">
             {recentNews.length === 0 && <div className="text-sm text-atext-dim py-4 text-center">No news yet.</div>}
             {recentNews.map((n, i) => {
-              const c = n.type === "win" ? "#4AE89A" : n.type === "loss" ? "#E84A6F" : n.type === "info" ? "#4ADBE8" : "#64748B";
+              const borderColor = n.type === "win" ? "#4AE89A" : n.type === "loss" ? "#E84A6F" : n.type === "board" ? "#FFB347" : n.type === "info" ? "var(--A-accent-2)" : "#64748B";
+              const emoji = n.type === "win" ? "🏆" : n.type === "loss" ? "📉" : n.type === "board" ? "🏛️" : n.type === "info" ? "ℹ️" : "•";
               return (
-                <div key={i} className="flex gap-3 p-3 rounded-xl" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)"}}>
-                  <div className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0" style={{background: c, boxShadow:`0 0 6px ${c}`}} />
+                <div key={i} className="flex gap-3 p-3 rounded-xl" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)", borderLeft:`3px solid ${borderColor}`}}>
+                  <div className="flex-shrink-0 text-sm leading-snug mt-0.5">{emoji}</div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-atext leading-snug">{n.text}</div>
                     <div className="text-[9px] text-atext-mute uppercase tracking-widest mt-0.5 font-bold">{n.week === 0 ? 'Pre-Season' : `Round ${n.week}`}</div>
@@ -787,6 +833,29 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           </div>
         </div>
       </motion.div>
+
+      {/* Form Watch */}
+      {(() => {
+        const hotPlayers = [...career.squad].sort((a,b) => (b.form||50) - (a.form||50)).slice(0,1).filter(p => (p.form||50) >= 78);
+        const coldPlayers = [...career.squad].sort((a,b) => (a.form||50) - (b.form||50)).slice(0,1).filter(p => (p.form||50) <= 42);
+        const formWatch = [...hotPlayers.map(p=>({...p,hot:true})), ...coldPlayers.map(p=>({...p,hot:false}))];
+        if (formWatch.length === 0) return null;
+        return (
+          <motion.div variants={hubItem} className={`${css.panel} p-4`}>
+            <div className={`${css.label} mb-2`}>Form Watch</div>
+            <div className="space-y-1.5">
+              {formWatch.map((p, i) => {
+                const name = p.firstName ? `${p.firstName[0]}. ${p.lastName}` : (p.name || 'Player');
+                return (
+                  <div key={p.id || i} className="text-sm text-atext leading-snug">
+                    {p.hot ? '🔥' : '❄️'} <span className="font-semibold">{name}</span> <span className="text-atext-dim">(form {p.form || 50})</span> — {p.hot ? 'on fire' : 'struggling'}
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        );
+      })()}
 
       {/* Board Pressure */}
       <motion.div variants={hubItem} className="space-y-3">
