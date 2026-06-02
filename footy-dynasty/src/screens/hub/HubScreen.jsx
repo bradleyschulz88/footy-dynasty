@@ -394,7 +394,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
       {/* Action board + coaching suggestions */}
       <motion.div variants={hubItem}>
-        <TaskList career={career} onNavigate={handleTaskNavigate} />
+        <TaskList career={career} onNavigate={handleTaskNavigate} myLadderPos={myLadderPos} league={league} />
       </motion.div>
 
       <motion.div variants={hubItem}>
