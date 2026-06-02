@@ -625,8 +625,9 @@ function TradeTab({ career, updateCareer }) {
                   </div>
                 </div>
                 {isNeg && (
-                  <div className="mx-4 mb-3 rounded-xl p-4" style={{background:"#F0FDF4", border:"1px solid #BBF7D0"}}>
-                    <div className="text-xs font-bold text-[#166534] mb-2">📋 {p.firstName} {p.lastName}'s demands</div>
+                  <div className="mx-4 mb-3 rounded-xl p-4" style={{background:"rgba(74,232,154,0.08)", border:"1px solid rgba(74,232,154,0.25)"}}>
+
+                    <div className="text-xs font-bold mb-2" style={{color:"var(--A-pos)"}}>📋 {p.firstName} {p.lastName}'s demands</div>
                     <div className="flex gap-6 mb-3">
                       <div>
                         <div className="text-[10px] text-atext-dim uppercase tracking-wider">Wage demand</div>
@@ -720,8 +721,8 @@ function TradeTab({ career, updateCareer }) {
                 )}
               </div>
               {isNeg && (
-                <div className="mt-3 rounded-xl p-4" style={{ background: "#F0FDF4", border: "1px solid #BBF7D0" }}>
-                  <div className="text-xs font-bold text-[#166534] mb-2">📋 {p.firstName} {p.lastName}&apos;s demands</div>
+                <div className="mt-3 rounded-xl p-4" style={{ background: "rgba(74,232,154,0.08)", border: "1px solid rgba(74,232,154,0.25)" }}>
+                  <div className="text-xs font-bold mb-2" style={{color:"var(--A-pos)"}}>📋 {p.firstName} {p.lastName}&apos;s demands</div>
                   <div className="flex flex-wrap gap-4 mb-3">
                     <div>
                       <div className="text-[10px] text-atext-dim uppercase tracking-wider">Wage demand</div>
