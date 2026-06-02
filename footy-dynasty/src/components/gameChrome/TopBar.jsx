@@ -158,7 +158,7 @@ export function TopBar({
             }
             whileTap={advanceDisabled ? undefined : { scale: 0.94 }}
             transition={{ type: 'spring', stiffness: 520, damping: 28 }}
-            className={`${css.btnPrimary} flex items-center gap-1.5 md:gap-2 glow text-[11px] md:text-xs px-3 md:px-5 ${tutorialSpotlightAdvance ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${advanceDisabled ? "opacity-45 cursor-not-allowed" : ""}`}
+            className={`${css.btnPrimary} hidden md:flex items-center gap-1.5 md:gap-2 glow text-[11px] md:text-xs px-3 md:px-5 ${tutorialSpotlightAdvance ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${advanceDisabled ? "opacity-45 cursor-not-allowed" : ""}`}
           >
             <Play className="w-4 h-4" /> {ctx.buttonLabel.toUpperCase()}
             {!advanceDisabled && advanceAgendaCount > 0 && (

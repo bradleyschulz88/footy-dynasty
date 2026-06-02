@@ -156,6 +156,8 @@ export const GlobalStyle = () => (
     ::-webkit-scrollbar-track { background:var(--A-bg); }
     ::-webkit-scrollbar-thumb { background:rgba(15,23,42,0.18); border-radius:4px; }
     ::-webkit-scrollbar-thumb:hover { background:rgba(13,148,136,0.35); }
+    .no-scrollbar { scrollbar-width:none; -ms-overflow-style:none; }
+    .no-scrollbar::-webkit-scrollbar { display:none; width:0; height:0; }
     @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(13,148,136,0.2);}50%{box-shadow:0 0 14px 3px rgba(13,148,136,0.12);} }
     .glow { animation: pulseGlow 2.5s ease-in-out infinite; }
     @keyframes slideIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
