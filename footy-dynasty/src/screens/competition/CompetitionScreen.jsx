@@ -86,26 +86,52 @@ function LadderTab({ career, club: _club, league }) {
           const pos = i + 1;
           const inPromo = pos <= promoCutoff;
           const inReleg = pos === relegCutoff && league.tier > 1;
+          const showFinalsLine = league.tier === 1 && pos === 8;
+          const showPromoLine = league.tier > 1 && pos === promoCutoff;
+          const showRelegLine = league.tier > 1 && pos === relegCutoff - 1;
           return (
-            <div key={row.id} className={`grid grid-cols-12 gap-2 px-4 py-2.5 items-center border-b border-aline ${isMe ? "bg-aaccent/10" : "hover:bg-aaccent/5"} transition`}>
-              <div className="col-span-1 flex items-center gap-1">
-                <span className={`font-bold ${inPromo ? "text-[#4AE89A]" : inReleg ? "text-[#E84A6F]" : "text-atext-dim"}`}>{pos}</span>
-                {inPromo && <ArrowUp className="w-3 h-3 text-[#4AE89A]" />}
-                {inReleg && <ArrowDown className="w-3 h-3 text-[#E84A6F]" />}
+            <React.Fragment key={row.id}>
+              <div className={`grid grid-cols-12 gap-2 px-4 py-2.5 items-center border-b border-aline ${isMe ? "bg-aaccent/10" : "hover:bg-aaccent/5"} transition`}>
+                <div className="col-span-1 flex items-center gap-1">
+                  <span className={`font-bold ${inPromo ? "text-[#4AE89A]" : inReleg ? "text-[#E84A6F]" : "text-atext-dim"}`}>{pos}</span>
+                  {inPromo && <ArrowUp className="w-3 h-3 text-[#4AE89A]" />}
+                  {inReleg && <ArrowDown className="w-3 h-3 text-[#E84A6F]" />}
+                </div>
+                <div className="col-span-4 flex items-center gap-2">
+                  <div className="w-2 h-6 rounded-sm" style={{background: c?.colors[0] || "var(--A-line)"}} />
+                  <span className={isMe ? "font-bold text-aaccent" : "font-semibold"}>{c?.name || row.id}</span>
+                  {isMe && <Crown className="w-3 h-3 text-aaccent" />}
+                </div>
+                <div className="col-span-1 text-center text-sm">{row.P}</div>
+                <div className="col-span-1 text-center text-sm font-bold text-[#4AE89A]">{row.W}</div>
+                <div className="col-span-1 text-center text-sm text-[#E84A6F]">{row.L}</div>
+                <div className="col-span-1 text-center text-sm text-atext-dim">{row.D}</div>
+                <div className="col-span-1 text-right text-sm font-mono">{row.F}</div>
+                <div className="col-span-1 text-right text-sm font-mono text-atext-dim">{row.A}</div>
+                <div className="col-span-1 text-right text-sm font-mono font-bold">{row.A > 0 ? ((row.F/row.A)*100).toFixed(1) : "—"}</div>
               </div>
-              <div className="col-span-4 flex items-center gap-2">
-                <div className="w-2 h-6 rounded-sm" style={{background: c?.colors[0] || "var(--A-line)"}} />
-                <span className={isMe ? "font-bold text-aaccent" : "font-semibold"}>{c?.name || row.id}</span>
-                {isMe && <Crown className="w-3 h-3 text-aaccent" />}
-              </div>
-              <div className="col-span-1 text-center text-sm">{row.P}</div>
-              <div className="col-span-1 text-center text-sm font-bold text-[#4AE89A]">{row.W}</div>
-              <div className="col-span-1 text-center text-sm text-[#E84A6F]">{row.L}</div>
-              <div className="col-span-1 text-center text-sm text-atext-dim">{row.D}</div>
-              <div className="col-span-1 text-right text-sm font-mono">{row.F}</div>
-              <div className="col-span-1 text-right text-sm font-mono text-atext-dim">{row.A}</div>
-              <div className="col-span-1 text-right text-sm font-mono font-bold">{row.A > 0 ? ((row.F/row.A)*100).toFixed(1) : "—"}</div>
-            </div>
+              {showFinalsLine && (
+                <div className="flex items-center gap-2 px-4 py-1" style={{background:"rgba(0,224,255,0.03)"}}>
+                  <div className="flex-1 border-t border-dashed border-[#4ADBE8]/50" />
+                  <span className="text-[9px] text-[#4ADBE8] font-mono uppercase tracking-wider">Finals cutoff</span>
+                  <div className="flex-1 border-t border-dashed border-[#4ADBE8]/50" />
+                </div>
+              )}
+              {showPromoLine && (
+                <div className="flex items-center gap-2 px-4 py-1" style={{background:"rgba(74,232,154,0.03)"}}>
+                  <div className="flex-1 border-t border-dashed border-[#4AE89A]/50" />
+                  <span className="text-[9px] text-[#4AE89A] font-mono uppercase tracking-wider">Promotion ↑</span>
+                  <div className="flex-1 border-t border-dashed border-[#4AE89A]/50" />
+                </div>
+              )}
+              {showRelegLine && (
+                <div className="flex items-center gap-2 px-4 py-1" style={{background:"rgba(232,74,111,0.03)"}}>
+                  <div className="flex-1 border-t border-dashed border-[#E84A6F]/50" />
+                  <span className="text-[9px] text-[#E84A6F] font-mono uppercase tracking-wider">Relegation ↓</span>
+                  <div className="flex-1 border-t border-dashed border-[#E84A6F]/50" />
+                </div>
+              )}
+            </React.Fragment>
           );
         })}
       </div>
