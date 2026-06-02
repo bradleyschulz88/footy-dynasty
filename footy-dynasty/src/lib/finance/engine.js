@@ -91,12 +91,13 @@ export function expectedAttendance(career, leagueTier) {
 // activation (every match). This is the live, event-driven money the club earns
 // each time it plays. Returns each line plus the total so the post-match screen
 // and ledger can show the breakdown.
-export function matchDayRevenue(career, { isHome = true, leagueTier } = {}) {
+export function matchDayRevenue(career, { isHome = true, leagueTier, finalsMultiplier = 1 } = {}) {
   const tier = leagueTier ?? leagueTierOf(career);
-  const attendance = isHome ? expectedAttendance(career, tier) : 0;
+  // Finals draw bigger crowds and bigger TV money.
+  const attendance = isHome ? Math.round(expectedAttendance(career, tier) * finalsMultiplier) : 0;
   const gate = Math.round(attendance * (TICKET_PRICE[tier] ?? 10));
-  const broadcast = BROADCAST_PER_MATCH[tier] ?? 0;
-  const sponsor = Math.round(annualSponsorIncome(career) / SEASON_MATCHES_EST);
+  const broadcast = Math.round((BROADCAST_PER_MATCH[tier] ?? 0) * finalsMultiplier);
+  const sponsor = Math.round((annualSponsorIncome(career) / SEASON_MATCHES_EST) * finalsMultiplier);
   return { attendance, gate, broadcast, sponsor, total: gate + broadcast + sponsor, isHome };
 }
 

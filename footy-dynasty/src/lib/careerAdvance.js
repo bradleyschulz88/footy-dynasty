@@ -220,8 +220,12 @@ function buildPostMatchSummary(c, league, club, myResult, roundOrLabel) {
       m.mood >= 70 ? 'Loved that.' : m.mood >= 40 ? 'Reasonable showing.' : 'Not good enough.'
     }`;
   }
+  const isHome = !!myResult.isHome;
+  const revenue = c.lastMatchRevenue && c.lastMatchRevenue.round === (typeof roundOrLabel === 'number' ? roundOrLabel : c.lastMatchRevenue.round)
+    ? c.lastMatchRevenue
+    : matchDayRevenue(c, { isHome, leagueTier: league.tier });
   const baseCrowd = league.tier === 1 ? 35000 : league.tier === 2 ? 4500 : 800;
-  const crowd = Math.round(baseCrowd * (0.6 + 0.5 * rng()));
+  const crowd = isHome && revenue.attendance ? revenue.attendance : Math.round(baseCrowd * (0.6 + 0.5 * rng()));
   const labelStr = typeof roundOrLabel === 'number' ? `Round ${roundOrLabel}` : String(roundOrLabel || 'Match');
   return {
     label: labelStr,
@@ -234,6 +238,8 @@ function buildPostMatchSummary(c, league, club, myResult, roundOrLabel) {
     resultColor: myResult.won ? '#4AE89A' : myResult.drew ? 'var(--A-accent)' : '#E84A6F',
     margin,
     crowd,
+    isHome,
+    revenue,
     bog,
     topScorer, topGoals,
     boardReaction,
@@ -532,6 +538,18 @@ function advanceFinalsWeek(c, league) {
       won,
       drew,
     };
+    // Finals match-day income — bigger crowds + premium TV money.
+    const finalsMult = matchLabel === 'Grand Final' ? 2.0 : 1.5;
+    const finalsRev = matchDayRevenue(c, { isHome, leagueTier: league.tier, finalsMultiplier: finalsMult });
+    c.finance.cash += finalsRev.total;
+    c.lastMatchRevenue = { ...finalsRev, round: matchLabel, opp: opp?.short || null };
+    const fbits = [];
+    if (finalsRev.gate) fbits.push(`gate ${fmtK(finalsRev.gate)}`);
+    if (finalsRev.broadcast) fbits.push(`TV ${fmtK(finalsRev.broadcast)}`);
+    if (finalsRev.sponsor) fbits.push(`sponsor ${fmtK(finalsRev.sponsor)}`);
+    c.news = [{ week: c.week, type: 'info',
+      text: `💰 ${matchLabel} income +${fmtK(finalsRev.total)}${fbits.length ? ` (${fbits.join(', ')})` : ''}` },
+    ...(c.news || [])].slice(0, 14);
     c.lastMatchSummary = buildPostMatchSummary(c, league, club, myResult, matchLabel);
     // Eliminated iff we're no longer among the alive finalists (and it wasn't
     // the GF). Deriving from finalsAlive — rather than `!won` — correctly keeps

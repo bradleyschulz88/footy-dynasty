@@ -852,7 +852,6 @@ function AFLManagerInner() {
         {showPostMatch && career.lastMatchSummary && (
           <PostMatchSummary
             summary={career.lastMatchSummary}
-            onReview={() => setShowPostMatch(false)}
             onContinue={() => {
               setShowPostMatch(false);
               const isFinals = career.currentMatchResult?.isFinals;
