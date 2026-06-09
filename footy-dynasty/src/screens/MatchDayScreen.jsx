@@ -112,8 +112,8 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, #0F172A 0%, #1E293B 100%)" }}>
-      <div className="px-6 py-5 text-center" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
+      <div className="px-6 py-5 text-center" style={{ borderBottom: "1px solid var(--A-line)" }}>
         <div
           className="text-[11px] font-bold uppercase tracking-[0.3em] mb-1"
           style={{ color: result.isPreseason ? "#4ADBE8" : "var(--A-accent)" }}
@@ -122,7 +122,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
           {result.isPreseason && " · Pre-Season"}
         </div>
         {matchWeather && (
-          <div className="text-[10px] text-slate-400 mb-1">
+          <div className="text-[10px] text-atext-mute mb-1">
             Conditions: {weatherEmoji(matchWeather)} <span className="capitalize">{matchWeather}</span>
           </div>
         )}
@@ -138,8 +138,8 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
             >
               {homeClub?.short}
             </div>
-            <div className="text-white font-bold text-sm">{homeClub?.name}</div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-widest">HOME</div>
+            <div className="text-atext font-bold text-sm">{homeClub?.name}</div>
+            <div className="text-[10px] text-atext-mute uppercase tracking-widest">HOME</div>
           </div>
 
           <div className="text-center px-6">
@@ -161,8 +161,8 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
             >
               {awayClub?.short}
             </div>
-            <div className="text-white font-bold text-sm">{awayClub?.name}</div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-widest">AWAY</div>
+            <div className="text-atext font-bold text-sm">{awayClub?.name}</div>
+            <div className="text-[10px] text-atext-mute uppercase tracking-widest">AWAY</div>
           </div>
         </div>
       </div>
@@ -170,10 +170,10 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
       {result.events && result.events.length > 0 && (
         <div className="px-6 py-3 max-w-2xl mx-auto w-full">
           <div className="flex items-center justify-between mb-1">
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute">
               Momentum {visibleQuarter > 0 ? `· End of ${qLabels[visibleQuarter - 1]}` : ""}
             </div>
-            <div className="text-[10px] text-slate-400">
+            <div className="text-[10px] text-atext-mute">
               {momentumEnd > 0.15
                 ? `${(result.isHome ? club.short : result.opp?.short) || "Home"} on top`
                 : momentumEnd < -0.15
@@ -181,7 +181,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                   : "Even contest"}
             </div>
           </div>
-          <div className="h-2 rounded-full overflow-hidden flex" style={{ background: "rgba(255,255,255,0.05)" }}>
+          <div className="h-2 rounded-full overflow-hidden flex" style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}>
             <div
               className="h-full"
               style={{ width: `${momentumPct}%`, background: "linear-gradient(90deg,#4ADBE8,#4AE89A)" }}
@@ -202,7 +202,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
           >
             {showEvents ? "▾" : "▸"} Broadcast Feed
             {result.events.filter((e) => e.kind === "moment").length > 0 && (
-              <span className="text-[9px] text-slate-400 ml-2">
+              <span className="text-[9px] text-atext-mute ml-2">
                 {result.events.filter((e) => e.kind === "moment").length} key moments
               </span>
             )}
@@ -210,10 +210,10 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
           {showEvents && (
             <div
               className="rounded-2xl p-3 max-h-48 overflow-y-auto space-y-1"
-              style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+              style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}
             >
               {eventFeed.length === 0 && (
-                <div className="text-xs text-slate-500 text-center py-3">Waiting for first quarter…</div>
+                <div className="text-xs text-atext-mute text-center py-3">Waiting for first quarter…</div>
               )}
               {eventFeed
                 .slice()
@@ -246,7 +246,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                       className="flex items-center gap-2 text-xs py-1 px-2 rounded"
                       style={{ background: i === 0 ? `${color}10` : "transparent" }}
                     >
-                      <span className="text-[9px] font-mono text-slate-500 w-12 flex-shrink-0">
+                      <span className="text-[9px] font-mono text-atext-mute w-12 flex-shrink-0">
                         Q{ev.q} {String(ev.minute % 25).padStart(2, "0")}
                         {"'"}
                       </span>
@@ -259,7 +259,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                       >
                         {sideMine ? club.short : result.opp?.short || "OPP"}
                       </span>
-                      <span className="text-slate-300 flex-1 truncate">
+                      <span className="text-atext-dim flex-1 truncate">
                         {player
                           ? `${player.firstName ? player.firstName[0] + ". " : ""}${player.lastName || player.name || ""}: `
                           : ""}
@@ -275,11 +275,11 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
 
       <div className="flex-1 px-6 py-6 max-w-2xl mx-auto w-full">
         <div className="mb-4">
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-3">
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute mb-3">
             Quarter by Quarter
           </div>
           {quarters.length === 0 && (
-            <div className="text-slate-400 text-sm text-center py-4">No quarter data available.</div>
+            <div className="text-atext-mute text-sm text-center py-4">No quarter data available.</div>
           )}
           <div className="space-y-3">
             {quarters.map((q, i) => {
@@ -291,12 +291,12 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                 <div
                   key={i}
                   className={`rounded-2xl p-4 transition-all duration-300 ${isShowing ? "opacity-100" : "opacity-0 translate-y-2"}`}
-                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{qLabels[i]}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute">{qLabels[i]}</div>
                     {isShowing && (
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-[10px] text-atext-mute">
                         {q.homeGoals}.{q.homeBehinds} — {q.awayGoals}.{q.awayBehinds} (this qtr)
                       </div>
                     )}
@@ -310,7 +310,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                         >
                           {hCum.total}
                         </span>
-                        <div className="text-[10px] text-slate-400">
+                        <div className="text-[10px] text-atext-mute">
                           {hCum.g}.{hCum.b}
                         </div>
                       </div>
@@ -330,7 +330,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                         >
                           {aCum.total}
                         </span>
-                        <div className="text-[10px] text-slate-400">
+                        <div className="text-[10px] text-atext-mute">
                           {aCum.g}.{aCum.b}
                         </div>
                       </div>
@@ -346,9 +346,9 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
               onClick={() => setRevealed((r) => Math.min(r + 1, quarters.length))}
               className="mt-4 w-full rounded-xl py-3 text-sm font-bold uppercase tracking-widest transition-all"
               style={{
-                background: "rgba(0,224,255,0.1)",
+                background: "color-mix(in srgb, var(--A-accent) 10%, transparent)",
                 color: "var(--A-accent)",
-                border: "1px solid rgba(0,224,255,0.25)",
+                border: "1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)",
               }}
             >
               Show {qLabels[revealed]} →
@@ -359,14 +359,14 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
         {result.isAFL && commentary.length > 0 && revealed === quarters.length && (
           <div
             className="rounded-2xl p-4 mt-2"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}
+            style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}
           >
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute mb-3">
               Match Commentary
             </div>
             <div className="space-y-2">
               {commentary.map((line, i) => (
-                <div key={i} className="flex gap-2 text-sm text-slate-300">
+                <div key={i} className="flex gap-2 text-sm text-atext-dim">
                   <span className="text-aaccent flex-shrink-0">›</span>
                   <span>{line}</span>
                 </div>
@@ -376,13 +376,13 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
         )}
       </div>
 
-      <div className="px-6 py-5" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="px-6 py-5" style={{ borderTop: "1px solid var(--A-line)" }}>
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           {revealed < quarters.length && quarters.length > 0 ? (
             <button
               onClick={() => setRevealed(quarters.length)}
-              className="flex-1 py-3 rounded-xl text-sm font-bold text-slate-400 uppercase tracking-widest"
-              style={{ border: "1px solid rgba(255,255,255,0.1)" }}
+              className="flex-1 py-3 rounded-xl text-sm font-bold text-atext-mute uppercase tracking-widest"
+              style={{ border: "1px solid var(--A-line-2)" }}
             >
               Skip to Full Time
             </button>
