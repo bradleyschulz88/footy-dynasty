@@ -1573,6 +1573,24 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       }
     }
 
+    // Streak-driven squad morale: win/lose 3+ in a row creates momentum
+    if (myResult && ev.phase === 'season') {
+      const streak = c.winStreak ?? 0;
+      const margin = Math.abs(myResult.myTotal - myResult.oppTotal);
+      let moraleDelta = 0;
+      if (streak >= 3) moraleDelta += 1;
+      else if (streak <= -3) moraleDelta -= 1;
+      if (myResult.won && margin >= 40) moraleDelta += 1;
+      else if (!myResult.won && !myResult.drew && margin >= 40) moraleDelta -= 1;
+      if (moraleDelta !== 0) {
+        c.squad = c.squad.map((p) =>
+          c.lineup.includes(p.id)
+            ? { ...p, morale: clamp((p.morale ?? 70) + moraleDelta, cfg.moraleFloor, 100) }
+            : p
+        );
+      }
+    }
+
     if (myResult && myResult.isHome) {
       const weather = ensureWeatherForWeek(c, ev.round);
       c.groundCondition = applyGroundDegradation(c.groundCondition ?? 85, weather, c.facilities?.stadium?.level ?? 1);
@@ -1639,11 +1657,19 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     if (ev.phase === 'season' && myResult && !c.isSacked) {
       const cap = effectiveWageCap(c);
       const wages = currentPlayerWageBill(c);
-      if (cap > 0 && wages > cap && (c.capBreachedBoardNoteSeason ?? null) !== c.season) {
-        c.capBreachedBoardNoteSeason = c.season;
+      if (cap > 0 && wages > cap) {
+        const overRatio = wages / cap - 1;
+        const confidenceDrain = overRatio > 0.15 ? -2 : -1;
         ensureCareerBoard(c, findClub(c.clubId), league);
-        applyBoardConfidenceDelta(c, -2);
-        c.news = [{ week: ev.round, type: 'board', text: '⚖️ Player wages are above the effective salary cap. The board wants a tighter list or discipline on renewals.' }, ...(c.news || [])].slice(0, 25);
+        applyBoardConfidenceDelta(c, confidenceDrain);
+        if ((c.capBreachedBoardNoteSeason ?? null) !== c.season) {
+          c.capBreachedBoardNoteSeason = c.season;
+          const pct = Math.round(overRatio * 100);
+          c.news = [{
+            week: ev.round, type: 'board',
+            text: `⚖️ Cap breach (${pct}% over): board confidence draining every round until wages are trimmed.`,
+          }, ...(c.news || [])].slice(0, 25);
+        }
       }
     }
 
