@@ -45,6 +45,30 @@ export function lineupPlayersOrdered(squad, lineupIds) {
     .filter(Boolean);
 }
 
+/** Available for selection this week (not injured or suspended). */
+export function isPlayerAvailable(player) {
+  return !!player && (player.injured ?? 0) === 0 && (player.suspended ?? 0) === 0;
+}
+
+/**
+ * Null out lineup ids that no longer map to a squad player (retired, released,
+ * traded) or whose player can't take the field (injured/suspended). Slots are
+ * cleared in place so the rest of the selected side keeps its positions.
+ */
+export function sanitizeLineup(lineup, squad, { dropUnavailable = true } = {}) {
+  const byId = new Map((squad || []).map((p) => [String(p.id), p]));
+  const L = (lineup || []).map((id) => {
+    if (id == null || id === "") return null;
+    const p = byId.get(String(id));
+    if (!p) return null;
+    if (dropUnavailable && !isPlayerAvailable(p)) return null;
+    return id;
+  });
+  let end = L.length;
+  while (end > 0 && (L[end - 1] == null || L[end - 1] === "")) end--;
+  return L.slice(0, end);
+}
+
 /** Remove one id from lineup (splices that index out so fixed map slots stay contiguous). */
 export function removeIdFromLineup(lineup, id) {
   const bid = String(id);
