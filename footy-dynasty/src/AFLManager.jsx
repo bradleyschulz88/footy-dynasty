@@ -105,9 +105,9 @@ import { advanceCareerNextEvent, triggerSackState, fastForwardFinals } from './l
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
 
-/** Deep-space dark theme — dirC maps --A-* tokens to neon teal palette. */
+/** Stadium Carbon dark theme — dirB maps --A-* tokens to black + orange palette. */
 function themeWrapperClass() {
-  return 'dirC';
+  return 'dirB';
 }
 
 function AppMotionConfig({ reducedMotion, children }) {

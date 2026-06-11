@@ -97,7 +97,10 @@ import {
   assignDynastyQuestsForSeason,
   dynastyRecordHomeAwayWin,
   ensureDynastyAssignments,
+  ensureLegacyMilestones,
   finalizeDynastyLadderAtSeasonEnd,
+  recordCareerWin,
+  checkLegacyMilestonesAfterSeason,
 } from './dynastyQuests.js';
 
 const ROUND_REPORT_WIN_CLOSERS = [
@@ -822,6 +825,7 @@ function finishSeason(c, league) {
     relegations: (c.coachStats?.relegations || 0) + (relegated ? 1 : 0),
     seasonsManaged: (c.coachStats?.seasonsManaged || 1) + 1,
   };
+  checkLegacyMilestonesAfterSeason(c, league.tier);
 
   c.groundCondition = recoverGroundPreseason(c.groundCondition ?? 85);
   c.weeklyWeather = {};
@@ -973,6 +977,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
   c.lineup = sanitizeLineup(c.lineup, c.squad);
 
   ensureDynastyAssignments(c, league?.tier ?? 3, competitionClubsForCareer(c).length || (league?.clubs?.length ?? 0));
+  ensureLegacyMilestones(c, league?.tier ?? 3);
 
   if (c.inFinals) {
     advanceFinalsWeek(c, league);
@@ -1517,7 +1522,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       ensureCareerBoard(c, findClub(c.clubId), league);
       applyBoardConfidenceDelta(c, boardDelta);
       c.lastBoardConfidenceDelta = c.finance.boardConfidence - prevBoard;
-      if (myResult.won) dynastyRecordHomeAwayWin(c);
+      if (myResult.won) { dynastyRecordHomeAwayWin(c); recordCareerWin(c); }
       const rdBase = `Rd ${ev.round}: ${myResult.isHome ? 'vs' : '@'} ${myResult.opp?.short} ${myResult.myTotal}–${myResult.oppTotal} (${myResult.won ? 'W' : myResult.drew ? 'D' : 'L'})`;
       const rdFlavor = myResult.won ? pick(ROUND_REPORT_WIN_CLOSERS) : myResult.drew ? pick(ROUND_REPORT_DRAW_CLOSERS) : pick(ROUND_REPORT_LOSS_CLOSERS);
       c.news = [{ week: ev.round, type: myResult.won ? 'win' : myResult.drew ? 'draw' : 'loss',

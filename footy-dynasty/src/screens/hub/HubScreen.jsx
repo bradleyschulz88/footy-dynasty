@@ -324,49 +324,70 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
 
   return (
     <motion.div className="space-y-5" variants={hubContainer} initial="hidden" animate="show">
-      {/* Hero Banner */}
-      <motion.div variants={hubItem} className="panel rounded-2xl overflow-hidden relative min-h-[160px] border border-aline">
-        <div className="absolute inset-0 opacity-40" style={{background:`linear-gradient(135deg, ${club.colors[0]}33 0%, transparent 55%)`}} />
-        <div className="absolute inset-0" style={{background:`radial-gradient(ellipse at 80% 50%, ${club.colors[1]}22, transparent 65%)`}} />
-        <div className="absolute right-6 top-0 bottom-0 flex items-center opacity-20">
-          <Jersey kit={career.kits.home} size={200} />
-        </div>
-        <div className="relative z-10 p-6 flex items-end justify-between">
-          <div>
-            <div className="label mb-1 dim">{league.name} · Season {career.season}</div>
-            <h1 className="display text-5xl tracking-wide text-atext leading-none">{club.name.toUpperCase()}</h1>
-            <div className="flex items-center gap-2 mt-3 flex-wrap">
-              <Pill color="var(--A-accent)">Tier {league.tier}</Pill>
-              {career.phase === 'preseason'
-                ? <Pill color="var(--A-accent)">Pre-Season {career.season}</Pill>
-                : career.inFinals
-                  ? <Pill color="var(--A-neg)">Finals</Pill>
-                  : <Pill color="var(--A-accent)">Round {career.week}</Pill>}
-              {hubRoundTheme?.short && (
-                <Pill color="var(--A-accent-2)">{hubRoundTheme.short}</Pill>
+      {/* Hero — club identity + advance CTA */}
+      <motion.div variants={hubItem} className="panel rounded-2xl overflow-hidden border border-aline">
+        <div className="h-1.5" style={{background:`linear-gradient(90deg, ${club.colors[0]}, ${club.colors[1]})`}} />
+        <div className="p-4 md:p-5">
+          {/* Club row */}
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center font-display text-xl flex-shrink-0 shadow-lg"
+                style={{background:`linear-gradient(135deg,${club.colors[0]},${club.colors[1]})`, color:club.colors[2], boxShadow:`0 4px 12px ${club.colors[0]}44`}}>
+                {club.short}
+              </div>
+              <div className="min-w-0">
+                <h1 className="display text-3xl md:text-4xl tracking-wide text-atext leading-none truncate">{club.name.toUpperCase()}</h1>
+                <div className="text-[11px] text-atext-dim mt-0.5 truncate">
+                  {league.name} · Season {career.season}
+                  {hubRoundTheme?.short && <> · <span style={{color:'var(--A-accent-2)'}}>{hubRoundTheme.short}</span></>}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 flex-shrink-0">
+              <div className="text-center">
+                <div className="font-display text-4xl md:text-5xl leading-none" style={{color: posColor}}>{myLadderPos || '—'}</div>
+                <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono">Pos</div>
+              </div>
+              {myRow && (
+                <div className="text-center hidden sm:block">
+                  <div className="font-display text-3xl leading-none text-atext">{myRow.pts || 0}</div>
+                  <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono">Pts</div>
+                </div>
               )}
-              <Pill color={posColor}>#{myLadderPos || "—"} on Ladder</Pill>
-              {league.tier === 1 && !career.inFinals && career.phase !== 'preseason' && (() => {
-                const mn = finalsMagicNumber(career);
-                return mn ? <Pill color={mn.clinched ? 'var(--A-pos)' : 'var(--A-accent-2)'}>{mn.label}</Pill> : null;
-              })()}
-              {myRow && <Pill color="#64748B">{myRow.W}W {myRow.L}L {myRow.D}D</Pill>}
-              {career.clubCulture && (() => {
-                const cultureColor = career.clubCulture.tier === 'Elite' ? '#FFD200' : career.clubCulture.tier === 'Strong' ? 'var(--A-pos)' : career.clubCulture.tier === 'Developing' ? 'var(--A-accent)' : 'var(--A-text-mute)';
-                return (
-                  <Pill color={cultureColor}>
-                    Culture: {career.clubCulture.tier} {Math.round(career.clubCulture.score ?? 60)}
-                  </Pill>
-                );
-              })()}
             </div>
           </div>
-          <div className="hidden md:flex flex-col items-end gap-1">
-            <div className="font-display text-7xl leading-none" style={{color: posColor}}>
-              {myRow?.pts || 0}
-            </div>
-            <div className="text-[10px] text-atext-dim uppercase tracking-widest">Points</div>
+          {/* Pills */}
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            <Pill color="var(--A-accent)">Tier {league.tier}</Pill>
+            {career.phase === 'preseason'
+              ? <Pill color="var(--A-accent)">Pre-Season</Pill>
+              : career.inFinals
+                ? <Pill color="var(--A-neg)">Finals</Pill>
+                : <Pill color="var(--A-accent)">Round {career.week}</Pill>}
+            {league.tier === 1 && !career.inFinals && career.phase !== 'preseason' && (() => {
+              const mn = finalsMagicNumber(career);
+              return mn ? <Pill color={mn.clinched ? 'var(--A-pos)' : 'var(--A-accent-2)'}>{mn.label}</Pill> : null;
+            })()}
+            {myRow && <Pill color="var(--A-text-mute)">{myRow.W}W {myRow.L}L {myRow.D}D</Pill>}
+            {career.clubCulture && (() => {
+              const cultureColor = career.clubCulture.tier === 'Elite' ? 'var(--A-accent-2)' : career.clubCulture.tier === 'Strong' ? 'var(--A-pos)' : career.clubCulture.tier === 'Developing' ? 'var(--A-accent)' : 'var(--A-text-mute)';
+              return <Pill color={cultureColor}>Culture: {career.clubCulture.tier}</Pill>;
+            })()}
           </div>
+          {/* Advance CTA */}
+          <button
+            type="button"
+            onClick={onAdvance}
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-display text-xl tracking-wider transition-all active:scale-[0.98]"
+            style={{
+              background: 'linear-gradient(135deg, var(--A-accent), var(--A-accent-2))',
+              color: '#0A0A0A',
+              boxShadow: '0 4px 16px color-mix(in srgb, var(--A-accent) 25%, transparent)',
+            }}
+          >
+            <Play className="w-5 h-5" fill="currentColor" />
+            {advanceCtx.buttonLabel.toUpperCase()}
+          </button>
         </div>
       </motion.div>
 
@@ -377,7 +398,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
             onClick={() => { setScreen('club'); setTab('finances'); }}
             className="text-left"
           >
-            <Pill color={capPctHub >= 100 ? '#E84A6F' : capPctHub >= 90 ? '#FFB347' : '#64748B'}>
+            <Pill color={capPctHub >= 100 ? 'var(--A-neg)' : capPctHub >= 90 ? 'var(--A-accent-2)' : 'var(--A-text-mute)'}>
               Player cap {capPctHub}% · {fmtK(playerWagesHub)} / {fmtK(cap)}
             </Pill>
           </button>
@@ -389,9 +410,11 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         </motion.div>
       )}
 
-      <HubSimulationSnippet career={career} />
+      {/* Match preview — moved up so it's the first thing after the hero */}
+      <motion.div variants={hubItem}>
+        <MatchPreviewPanel career={career} league={league} onUpdateCareer={updateCareer} />
+      </motion.div>
 
-      {/* Ground & Footy Trip strip — Spec 3D + 3B + Committee */}
       {/* Action board + coaching suggestions */}
       <motion.div variants={hubItem}>
         <TaskList career={career} onNavigate={handleTaskNavigate} myLadderPos={myLadderPos} league={league} />
@@ -418,7 +441,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       {career.dynasty?.quests?.length > 0 && (
         <motion.div variants={hubItem} className={`${css.panel} p-4`}>
           <div className="flex flex-wrap items-center gap-2 mb-2">
-            <Medal className="w-4 h-4 text-[#E8C547]" aria-hidden />
+            <Medal className="w-4 h-4 text-aaccent-2" aria-hidden />
             <h3 className="font-display text-lg text-atext tracking-wide">DYNASTY GOALS</h3>
             <span className="text-[10px] font-mono text-atext-mute uppercase tracking-wider">
               {(career.dynasty?.lifetimeGoals ?? 0)} lifetime completes
@@ -447,6 +470,39 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                 </span>
               </li>
             ))}
+          </ul>
+        </motion.div>
+      )}
+
+      {career.dynasty?.milestones?.length > 0 && (
+        <motion.div variants={hubItem} className={`${css.panel} p-4`}>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <Trophy className="w-4 h-4 text-aaccent-2" aria-hidden />
+            <h3 className="font-display text-lg text-atext tracking-wide">LEGACY MILESTONES</h3>
+            <span className="text-[10px] font-mono text-atext-mute uppercase tracking-wider">
+              career-long goals
+            </span>
+          </div>
+          <ul className="space-y-2">
+            {(career.dynasty.milestones || []).map((m) => {
+              const hasCount = m.kind === "career_wins" || m.kind === "premierships" || m.kind === "seasons_managed";
+              const pct = hasCount && m.target > 0 ? Math.min(100, Math.round(((m.progress ?? 0) / m.target) * 100)) : 0;
+              return (
+                <li key={m.id} className="rounded-xl border border-aline bg-apanel-2/80 px-3 py-2 space-y-1.5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="text-xs text-atext leading-snug min-w-0 flex-1">{m.label}</div>
+                    <span className={`text-[10px] font-black font-mono uppercase tracking-wider shrink-0 px-2 py-1 rounded-md border border-aline ${m.complete ? "text-apos" : "text-atext-dim"}`}>
+                      {m.complete ? "Done" : hasCount ? `${m.progress ?? 0}/${m.target}` : "Active"}
+                    </span>
+                  </div>
+                  {hasCount && !m.complete && (
+                    <div className="h-1 rounded-full bg-apanel overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "var(--A-accent)" }} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </motion.div>
       )}
@@ -510,7 +566,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         return (
           <motion.div variants={hubItem} className={`${css.panel} p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`} style={{ borderColor: '#FFB347', background: 'rgba(255,179,71,0.06)' }}>
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-[#FFB347] flex-shrink-0 mt-0.5" />
+              <FileText className="w-5 h-5 text-aaccent-2 flex-shrink-0 mt-0.5" />
               <div>
                 <div className="font-bold text-sm text-atext">Renewals need you</div>
                 <div className="text-xs text-atext-dim mt-1 leading-relaxed">
@@ -536,10 +592,6 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           </motion.div>
         );
       })()}
-
-      <motion.div variants={hubItem}>
-        <MatchPreviewPanel career={career} league={league} onUpdateCareer={updateCareer} />
-      </motion.div>
 
       {/* Last Event Result Card */}
       {lastEv && (
@@ -605,7 +657,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       <motion.div variants={hubItem} className={css.panel}>
         <div className="px-4 pt-4 pb-2 flex items-center justify-between">
           <h3 className="font-display text-lg text-atext tracking-wide">UPCOMING</h3>
-          <button type="button" onClick={() => setScreen('schedule')} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-[#F0A558]">Full calendar →</button>
+          <button type="button" onClick={() => setScreen('schedule')} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-aaccent-2">Full calendar →</button>
         </div>
         {upcoming7.length === 0 ? (
           <div className="px-4 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -616,7 +668,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               type="button"
               onClick={onAdvance}
               className="rounded-xl px-3 py-2 text-[11px] font-bold text-white inline-flex items-center gap-2 shrink-0"
-              style={{ background: 'linear-gradient(135deg,var(--A-accent),#D07A2A)' }}
+              style={{ background: 'linear-gradient(135deg,var(--A-accent),var(--A-accent-2))' }}
             >
               <Play className="w-4 h-4" />
               <span>{advanceCtx.buttonLabel}</span>
@@ -661,7 +713,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               <div className="text-[10px] font-mono text-atext-mute uppercase tracking-widest mb-1">Next up</div>
               <div className="text-xs font-semibold text-atext mb-1">{advanceCtx.nextEventShort}</div>
               <button type="button" onClick={onAdvance} className="rounded-xl px-3 py-2 text-[11px] font-bold text-white flex flex-col items-center gap-1"
-                style={{background:'linear-gradient(135deg,var(--A-accent),#D07A2A)'}}>
+                style={{background:'linear-gradient(135deg,var(--A-accent),var(--A-accent-2))'}}>
                 <Play className="w-4 h-4" />
                 <span>{advanceCtx.buttonLabel}</span>
               </button>
@@ -680,7 +732,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         const roundName = finalsRoundLabel(alive.length, league?.tier ?? 1);
         const seed = finalsSeedFor(career.clubId, career.finalsBracket);
         return (
-<div className="rounded-2xl p-4 flex items-center justify-between" style={{background:"linear-gradient(135deg, rgba(0, 224, 255, 0.12), rgba(252, 211, 77, 0.06))", border:"2px solid rgba(0, 224, 255, 0.35)"}}>
+<div className="rounded-2xl p-4 flex items-center justify-between" style={{background:"color-mix(in srgb, var(--A-accent) 8%, transparent)", border:"2px solid color-mix(in srgb, var(--A-accent) 35%, transparent)"}}>
 <div className="flex items-center gap-3">
             <span className="text-3xl">🏆</span>
 <div>
@@ -701,7 +753,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       })()}
 
       {career.postSeasonPhase === 'trade_period' && career.inTradePeriod && (
-        <div className="rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3" style={{background:"linear-gradient(135deg, rgba(74, 232, 154, 0.12), rgba(0, 224, 255, 0.08))", border:"2px solid rgba(74, 232, 154, 0.4)"}}>
+        <div className="rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3" style={{background:"color-mix(in srgb, var(--A-pos) 8%, transparent)", border:"2px solid color-mix(in srgb, var(--A-pos) 35%, transparent)"}}>
           <div className="flex items-center gap-3 min-w-[200px]">
             <span className="text-3xl">🔀</span>
             <div>
@@ -723,7 +775,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       )}
 
       {career.postSeasonPhase === 'draft_waiting' && (
-        <div className="rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3" style={{background:"linear-gradient(135deg, rgba(255, 179, 71, 0.12), rgba(0, 224, 255, 0.06))", border:"2px solid rgba(255, 179, 71, 0.35)"}}>
+        <div className="rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3" style={{background:"color-mix(in srgb, var(--A-accent-2) 8%, transparent)", border:"2px solid color-mix(in srgb, var(--A-accent-2) 30%, transparent)"}}>
           <div className="flex items-center gap-3">
             <span className="text-3xl">📋</span>
             <div>
@@ -737,7 +789,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
 
       {/* Premiership Banner */}
       {career.premiership === career.season && (
-        <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"linear-gradient(135deg, rgba(252, 211, 77, 0.18), rgba(0, 224, 255, 0.08))", border:"2px solid rgba(252, 211, 77, 0.5)"}}>
+        <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"color-mix(in srgb, var(--A-accent-2) 12%, transparent)", border:"2px solid color-mix(in srgb, var(--A-accent-2) 45%, transparent)"}}>
           <span className="text-3xl">🎉</span>
                     <div>
             <div className="font-display text-2xl text-aaccent">REIGNING PREMIERS!</div>
@@ -746,7 +798,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         </div>
       )}
       {career.premiership === career.season - 1 && career.premiership !== career.season && (
-        <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"linear-gradient(135deg, rgba(252, 211, 77, 0.12), rgba(0, 224, 255, 0.06))", border:"2px solid rgba(252, 211, 77, 0.35)"}}>
+        <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"color-mix(in srgb, var(--A-accent-2) 8%, transparent)", border:"2px solid color-mix(in srgb, var(--A-accent-2) 30%, transparent)"}}>
           <span className="text-3xl">🎉</span>
           <div>
             <div className="font-display text-2xl text-aaccent">BACK-TO-BACK PREMIERS!</div>
@@ -769,7 +821,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         <div className={`${css.panel} md:col-span-3`}>
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <h3 className="font-display text-xl tracking-wide text-atext">LADDER</h3>
-            <button onClick={()=>setScreen("compete")} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-[#F0A558]">Full table →</button>
+            <button onClick={()=>setScreen("compete")} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-aaccent-2">Full table →</button>
           </div>
           <div>
             {top5.map((row, i) => {
@@ -780,7 +832,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               return (
                 <React.Fragment key={row.id}>
                   <div className={`flex items-center gap-4 px-5 py-3 transition-colors ${isMe ? "" : "hover:bg-aaccent/5"}`}
-                    style={isMe ? {background:"linear-gradient(90deg, rgba(0, 224, 255, 0.06), transparent)", borderLeft:"3px solid var(--A-accent)"} : {borderLeft:"3px solid transparent"}}>
+                    style={isMe ? {background:"linear-gradient(90deg, color-mix(in srgb, var(--A-accent) 8%, transparent), transparent)", borderLeft:"3px solid var(--A-accent)"} : {borderLeft:"3px solid transparent"}}>
                     <div className="font-display text-2xl w-6 text-center flex-shrink-0" style={{color: rankColor}}>{i+1}</div>
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm flex-shrink-0"
                       style={{background:`linear-gradient(135deg,${c.colors[0]},${c.colors[1]})`, color:c.colors[2]}}>
@@ -809,7 +861,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               <>
                 <div className="px-5 py-1 text-atext-mute text-xs">· · ·</div>
                 <div className="flex items-center gap-4 px-5 py-3"
-                  style={{background:"linear-gradient(90deg, rgba(0, 224, 255, 0.06), transparent)", borderLeft:"3px solid var(--A-accent)"}}>
+                  style={{background:"linear-gradient(90deg, color-mix(in srgb, var(--A-accent) 8%, transparent), transparent)", borderLeft:"3px solid var(--A-accent)"}}>
                   <div className="font-display text-2xl w-6 text-center text-aaccent">{myLadderPos}</div>
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm"
                     style={{background:`linear-gradient(135deg,${club.colors[0]},${club.colors[1]})`, color:club.colors[2]}}>
@@ -932,7 +984,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
             <div><div className="font-display text-2xl text-apos">{career.coachStats.totalWins ?? 0}</div><div className={css.label}>Wins</div></div>
             <div><div className="font-display text-2xl text-aneg">{career.coachStats.totalLosses ?? 0}</div><div className={css.label}>Losses</div></div>
             <div><div className="font-display text-2xl text-atext">{career.coachStats.totalDraws ?? 0}</div><div className={css.label}>Draws</div></div>
-            <div><div className="font-display text-2xl text-[#FFD200]">{career.coachStats.premierships ?? 0}</div><div className={css.label}>Flags</div></div>
+            <div><div className="font-display text-2xl text-aaccent-2">{career.coachStats.premierships ?? 0}</div><div className={css.label}>Flags</div></div>
             <div><div className="font-display text-2xl text-aaccent">{career.coachStats.promotions ?? 0}</div><div className={css.label}>Promotions</div></div>
             <div><div className="font-display text-2xl text-atext-dim">{career.coachStats.seasonsManaged ?? 1}</div><div className={css.label}>Seasons</div></div>
           </div>
@@ -954,19 +1006,19 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       <motion.div variants={hubItem} className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { icon: Users,    label: "Manage Squad",  sub: "Players & lineup", screen: "squad", color: "var(--A-accent)" },
-          { icon: Dumbbell, label: "Set Training",  sub: "Intensity & focus", screen: "squad", color: "#4ADBE8" },
-          { icon: Building2,label: "Upgrade Club",  sub: "Facilities & staff", screen: "club",  color: "#4AE89A" },
-          { icon: Repeat,   label: "Trade & Draft", sub: "Signings & youth",   screen: "recruit",color: "#E84A6F" },
+          { icon: Dumbbell, label: "Set Training",  sub: "Intensity & focus", screen: "squad", color: "var(--A-accent-2)" },
+          { icon: Building2,label: "Upgrade Club",  sub: "Facilities & staff", screen: "club",  color: "var(--A-pos)" },
+          { icon: Repeat,   label: "Trade & Draft", sub: "Signings & youth",   screen: "recruit",color: "var(--A-neg)" },
         ].map(q => {
           const Icon = q.icon;
           return (
             <button key={q.label} onClick={()=>setScreen(q.screen)}
               className="rounded-2xl p-4 text-left flex items-center gap-4 transition-all group"
               style={{background:"var(--A-panel)", border:"1px solid var(--A-line)"}}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor=q.color+"66"; e.currentTarget.style.background="rgba(0,224,255,0.05)";}}
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=q.color; e.currentTarget.style.background="color-mix(in srgb, var(--A-accent) 5%, var(--A-panel))";}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--A-line)"; e.currentTarget.style.background="var(--A-panel)";}}>
               <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{background:`${q.color}18`, color:q.color}}>
+                style={{background:`color-mix(in srgb, ${q.color} 12%, transparent)`, color:q.color}}>
                 <Icon className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">

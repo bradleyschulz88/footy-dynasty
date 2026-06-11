@@ -10,6 +10,80 @@ export function ensureDynastyState(career) {
   if (typeof career.dynasty.lifetimeGoals !== "number") career.dynasty.lifetimeGoals = 0;
 }
 
+// ---------- Legacy (cross-season) milestones ----------
+
+const LEGACY_MILESTONE_TEMPLATES = [
+  { id: "legacy_wins_50",   kind: "career_wins",     label: "Win 50 career games",                  target: 50,  repAward: 8  },
+  { id: "legacy_wins_100",  kind: "career_wins",     label: "Win 100 career games",                 target: 100, repAward: 15 },
+  { id: "legacy_wins_200",  kind: "career_wins",     label: "Win 200 career games",                 target: 200, repAward: 25 },
+  { id: "legacy_flag_1",    kind: "premierships",    label: "Win your first premiership",           target: 1,   repAward: 20 },
+  { id: "legacy_flag_3",    kind: "premierships",    label: "Win 3 premierships",                   target: 3,   repAward: 30 },
+  { id: "legacy_flag_5",    kind: "premierships",    label: "Build a dynasty — 5 premierships",     target: 5,   repAward: 50 },
+  { id: "legacy_seasons_5", kind: "seasons_managed", label: "Coach for 5 seasons",                  target: 5,   repAward: 8  },
+  { id: "legacy_seasons_10",kind: "seasons_managed", label: "Coach for 10 seasons",                 target: 10,  repAward: 15 },
+];
+
+/** Initialises milestones once per career (not reset each season). */
+export function ensureLegacyMilestones(career, leagueTier) {
+  ensureDynastyState(career);
+  if (Array.isArray(career.dynasty.milestones)) return;
+  const startTier = leagueTier ?? 3;
+  career.dynasty.startTier = career.dynasty.startTier ?? startTier;
+  career.dynasty.careerWins = career.dynasty.careerWins ?? 0;
+  const templates = [...LEGACY_MILESTONE_TEMPLATES];
+  if (startTier > 2) templates.push({ id: "legacy_tier2", kind: "tier_reached", label: "Rise to Tier 2 (state league)", target: 2, repAward: 12 });
+  if (startTier > 1) templates.push({ id: "legacy_tier1", kind: "tier_reached", label: "Reach the AFL (Tier 1)",          target: 1, repAward: 25 });
+  career.dynasty.milestones = templates.map((t) => ({ ...t, progress: 0, complete: false, announced: false }));
+}
+
+/** Call after every regular-season win (alongside dynastyRecordHomeAwayWin). */
+export function recordCareerWin(career) {
+  if (!Array.isArray(career.dynasty?.milestones)) return;
+  career.dynasty.careerWins = (career.dynasty.careerWins ?? 0) + 1;
+  const wins = career.dynasty.careerWins;
+  for (const m of career.dynasty.milestones) {
+    if (m.complete || m.kind !== "career_wins") continue;
+    m.progress = wins;
+    if (wins >= m.target) {
+      m.complete = true;
+      career.coachReputation = clamp((career.coachReputation ?? 30) + (m.repAward || 5), 0, 100);
+      career.coachTier = coachTierFromScore(career.coachReputation);
+      career.dynasty.lifetimeGoals += 1;
+      pushDynastyNews(career, `Legacy milestone: "${m.label}" — reputation +${m.repAward}.`);
+      m.announced = true;
+    }
+  }
+}
+
+/** Call at season end after coachStats has been updated. */
+export function checkLegacyMilestonesAfterSeason(career, leagueTier) {
+  if (!Array.isArray(career.dynasty?.milestones)) return;
+  const premierships = career.coachStats?.premierships ?? 0;
+  const seasons = career.coachStats?.seasonsManaged ?? 1;
+  const tier = leagueTier ?? 3;
+  for (const m of career.dynasty.milestones) {
+    if (m.complete) continue;
+    let shouldComplete = false;
+    if (m.kind === "premierships") {
+      m.progress = premierships;
+      shouldComplete = premierships >= m.target;
+    } else if (m.kind === "seasons_managed") {
+      m.progress = seasons;
+      shouldComplete = seasons >= m.target;
+    } else if (m.kind === "tier_reached") {
+      shouldComplete = tier <= m.target;
+    }
+    if (shouldComplete) {
+      m.complete = true;
+      career.coachReputation = clamp((career.coachReputation ?? 30) + (m.repAward || 5), 0, 100);
+      career.coachTier = coachTierFromScore(career.coachReputation);
+      career.dynasty.lifetimeGoals += 1;
+      pushDynastyNews(career, `Legacy milestone: "${m.label}" — reputation +${m.repAward}.`);
+      m.announced = true;
+    }
+  }
+}
+
 /** Call on load / advance so migrated saves receive quests for the current season. */
 export function ensureDynastyAssignments(career, leagueTier, teamCount) {
   ensureDynastyState(career);

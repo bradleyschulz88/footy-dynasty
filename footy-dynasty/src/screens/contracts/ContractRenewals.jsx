@@ -213,7 +213,7 @@ export function RenewalsTab({ career, updateCareer }) {
                   <div className="text-atext-mute">Current</div>
                   <div className="text-atext text-right font-mono">{fmtK(r.currentWage)}/yr</div>
                   <div className="text-atext-mute">Demand</div>
-                  <div className="text-right font-mono font-bold" style={{ color: wageDelta >= 0 ? '#FFB347' : '#4AE89A' }}>
+                  <div className="text-right font-mono font-bold" style={{ color: wageDelta >= 0 ? '#FFB347' : 'var(--A-pos)' }}>
                     {fmtK(r.proposedWage)}/yr <span className="text-atext-mute font-normal">({wageDelta >= 0 ? '+' : ''}{fmtK(wageDelta)})</span>
                   </div>
                   <div className="text-atext-mute">Years</div>

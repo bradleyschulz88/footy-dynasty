@@ -142,9 +142,9 @@ export function BottomNav({
               }`}
               style={{
                 background: advanceDisabled
-                  ? "linear-gradient(135deg,#475569,#334155)"
-                  : "linear-gradient(135deg, var(--A-accent), #0099b0)",
-                boxShadow: advanceDisabled ? "none" : "0 6px 20px rgba(0,224,255,0.35)",
+                  ? "linear-gradient(135deg,#3a3a3a,#242424)"
+                  : "linear-gradient(135deg, var(--A-accent), var(--A-accent-2))",
+                boxShadow: advanceDisabled ? "none" : "0 6px 20px color-mix(in srgb, var(--A-accent) 35%, transparent)",
               }}
             >
               <Play className="w-6 h-6" fill="currentColor" />

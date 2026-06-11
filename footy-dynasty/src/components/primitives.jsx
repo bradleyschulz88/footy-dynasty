@@ -155,15 +155,17 @@ export const GlobalStyle = () => (
     ::-webkit-scrollbar { width:5px; height:5px; }
     ::-webkit-scrollbar-track { background:var(--A-bg); }
     ::-webkit-scrollbar-thumb { background:var(--A-line-2); border-radius:4px; }
-    ::-webkit-scrollbar-thumb:hover { background:rgba(0,224,255,0.35); }
+    ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.22); }
     .no-scrollbar { scrollbar-width:none; -ms-overflow-style:none; }
     .no-scrollbar::-webkit-scrollbar { display:none; width:0; height:0; }
-    @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(13,148,136,0.2);}50%{box-shadow:0 0 14px 3px rgba(13,148,136,0.12);} }
+    @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(255,90,31,0.18);}50%{box-shadow:0 0 14px 3px rgba(255,90,31,0.1);} }
     .glow { animation: pulseGlow 2.5s ease-in-out infinite; }
     @keyframes slideIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
     .anim-in { animation: slideIn 0.2s ease-out; }
     .dirA select option { background:var(--A-panel); color:var(--A-text); }
     .dirA select { color:var(--A-text); background:var(--A-panel); border:1px solid var(--A-line); border-radius:8px; }
+    .dirB select option { background:var(--B-panel); color:var(--B-text); }
+    .dirB select { color:var(--B-text); background:var(--B-panel); border:1px solid var(--B-line-2); border-radius:4px; }
     .dirS select option { background:var(--A-panel); color:var(--A-text); }
     .dirS select { color:var(--A-text); background:var(--A-panel); border:1px solid var(--A-line); border-radius:8px; }
     input[type=color] { padding:2px; cursor:pointer; border-radius:6px; }
