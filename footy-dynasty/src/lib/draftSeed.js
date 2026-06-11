@@ -97,7 +97,7 @@ export function seedNationalDraft(c, league, options = {}) {
   c.draftOrder = buildSnakeDraftOrder(round1Ids, rounds, bonusPicks);
   c.lastDraftOrderSnapshot = round1Ids;
   c.draftOrderInaugural = useInaugural;
-  c.draftStartDate = `${season}-01-10`;
+  c.draftStartDate = `${season - 1}-11-20`;
   c.draftPhase = c.draftPhase === 'complete' ? 'complete' : 'scouting';
   c.draftBriefingAck = false;
   c.draftHistory = c.draftHistory || [];

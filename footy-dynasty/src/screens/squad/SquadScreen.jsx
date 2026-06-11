@@ -703,7 +703,16 @@ function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
     updateCareer({ training: { ...t, intensity: preset.intensity, focus: { ...preset.focus } } });
   };
 
-  const today = career.currentDate || `${career.season - 1}-12-01`;
+  const recommendedPreset = () => {
+    const phase = career.phase || 'preseason';
+    const avgAge = (career.squad || []).reduce((s, p) => s + (p.age || 24), 0) / Math.max(1, (career.squad || []).length);
+    if (phase === 'finals') return TRAINING_PRESETS.find(p => p.key === 'maintenance');
+    if (phase === 'season') return TRAINING_PRESETS.find(p => p.key === 'maintenance');
+    if (avgAge <= 23) return TRAINING_PRESETS.find(p => p.key === 'youth');
+    return TRAINING_PRESETS.find(p => p.key === 'preseason');
+  };
+
+  const today = career.currentDate || `${career.season - 1}-11-01`;
   const nextTraining = (career.eventQueue || []).find((e) => e.type === "training" && !e.completed && e.date >= today);
   const nextTrainingInfo = nextTraining ? TRAINING_INFO[nextTraining.subtype] : null;
 
@@ -758,7 +767,16 @@ function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
         </div>
       </div>
       <div className={`${css.panel} p-4 md:p-5`}>
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute mb-2">Quick presets</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute">Quick presets</div>
+          <button
+            type="button"
+            onClick={() => { const rec = recommendedPreset(); if (rec) applyPreset(rec); }}
+            className={`${css.btnPrimary} flex items-center gap-1.5 text-xs px-3 py-2 min-h-[36px]`}
+          >
+            <Wand2 className="w-3.5 h-3.5" /> Recommended
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
           {TRAINING_PRESETS.map((pr) => (
             <button

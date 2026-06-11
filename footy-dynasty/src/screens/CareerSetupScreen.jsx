@@ -221,7 +221,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
         localDivision: startDiv,
         season: SEASON,
         week: 0,
-        currentDate: `${SEASON - 1}-12-01`,
+        currentDate: `${SEASON - 1}-11-01`,
         phase: 'preseason',
         eventQueue,
         lastEvent: null,

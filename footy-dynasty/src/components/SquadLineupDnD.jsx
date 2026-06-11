@@ -353,8 +353,14 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
   }
 
   const autoSelect = () => {
+    const eligible = [...squad].filter(p => !p.injured && !p.suspended);
+    const sorted = eligible.sort((a, b) => {
+      const fitA = Math.max(50, a.fitness ?? 85) / 100;
+      const fitB = Math.max(50, b.fitness ?? 85) / 100;
+      return (b.overall || 0) * fitB - (a.overall || 0) * fitA;
+    });
     updateCareer({
-      lineup: [...squad].sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map((p) => p.id),
+      lineup: sorted.slice(0, LINEUP_CAP).map(p => p.id),
     });
   };
 
@@ -483,7 +489,7 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
                 : `w-full ${css.btnGhost} text-xs py-2.5`
             }
           >
-            Auto-fill 23 (by rating)
+            Auto-select best 23
           </button>
         </aside>
       </div>
