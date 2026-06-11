@@ -2,7 +2,7 @@
 // Extracted from AFLManager.jsx so the shell stays UI-focused.
 
 import { rand, pick, rng, TIER_SCALE } from './rng.js';
-import { PYRAMID, findClub } from '../data/pyramid.js';
+import { PYRAMID, findClub, getAFLClubsForSeason } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred } from './playerGen.js';
 import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus } from './matchEngine.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
@@ -934,6 +934,24 @@ function finishSeason(c, league) {
   }
   if (champion) bumpClubCulture(c, 15);
   c.crisisFiredThisSeason = false;
+
+  // AFL expansion: when new clubs join (e.g. Tasmania 2028), rebuild the fixture schedule
+  if (c.leagueKey === 'AFL') {
+    const newClubs = getAFLClubsForSeason(c.season);
+    const prevClubs = getAFLClubsForSeason(c.season - 1);
+    if (newClubs.length !== prevClubs.length) {
+      c.fixtures = generateFixtures(newClubs);
+      newClubs
+        .filter(cl => !prevClubs.find(o => o.id === cl.id))
+        .forEach(cl => {
+          c.news = [
+            { week: 0, type: 'info', text: `🏉 ${cl.name} join the AFL as the ${newClubs.length}th team for ${c.season}!` },
+            ...(c.news || []),
+          ].slice(0, 25);
+        });
+    }
+  }
+
   const nextLeagueForCal = PYRAMID[c.leagueKey];
   const seasonClub = findClub(c.clubId);
   const regGround = getClubGround(seasonClub, c.facilities?.stadium?.level ?? 1, nextLeagueForCal.tier);

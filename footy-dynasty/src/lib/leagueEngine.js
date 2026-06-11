@@ -51,10 +51,15 @@ export function localDivisionForClub(clubId, leagueKey, regionState) {
  * Clubs that share a season ladder / fixture with the player.
  * Tier 1: full national league. Tier 2–3: same `club.state` as `regionState`; tier 3 also same local division.
  */
-export function getCompetitionClubs(leagueKey, regionState, localDivision) {
+export function getCompetitionClubs(leagueKey, regionState, localDivision, season) {
   const league = PYRAMID[leagueKey];
   if (!league?.clubs) return [];
-  if (league.tier === 1) return [...league.clubs];
+  if (league.tier === 1) {
+    const clubs = season != null
+      ? league.clubs.filter(c => !c.joinsYear || c.joinsYear <= season)
+      : league.clubs;
+    return [...clubs];
+  }
   // Tier 2/3 without a state would incorrectly pool every club nationally — refuse and let callers fall back (e.g. club.state).
   if (!regionState) return [];
   let clubs = league.clubs.filter((c) => c.state === regionState);
@@ -77,7 +82,7 @@ export function competitionClubsForCareer(c) {
     const raw = c.localDivision ?? localDivisionForClub(c.clubId, c.leagueKey, region);
     div = Math.max(1, Math.min(K, raw));
   }
-  return getCompetitionClubs(c.leagueKey, region, div);
+  return getCompetitionClubs(c.leagueKey, region, div, c.season);
 }
 
 export function generateFixtures(leagueClubs) {
