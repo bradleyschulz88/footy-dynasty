@@ -91,6 +91,7 @@ import {
 } from './gameDepth.js';
 import { medicalStaffMitigation } from './staffTasks.js';
 import { sanitizeLineup, lineupPlayersOrdered } from './lineupHelpers.js';
+import { scoutPrepRatingBonus } from './oppositionScout.js';
 import { weeklyClubOperationsPulse } from './weeklyClubPulse.js';
 import {
   assignDynastyQuestsForSeason,
@@ -356,6 +357,7 @@ function simFinalsPair(c, league, m, _roundLabel) {
       groundAccuracyMod = band.accuracyMod;
     }
     const travelPen = awayTravelRatingPenalty(isHome, c.clubId, oppId);
+    const matchWeather = ensureWeatherForWeek(c, c.week);
     const getPlayerStrengthForQuarter = (qi) =>
       teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
       + benchStrengthBonus(c.squad, c.lineup, qi)
@@ -375,6 +377,7 @@ function simFinalsPair(c, league, m, _roundLabel) {
         oppTactic,
         groundScoringMod,
         groundAccuracyMod,
+        weather: matchWeather,
         getPlayerStrengthForQuarter,
         ...(getOppStrengthForQuarter ? { getOppStrengthForQuarter } : {}),
         homeFixtureAdvantage: resolveHomeAdvantageForFixture(c, league, isHome, findClub(c.clubId), oppClub),
@@ -1319,6 +1322,8 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         turningPointPlayedThisRound = m.turningPoint || null;
         let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
         myRating += getCaptainMatchBonus(c, false);
+        const scoutPrep = scoutPrepRatingBonus(c, opp.id, ev.round);
+        myRating += scoutPrep;
         const oppSquad = c.aiSquads?.[opp.id];
         const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
         const oppLineupIds = oppLineup.map((p) => p.id);
@@ -1335,10 +1340,12 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           groundAccuracyMod = band.accuracyMod;
         }
         const travelPen = awayTravelRatingPenalty(isHome, c.clubId, opp.id);
+        const matchWeather = ensureWeatherForWeek(c, ev.round);
         const getPlayerStrengthForQuarter = (qi) =>
           teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
           + benchStrengthBonus(c.squad, c.lineup, qi)
           + interchangeRotationBonus(c.squad, c.lineup, qi)
+          + scoutPrep
           - travelPen;
         const getOppStrengthForQuarter = oppSquad?.length
           ? (qi) =>
@@ -1351,6 +1358,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           isHome, myRating,
           {
             tactic: c.tacticChoice || 'balanced', playerLineup, oppLineup, oppTactic, groundScoringMod, groundAccuracyMod,
+            weather: matchWeather,
             getPlayerStrengthForQuarter,
             ...(getOppStrengthForQuarter ? { getOppStrengthForQuarter } : {}),
             homeFixtureAdvantage: resolveHomeAdvantageForFixture(
@@ -1372,16 +1380,25 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         myResult = { isHome, opp, result, myTotal, oppTotal, won, drew };
 
         const attribution = result.goalAttribution || {};
+        const votesById = {};
+        (result.votes || []).forEach((v) => { votesById[v.playerId] = v.votes; });
+        // Attribute-centred stat multiplier (generation mean ≈ 68): skilled players
+        // rack up more of the ball, so box scores read as earned, not rolled.
+        const attrStatMult = (val) => clamp(1 + ((val ?? 60) - 68) * 0.012, 0.75, 1.35);
         c.squad = c.squad.map((p) => {
           if (!c.lineup.includes(p.id)) return p;
           const fitDrop = rand(8, 18);
-          const formChange = won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1);
+          // Best-on-ground performances carry personal form, even in a loss.
+          const formChange = (won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1)) + (votesById[p.id] || 0);
           const att = attribution[p.id] || { goals: 0, behinds: 0 };
-          const dispAdd = isMidPreferred(p) ? rand(15, 32) : rand(8, 22);
+          const ballSkill = ((p.attrs?.decision ?? 60) + (p.attrs?.handball ?? 60) + (p.attrs?.endurance ?? 60)) / 3;
+          const dispAdd = Math.round((isMidPreferred(p) ? rand(15, 32) : rand(8, 22)) * attrStatMult(ballSkill));
+          const markAdd = Math.round(rand(2, 7) * attrStatMult(p.attrs?.marking));
+          const tackleAdd = Math.round(rand(1, 5) * attrStatMult(p.attrs?.tackling));
           return {
             ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: clamp(p.form + formChange, 30, 100),
             goals: p.goals + (att.goals || 0), behinds: p.behinds + (att.behinds || 0), disposals: p.disposals + dispAdd,
-            marks: p.marks + rand(2, 7), tackles: p.tackles + rand(1, 5), gamesPlayed: p.gamesPlayed + 1,
+            marks: p.marks + markAdd, tackles: p.tackles + tackleAdd, gamesPlayed: p.gamesPlayed + 1,
           };
         });
 

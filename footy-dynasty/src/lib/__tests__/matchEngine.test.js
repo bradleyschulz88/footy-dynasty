@@ -1,6 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { seedRng } from '../rng.js';
-import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus } from '../matchEngine.js';
+import {
+  teamRating,
+  simMatch,
+  simMatchWithQuarters,
+  aiClubRating,
+  benchStrengthBonus,
+  defensivePressureMod,
+  weatherAccuracyMod,
+  playerEffectiveMatchRating,
+} from '../matchEngine.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -320,6 +329,95 @@ describe('simMatchWithQuarters', () => {
     expect(a.homeTotal).toBe(b.homeTotal);
     expect(a.awayTotal).toBe(b.awayTotal);
     expect(a.winner).toBe(b.winner);
+  });
+});
+
+describe('scorer attribution', () => {
+  it('star forwards finish far more chains than role-player forwards', () => {
+    seedRng(7);
+    const star = { ...makePlayer(92), id: 'star', position: 'KF', attrs: { kicking: 92, marking: 92 } };
+    const others = Array.from({ length: 5 }, (_, i) => ({
+      ...makePlayer(58), id: `f${i}`, position: 'HF', attrs: { kicking: 58, marking: 58 },
+    }));
+    const mids = Array.from({ length: 12 }, (_, i) => ({ ...makePlayer(70), id: `m${i}`, position: 'C' }));
+    const lineup = [star, ...others, ...mids];
+    let starGoals = 0;
+    let otherGoals = 0;
+    for (let i = 0; i < 40; i++) {
+      const r = simMatchWithQuarters({ rating: 70 }, { rating: 70 }, true, 70, {
+        tactic: 'balanced', playerLineup: lineup, oppLineup: [],
+      });
+      const ga = r.goalAttribution || {};
+      starGoals += ga.star?.goals || 0;
+      others.forEach((o) => { otherGoals += ga[o.id]?.goals || 0; });
+    }
+    const otherAvg = otherGoals / others.length;
+    expect(starGoals).toBeGreaterThan(otherAvg * 1.8);
+  });
+});
+
+describe('defensivePressureMod', () => {
+  const backs = (ovr) => Array.from({ length: 6 }, (_, i) => ({
+    id: `b${i}`, position: i < 3 ? 'KB' : 'HB', overall: ovr, trueRating: ovr,
+    attrs: { marking: ovr, tackling: ovr },
+  }));
+  const fwds = (ovr) => Array.from({ length: 6 }, (_, i) => ({
+    id: `f${i}`, position: i < 3 ? 'KF' : 'HF', overall: ovr, trueRating: ovr,
+    attrs: { kicking: ovr, marking: ovr },
+  }));
+
+  it('an elite back six suppresses a weak forward line', () => {
+    expect(defensivePressureMod(backs(90), fwds(55))).toBeLessThan(1);
+  });
+
+  it('a weak back six concedes accuracy to an elite forward line', () => {
+    expect(defensivePressureMod(backs(55), fwds(90))).toBeGreaterThan(1);
+  });
+
+  it('an even matchup is neutral', () => {
+    expect(defensivePressureMod(backs(70), fwds(70))).toBeCloseTo(1, 5);
+  });
+
+  it('a defensive gameplan leans into the suppression', () => {
+    const neutral = defensivePressureMod(backs(85), fwds(60), 'balanced');
+    const defensive = defensivePressureMod(backs(85), fwds(60), 'defensive');
+    expect(defensive).toBeLessThan(neutral);
+  });
+
+  it('missing lineups are neutral', () => {
+    expect(defensivePressureMod([], fwds(70))).toBe(1);
+    expect(defensivePressureMod(backs(70), [])).toBe(1);
+  });
+});
+
+describe('weatherAccuracyMod', () => {
+  it('fine weather is neutral', () => {
+    expect(weatherAccuracyMod('fine', 'attack')).toBe(1);
+    expect(weatherAccuracyMod(null, 'attack')).toBe(1);
+  });
+
+  it('rain punishes attacking plans more than containing ones', () => {
+    expect(weatherAccuracyMod('rain', 'attack')).toBeLessThan(weatherAccuracyMod('rain', 'defensive'));
+    expect(weatherAccuracyMod('rain', 'attack')).toBeLessThan(1);
+  });
+
+  it('wind sits between fine and rain for the same tactic', () => {
+    expect(weatherAccuracyMod('wind', 'attack')).toBeGreaterThan(weatherAccuracyMod('rain', 'attack'));
+    expect(weatherAccuracyMod('wind', 'attack')).toBeLessThan(1);
+  });
+});
+
+describe('morale in effective rating', () => {
+  it('a buoyant player outrates a flat one, all else equal', () => {
+    const high = playerEffectiveMatchRating({ overall: 70, form: 70, fitness: 90, morale: 90 });
+    const low = playerEffectiveMatchRating({ overall: 70, form: 70, fitness: 90, morale: 55 });
+    expect(high).toBeGreaterThan(low);
+  });
+
+  it('mean morale (75) leaves the rating unchanged', () => {
+    const withMorale = playerEffectiveMatchRating({ overall: 70, form: 70, fitness: 90, morale: 75 });
+    const noMorale = playerEffectiveMatchRating({ overall: 70, form: 70, fitness: 90 });
+    expect(withMorale).toBeCloseTo(noMorale, 8);
   });
 });
 
