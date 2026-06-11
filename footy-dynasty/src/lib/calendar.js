@@ -234,13 +234,14 @@ export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId) {
   let counter  = 0;
   const eid    = () => `ev_${++counter}`;
 
-  const preseasonStart = `${season - 1}-12-01`;
-  const preseasonEnd   = `${season}-02-28`;
+  // Pre-season training: Mon/Wed/Fri from Dec 1 through Feb 28
+  // (Trade period and draft happen in Nov before training camps begin)
+  const trainingStart  = `${season - 1}-12-01`;
+  const trainingEnd    = `${season}-02-28`;
 
-  // Training sessions — Mon/Wed/Fri during pre-season
-  let cursor  = preseasonStart;
+  let cursor  = trainingStart;
   let rotIdx  = 0;
-  while (cursor <= preseasonEnd) {
+  while (cursor <= trainingEnd) {
     const dow = getDayOfWeek(cursor); // 0=Sun
     if (dow === 1 || dow === 3 || dow === 5) {
       events.push({
@@ -257,23 +258,23 @@ export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId) {
     cursor = addDays(cursor, 1);
   }
 
-  // Key events
+  // Key events — AFL realistic timeline (prior-year Nov/Dec then pre-season Feb)
   events.push({
-    id: eid(), date: `${season - 1}-12-15`, type: 'key_event',
-    name: 'Transfer Window Opens',
-    description: 'The trade and free-agent market is now open. Approach players and negotiate deals.',
+    id: eid(), date: `${season - 1}-11-10`, type: 'key_event',
+    name: 'Trade Period Opens',
+    description: 'The trade and free-agent market is now open. Approach players and negotiate deals before the draft.',
     action: 'recruit', phase: 'preseason', completed: false,
   });
   events.push({
-    id: eid(), date: `${season}-01-10`, type: 'key_event',
+    id: eid(), date: `${season - 1}-11-20`, type: 'key_event',
     name: 'National Draft Day',
     description: 'Select the best young talent from this year\'s draft pool to build your future.',
     action: 'recruit', phase: 'preseason', completed: false,
   });
   events.push({
-    id: eid(), date: `${season}-02-15`, type: 'key_event',
-    name: 'Transfer Window Closes',
-    description: 'The final opportunity to sign or trade players before the season begins.',
+    id: eid(), date: `${season - 1}-12-15`, type: 'key_event',
+    name: 'Trade Period Closes',
+    description: 'Final chance to sign or trade players. Pre-season training camps begin.',
     action: 'recruit', phase: 'preseason', completed: false,
   });
 

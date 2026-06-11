@@ -949,7 +949,7 @@ function finishSeason(c, league) {
   const dynClubCount =
     competitionClubsForCareer(c).length || calClubs.length || PYRAMID[c.leagueKey]?.clubs?.length || 12;
   assignDynastyQuestsForSeason(c, nextLeagueForCal?.tier ?? league.tier, dynClubCount);
-  c.currentDate = `${c.season - 1}-12-01`;
+  c.currentDate = `${c.season - 1}-11-01`;
   c.phase = 'preseason';
   c.lastEvent = null;
   c.inMatchDay = false;
