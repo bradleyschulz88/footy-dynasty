@@ -156,8 +156,8 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
   const tier3K             = tier === 3 && leagueKey && state ? tier3DivisionCount(leagueKey, state) : 0;
   const effectiveTier3Div  = tier === 3 && tier3K ? Math.min(localDivision, tier3K) : localDivision;
   const availableClubs     = leagueKey ? getCompetitionClubs(leagueKey, state, tier === 3 ? effectiveTier3Div : null) : [];
-  const availableLeagues   = state ? LEAGUES_BY_STATE(state).filter(l => tier ? l.tier === tier : true) : [];
-  const tiersForState      = state ? [1, 2, 3].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t)) : [1, 2, 3];
+  const availableLeagues   = state ? LEAGUES_BY_STATE(state).filter(l => !l.isAcademy && (tier ? l.tier === tier : true)) : [];
+  const tiersForState      = state ? [1, 2, 3].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t && !l.isAcademy)) : [1, 2, 3];
 
   function start(e) {
     if (e) e.preventDefault();

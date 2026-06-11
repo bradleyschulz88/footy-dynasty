@@ -25,6 +25,7 @@ export const PYRAMID = {
       { id: "ric", name: "Richmond Tigers", short: "RIC", state: "VIC", colors: ["#FFD200", "#000000", "#FFD200"] },
       { id: "stk", name: "St Kilda Saints", short: "STK", state: "VIC", colors: ["#ED1B2F", "#000000", "#FFFFFF"] },
       { id: "syd", name: "Sydney Swans", short: "SYD", state: "NSW", colors: ["#ED1B2F", "#FFFFFF", "#ED1B2F"] },
+      { id: "tas", name: "Tasmania FC (Devils)", short: "TAS", state: "TAS", joinsYear: 2028, colors: ["#D63B2F", "#000000", "#FFFFFF"] },
       { id: "wce", name: "West Coast Eagles", short: "WCE", state: "WA", colors: ["#003087", "#F2A900", "#003087"] },
       { id: "wbd", name: "Western Bulldogs", short: "WBD", state: "VIC", colors: ["#0039A6", "#E21937", "#FFFFFF"] },
     ],
@@ -44,6 +45,26 @@ export const PYRAMID = {
       { id: "ntfl_tiwi_bombers", name: "Tiwi Bombers", short: "TB", state: "NT", colors: ["#6B4423", "#FFD200", "#FFFFFF"] },
       { id: "ntfl_wanderers", name: "Wanderers", short: "WAN", state: "NT", colors: ["#006633", "#CC0000", "#FFFFFF"] },
       { id: "ntfl_waratah", name: "Waratah", short: "WAR", state: "NT", colors: ["#FF6600", "#000000", "#FFFFFF"] },
+    ],
+  },
+  QAFL: {
+    tier: 2,
+    name: "QAFL",
+    short: "QAFL",
+    state: "QLD",
+    clubs: [
+      { id: "qafl_aspley", name: "Aspley", short: "ASP", state: "QLD", colors: ["#003F87", "#FFD200", "#FFFFFF"] },
+      { id: "qafl_broadbeach", name: "Broadbeach", short: "BRO", state: "QLD", colors: ["#005EB8", "#FFFFFF", "#003366"] },
+      { id: "qafl_coorparoo", name: "Coorparoo", short: "COO", state: "QLD", colors: ["#7B1D41", "#FFD200", "#FFFFFF"] },
+      { id: "qafl_labrador", name: "Labrador", short: "LAB", state: "QLD", colors: ["#003F87", "#FFD200", "#FFFFFF"] },
+      { id: "qafl_maroochydore", name: "Maroochydore", short: "MRC", state: "QLD", colors: ["#CC2031", "#003366", "#FFFFFF"] },
+      { id: "qafl_morningside", name: "Morningside", short: "MOR", state: "QLD", colors: ["#7B1D41", "#FFFFFF", "#FFD200"] },
+      { id: "qafl_mt_gravatt", name: "Mt Gravatt", short: "MTG", state: "QLD", colors: ["#FFD200", "#CC2031", "#000000"] },
+      { id: "qafl_noosa_tigers", name: "Noosa Tigers", short: "NOO", state: "QLD", colors: ["#003F87", "#FFD200", "#FFFFFF"] },
+      { id: "qafl_palm_beach_currumbin", name: "Palm Beach Currumbin", short: "PBC", state: "QLD", colors: ["#003F87", "#FFD200", "#FFFFFF"] },
+      { id: "qafl_redland_victoria_point", name: "Redland-Victoria Point", short: "RVP", state: "QLD", colors: ["#003F87", "#FFFFFF", "#CC2031"] },
+      { id: "qafl_sandgate", name: "Sandgate", short: "SAN", state: "QLD", colors: ["#CC2031", "#FFFFFF", "#003366"] },
+      { id: "qafl_surfers_paradise", name: "Surfers Paradise", short: "SPA", state: "QLD", colors: ["#CC2031", "#000000", "#FFD200"] },
     ],
   },
   SANFL: {
@@ -126,6 +147,28 @@ export const PYRAMID = {
       { id: "wafl_swan_districts", name: "Swan Districts", short: "SD", state: "WA", colors: ["#E21937", "#FFFFFF", "#FFD200"] },
       { id: "wafl_west_coast_eagles", name: "West Coast Eagles", short: "WCE", state: "WA", colors: ["#800020", "#FFD200", "#FFFFFF"] },
       { id: "wafl_west_perth", name: "West Perth", short: "WP", state: "WA", colors: ["#000080", "#FFD200", "#FFFFFF"] },
+    ],
+  },
+  TalentLeague: {
+    tier: 2,
+    isAcademy: true,
+    name: "NAB Under-18 Talent League",
+    short: "TL",
+    state: "VIC",
+    clubs: [
+      { id: "tl_bendigo_pioneers", name: "Bendigo Pioneers", short: "BP", state: "VIC", colors: ["#8B0000", "#FFFFFF", "#FFD200"] },
+      { id: "tl_calder_cannons", name: "Calder Cannons", short: "CC", state: "VIC", colors: ["#003F87", "#FFFFFF", "#CC2031"] },
+      { id: "tl_dandenong_stingrays", name: "Dandenong Stingrays", short: "DS", state: "VIC", colors: ["#006633", "#FFFFFF", "#FFD200"] },
+      { id: "tl_eastern_ranges", name: "Eastern Ranges", short: "ER", state: "VIC", colors: ["#7B1D41", "#FFD200", "#FFFFFF"] },
+      { id: "tl_geelong_falcons", name: "Geelong Falcons", short: "GF", state: "VIC", colors: ["#003F87", "#CC2031", "#FFFFFF"] },
+      { id: "tl_gippsland_power", name: "Gippsland Power", short: "GP", state: "VIC", colors: ["#003F87", "#FFFFFF", "#CC2031"] },
+      { id: "tl_gwv_rebels", name: "GWV Rebels", short: "GWV", state: "VIC", colors: ["#CC2031", "#000000", "#FFFFFF"] },
+      { id: "tl_murray_bushrangers", name: "Murray Bushrangers", short: "MB", state: "VIC", colors: ["#7B1D41", "#FFD200", "#FFFFFF"] },
+      { id: "tl_northern_knights", name: "Northern Knights", short: "NK", state: "VIC", colors: ["#CC2031", "#FFFFFF", "#003366"] },
+      { id: "tl_oakleigh_chargers", name: "Oakleigh Chargers", short: "OC", state: "VIC", colors: ["#006633", "#CC0000", "#FFFFFF"] },
+      { id: "tl_sandringham_dragons", name: "Sandringham Dragons", short: "SD", state: "VIC", colors: ["#7B1D41", "#FFD200", "#FFFFFF"] },
+      { id: "tl_tasmania_devils", name: "Tasmania Devils", short: "TD", state: "TAS", colors: ["#D63B2F", "#000000", "#FFFFFF"] },
+      { id: "tl_western_jets", name: "Western Jets", short: "WJ", state: "VIC", colors: ["#003366", "#CC0000", "#FFFFFF"] },
     ],
   },
   AFLCanberra: {
@@ -1400,3 +1443,8 @@ export const findLeagueOf = (clubId) => {
   const c = findClub(clubId);
   return c ? PYRAMID[c.league] : null;
 };
+
+/** AFL clubs active for a given season — handles expansion clubs (joinsYear). */
+export function getAFLClubsForSeason(season) {
+  return (PYRAMID.AFL?.clubs || []).filter(c => !c.joinsYear || c.joinsYear <= season);
+}
