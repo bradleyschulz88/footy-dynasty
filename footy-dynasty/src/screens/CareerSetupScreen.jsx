@@ -572,21 +572,58 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                           borderColor: active ? meta.color : 'var(--A-line)',
                           boxShadow: active ? `0 0 0 1px ${meta.color}44` : undefined,
                         }}>
-                        <div className="font-display text-2xl mb-1" style={{ color: meta.color }}>
+                        <div className="font-display text-xl mb-0.5" style={{ color: meta.color }}>
                           {meta.label.toUpperCase()}
                         </div>
-                        <div className="text-[10px] uppercase tracking-widest text-atext-mute mb-2 font-mono">{meta.audience}</div>
-                        <div className="text-xs text-atext-dim mb-3 leading-snug">{meta.summary}</div>
-                        <ul className="space-y-1">
+                        <div className="text-[10px] text-atext-mute mb-2 italic leading-snug">{meta.tagline}</div>
+                        <ul className="space-y-1.5 mb-3">
                           {meta.bullets.map((b, i) => (
-                            <li key={`${id}-${i}`} className="text-[11px] text-atext flex gap-1.5">
-                              <span style={{ color: meta.color }}>•</span><span>{b}</span>
+                            <li key={`${id}-${i}`} className="text-[11px] text-atext flex gap-1.5 leading-snug">
+                              <span className="shrink-0 mt-0.5" style={{ color: meta.color }}>▸</span>
+                              <span>{b}</span>
                             </li>
                           ))}
                         </ul>
+                        {active && (
+                          <div className="text-[10px] font-mono font-bold uppercase tracking-widest" style={{ color: meta.color }}>
+                            ✓ Selected
+                          </div>
+                        )}
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Stat comparison table */}
+                <div className="mt-4 rounded-xl border border-aline/40 overflow-hidden">
+                  <div className="px-4 py-2 border-b border-aline/30">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-atext-mute">Key Differences</span>
+                  </div>
+                  {[
+                    { label: 'Board patience', values: ['3 seasons', '2 seasons', '1 season'] },
+                    { label: 'Starting cash',  values: ['+25%', 'Standard', '−15%'] },
+                    { label: 'Trade budget',   values: ['+50%', 'Standard', '−30%'] },
+                    { label: 'Injury rate',    values: ['Half', 'Normal', 'Double'] },
+                    { label: 'Scout accuracy', values: ['+15%', 'Standard', '−15%'] },
+                  ].map((row) => (
+                    <div key={row.label} className="grid grid-cols-4 border-b border-aline/20 last:border-0">
+                      <div className="px-4 py-2 text-[11px] text-atext-mute flex items-center">{row.label}</div>
+                      {DIFFICULTY_IDS.map((id, i) => {
+                        const m = getDifficultyProfile(id);
+                        const active = difficulty === id;
+                        return (
+                          <div key={id}
+                            className="py-2 text-center text-[11px] font-mono font-bold transition-colors"
+                            style={{
+                              color: active ? m.color : 'var(--A-text-mute)',
+                              background: active ? `color-mix(in srgb, ${m.color} 6%, transparent)` : undefined,
+                            }}>
+                            {row.values[i]}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
               </div>
 

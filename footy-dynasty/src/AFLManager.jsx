@@ -29,6 +29,7 @@ import {
 import { computeInitialCareerBoot } from "./lib/bootCareer.js";
 import { seedNationalDraft } from "./lib/draftSeed.js";
 import { GlobalStyle } from "./components/primitives.jsx";
+import LandingScreen from "./screens/LandingScreen.jsx";
 import GameOverScreen from "./screens/GameOverScreen.jsx";
 import PostMatchSummary from "./screens/PostMatchSummary.jsx";
 import SeasonSummaryScreen from "./screens/SeasonSummaryScreen.jsx";
@@ -146,6 +147,7 @@ export default function AFLManager() {
 function AFLManagerInner() {
   const bootRef = useMemo(() => computeInitialCareerBoot(), []);
   const [activeSlot, setActiveSlotState] = useState(() => bootRef.activeSlot);
+  const [showLanding, setShowLanding] = useState(() => !bootRef.career);
   const [showSlotPicker, setShowSlotPicker] = useState(false);
   const [slotMetaTick, setSlotMetaTick] = useState(0);
   const [showPostMatch, setShowPostMatch] = useState(false);
@@ -295,7 +297,7 @@ function AFLManagerInner() {
   useEffect(() => {
     if (!career || career.tutorialComplete) return;
     const step = career.tutorialStep ?? 0;
-    if (step <= 0 || step >= 6) return;
+    if (step <= 0 || step >= TUTORIAL_STEPS.length) return;
     if (!tutorialMidStepCompleted(step, screen, tab, career)) return;
     const next = step + 1;
     const isDone = next >= TUTORIAL_STEPS.length;
@@ -395,6 +397,7 @@ function AFLManagerInner() {
     setActiveSlot(null);
     setActiveSlotState(null);
     setCareer(null);
+    setShowLanding(true);
     setScreen('hub');
     setTab(null);
   }
@@ -628,6 +631,21 @@ function AFLManagerInner() {
       week: career.week,
     });
   }, [career, activeSlot]);
+
+  // ============== LANDING SCREEN ==============
+  if (!career && showLanding) {
+    const slotMeta = readSlotMeta();
+    const hasSaves = SLOT_IDS.some((s) => slotMeta[s]);
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <LandingScreen
+          hasSaves={hasSaves}
+          onNewCareer={() => setShowLanding(false)}
+          onLoadGame={() => setShowLanding(false)}
+        />
+      </AppMotionConfig>
+    );
+  }
 
   // ============== CAREER SETUP ==============
   if (!career) {
@@ -971,7 +989,7 @@ function AFLManagerInner() {
                 : undefined
           }
           advanceAgendaCount={visibleAdvanceAgendaCount}
-          tutorialSpotlightAdvance={!!tutorialActive && (career.tutorialStep ?? 0) === 6}
+          tutorialSpotlightAdvance={!!tutorialActive && (career.tutorialStep ?? 0) === TUTORIAL_STEPS.length - 1}
         />
         <InboxBanner
           career={career}
@@ -1112,8 +1130,7 @@ function AFLManagerInner() {
           step={career.tutorialStep ?? 0}
           onNext={() => {
             const cur = career.tutorialStep ?? 0;
-            if (cur !== 0) return;
-            const next = 1;
+            const next = cur + 1;
             updateCareer({ tutorialStep: next, tutorialComplete: next >= TUTORIAL_STEPS.length });
           }}
           onSkip={() => updateCareer({ tutorialStep: TUTORIAL_STEPS.length, tutorialComplete: true })}
