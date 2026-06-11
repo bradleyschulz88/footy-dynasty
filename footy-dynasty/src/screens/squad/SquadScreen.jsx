@@ -84,6 +84,23 @@ export default function SquadScreen({ career, club, updateCareer, tab, setTab, t
 
 
 
+function FormSparkline({ history, current }) {
+  const vals = history?.length ? [...history, current] : [current];
+  const lo = Math.min(...vals);
+  const hi = Math.max(...vals, lo + 10);
+  return (
+    <span className="inline-flex items-end gap-px h-4 shrink-0" aria-hidden>
+      {vals.map((v, i) => {
+        const pct = Math.round(((v - lo) / (hi - lo)) * 100);
+        const color = v >= 75 ? 'var(--A-pos)' : v >= 55 ? 'var(--A-accent)' : 'var(--A-neg)';
+        return (
+          <span key={i} style={{ display: 'block', width: 3, height: `${Math.max(20, pct)}%`, background: color, borderRadius: 1, opacity: i === vals.length - 1 ? 1 : 0.5 }} />
+        );
+      })}
+    </span>
+  );
+}
+
 function PlayersTab({ career, updateCareer }) {
   const [sort, setSort] = useState("overall");
   const [filterPos, setFilterPos] = useState("ALL");
@@ -247,6 +264,7 @@ function PlayersTab({ career, updateCareer }) {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-2 text-[10px]">
                   <span className="font-bold" style={{ color: formColor }}>Form {p.form}</span>
+                  {p.formHistory?.length > 0 && <FormSparkline history={p.formHistory} current={p.form} />}
                   <span className="text-atext-mute">Fitness {p.fitness}</span>
                   {inLineup && <Pill color="var(--A-pos)">23</Pill>}
                   {p.injured > 0 && <Pill color="var(--A-neg)">{p.injured}w</Pill>}
@@ -439,6 +457,11 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
               <div className="h-1 rounded-full mt-1 overflow-hidden" style={{background:"var(--A-line)"}}>
                 <div className="h-full rounded-full" style={{width:`${v}%`,background:c}} />
               </div>
+              {l === 'Form' && player.formHistory?.length > 0 && (
+                <div className="flex justify-center mt-1.5">
+                  <FormSparkline history={player.formHistory} current={player.form} />
+                </div>
+              )}
             </div>
           ))}
         </div>

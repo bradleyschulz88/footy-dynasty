@@ -1287,8 +1287,10 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       const fitDrop = rand(5, 12);
       const formChange = won ? rand(1, 4) : drew ? rand(-1, 2) : rand(-3, 1);
       const gAdd = isForwardPreferred(p) ? rand(0, 2) : 0;
+      const newForm = clamp(p.form + formChange, 30, 100);
+      const formHistory = [...(p.formHistory || []), p.form].slice(-5);
       return {
-        ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: clamp(p.form + formChange, 30, 100),
+        ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
         goals: p.goals + gAdd, behinds: p.behinds + rand(0, 1), disposals: p.disposals + rand(6, 18),
         marks: p.marks + rand(1, 4), tackles: p.tackles + rand(1, 3), gamesPlayed: p.gamesPlayed + 1,
       };
@@ -1395,8 +1397,10 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           const dispAdd = Math.round((isMidPreferred(p) ? rand(15, 32) : rand(8, 22)) * attrStatMult(ballSkill));
           const markAdd = Math.round(rand(2, 7) * attrStatMult(p.attrs?.marking));
           const tackleAdd = Math.round(rand(1, 5) * attrStatMult(p.attrs?.tackling));
+          const newForm = clamp(p.form + formChange, 30, 100);
+          const formHistory = [...(p.formHistory || []), p.form].slice(-5);
           return {
-            ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: clamp(p.form + formChange, 30, 100),
+            ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
             goals: p.goals + (att.goals || 0), behinds: p.behinds + (att.behinds || 0), disposals: p.disposals + dispAdd,
             marks: p.marks + markAdd, tackles: p.tackles + tackleAdd, gamesPlayed: p.gamesPlayed + 1,
           };

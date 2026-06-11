@@ -63,8 +63,8 @@ function LadderTab({ career, club: _club, league }) {
           <div className="text-xs text-atext-dim">Round {career.week} of {career.fixtures.length} · {league.name}</div>
         </div>
         <div className="flex items-center gap-3">
-          <Pill color="#4AE89A">{league.tier === 1 ? "Top 8 = Finals" : "Top 1 = Promoted"}</Pill>
-          {league.tier > 1 && <Pill color="#E84A6F">Bottom = Relegated</Pill>}
+          <Pill color="var(--A-pos)">{league.tier === 1 ? "Top 8 = Finals" : "Top 1 = Promoted"}</Pill>
+          {league.tier > 1 && <Pill color="var(--A-neg)">Bottom = Relegated</Pill>}
         </div>
       </div>
 
@@ -93,9 +93,9 @@ function LadderTab({ career, club: _club, league }) {
             <React.Fragment key={row.id}>
               <div className={`grid grid-cols-12 gap-2 px-4 py-2.5 items-center border-b border-aline ${isMe ? "bg-aaccent/10" : "hover:bg-aaccent/5"} transition`}>
                 <div className="col-span-1 flex items-center gap-1">
-                  <span className={`font-bold ${inPromo ? "text-[#4AE89A]" : inReleg ? "text-[#E84A6F]" : "text-atext-dim"}`}>{pos}</span>
-                  {inPromo && <ArrowUp className="w-3 h-3 text-[#4AE89A]" />}
-                  {inReleg && <ArrowDown className="w-3 h-3 text-[#E84A6F]" />}
+                  <span className={`font-bold ${inPromo ? "text-apos" : inReleg ? "text-aneg" : "text-atext-dim"}`}>{pos}</span>
+                  {inPromo && <ArrowUp className="w-3 h-3 text-apos" />}
+                  {inReleg && <ArrowDown className="w-3 h-3 text-aneg" />}
                 </div>
                 <div className="col-span-4 flex items-center gap-2">
                   <div className="w-2 h-6 rounded-sm" style={{background: c?.colors[0] || "var(--A-line)"}} />
@@ -103,8 +103,8 @@ function LadderTab({ career, club: _club, league }) {
                   {isMe && <Crown className="w-3 h-3 text-aaccent" />}
                 </div>
                 <div className="col-span-1 text-center text-sm">{row.P}</div>
-                <div className="col-span-1 text-center text-sm font-bold text-[#4AE89A]">{row.W}</div>
-                <div className="col-span-1 text-center text-sm text-[#E84A6F]">{row.L}</div>
+                <div className="col-span-1 text-center text-sm font-bold text-apos">{row.W}</div>
+                <div className="col-span-1 text-center text-sm text-aneg">{row.L}</div>
                 <div className="col-span-1 text-center text-sm text-atext-dim">{row.D}</div>
                 <div className="col-span-1 text-right text-sm font-mono">{row.F}</div>
                 <div className="col-span-1 text-right text-sm font-mono text-atext-dim">{row.A}</div>
@@ -112,23 +112,23 @@ function LadderTab({ career, club: _club, league }) {
               </div>
               {showFinalsLine && (
                 <div className="flex items-center gap-2 px-4 py-1" style={{background:"rgba(0,224,255,0.03)"}}>
-                  <div className="flex-1 border-t border-dashed border-[#4ADBE8]/50" />
-                  <span className="text-[9px] text-[#4ADBE8] font-mono uppercase tracking-wider">Finals cutoff</span>
-                  <div className="flex-1 border-t border-dashed border-[#4ADBE8]/50" />
+                  <div className="flex-1 border-t border-dashed border-aaccent/50" />
+                  <span className="text-[9px] text-aaccent font-mono uppercase tracking-wider">Finals cutoff</span>
+                  <div className="flex-1 border-t border-dashed border-aaccent/50" />
                 </div>
               )}
               {showPromoLine && (
-                <div className="flex items-center gap-2 px-4 py-1" style={{background:"rgba(74,232,154,0.03)"}}>
-                  <div className="flex-1 border-t border-dashed border-[#4AE89A]/50" />
-                  <span className="text-[9px] text-[#4AE89A] font-mono uppercase tracking-wider">Promotion ↑</span>
-                  <div className="flex-1 border-t border-dashed border-[#4AE89A]/50" />
+                <div className="flex items-center gap-2 px-4 py-1" style={{background:"color-mix(in srgb, var(--A-pos) 3%, transparent)"}}>
+                  <div className="flex-1 border-t border-dashed border-apos/50" />
+                  <span className="text-[9px] text-apos font-mono uppercase tracking-wider">Promotion ↑</span>
+                  <div className="flex-1 border-t border-dashed border-apos/50" />
                 </div>
               )}
               {showRelegLine && (
-                <div className="flex items-center gap-2 px-4 py-1" style={{background:"rgba(232,74,111,0.03)"}}>
-                  <div className="flex-1 border-t border-dashed border-[#E84A6F]/50" />
-                  <span className="text-[9px] text-[#E84A6F] font-mono uppercase tracking-wider">Relegation ↓</span>
-                  <div className="flex-1 border-t border-dashed border-[#E84A6F]/50" />
+                <div className="flex items-center gap-2 px-4 py-1" style={{background:"color-mix(in srgb, var(--A-neg) 3%, transparent)"}}>
+                  <div className="flex-1 border-t border-dashed border-aneg/50" />
+                  <span className="text-[9px] text-aneg font-mono uppercase tracking-wider">Relegation ↓</span>
+                  <div className="flex-1 border-t border-dashed border-aneg/50" />
                 </div>
               )}
             </React.Fragment>
@@ -323,8 +323,8 @@ function PyramidTab({ career, club, league }) {
         {/* TIER 2 */}
         <div className={`${css.panel} p-5`}>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2"><Trophy className="w-5 h-5 text-[#4ADBE8]" /><div className={`${css.h1} text-2xl`}>TIER 2 · STATE LEAGUES</div></div>
-            <Pill color="#4ADBE8">Promotion to AFL</Pill>
+            <div className="flex items-center gap-2"><Trophy className="w-5 h-5 text-aaccent" /><div className={`${css.h1} text-2xl`}>TIER 2 · STATE LEAGUES</div></div>
+            <Pill color="var(--A-accent)">Promotion to AFL</Pill>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
             {byTier[2].map(([key, l]) => {
@@ -349,8 +349,8 @@ function PyramidTab({ career, club, league }) {
         {/* TIER 3 */}
         <div className={`${css.panel} p-5`}>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2"><Sprout className="w-5 h-5 text-[#4AE89A]" /><div className={`${css.h1} text-2xl`}>TIER 3 · COMMUNITY</div></div>
-            <Pill color="#4AE89A">Grassroots</Pill>
+            <div className="flex items-center gap-2"><Sprout className="w-5 h-5 text-apos" /><div className={`${css.h1} text-2xl`}>TIER 3 · COMMUNITY</div></div>
+            <Pill color="var(--A-pos)">Grassroots</Pill>
           </div>
           {byTier[3].length === 0 ? (
             <div className="text-sm text-atext-dim py-4">No tier 3 leagues currently in this build.</div>

@@ -1161,14 +1161,14 @@ function YouthTab({ career, club, updateCareer }) {
           <div className="text-xs text-atext-dim">Develop talent from the {club.state} zone. Build the next generation.</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Program Level" value={`${youth.programLevel}/5`} accent="#4AE89A" />
-          <Stat label="Zone" value={youth.zone} accent="#4ADBE8" />
+          <Stat label="Program Level" value={`${youth.programLevel}/5`} accent="var(--A-pos)" />
+          <Stat label="Zone" value={youth.zone} accent="var(--A-accent)" />
         </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className={`${css.panel} p-5 lg:col-span-1 space-y-4`}>
-          <div className="flex items-center gap-2"><GraduationCap className="w-5 h-5 text-[#4AE89A]" /><div className="font-bold tracking-wide">Academy Settings</div></div>
+          <div className="flex items-center gap-2"><GraduationCap className="w-5 h-5 text-apos" /><div className="font-bold tracking-wide">Academy Settings</div></div>
           <div>
             <div className={css.label}>Recruitment Zone</div>
             <select value={youth.zone} onChange={e=>updateCareer({ youth: { ...youth, zone: e.target.value }})} className="w-full mt-2 bg-apanel border border-aline rounded-lg px-3 py-2 text-sm text-atext">
@@ -1195,7 +1195,7 @@ function YouthTab({ career, club, updateCareer }) {
 
         <div className={`${css.panel} p-5 lg:col-span-2`}>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2"><Sprout className="w-5 h-5 text-[#4AE89A]" /><div className="font-bold tracking-wide">Current Intake</div></div>
+            <div className="flex items-center gap-2"><Sprout className="w-5 h-5 text-apos" /><div className="font-bold tracking-wide">Current Intake</div></div>
             <div className="text-xs text-atext-dim">{generated.length} recruit{generated.length !== 1 ? "s" : ""}</div>
           </div>
           {generated.length === 0 ? (
@@ -1212,7 +1212,7 @@ function YouthTab({ career, club, updateCareer }) {
                   <div className="col-span-2"><RatingDot value={p.overall} /></div>
                   <div className="col-span-2">
                     <div className="text-[10px] text-atext-dim">Potential</div>
-                    <div className="flex items-center gap-1"><span className="text-xs font-bold text-[#4AE89A]">{p.potential}</span><Bar value={p.potential} color="#4AE89A" small /></div>
+                    <div className="flex items-center gap-1"><span className="text-xs font-bold text-apos">{p.potential}</span><Bar value={p.potential} color="var(--A-pos)" small /></div>
                   </div>
                   <div className="col-span-3 flex justify-end">
                     <button
@@ -1365,7 +1365,7 @@ function LocalTab({ career, club, updateCareer }) {
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Listed signing" value={feeLabel} sub="fee + wages" accent="var(--A-accent)" />
-          <Stat label="Walk-on" value="$0" sub="same wages" accent="#4AE89A" />
+          <Stat label="Walk-on" value="$0" sub="same wages" accent="var(--A-pos)" />
         </div>
       </div>
 
@@ -1384,7 +1384,7 @@ function LocalTab({ career, club, updateCareer }) {
                         <div className="font-bold text-sm">{l.short}</div>
                         <div className="text-[10px] text-atext-dim">{l.name}</div>
                       </div>
-                      <Pill color="#4ADBE8">T{l.tier}</Pill>
+                      <Pill color="var(--A-accent)">T{l.tier}</Pill>
                     </div>
                     <div className="text-[10px] text-atext-dim mt-1">{l.clubs.length} clubs · No travel fee</div>
                   </button>
@@ -1474,7 +1474,7 @@ function LocalTab({ career, club, updateCareer }) {
                     <div className="col-span-2"><RatingDot value={p.scoutedOverall ?? p.overall} /></div>
                     <div className="col-span-2">
                       <div className="text-[10px] text-atext-dim">Potential</div>
-                      <div className="flex items-center gap-1"><span className="text-xs font-bold text-[#4AE89A]">{p.potential}</span><Bar value={p.potential} color="#4AE89A" small /></div>
+                      <div className="flex items-center gap-1"><span className="text-xs font-bold text-apos">{p.potential}</span><Bar value={p.potential} color="var(--A-pos)" small /></div>
                     </div>
                     <div className="col-span-3 flex flex-col gap-1 items-stretch">
                       <button type="button" onClick={()=>sign(p)} disabled={!can}
