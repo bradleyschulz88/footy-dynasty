@@ -451,6 +451,39 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         </motion.div>
       )}
 
+      {career.dynasty?.milestones?.length > 0 && (
+        <motion.div variants={hubItem} className={`${css.panel} p-4`}>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <Trophy className="w-4 h-4 text-aaccent-2" aria-hidden />
+            <h3 className="font-display text-lg text-atext tracking-wide">LEGACY MILESTONES</h3>
+            <span className="text-[10px] font-mono text-atext-mute uppercase tracking-wider">
+              career-long goals
+            </span>
+          </div>
+          <ul className="space-y-2">
+            {(career.dynasty.milestones || []).map((m) => {
+              const hasCount = m.kind === "career_wins" || m.kind === "premierships" || m.kind === "seasons_managed";
+              const pct = hasCount && m.target > 0 ? Math.min(100, Math.round(((m.progress ?? 0) / m.target) * 100)) : 0;
+              return (
+                <li key={m.id} className="rounded-xl border border-aline bg-apanel-2/80 px-3 py-2 space-y-1.5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="text-xs text-atext leading-snug min-w-0 flex-1">{m.label}</div>
+                    <span className={`text-[10px] font-black font-mono uppercase tracking-wider shrink-0 px-2 py-1 rounded-md border border-aline ${m.complete ? "text-apos" : "text-atext-dim"}`}>
+                      {m.complete ? "Done" : hasCount ? `${m.progress ?? 0}/${m.target}` : "Active"}
+                    </span>
+                  </div>
+                  {hasCount && !m.complete && (
+                    <div className="h-1 rounded-full bg-apanel overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: "var(--A-accent)" }} />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </motion.div>
+      )}
+
       {boardObjectiveRows.length > 0 && (
         <motion.div variants={hubItem} className={`${css.panel} p-4`}>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
