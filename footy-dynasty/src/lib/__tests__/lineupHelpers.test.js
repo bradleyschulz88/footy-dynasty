@@ -1,5 +1,53 @@
 import { describe, it, expect } from "vitest";
-import { addIdToLineupInBucket, placeOrSwapLineupSlot, swapLineupSlots, lineupPlayerSlotIndex } from "../lineupHelpers.js";
+import {
+  addIdToLineupInBucket,
+  placeOrSwapLineupSlot,
+  swapLineupSlots,
+  lineupPlayerSlotIndex,
+  isPlayerAvailable,
+  sanitizeLineup,
+} from "../lineupHelpers.js";
+
+describe("isPlayerAvailable", () => {
+  it("is true for a fit player and false for injured/suspended/missing", () => {
+    expect(isPlayerAvailable({ id: "a" })).toBe(true);
+    expect(isPlayerAvailable({ id: "a", injured: 0, suspended: 0 })).toBe(true);
+    expect(isPlayerAvailable({ id: "a", injured: 2 })).toBe(false);
+    expect(isPlayerAvailable({ id: "a", suspended: 1 })).toBe(false);
+    expect(isPlayerAvailable(null)).toBe(false);
+  });
+});
+
+describe("sanitizeLineup", () => {
+  const squad = [
+    { id: "fit", injured: 0, suspended: 0 },
+    { id: "hurt", injured: 2, suspended: 0 },
+    { id: "banned", injured: 0, suspended: 1 },
+  ];
+
+  it("clears slots for injured and suspended players in place", () => {
+    expect(sanitizeLineup(["fit", "hurt", "banned", "fit2"], squad)).toEqual(["fit"]);
+    expect(sanitizeLineup(["hurt", "fit"], squad)).toEqual([null, "fit"]);
+  });
+
+  it("clears ids that no longer exist in the squad (retired/released/traded)", () => {
+    expect(sanitizeLineup(["ghost", "fit"], squad)).toEqual([null, "fit"]);
+  });
+
+  it("keeps unavailable players when dropUnavailable is false", () => {
+    expect(sanitizeLineup(["hurt", "ghost", "fit"], squad, { dropUnavailable: false })).toEqual([
+      "hurt",
+      null,
+      "fit",
+    ]);
+  });
+
+  it("preserves slot positions and trims trailing empties", () => {
+    expect(sanitizeLineup(["fit", null, "hurt"], squad)).toEqual(["fit"]);
+    expect(sanitizeLineup([], squad)).toEqual([]);
+    expect(sanitizeLineup(null, squad)).toEqual([]);
+  });
+});
 
 describe("addIdToLineupInBucket", () => {
   const squad = [

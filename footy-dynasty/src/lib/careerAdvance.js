@@ -90,6 +90,7 @@ import {
   bumpClubCulture,
 } from './gameDepth.js';
 import { medicalStaffMitigation } from './staffTasks.js';
+import { sanitizeLineup, lineupPlayersOrdered } from './lineupHelpers.js';
 import { weeklyClubOperationsPulse } from './weeklyClubPulse.js';
 import {
   assignDynastyQuestsForSeason,
@@ -767,6 +768,7 @@ function finishSeason(c, league) {
     });
   });
   c.squad = survivors;
+  c.lineup = sanitizeLineup(c.lineup, c.squad);
   c.retiredThisSeason = retiredThisYear;
   c.staff = (c.staff || []).map((s) => ({ ...s, contract: Math.max(0, (s.contract ?? 0) - 1) }));
   c.pendingStaffRenewals = buildStaffRenewalQueue(c.staff);
@@ -963,6 +965,10 @@ export function primeSeasonStoryState(career) {
 export function advanceCareerNextEvent({ career, league, club, setCareer, setScreen }) {
   const c = JSON.parse(JSON.stringify(career));
 
+  // Selection integrity: injured/suspended players can't take the field, and ids
+  // belonging to retired/released/traded players are cleared from their slots.
+  c.lineup = sanitizeLineup(c.lineup, c.squad);
+
   ensureDynastyAssignments(c, league?.tier ?? 3, competitionClubsForCareer(c).length || (league?.clubs?.length ?? 0));
 
   if (c.inFinals) {
@@ -1087,8 +1093,9 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     const mit = medicalStaffMitigation(c.staff);
     const trainingInjuryProb = effectiveInjuryRate(c,
       Math.max(0, ((intensity - 50) * 0.0014) + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008 - mit.probReduce));
-    if (rng() < trainingInjuryProb && c.lineup.length > 0) {
-      const injId = pick(c.lineup);
+    const trainingInjuryPool = lineupPlayersOrdered(c.squad, c.lineup);
+    if (rng() < trainingInjuryProb && trainingInjuryPool.length > 0) {
+      const injId = pick(trainingInjuryPool).id;
       const baseWeeks = rand(1, 2);
       const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
       c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
@@ -1391,8 +1398,9 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
           c.squad = c.squad.map((p) => (p.id === pid ? { ...p, injured: weeks } : p));
         });
-        if (rng() < injuryProb && c.lineup.length > 0) {
-          const injId = pick(c.lineup);
+        const matchInjuryPool = lineupPlayersOrdered(c.squad, c.lineup);
+        if (rng() < injuryProb && matchInjuryPool.length > 0) {
+          const injId = pick(matchInjuryPool).id;
           const baseWeeks = rand(1, 4);
           const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
           c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
