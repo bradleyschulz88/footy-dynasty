@@ -139,13 +139,13 @@ export default function PostMatchSummary({ summary, onContinue }) {
           <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--A-line)" }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Banknote className="w-4 h-4 text-[#4AE89A]" />
+                <Banknote className="w-4 h-4 text-apos" />
                 <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-atext-mute">Match-day income</span>
               </div>
-              <span className="font-display text-2xl text-[#4AE89A] tabular-nums">+{fmtK(summary.revenue.total)}</span>
+              <span className="font-display text-2xl text-apos tabular-nums">+{fmtK(summary.revenue.total)}</span>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <RevenueChip icon={Ticket} label="Gate" value={summary.revenue.gate} color="#4ADBE8" dim={!summary.isHome} dimLabel="Away" />
+              <RevenueChip icon={Ticket} label="Gate" value={summary.revenue.gate} color="var(--A-accent)" dim={!summary.isHome} dimLabel="Away" />
               <RevenueChip icon={Tv} label="TV rights" value={summary.revenue.broadcast} color="#A78BFA" />
               <RevenueChip icon={Handshake} label="Sponsors" value={summary.revenue.sponsor} color="var(--A-accent)" />
             </div>

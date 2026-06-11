@@ -49,7 +49,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
 
   const won = result.won;
   const drew = result.drew;
-  const resultColor = won ? "#4AE89A" : drew ? "var(--A-accent)" : "#E84A6F";
+  const resultColor = won ? "var(--A-pos)" : drew ? "var(--A-accent)" : "var(--A-neg)";
 
   const fullTime = quarters.length === 0 || revealed >= quarters.length;
   const scoreIdx = fullTime
@@ -116,7 +116,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
       <div className="px-6 py-5 text-center" style={{ borderBottom: "1px solid var(--A-line)" }}>
         <div
           className="text-[11px] font-bold uppercase tracking-[0.3em] mb-1"
-          style={{ color: result.isPreseason ? "#4ADBE8" : "var(--A-accent)" }}
+          style={{ color: "var(--A-accent)" }}
         >
           {result.label} · {career.currentDate ? formatDate(career.currentDate) : ""}
           {result.isPreseason && " · Pre-Season"}
@@ -184,11 +184,11 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
           <div className="h-2 rounded-full overflow-hidden flex" style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}>
             <div
               className="h-full"
-              style={{ width: `${momentumPct}%`, background: "linear-gradient(90deg,#4ADBE8,#4AE89A)" }}
+              style={{ width: `${momentumPct}%`, background: "linear-gradient(90deg,var(--A-accent),var(--A-pos))" }}
             />
             <div
               className="h-full"
-              style={{ width: `${100 - momentumPct}%`, background: "linear-gradient(90deg,#E84A6F,#A78BFA)" }}
+              style={{ width: `${100 - momentumPct}%`, background: "linear-gradient(90deg,var(--A-neg),#A78BFA)" }}
             />
           </div>
         </div>
@@ -227,7 +227,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                   const sideMine = (result.isHome ? "home" : "away") === ev.side;
                   const color =
                     ev.kind === "goal"
-                      ? "#4AE89A"
+                      ? "var(--A-pos)"
                       : ev.kind === "behind"
                         ? "var(--A-accent)"
                         : ev.kind === "moment"
@@ -255,7 +255,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                       </span>
                       <span
                         className="text-[10px] uppercase tracking-wider font-bold w-12 flex-shrink-0"
-                        style={{ color: sideMine ? "#4AE89A" : "#E84A6F" }}
+                        style={{ color: sideMine ? "var(--A-pos)" : "var(--A-neg)" }}
                       >
                         {sideMine ? club.short : result.opp?.short || "OPP"}
                       </span>
@@ -317,8 +317,8 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                       <div
                         className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
                         style={{
-                          background: qWinner === (result.isHome ? "home" : "away") ? "#4AE89A22" : "#64748B22",
-                          color: qWinner === (result.isHome ? "home" : "away") ? "#4AE89A" : "#64748B",
+                          background: qWinner === (result.isHome ? "home" : "away") ? "color-mix(in srgb, var(--A-pos) 13%, transparent)" : "color-mix(in srgb, var(--A-text-mute) 13%, transparent)",
+                          color: qWinner === (result.isHome ? "home" : "away") ? "var(--A-pos)" : "var(--A-text-mute)",
                         }}
                       >
                         {qWinner === "draw" ? "=" : qWinner === (result.isHome ? "home" : "away") ? "▲" : "▼"}
@@ -394,7 +394,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
             style={{
               background: fullTime
                 ? `linear-gradient(135deg,${resultColor}CC,${resultColor})`
-                : "linear-gradient(135deg,#475569,#334155)",
+                : "var(--A-panel-2)",
               boxShadow: fullTime ? `0 4px 20px ${resultColor}44` : "none",
             }}
           >

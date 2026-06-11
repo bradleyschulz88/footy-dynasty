@@ -10,11 +10,11 @@ export default function FinalsEliminatedScreen({ career, league, onSimRemainder,
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-6 py-10"
-      style={{ background: "linear-gradient(160deg, #1a0f14 0%, #0F172A 60%, #1E293B 100%)" }}
+      style={{ background: "linear-gradient(160deg, #1a0f14 0%, var(--A-bg) 60%, var(--A-bg-2) 100%)" }}
     >
       <div className="max-w-lg w-full text-center anim-in">
         <div className="text-5xl mb-4">💔</div>
-        <h1 className="font-display text-3xl text-white mb-2">FINALS OVER</h1>
+        <h1 className="font-display text-3xl text-atext mb-2">FINALS OVER</h1>
         <p className="text-sm text-atext-dim mb-6">
           Eliminated — {alive.length} club{alive.length === 1 ? "" : "s"} still fighting for the flag.
         </p>

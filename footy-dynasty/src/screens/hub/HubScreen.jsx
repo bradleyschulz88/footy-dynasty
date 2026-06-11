@@ -136,7 +136,7 @@ function FootyTripPromoCard({ career, setScreen, setTab }) {
 
 function CommitteeMiniSummary({ career, setScreen, setTab }) {
   const avg = committeeMoodAverage(career.committee);
-  const accent = avg >= 70 ? '#4AE89A' : avg >= 40 ? 'var(--A-accent-2)' : '#E84A6F';
+  const accent = avg >= 70 ? 'var(--A-pos)' : avg >= 40 ? 'var(--A-accent-2)' : 'var(--A-neg)';
   return (
     <div>
       <div className={css.label}>Committee Mood</div>
@@ -338,21 +338,21 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <Pill color="var(--A-accent)">Tier {league.tier}</Pill>
               {career.phase === 'preseason'
-                ? <Pill color="#4ADBE8">Pre-Season {career.season}</Pill>
+                ? <Pill color="var(--A-accent)">Pre-Season {career.season}</Pill>
                 : career.inFinals
-                  ? <Pill color="#E84A6F">Finals</Pill>
-                  : <Pill color="#4ADBE8">Round {career.week}</Pill>}
+                  ? <Pill color="var(--A-neg)">Finals</Pill>
+                  : <Pill color="var(--A-accent)">Round {career.week}</Pill>}
               {hubRoundTheme?.short && (
-                <Pill color="#B45309">{hubRoundTheme.short}</Pill>
+                <Pill color="var(--A-accent-2)">{hubRoundTheme.short}</Pill>
               )}
               <Pill color={posColor}>#{myLadderPos || "—"} on Ladder</Pill>
               {league.tier === 1 && !career.inFinals && career.phase !== 'preseason' && (() => {
                 const mn = finalsMagicNumber(career);
-                return mn ? <Pill color={mn.clinched ? '#4AE89A' : '#F59E0B'}>{mn.label}</Pill> : null;
+                return mn ? <Pill color={mn.clinched ? 'var(--A-pos)' : 'var(--A-accent-2)'}>{mn.label}</Pill> : null;
               })()}
               {myRow && <Pill color="#64748B">{myRow.W}W {myRow.L}L {myRow.D}D</Pill>}
               {career.clubCulture && (() => {
-                const cultureColor = career.clubCulture.tier === 'Elite' ? '#FFD200' : career.clubCulture.tier === 'Strong' ? '#4AE89A' : career.clubCulture.tier === 'Developing' ? 'var(--A-accent)' : '#94A3B8';
+                const cultureColor = career.clubCulture.tier === 'Elite' ? '#FFD200' : career.clubCulture.tier === 'Strong' ? 'var(--A-pos)' : career.clubCulture.tier === 'Developing' ? 'var(--A-accent)' : 'var(--A-text-mute)';
                 return (
                   <Pill color={cultureColor}>
                     Culture: {career.clubCulture.tier} {Math.round(career.clubCulture.score ?? 60)}
@@ -440,7 +440,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                 </div>
                 <span
                   className={`text-[10px] font-black font-mono uppercase tracking-wider shrink-0 px-2 py-1 rounded-md border border-aline ${
-                    q.complete ? "text-[#4AE89A]" : "text-atext-dim"
+                    q.complete ? "text-apos" : "text-atext-dim"
                   }`}
                 >
                   {q.complete ? "Done" : q.kind === "ladder_pos" ? "EoS" : "Active"}
@@ -479,7 +479,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                     <div className="mt-1 h-1 rounded-full overflow-hidden" style={{background:'var(--A-line)'}}>
                       <div className="h-full rounded-full transition-all" style={{
                         width: `${Math.min(100, row.pct ?? 0)}%`,
-                        background: row.status === 'MET' || row.status === 'ON TRACK' ? '#4AE89A' : row.status === 'AT RISK' ? '#FFB347' : '#E84A6F'
+                        background: row.status === 'MET' || row.status === 'ON TRACK' ? 'var(--A-pos)' : row.status === 'AT RISK' ? '#FFB347' : 'var(--A-neg)'
                       }} />
                     </div>
                   )}
@@ -487,11 +487,11 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                 <span
                   className={`text-[10px] font-black font-mono uppercase tracking-wider shrink-0 px-2 py-1 rounded-md border border-aline ${
                     row.status === "ON TRACK"
-                      ? "text-[#4AE89A]"
+                      ? "text-apos"
                       : row.status === "AT RISK" || row.status === "MISSED"
-                        ? "text-[#E84A6F]"
+                        ? "text-aneg"
                         : row.status === "MET"
-                          ? "text-[#4AE89A]"
+                          ? "text-apos"
                           : "text-atext-dim"
                   }`}
                 >
@@ -546,7 +546,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         <motion.div variants={hubItem} className={`${css.panel} p-4`}>
           {lastEv.type === 'training' && (
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'rgba(74,232,154,0.1)', border:'1px solid rgba(74,232,154,0.25)'}}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'color-mix(in srgb, var(--A-pos) 10%, transparent)', border:'1px solid color-mix(in srgb, var(--A-pos) 25%, transparent)'}}>
                 {TRAINING_INFO[lastEv.subtype]?.icon || '🏋️'}
               </div>
               <div className="flex-1">
@@ -556,7 +556,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                   {Object.entries(lastEv.gains || {}).map(([k, v]) => `${k} +${v}`).join(', ') || '—'}
                 </div>
                 {lastEv.devNotes && lastEv.devNotes.length > 0 && (
-                  <div className="text-xs text-[#4ADE80] mt-1 leading-relaxed">
+                  <div className="text-xs text-apos mt-1 leading-relaxed">
                     {lastEv.devNotes.join(' · ')}
                   </div>
                 )}
@@ -565,7 +565,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           )}
           {lastEv.type === 'key_event' && (
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'rgba(0,224,255,0.1)', border:'1px solid rgba(0,224,255,0.25)'}}>📅</div>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'color-mix(in srgb, var(--A-accent) 10%, transparent)', border:'1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)'}}>📅</div>
               <div className="flex-1">
                 <div className={css.label}>Event</div>
                 <div className="font-bold text-atext">{lastEv.name}</div>
@@ -579,7 +579,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           {(lastEv.type === 'round' || lastEv.type === 'preseason_match') && (
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0`}
-                style={{background: lastEv.won ? 'rgba(74,232,154,0.1)' : lastEv.drew ? 'rgba(232,212,74,0.1)' : 'rgba(232,74,111,0.1)', border: `1px solid ${lastEv.won ? 'rgba(74,232,154,0.25)' : lastEv.drew ? 'rgba(232,212,74,0.25)' : 'rgba(232,74,111,0.25)'}`}}>
+                style={{background: lastEv.won ? 'color-mix(in srgb, var(--A-pos) 10%, transparent)' : lastEv.drew ? 'color-mix(in srgb, var(--A-accent-2) 10%, transparent)' : 'color-mix(in srgb, var(--A-neg) 10%, transparent)', border: `1px solid ${lastEv.won ? 'color-mix(in srgb, var(--A-pos) 25%, transparent)' : lastEv.drew ? 'color-mix(in srgb, var(--A-accent-2) 25%, transparent)' : 'color-mix(in srgb, var(--A-neg) 25%, transparent)'}`}}>
                 {lastEv.won ? '✅' : lastEv.drew ? '🤝' : '❌'}
               </div>
               <div className="flex-1">
@@ -590,7 +590,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                 </div>
                 <div className="font-bold text-atext">
                   {lastEv.isHome ? 'vs' : '@'} {lastEv.opp?.name}
-                  <span className="ml-3 font-display text-xl" style={{color: lastEv.won ? '#4AE89A' : lastEv.drew ? 'var(--A-accent)' : '#E84A6F'}}>
+                  <span className="ml-3 font-display text-xl" style={{color: lastEv.won ? 'var(--A-pos)' : lastEv.drew ? 'var(--A-accent-2)' : 'var(--A-neg)'}}>
                     {lastEv.myTotal} – {lastEv.oppTotal}
                   </span>
                 </div>
@@ -629,7 +629,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               const isTraining = ev.type === 'training';
               const isKey = ev.type === 'key_event';
               const info = isTraining ? TRAINING_INFO[ev.subtype] : null;
-              const color = isMatch ? 'var(--A-accent)' : isKey ? '#4ADBE8' : (info?.color || '#94A3B8');
+              const color = isMatch ? 'var(--A-accent)' : isKey ? 'var(--A-accent)' : (info?.color || 'var(--A-text-mute)');
               let evLabel = '';
               if (isMatch && ev.type === 'round') {
                 const m = (ev.matches || []).find(m2 => m2.home === career.clubId || m2.away === career.clubId);
@@ -759,8 +759,8 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       {/* Stat Row */}
       <motion.div variants={hubItem} className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users} />
-          <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="#4AE89A" icon={DollarSign} />
-          <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="#4ADBE8" icon={Handshake} />
+          <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="var(--A-pos)" icon={DollarSign} />
+          <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="var(--A-accent)" icon={Handshake} />
           <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.W ?? 0}W / ${myRow?.L ?? 0}L`} accent={posColor} icon={Trophy} />
       </motion.div>
 
@@ -797,9 +797,9 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                   </div>
                   {league.tier >= 2 && i === 0 && (
                     <div className="flex items-center gap-2 mx-5 my-0.5">
-                      <div className="flex-1 border-t border-dashed border-[#4AE89A]/50" />
-                      <span className="text-[9px] text-[#4AE89A] font-mono uppercase tracking-wider">Promotion zone</span>
-                      <div className="flex-1 border-t border-dashed border-[#4AE89A]/50" />
+                      <div className="flex-1 border-t border-dashed border-apos/50" />
+                      <span className="text-[9px] text-apos font-mono uppercase tracking-wider">Promotion zone</span>
+                      <div className="flex-1 border-t border-dashed border-apos/50" />
                     </div>
                   )}
                 </React.Fragment>
@@ -838,7 +838,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           <div className="space-y-2">
             {recentNews.length === 0 && <div className="text-sm text-atext-dim py-4 text-center">No news yet.</div>}
             {recentNews.map((n, i) => {
-              const borderColor = n.type === "win" ? "#4AE89A" : n.type === "loss" ? "#E84A6F" : n.type === "board" ? "#FFB347" : n.type === "info" ? "var(--A-accent-2)" : "#64748B";
+              const borderColor = n.type === "win" ? "var(--A-pos)" : n.type === "loss" ? "var(--A-neg)" : n.type === "board" ? "#FFB347" : n.type === "info" ? "var(--A-accent-2)" : "var(--A-text-mute)";
               const emoji = n.type === "win" ? "🏆" : n.type === "loss" ? "📉" : n.type === "board" ? "🏛️" : n.type === "info" ? "ℹ️" : "•";
               return (
                 <div key={i} className="flex gap-3 p-3 rounded-xl" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)", borderLeft:`3px solid ${borderColor}`}}>
@@ -880,10 +880,10 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       {/* Board Pressure */}
       <motion.div variants={hubItem} className="space-y-3">
       {career.finance.boardConfidence < 35 && (
-        <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"rgba(232,74,111,0.1)", border:"1.5px solid rgba(232,74,111,0.3)"}}>
+        <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:'color-mix(in srgb, var(--A-neg) 10%, transparent)', border:'1.5px solid color-mix(in srgb, var(--A-neg) 30%, transparent)'}}>
           <span className="text-2xl">⚠️</span>
           <div>
-            <div className="font-bold text-sm" style={{color:"var(--A-neg)"}}>Board On Notice — Confidence {career.finance.boardConfidence}%</div>
+            <div className="font-bold text-sm text-aneg">Board On Notice — Confidence {career.finance.boardConfidence}%</div>
             <div className="text-xs text-atext-dim">Win your next match or face consequences. The board is watching closely.</div>
           </div>
         </div>
@@ -914,10 +914,10 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         const top2 = injuredPlayers.sort((a, b) => b.injured - a.injured).slice(0, 2);
         const names = top2.map(p => `${p.firstName ? p.firstName[0] + '.' : ''} ${p.lastName} (${p.injured}w)`).join(', ');
         return (
-          <div className="rounded-2xl p-4 flex items-start gap-3" style={{background:"rgba(232,74,111,0.07)", border:"1.5px solid rgba(232,74,111,0.3)"}}>
+          <div className="rounded-2xl p-4 flex items-start gap-3" style={{background:'color-mix(in srgb, var(--A-neg) 7%, transparent)', border:'1.5px solid color-mix(in srgb, var(--A-neg) 30%, transparent)'}}>
             <span className="text-2xl flex-shrink-0">🤕</span>
             <div>
-              <div className="font-bold text-sm text-[#E84A6F]">Injury Report — {injuredPlayers.length} player{injuredPlayers.length !== 1 ? 's' : ''} out</div>
+              <div className="font-bold text-sm text-aneg">Injury Report — {injuredPlayers.length} player{injuredPlayers.length !== 1 ? 's' : ''} out</div>
               <div className="text-xs text-atext-dim mt-1">Out: {names}{injuredPlayers.length > 2 ? ` +${injuredPlayers.length - 2} more` : ''}</div>
             </div>
           </div>
@@ -929,11 +929,11 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         <motion.div variants={hubItem} className={`${css.panel} p-4`}>
           <h3 className="font-display text-lg text-atext tracking-wide mb-3">COACHING RECORD</h3>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
-            <div><div className="font-display text-2xl text-[#4AE89A]">{career.coachStats.totalWins ?? 0}</div><div className={css.label}>Wins</div></div>
-            <div><div className="font-display text-2xl text-[#E84A6F]">{career.coachStats.totalLosses ?? 0}</div><div className={css.label}>Losses</div></div>
+            <div><div className="font-display text-2xl text-apos">{career.coachStats.totalWins ?? 0}</div><div className={css.label}>Wins</div></div>
+            <div><div className="font-display text-2xl text-aneg">{career.coachStats.totalLosses ?? 0}</div><div className={css.label}>Losses</div></div>
             <div><div className="font-display text-2xl text-atext">{career.coachStats.totalDraws ?? 0}</div><div className={css.label}>Draws</div></div>
             <div><div className="font-display text-2xl text-[#FFD200]">{career.coachStats.premierships ?? 0}</div><div className={css.label}>Flags</div></div>
-            <div><div className="font-display text-2xl text-[#4ADBE8]">{career.coachStats.promotions ?? 0}</div><div className={css.label}>Promotions</div></div>
+            <div><div className="font-display text-2xl text-aaccent">{career.coachStats.promotions ?? 0}</div><div className={css.label}>Promotions</div></div>
             <div><div className="font-display text-2xl text-atext-dim">{career.coachStats.seasonsManaged ?? 1}</div><div className={css.label}>Seasons</div></div>
           </div>
           {career.history && career.history.length > 0 && (

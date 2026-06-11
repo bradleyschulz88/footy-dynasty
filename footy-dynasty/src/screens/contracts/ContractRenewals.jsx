@@ -77,10 +77,10 @@ export function StaffRenewalsPanel({ career, updateCareer, leagueTier, showHeadi
                 <div className="text-right font-mono">{r.proposedYears}y</div>
               </div>
               {!r.volunteer && !canAfford && (
-                <div className="text-[10px] text-[#E84A6F] mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Cash buffer too low for raise</div>
+                <div className="text-[10px] text-aneg mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Cash buffer too low for raise</div>
               )}
               <div className="flex gap-2 justify-end">
-                <button type="button" onClick={() => reject(r)} disabled={closed} className={closed ? 'text-xs px-3 py-2 text-atext-mute' : 'text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10'}>Replace</button>
+                <button type="button" onClick={() => reject(r)} disabled={closed} className={closed ? 'text-xs px-3 py-2 text-atext-mute' : 'text-xs px-3 py-2 rounded-lg text-aneg hover:bg-aneg/10'}>Replace</button>
                 <button type="button" onClick={() => accept(r)} disabled={closed || !canAfford} className={!closed && canAfford ? `${css.btnPrimary} text-xs px-3 py-2` : 'px-3 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute'}>Re-Sign</button>
               </div>
             </div>
@@ -164,7 +164,7 @@ export function RenewalsTab({ career, updateCareer }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Cap Headroom" value={fmtK(headroom)} accent={headroom > 0 ? '#4AE89A' : '#E84A6F'} />
+          <Stat label="Cap Headroom" value={fmtK(headroom)} accent={headroom > 0 ? 'var(--A-pos)' : 'var(--A-neg)'} />
           <Stat label="Outstanding" value={queue.length} accent="var(--A-accent-2)" />
         </div>
       </div>
@@ -199,7 +199,7 @@ export function RenewalsTab({ career, updateCareer }) {
             if (!player) return null;
             const wageDelta = r.proposedWage - (r.currentWage ?? 0);
             const canAfford = canAffordRenewal(career, r);
-            const formColor = (player.form ?? 70) >= 80 ? '#4AE89A' : (player.form ?? 70) >= 60 ? 'var(--A-accent)' : '#E84A6F';
+            const formColor = (player.form ?? 70) >= 80 ? 'var(--A-pos)' : (player.form ?? 70) >= 60 ? 'var(--A-accent)' : 'var(--A-neg)';
             return (
               <div key={r.playerId} className={`${css.panel} p-4`}>
                 <div className="flex items-start justify-between mb-2">
@@ -222,10 +222,10 @@ export function RenewalsTab({ career, updateCareer }) {
                   <div className="text-right font-mono" style={{ color: formColor }}>{(r.formMult ?? 1).toFixed(2)}×</div>
                 </div>
                 {!canAfford && (
-                  <div className="text-[10px] text-[#E84A6F] mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Over salary cap</div>
+                  <div className="text-[10px] text-aneg mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Over salary cap</div>
                 )}
                 <div className="flex gap-2 justify-end">
-                  <button type="button" onClick={() => reject(r)} disabled={closed} className={closed ? 'text-xs px-3 py-2 text-atext-mute' : 'text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10'}>Let Walk</button>
+                  <button type="button" onClick={() => reject(r)} disabled={closed} className={closed ? 'text-xs px-3 py-2 text-atext-mute' : 'text-xs px-3 py-2 rounded-lg text-aneg hover:bg-aneg/10'}>Let Walk</button>
                   <button type="button" onClick={() => accept(r)} disabled={closed || !canAfford} className={canAfford && !closed ? `${css.btnPrimary} text-xs px-3 py-2` : "px-3 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>Re-Sign</button>
                 </div>
               </div>

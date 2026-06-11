@@ -91,6 +91,7 @@ import {
 } from './gameDepth.js';
 import { medicalStaffMitigation } from './staffTasks.js';
 import { sanitizeLineup, lineupPlayersOrdered } from './lineupHelpers.js';
+import { scoutPrepRatingBonus } from './oppositionScout.js';
 import { weeklyClubOperationsPulse } from './weeklyClubPulse.js';
 import {
   assignDynastyQuestsForSeason,
@@ -356,6 +357,7 @@ function simFinalsPair(c, league, m, _roundLabel) {
       groundAccuracyMod = band.accuracyMod;
     }
     const travelPen = awayTravelRatingPenalty(isHome, c.clubId, oppId);
+    const matchWeather = ensureWeatherForWeek(c, c.week);
     const getPlayerStrengthForQuarter = (qi) =>
       teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
       + benchStrengthBonus(c.squad, c.lineup, qi)
@@ -375,6 +377,7 @@ function simFinalsPair(c, league, m, _roundLabel) {
         oppTactic,
         groundScoringMod,
         groundAccuracyMod,
+        weather: matchWeather,
         getPlayerStrengthForQuarter,
         ...(getOppStrengthForQuarter ? { getOppStrengthForQuarter } : {}),
         homeFixtureAdvantage: resolveHomeAdvantageForFixture(c, league, isHome, findClub(c.clubId), oppClub),
@@ -1284,8 +1287,10 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       const fitDrop = rand(5, 12);
       const formChange = won ? rand(1, 4) : drew ? rand(-1, 2) : rand(-3, 1);
       const gAdd = isForwardPreferred(p) ? rand(0, 2) : 0;
+      const newForm = clamp(p.form + formChange, 30, 100);
+      const formHistory = [...(p.formHistory || []), p.form].slice(-5);
       return {
-        ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: clamp(p.form + formChange, 30, 100),
+        ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
         goals: p.goals + gAdd, behinds: p.behinds + rand(0, 1), disposals: p.disposals + rand(6, 18),
         marks: p.marks + rand(1, 4), tackles: p.tackles + rand(1, 3), gamesPlayed: p.gamesPlayed + 1,
       };
@@ -1319,6 +1324,8 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         turningPointPlayedThisRound = m.turningPoint || null;
         let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
         myRating += getCaptainMatchBonus(c, false);
+        const scoutPrep = scoutPrepRatingBonus(c, opp.id, ev.round);
+        myRating += scoutPrep;
         const oppSquad = c.aiSquads?.[opp.id];
         const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
         const oppLineupIds = oppLineup.map((p) => p.id);
@@ -1335,10 +1342,12 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           groundAccuracyMod = band.accuracyMod;
         }
         const travelPen = awayTravelRatingPenalty(isHome, c.clubId, opp.id);
+        const matchWeather = ensureWeatherForWeek(c, ev.round);
         const getPlayerStrengthForQuarter = (qi) =>
           teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
           + benchStrengthBonus(c.squad, c.lineup, qi)
           + interchangeRotationBonus(c.squad, c.lineup, qi)
+          + scoutPrep
           - travelPen;
         const getOppStrengthForQuarter = oppSquad?.length
           ? (qi) =>
@@ -1351,6 +1360,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           isHome, myRating,
           {
             tactic: c.tacticChoice || 'balanced', playerLineup, oppLineup, oppTactic, groundScoringMod, groundAccuracyMod,
+            weather: matchWeather,
             getPlayerStrengthForQuarter,
             ...(getOppStrengthForQuarter ? { getOppStrengthForQuarter } : {}),
             homeFixtureAdvantage: resolveHomeAdvantageForFixture(
@@ -1372,16 +1382,27 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         myResult = { isHome, opp, result, myTotal, oppTotal, won, drew };
 
         const attribution = result.goalAttribution || {};
+        const votesById = {};
+        (result.votes || []).forEach((v) => { votesById[v.playerId] = v.votes; });
+        // Attribute-centred stat multiplier (generation mean ≈ 68): skilled players
+        // rack up more of the ball, so box scores read as earned, not rolled.
+        const attrStatMult = (val) => clamp(1 + ((val ?? 60) - 68) * 0.012, 0.75, 1.35);
         c.squad = c.squad.map((p) => {
           if (!c.lineup.includes(p.id)) return p;
           const fitDrop = rand(8, 18);
-          const formChange = won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1);
+          // Best-on-ground performances carry personal form, even in a loss.
+          const formChange = (won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1)) + (votesById[p.id] || 0);
           const att = attribution[p.id] || { goals: 0, behinds: 0 };
-          const dispAdd = isMidPreferred(p) ? rand(15, 32) : rand(8, 22);
+          const ballSkill = ((p.attrs?.decision ?? 60) + (p.attrs?.handball ?? 60) + (p.attrs?.endurance ?? 60)) / 3;
+          const dispAdd = Math.round((isMidPreferred(p) ? rand(15, 32) : rand(8, 22)) * attrStatMult(ballSkill));
+          const markAdd = Math.round(rand(2, 7) * attrStatMult(p.attrs?.marking));
+          const tackleAdd = Math.round(rand(1, 5) * attrStatMult(p.attrs?.tackling));
+          const newForm = clamp(p.form + formChange, 30, 100);
+          const formHistory = [...(p.formHistory || []), p.form].slice(-5);
           return {
-            ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: clamp(p.form + formChange, 30, 100),
+            ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
             goals: p.goals + (att.goals || 0), behinds: p.behinds + (att.behinds || 0), disposals: p.disposals + dispAdd,
-            marks: p.marks + rand(2, 7), tackles: p.tackles + rand(1, 5), gamesPlayed: p.gamesPlayed + 1,
+            marks: p.marks + markAdd, tackles: p.tackles + tackleAdd, gamesPlayed: p.gamesPlayed + 1,
           };
         });
 
@@ -1552,6 +1573,24 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       }
     }
 
+    // Streak-driven squad morale: win/lose 3+ in a row creates momentum
+    if (myResult && ev.phase === 'season') {
+      const streak = c.winStreak ?? 0;
+      const margin = Math.abs(myResult.myTotal - myResult.oppTotal);
+      let moraleDelta = 0;
+      if (streak >= 3) moraleDelta += 1;
+      else if (streak <= -3) moraleDelta -= 1;
+      if (myResult.won && margin >= 40) moraleDelta += 1;
+      else if (!myResult.won && !myResult.drew && margin >= 40) moraleDelta -= 1;
+      if (moraleDelta !== 0) {
+        c.squad = c.squad.map((p) =>
+          c.lineup.includes(p.id)
+            ? { ...p, morale: clamp((p.morale ?? 70) + moraleDelta, cfg.moraleFloor, 100) }
+            : p
+        );
+      }
+    }
+
     if (myResult && myResult.isHome) {
       const weather = ensureWeatherForWeek(c, ev.round);
       c.groundCondition = applyGroundDegradation(c.groundCondition ?? 85, weather, c.facilities?.stadium?.level ?? 1);
@@ -1618,11 +1657,19 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     if (ev.phase === 'season' && myResult && !c.isSacked) {
       const cap = effectiveWageCap(c);
       const wages = currentPlayerWageBill(c);
-      if (cap > 0 && wages > cap && (c.capBreachedBoardNoteSeason ?? null) !== c.season) {
-        c.capBreachedBoardNoteSeason = c.season;
+      if (cap > 0 && wages > cap) {
+        const overRatio = wages / cap - 1;
+        const confidenceDrain = overRatio > 0.15 ? -2 : -1;
         ensureCareerBoard(c, findClub(c.clubId), league);
-        applyBoardConfidenceDelta(c, -2);
-        c.news = [{ week: ev.round, type: 'board', text: '⚖️ Player wages are above the effective salary cap. The board wants a tighter list or discipline on renewals.' }, ...(c.news || [])].slice(0, 25);
+        applyBoardConfidenceDelta(c, confidenceDrain);
+        if ((c.capBreachedBoardNoteSeason ?? null) !== c.season) {
+          c.capBreachedBoardNoteSeason = c.season;
+          const pct = Math.round(overRatio * 100);
+          c.news = [{
+            week: ev.round, type: 'board',
+            text: `⚖️ Cap breach (${pct}% over): board confidence draining every round until wages are trimmed.`,
+          }, ...(c.news || [])].slice(0, 25);
+        }
       }
     }
 

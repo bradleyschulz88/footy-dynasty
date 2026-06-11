@@ -1,20 +1,24 @@
 import { rand, randNorm, rng, pick } from './rng.js';
 import { findClub } from '../data/pyramid.js';
-import { isForwardPreferred, isMidPreferred, playerHasPosition } from './playerGen.js';
+import { isForwardPreferred, isMidPreferred, isBackPreferred, playerHasPosition } from './playerGen.js';
 import { lineupStructureModifier } from './lineupBalance.js';
 import { LINEUP_CAP, LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 
 export const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
-/** Effective playing rating for one player (form, fitness, optional quarter fatigue). */
+/** Effective playing rating for one player (form, fitness, morale, optional quarter fatigue). */
 export function playerEffectiveMatchRating(player, quarter = null) {
   if (!player) return 0;
   const base = player.trueRating || player.overall || 0;
   const form = player.form ?? 70;
   const fitness = player.fitness ?? 90;
+  const morale = player.morale ?? 75;
   // Calibrated to be gentle at league-average form/fitness so teamRating stays comparable to the old formula.
   const formMult = clamp(1 + (form - 70) * 0.0035, 0.92, 1.1);
   const fitnessMult = clamp(0.88 + (fitness - 70) * 0.004, 0.78, 1.06);
+  // Morale is centred on the generation mean (75) and softer than form: a flat
+  // dressing room costs about as much as a couple of points of form.
+  const moraleMult = clamp(1 + (morale - 75) * 0.0015, 0.955, 1.045);
   let fatigue = 1;
   if (quarter != null && Number.isFinite(quarter) && quarter >= 3) {
     const q = Math.min(4, Math.max(1, quarter));
@@ -22,7 +26,7 @@ export function playerEffectiveMatchRating(player, quarter = null) {
     fatigue = 1 - u * (1 - fitnessMult) * 0.35;
     fatigue = clamp(fatigue, 0.72, 1);
   }
-  return base * formMult * fitnessMult * fatigue;
+  return base * formMult * fitnessMult * moraleMult * fatigue;
 }
 
 /**
@@ -57,13 +61,17 @@ export function teamRating(squad, lineup, training, facilitiesAvg, staffAvg, qua
 
 // Tactic adjustments (defense, balance, attack)
 // Returns a tuple of { goalRateMod, momentumGain, riskMod }
+// goalRateMod: own shot volume. oppRateMod: what you do to the OTHER side's
+// shot volume (negative = suppress, positive = concede; applied at half
+// strength). riskMod > 1 trades shot quality for volume. Tuned so attack is a
+// genuine gamble, defensive/flood counter it, and weather shifts the calculus.
 const TACTIC_PROFILES = {
-  defensive:  { goalRateMod: -0.10, oppRateMod: -0.18, momentumGain: 0.6, riskMod: 0.7 },
+  defensive:  { goalRateMod: -0.12, oppRateMod: -0.16, momentumGain: 0.6, riskMod: 0.7 },
   balanced:   { goalRateMod:  0.00, oppRateMod:  0.00, momentumGain: 1.0, riskMod: 1.0 },
-  attack:     { goalRateMod:  0.18, oppRateMod:  0.10, momentumGain: 1.3, riskMod: 1.2 },
-  flood:      { goalRateMod: -0.08, oppRateMod: -0.10, momentumGain: 0.7, riskMod: 0.8 },
-  press:      { goalRateMod:  0.05, oppRateMod: -0.08, momentumGain: 1.1, riskMod: 1.1 },
-  run:        { goalRateMod:  0.12, oppRateMod:  0.05, momentumGain: 1.2, riskMod: 1.15 },
+  attack:     { goalRateMod:  0.16, oppRateMod:  0.16, momentumGain: 1.3, riskMod: 1.25 },
+  flood:      { goalRateMod: -0.14, oppRateMod: -0.20, momentumGain: 0.6, riskMod: 0.72 },
+  press:      { goalRateMod:  0.00, oppRateMod: -0.04, momentumGain: 1.1, riskMod: 1.15 },
+  run:        { goalRateMod:  0.10, oppRateMod:  0.10, momentumGain: 1.2, riskMod: 1.15 },
 };
 
 /** Per-quarter shot-volume shape (indexes 0–3 = Q1–Q4). Tunable “phase” feel without extra events. */
@@ -176,7 +184,36 @@ function poisson(mean) {
   return k - 1;
 }
 
-// Pick a goal-likely position for "scorer" attribution: weight forwards heavier (primary or secondary).
+/** Weighted random pick — consumes one rng() like pick(). */
+function weightedPickBy(pool, weightFn) {
+  if (!pool || pool.length === 0) return null;
+  let total = 0;
+  const weights = new Array(pool.length);
+  for (let i = 0; i < pool.length; i++) {
+    const w = Math.max(0.01, weightFn(pool[i]));
+    weights[i] = w;
+    total += w;
+  }
+  let r = rng() * total;
+  for (let i = 0; i < pool.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return pool[i];
+  }
+  return pool[pool.length - 1];
+}
+
+// Finishing quality — stars convert more chains than role players.
+// Cubic on the quality ratio: an 85-rated finisher is ~2.2x as likely as a 65.
+function goalFinishWeight(p) {
+  const rating = p.trueRating ?? p.overall ?? 60;
+  const kicking = p.attrs?.kicking ?? rating;
+  const marking = p.attrs?.marking ?? rating;
+  const quality = rating * 0.6 + kicking * 0.25 + marking * 0.15;
+  return Math.pow(quality / 60, 3);
+}
+
+// Pick a goal-likely position for "scorer" attribution: weight forwards heavier
+// (primary or secondary), then weight within the pool by finishing quality.
 function pickScorerId(playerLineup) {
   if (!playerLineup || playerLineup.length === 0) return null;
   const fwd = playerLineup.filter(p => p && isForwardPreferred(p));
@@ -188,7 +225,44 @@ function pickScorerId(playerLineup) {
   else if (r < 0.85 && mid.length) pool = mid;
   else pool = all;
   if (!pool.length) return null;
-  return pick(pool).id;
+  return weightedPickBy(pool, goalFinishWeight)?.id ?? null;
+}
+
+/**
+ * Defensive pressure on the attacking side's shot accuracy: a strong back six
+ * against a weak forward line forces worse shots. Centred at 1.0 for even
+ * matchups; defensive/flood gameplans lean into it harder.
+ * @returns multiplier on attacking accuracy, ~[0.88, 1.10]
+ */
+export function defensivePressureMod(defLineup, attLineup, defTactic = 'balanced') {
+  const backs = (defLineup || []).filter((p) => p && isBackPreferred(p));
+  const fwds = (attLineup || []).filter((p) => p && isForwardPreferred(p));
+  if (!backs.length || !fwds.length) return 1;
+  const defQuality = (p) =>
+    (p.trueRating ?? p.overall ?? 60) * 0.5 + (p.attrs?.marking ?? 60) * 0.25 + (p.attrs?.tackling ?? 60) * 0.25;
+  const attQuality = (p) =>
+    (p.trueRating ?? p.overall ?? 60) * 0.6 + (p.attrs?.kicking ?? 60) * 0.2 + (p.attrs?.marking ?? 60) * 0.2;
+  const backAvg = backs.reduce((a, p) => a + defQuality(p), 0) / backs.length;
+  const fwdAvg = fwds.reduce((a, p) => a + attQuality(p), 0) / fwds.length;
+  const lean = defTactic === 'defensive' ? 1.5 : defTactic === 'flood' ? 1.3 : 1;
+  return clamp(1 - (backAvg - fwdAvg) * 0.003 * lean, 0.90, 1.10);
+}
+
+/**
+ * Weather punishes attacking gameplans more than containing ones — wet or wild
+ * conditions reward the side set up to absorb pressure.
+ * @returns multiplier on this side's shot accuracy
+ */
+export function weatherAccuracyMod(weather, tactic = 'balanced') {
+  if (!weather) return 1;
+  const w = String(weather).toLowerCase();
+  const wet = w === 'rainy' || w === 'rain' || w === 'wet' || w === 'stormy';
+  const windy = w === 'windy' || w === 'wind';
+  if (!wet && !windy) return 1;
+  const base = wet ? 0.92 : 0.96;
+  const tacticLean =
+    { attack: 0.95, run: 0.95, press: 0.98, balanced: 1.0, defensive: 1.04, flood: 1.04 }[tactic] ?? 1.0;
+  return clamp(base * tacticLean, 0.8, 1.05);
 }
 
 // =============================================================================
@@ -234,6 +308,21 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
   // Spec 3D: ground-condition multipliers — defaults to no effect.
   const groundScoring = clamp(opts.groundScoringMod ?? 1.0, 0.5, 1.1);
   const groundAccuracy = clamp(opts.groundAccuracyMod ?? 1.0, 0.5, 1.1);
+
+  // Each side's shot accuracy is pressured by the opposing back six, the
+  // weather/tactic pairing, and its own gameplan's risk appetite (riskMod > 1
+  // means more but lower-quality shots). All default to 1.0 when absent.
+  const weather = opts.weather || null;
+  const playerSideAccMod =
+    defensivePressureMod(oppLineup, playerLineup, oppTactic)
+    * weatherAccuracyMod(weather, tactic)
+    * (1 - (profile.riskMod - 1) * 0.15);
+  const oppSideAccMod =
+    defensivePressureMod(playerLineup, oppLineup, tactic)
+    * weatherAccuracyMod(weather, oppTactic)
+    * (1 - (oppProfile.riskMod - 1) * 0.15);
+  const homeAccMod = isPlayerHome ? playerSideAccMod : oppSideAccMod;
+  const awayAccMod = isPlayerHome ? oppSideAccMod : playerSideAccMod;
 
   const hAdv = opts.homeFixtureAdvantage ?? 4;
 
@@ -282,13 +371,21 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
     const diffWithStop = diff + stop.margin * 6;
     const rates = shotRates(diffWithStop);
 
-    // Apply tactic shot-rate adjustments
-    const homeShotMean = isPlayerHome
-      ? rates.home * (1 + playerSideMod) * (1 - oppOppMod * 0.5)
-      : rates.home * (1 + oppSideMod) * (1 - playerOppMod * 0.5);
-    const awayShotMean = !isPlayerHome
-      ? rates.away * (1 + playerSideMod) * (1 - oppOppMod * 0.5)
-      : rates.away * (1 + oppSideMod) * (1 - playerOppMod * 0.5);
+    // Apply tactic shot-rate adjustments. A side's oppRateMod scales the
+    // OTHER side's shot volume: defensive/flood/press suppress the opposition,
+    // attack concedes shots on the rebound. Suppression bites harder against
+    // overextended gameplans (scales with the target's own goalRateMod), which
+    // is what makes containment a genuine counter to all-out attack.
+    const suppressScale = (oppMod, targetGoalMod) =>
+      oppMod < 0 ? 0.5 + Math.max(0, targetGoalMod) * 2 : 0.5;
+    const homeSideMod = isPlayerHome ? playerSideMod : oppSideMod;
+    const awaySideMod = isPlayerHome ? oppSideMod : playerSideMod;
+    const homeOppPressure = isPlayerHome ? oppOppMod : playerOppMod;
+    const awayOppPressure = isPlayerHome ? playerOppMod : oppOppMod;
+    const homeShotMean =
+      rates.home * (1 + homeSideMod) * (1 + homeOppPressure * suppressScale(homeOppPressure, homeSideMod));
+    const awayShotMean =
+      rates.away * (1 + awaySideMod) * (1 + awayOppPressure * suppressScale(awayOppPressure, awaySideMod));
 
     const plQ = TACTIC_QUARTER_MULT[tactic]?.[q] ?? 1;
     const opQ = TACTIC_QUARTER_MULT[oppTactic]?.[q] ?? 1;
@@ -314,7 +411,7 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
 
     // Resolve home shots
     for (let i = 0; i < homeShots; i++) {
-      const accuracy = clamp((0.42 + diffWithStop * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy, 0.10, 0.78);
+      const accuracy = clamp((0.42 + diffWithStop * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy * homeAccMod, 0.10, 0.78);
       const minute = rand(q * 25, q * 25 + 24);
       const r = rng();
       if (r < accuracy) {
@@ -342,7 +439,7 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
     }
     // Resolve away shots
     for (let i = 0; i < awayShots; i++) {
-      const accuracy = clamp((0.42 - diffWithStop * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy, 0.10, 0.78);
+      const accuracy = clamp((0.42 - diffWithStop * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy * awayAccMod, 0.10, 0.78);
       const minute = rand(q * 25, q * 25 + 24);
       const r = rng();
       if (r < accuracy) {

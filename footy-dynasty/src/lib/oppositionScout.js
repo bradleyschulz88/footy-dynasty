@@ -91,6 +91,17 @@ export function buildOppositionReport(career, league, opts = {}) {
   return report;
 }
 
+/**
+ * Match-prep rating bonus when scout intel was filed on this opponent for this
+ * exact fixture. Small but real: tier 1 ≈ +0.8 rating points, tier 2 ≈ +1.6.
+ */
+export function scoutPrepRatingBonus(career, oppId, round) {
+  const rec = career?.opponentScout?.[oppId];
+  if (!rec) return 0;
+  if (rec.season !== career.season || rec.round !== round) return 0;
+  return rec.tier >= 2 ? 1.6 : rec.tier >= 1 ? 0.8 : 0;
+}
+
 /** Spend cash to deepen scout intel on next opponent. Returns patch or null. */
 export function runOppositionScoutPatch(career, _league) {
   const fx = nextRoundMatch(career);

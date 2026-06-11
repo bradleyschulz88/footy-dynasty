@@ -150,7 +150,7 @@ export default function MatchPreviewPanel({ career, league, onUpdateCareer }) {
       {preview.extraTags?.length > 0 && (
         <div className="flex flex-wrap gap-2 justify-end">
           {preview.extraTags.map((t) => (
-            <span key={t} className="text-[11px] font-bold uppercase tracking-wide text-[#FB7185]">
+            <span key={t} className="text-[11px] font-bold uppercase tracking-wide text-aneg">
               {t}
             </span>
           ))}
@@ -173,7 +173,7 @@ export default function MatchPreviewPanel({ career, league, onUpdateCareer }) {
               className="h-full rounded-full transition-all"
               style={{
                 width: `${preview.barYou}%`,
-                background: "linear-gradient(90deg, var(--A-accent), #4ADBE8)",
+                background: "linear-gradient(90deg, var(--A-accent), var(--A-pos))",
               }}
             />
           </div>

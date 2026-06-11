@@ -135,9 +135,9 @@ export default function ClubScreen({ career, club, updateCareer, tab, setTab, tu
           <span
             className="text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-1 rounded-lg border"
             style={{
-              borderColor: career.gameMode === 'sandbox' ? '#4AE89A' : '#E84A6F',
-              color: career.gameMode === 'sandbox' ? '#4AE89A' : '#E84A6F',
-              background: career.gameMode === 'sandbox' ? 'rgba(74,232,154,0.12)' : 'rgba(232,74,111,0.1)',
+              borderColor: career.gameMode === 'sandbox' ? 'var(--A-pos)' : 'var(--A-neg)',
+              color: career.gameMode === 'sandbox' ? 'var(--A-pos)' : 'var(--A-neg)',
+              background: career.gameMode === 'sandbox' ? 'color-mix(in srgb, var(--A-pos) 12%, transparent)' : 'color-mix(in srgb, var(--A-neg) 10%, transparent)',
             }}
           >
             {career.gameMode === 'sandbox' ? 'Sandbox mode' : `Challenge${career.challengeId ? ` · ${String(career.challengeId).replace(/_/g, ' ')}` : ''}`}
@@ -307,7 +307,7 @@ function BoardTab({ career, club, updateCareer }) {
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {(members.length ? members : []).map((m) => {
           const pct = boardPct(m.confidence);
-          const col = pct >= 70 ? '#4AE89A' : pct >= 40 ? 'var(--A-accent-2)' : '#E84A6F';
+          const col = pct >= 70 ? 'var(--A-pos)' : pct >= 40 ? 'var(--A-accent-2)' : 'var(--A-neg)';
           const moodLabel = (m.mood || 'neutral').toUpperCase();
           return (
             <div key={m.role} className={`${css.panel} p-4`}>
@@ -394,7 +394,7 @@ function BoardTab({ career, club, updateCareer }) {
                 </button>
                 <button
                   type="button"
-                  className="text-xs py-2.5 text-left px-3 rounded-lg border border-[#E84A6F]/55 text-[#E84A6F] hover:bg-[#E84A6F]/10 font-bold"
+                  className="text-xs py-2.5 text-left px-3 rounded-lg border border-aneg/55 text-aneg hover:bg-aneg/10 font-bold"
                   onClick={() =>
                     runDirectorChat(
                       m.role,
@@ -419,7 +419,7 @@ function BoardTab({ career, club, updateCareer }) {
           )}
           {objectives.map((obj) => {
             const st = boardObjectiveUiStatus(obj, career);
-            const stColor = st === 'MET' || st === 'ON TRACK' ? '#4AE89A' : st === 'MISSED' ? '#E84A6F' : 'var(--A-accent-2)';
+            const stColor = st === 'MET' || st === 'ON TRACK' ? 'var(--A-pos)' : st === 'MISSED' ? 'var(--A-neg)' : 'var(--A-accent-2)';
             return (
               <div key={obj.id} className={`${css.panel} p-4`}>
                 <div className="flex items-start justify-between gap-2 mb-2">
@@ -460,7 +460,7 @@ function CommitteeTab({ career, club, updateCareer }) {
     );
   }
   const avg = committeeMoodAverage(committee);
-  const accent = avg >= 70 ? '#4AE89A' : avg >= 40 ? 'var(--A-accent-2)' : '#E84A6F';
+  const accent = avg >= 70 ? 'var(--A-pos)' : avg >= 40 ? 'var(--A-accent-2)' : 'var(--A-neg)';
   const tripUsed = career.footyTripUsed;
   const tripAvailable = career.footyTripAvailable && !tripUsed;
   const cash = career.finance?.cash ?? 0;
@@ -505,7 +505,7 @@ function CommitteeTab({ career, club, updateCareer }) {
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {committee.map(m => {
           const trait = COMMITTEE_TRAIT_INFO[m.trait] || {};
-          const moodColor = m.mood >= 70 ? '#4AE89A' : m.mood >= 40 ? 'var(--A-accent-2)' : '#E84A6F';
+          const moodColor = m.mood >= 70 ? 'var(--A-pos)' : m.mood >= 40 ? 'var(--A-accent-2)' : 'var(--A-neg)';
           return (
             <div key={m.role} className={`${css.panel} p-4`}>
               <div className="flex items-center justify-between mb-2">
@@ -607,7 +607,7 @@ function FootyTripCard({ career, updateCareer }) {
             <div className="text-[11px] text-atext-dim mb-2 leading-snug">{opt.blurb}</div>
             <div className="grid grid-cols-2 gap-1 text-[10px]">
               <div className="text-atext-mute">Cost</div><div className="text-aneg font-mono text-right">${opt.cost.toLocaleString()}</div>
-              <div className="text-atext-mute">Morale</div><div className="text-[#4AE89A] font-mono text-right">+{opt.moraleGain}</div>
+              <div className="text-atext-mute">Morale</div><div className="text-apos font-mono text-right">+{opt.moraleGain}</div>
               <div className="text-atext-mute">Treasurer</div><div className="text-aneg font-mono text-right">{opt.treasurerHit}</div>
             </div>
           </button>
@@ -630,7 +630,7 @@ function HonoursTab({ career, club: _club }) {
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Premierships" value={titles} accent="#FFD200" icon={Trophy} />
-          <Stat label="Promotions" value={promotions} accent="#4AE89A" icon={ChevronsUp} />
+          <Stat label="Promotions" value={promotions} accent="var(--A-pos)" icon={ChevronsUp} />
           <Stat label="Seasons" value={history.length} accent="var(--A-accent)" icon={Calendar} />
         </div>
       </div>
@@ -663,8 +663,8 @@ function HonoursTab({ career, club: _club }) {
               <div>
                 <span className="font-semibold">{h.leagueShort}</span>
                 {h.champion && <Pill color="#FFD200">🏆 Premiers</Pill>}
-                {h.promoted && <Pill color="#4AE89A">⬆ Promoted</Pill>}
-                {h.relegated && <Pill color="#E84A6F">⬇ Relegated</Pill>}
+                {h.promoted && <Pill color="var(--A-pos)">⬆ Promoted</Pill>}
+                {h.relegated && <Pill color="var(--A-neg)">⬇ Relegated</Pill>}
               </div>
               <div className="text-center font-bold">{h.position}</div>
               <div className="text-center font-mono text-xs">{h.W}-{h.L}-{h.D}</div>
@@ -704,7 +704,7 @@ function RookieListTab({ career, updateCareer }) {
           <div className={`${css.h1} text-3xl`}>ROOKIE LIST</div>
           <div className="text-xs text-atext-dim">Track your young talent. Promote when ready — wage rises 40% on elevation.</div>
         </div>
-        <Stat label="Rookies" value={rookies.length} accent="#4ADBE8" icon={Sprout} />
+        <Stat label="Rookies" value={rookies.length} accent="var(--A-accent)" icon={Sprout} />
       </div>
       {rookies.length === 0 ? (
         <div className={`${css.panel} p-12 text-center`}>
@@ -716,11 +716,11 @@ function RookieListTab({ career, updateCareer }) {
           {rookies.map((p) => (
             <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center" style={{borderBottom:"1px solid var(--A-line)"}}>
               <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">age {p.age}</span></div>
-              <div className="col-span-1"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
+              <div className="col-span-1"><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>
               <div className="col-span-1"><RatingDot value={p.overall} /></div>
               <div className="col-span-2 flex items-center gap-1 text-[11px]">
                 <span className="text-atext-mute">POT</span>
-                <span className="font-bold text-[#4AE89A]">{p.potential}</span>
+                <span className="font-bold text-apos">{p.potential}</span>
               </div>
               <div className="col-span-2 text-xs text-atext-dim">{p.contract}yr · {fmtK(p.wage)}/yr</div>
               <div className="col-span-2 flex justify-end">
@@ -743,7 +743,7 @@ function FinancesTab({ career }) {
   const wageCap = effectiveWageCap(career);
   const playerWages = currentPlayerWageBill(career);
   const wagePct = wageCap > 0 ? Math.min(150, Math.round((playerWages / wageCap) * 100)) : 0;
-  const wageCapColor = wagePct >= 100 ? "#E84A6F" : wagePct >= 90 ? "var(--A-accent-2)" : wagePct >= 80 ? "var(--A-accent)" : "#4AE89A";
+  const wageCapColor = wagePct >= 100 ? "var(--A-neg)" : wagePct >= 90 ? "var(--A-accent-2)" : wagePct >= 80 ? "var(--A-accent)" : "var(--A-pos)";
   const cfg = getDifficultyConfig(career.difficulty);
   const overflowPct = Math.round((cfg.capOverflow ?? 0) * 100);
   const crisis = career.cashCrisisLevel ?? 0;
@@ -755,10 +755,10 @@ function FinancesTab({ career }) {
       </div>
       {/* Cash crisis banner */}
       {crisis > 0 && (
-        <div className={`${css.panel} p-4 flex items-start gap-3`} style={{ borderColor: '#E84A6F', background: 'rgba(232,74,111,0.06)' }}>
-          <AlertCircle className="w-5 h-5 text-[#E84A6F] flex-shrink-0 mt-0.5" />
+        <div className={`${css.panel} p-4 flex items-start gap-3`} style={{ borderColor: 'var(--A-neg)', background: 'color-mix(in srgb, var(--A-neg) 6%, transparent)' }}>
+          <AlertCircle className="w-5 h-5 text-aneg flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <div className="font-bold text-[#E84A6F] text-sm">CASH CRISIS · LEVEL {crisis}/4</div>
+            <div className="font-bold text-aneg text-sm">CASH CRISIS · LEVEL {crisis}/4</div>
             <div className="text-xs text-atext-dim mt-1">{
               crisis === 1 ? 'Cash is in the red. Get back to black before the board steps in.' :
               crisis === 2 ? 'Emergency board meeting — a forced player sale is on the table.' :
@@ -771,10 +771,10 @@ function FinancesTab({ career }) {
 
       {/* Top-line stats */}
       <div className="grid md:grid-cols-4 gap-3">
-        <Stat label="Cash" value={fmtK(career.finance.cash)} accent={career.finance.cash >= 0 ? "#4AE89A" : "#E84A6F"} icon={DollarSign} />
-        <Stat label="Annual Net (proj)" value={fmtK(net)} accent={net > 0 ? "#4AE89A" : "#E84A6F"} />
+        <Stat label="Cash" value={fmtK(career.finance.cash)} accent={career.finance.cash >= 0 ? "var(--A-pos)" : "var(--A-neg)"} icon={DollarSign} />
+        <Stat label="Annual Net (proj)" value={fmtK(net)} accent={net > 0 ? "var(--A-pos)" : "var(--A-neg)"} />
         <Stat label="Wage Bill" value={fmtK(playerWages + exp.staffWages)} sub="players + staff" accent="var(--A-accent)" />
-        <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="#4ADBE8" />
+        <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="var(--A-accent)" />
       </div>
 
       {/* Match-day income model */}
@@ -782,7 +782,7 @@ function FinancesTab({ career }) {
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className={`${css.h1} text-2xl`}>MATCH-DAY INCOME</h3>
           {career.lastMatchRevenue && (
-            <Pill color="#4AE89A">
+            <Pill color="var(--A-pos)">
               Last match +{fmtK(career.lastMatchRevenue.total)}
             </Pill>
           )}
@@ -796,7 +796,7 @@ function FinancesTab({ career }) {
               <div className="grid grid-cols-2 gap-3">
                 <div className={`${css.inset} p-3`}>
                   <div className="text-[10px] uppercase tracking-widest text-atext-mute font-bold mb-1">Home game</div>
-                  <div className="font-display text-2xl text-[#4AE89A]">{fmtK(home.total)}</div>
+                  <div className="font-display text-2xl text-apos">{fmtK(home.total)}</div>
                   <div className="text-[11px] text-atext-dim mt-1 leading-relaxed">
                     Gate {fmtK(home.gate)} · TV {fmtK(home.broadcast)} · Sponsor {fmtK(home.sponsor)}
                   </div>
@@ -804,7 +804,7 @@ function FinancesTab({ career }) {
                 </div>
                 <div className={`${css.inset} p-3`}>
                   <div className="text-[10px] uppercase tracking-widest text-atext-mute font-bold mb-1">Away game</div>
-                  <div className="font-display text-2xl text-[#4ADBE8]">{fmtK(away.total)}</div>
+                  <div className="font-display text-2xl text-aaccent">{fmtK(away.total)}</div>
                   <div className="text-[11px] text-atext-dim mt-1 leading-relaxed">
                     TV {fmtK(away.broadcast)} · Sponsor {fmtK(away.sponsor)}
                   </div>
@@ -814,7 +814,7 @@ function FinancesTab({ career }) {
               {career.lastMatchRevenue && (
                 <div className="text-[11px] text-atext-dim mt-3">
                   Last match (Rd {career.lastMatchRevenue.round}{career.lastMatchRevenue.opp ? ` vs ${career.lastMatchRevenue.opp}` : ''}): banked{' '}
-                  <span className="text-[#4AE89A] font-bold">{fmtK(career.lastMatchRevenue.total)}</span>
+                  <span className="text-apos font-bold">{fmtK(career.lastMatchRevenue.total)}</span>
                   {career.lastMatchRevenue.isHome
                     ? ` from ${career.lastMatchRevenue.attendance?.toLocaleString('en-AU')} fans + TV + sponsors.`
                     : ` from TV + sponsors (away).`}
@@ -832,7 +832,7 @@ function FinancesTab({ career }) {
             <h3 className={`${css.h1} text-2xl`}>SALARY CAP</h3>
             <div className="flex items-center gap-3">
               {overflowPct !== 0 && (
-                <Pill color={overflowPct > 0 ? '#4AE89A' : '#E84A6F'}>
+                <Pill color={overflowPct > 0 ? 'var(--A-pos)' : 'var(--A-neg)'}>
                   {overflowPct > 0 ? `+${overflowPct}% headroom` : `${overflowPct}% tighter`}
                 </Pill>
               )}
@@ -872,8 +872,8 @@ function FinancesTab({ career }) {
           <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (ANNUAL)</h3>
           {[
             { label: "Broadcast / TV Rights", value: inc.broadcast,   color: "var(--A-accent)" },
-            { label: "Gate Revenue",          value: inc.gate,        color: "#4ADBE8" },
-            { label: "Membership",            value: inc.membership,  color: "#4AE89A" },
+            { label: "Gate Revenue",          value: inc.gate,        color: "var(--A-accent)" },
+            { label: "Membership",            value: inc.membership,  color: "var(--A-pos)" },
             { label: "Merchandise",           value: inc.merchandise, color: "var(--A-accent-2)" },
             { label: "Sponsorship",           value: inc.sponsors,    color: "#A78BFA" },
           ].map(r => (
@@ -886,15 +886,15 @@ function FinancesTab({ career }) {
             </div>
           ))}
           <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
-            <span>Total income</span><span className="text-[#4AE89A]">{fmtK(inc.grandTotal)}</span>
+            <span>Total income</span><span className="text-apos">{fmtK(inc.grandTotal)}</span>
           </div>
         </div>
         <div className={`${css.panel} p-5`}>
           <h3 className={`${css.h1} text-2xl mb-3`}>EXPENSES (ANNUAL)</h3>
           {[
-            { label: "Player Wages",      value: exp.playerWages, color: "#E84A6F" },
+            { label: "Player Wages",      value: exp.playerWages, color: "var(--A-neg)" },
             { label: "Staff Wages",       value: exp.staffWages,  color: "var(--A-accent)" },
-            { label: "Facilities Upkeep", value: exp.facilities,  color: "#4ADBE8" },
+            { label: "Facilities Upkeep", value: exp.facilities,  color: "var(--A-accent)" },
           ].map(r => (
             <div key={r.label} className="mb-3">
               <div className="flex justify-between text-sm mb-1">
@@ -905,7 +905,7 @@ function FinancesTab({ career }) {
             </div>
           ))}
           <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
-            <span>Total expenses</span><span className="text-[#E84A6F]">{fmtK(exp.grandTotal)}</span>
+            <span>Total expenses</span><span className="text-aneg">{fmtK(exp.grandTotal)}</span>
           </div>
         </div>
       </div>
@@ -917,7 +917,7 @@ function FinancesTab({ career }) {
           <div className="grid sm:grid-cols-3 gap-3 text-sm">
             <div><div className={css.label}>Principal</div><div className="font-display text-2xl">{fmtK(career.bankLoan.principal)}</div></div>
             <div><div className={css.label}>Weeks left</div><div className="font-display text-2xl">{career.bankLoan.weeksRemaining}</div></div>
-            <div><div className={css.label}>Interest / wk</div><div className="font-display text-2xl text-[#E84A6F]">{fmtK(career.bankLoan.interestPerWeek)}</div></div>
+            <div><div className={css.label}>Interest / wk</div><div className="font-display text-2xl text-aneg">{fmtK(career.bankLoan.interestPerWeek)}</div></div>
           </div>
         </div>
       )}
@@ -934,7 +934,7 @@ function FinancesTab({ career }) {
               const h = max === 0 ? 0 : (Math.abs(w.profit ?? 0) / max) * 100;
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1" title={`Week ${w.week}: ${fmtK(w.profit)}`}>
-                  <div className="w-full rounded-t" style={{ height: `${h}%`, background: (w.profit ?? 0) >= 0 ? "#4AE89A" : "#E84A6F", opacity: 0.85 }} />
+                  <div className="w-full rounded-t" style={{ height: `${h}%`, background: (w.profit ?? 0) >= 0 ? "var(--A-pos)" : "var(--A-neg)", opacity: 0.85 }} />
                   <div className="text-[9px] text-atext-dim">R{w.week}</div>
                 </div>
               );
@@ -986,18 +986,18 @@ function SponsorsTab({ career, updateCareer }) {
   return (
     <div className="space-y-4">
       <div className="grid md:grid-cols-4 gap-4">
-        <Stat label="Total Annual" value={fmtK(totalAnnual)} accent="#4AE89A" />
+        <Stat label="Total Annual" value={fmtK(totalAnnual)} accent="var(--A-pos)" />
         <Stat label="Active Deals" value={sponsorList.length} accent="var(--A-accent)" />
-        <Stat label="Avg Deal" value={sponsorList.length ? fmtK(Math.round(totalAnnual/sponsorList.length)) : "—"} accent="#4ADBE8" />
+        <Stat label="Avg Deal" value={sponsorList.length ? fmtK(Math.round(totalAnnual/sponsorList.length)) : "—"} accent="var(--A-accent)" />
         <Stat label="Sponsor x" value={`${cfg.sponsorMultiplier.toFixed(2)}×`} sub="difficulty" accent="var(--A-accent-2)" />
       </div>
 
       {expiredLastSeason.length > 0 && (
-        <div className={`${css.panel} p-4`} style={{borderColor: '#E84A6F'}}>
-          <div className="flex items-center gap-2 mb-2"><AlertCircle className="w-4 h-4 text-[#E84A6F]" /><div className="font-bold text-sm">Lost last season</div></div>
+        <div className={`${css.panel} p-4`} style={{borderColor: 'var(--A-neg)'}}>
+          <div className="flex items-center gap-2 mb-2"><AlertCircle className="w-4 h-4 text-aneg" /><div className="font-bold text-sm">Lost last season</div></div>
           <div className="flex flex-wrap gap-2">
             {expiredLastSeason.map(s => (
-              <Pill key={s.id} color="#E84A6F">{s.name} · {fmtK(s.annualValue)}/yr</Pill>
+              <Pill key={s.id} color="var(--A-neg)">{s.name} · {fmtK(s.annualValue)}/yr</Pill>
             ))}
           </div>
         </div>
@@ -1017,13 +1017,13 @@ function SponsorsTab({ career, updateCareer }) {
                       <div className="font-display text-xl">{p.name}</div>
                       <div className="text-[10px] text-atext-dim uppercase tracking-widest">{p.category} · {p.perf}</div>
                     </div>
-                    <Pill color={delta >= 0 ? '#4AE89A' : '#E84A6F'}>{delta >= 0 ? '+' : ''}{fmtK(delta)}</Pill>
+                    <Pill color={delta >= 0 ? 'var(--A-pos)' : 'var(--A-neg)'}>{delta >= 0 ? '+' : ''}{fmtK(delta)}</Pill>
                   </div>
                   <div className="text-[11px] text-atext-dim mb-2">
                     Was {fmtK(p.currentValue)}/yr → propose <span className="font-bold text-atext">{fmtK(p.proposedValue)}/yr</span> for {p.proposedYears}y
                   </div>
                   <div className="flex gap-2 justify-end">
-                    <button onClick={() => declineRenewal(p)} className="text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10">Decline</button>
+                    <button onClick={() => declineRenewal(p)} className="text-xs px-3 py-2 rounded-lg text-aneg hover:bg-aneg/10">Decline</button>
                     <button onClick={() => acceptRenewal(p)} className={`${css.btnPrimary} text-xs px-3 py-2`}>Accept Renewal</button>
                   </div>
                 </div>
@@ -1047,7 +1047,7 @@ function SponsorsTab({ career, updateCareer }) {
                   </div>
                   <Pill color="var(--A-accent)">{o.yearsLeft}y</Pill>
                 </div>
-                <div className="text-[11px] text-atext-dim mb-2">Offer: <span className="font-bold text-[#4AE89A]">{fmtK(o.annualValue)}/yr</span></div>
+                <div className="text-[11px] text-atext-dim mb-2">Offer: <span className="font-bold text-apos">{fmtK(o.annualValue)}/yr</span></div>
                 <div className="flex gap-2 justify-end">
                   <button onClick={() => declineOffer(o)} className="text-xs px-3 py-2 rounded-lg text-atext-mute hover:text-atext">Pass</button>
                   <button onClick={() => acceptOffer(o)} className={`${css.btnPrimary} text-xs px-3 py-2`}>Accept Deal</button>
@@ -1082,9 +1082,9 @@ function SponsorsTab({ career, updateCareer }) {
               <div className="flex items-end justify-between mt-3">
                 <div>
                   <div className="text-[10px] text-atext-dim uppercase tracking-widest">Annual Value</div>
-                  <div className="font-display text-3xl text-[#4AE89A]">{fmtK(s.annualValue)}</div>
+                  <div className="font-display text-3xl text-apos">{fmtK(s.annualValue)}</div>
                 </div>
-                <button onClick={()=>drop(s)} className="text-xs px-3 py-2 rounded-lg text-[#E84A6F] hover:bg-[#E84A6F]/10">Drop</button>
+                <button onClick={()=>drop(s)} className="text-xs px-3 py-2 rounded-lg text-aneg hover:bg-aneg/10">Drop</button>
               </div>
             </div>
           ))}
@@ -1217,10 +1217,10 @@ function KitsTab({ career, club, updateCareer }) {
 // ============================================================================
 function FacilitiesTab({ career, updateCareer }) {
   const FAC_INFO = {
-    trainingGround: { name: "Training Ground", icon: Activity, desc: "Improves training effectiveness and skill development", color: "#4ADBE8" },
+    trainingGround: { name: "Training Ground", icon: Activity, desc: "Improves training effectiveness and skill development", color: "var(--A-accent)" },
     gym: { name: "Strength & Conditioning", icon: Dumbbell, desc: "Boosts player strength, speed and endurance gains", color: "var(--A-accent)" },
-    medical: { name: "Medical Centre", icon: Heart, desc: "Reduces injury rate, faster recovery from knocks", color: "#E84A6F" },
-    academy: { name: "Youth Academy", icon: GraduationCap, desc: "Better youth recruits and development progression", color: "#4AE89A" },
+    medical: { name: "Medical Centre", icon: Heart, desc: "Reduces injury rate, faster recovery from knocks", color: "var(--A-neg)" },
+    academy: { name: "Youth Academy", icon: GraduationCap, desc: "Better youth recruits and development progression", color: "var(--A-pos)" },
     stadium: { name: "Stadium", icon: Building2, desc: "Higher capacity = bigger gate revenue & sponsor pull", color: "#FFD200" },
     recovery: { name: "Recovery Centre", icon: Sparkles, desc: "Faster fitness recovery between matches", color: "#A78BFA" },
   };
@@ -1253,7 +1253,7 @@ function FacilitiesTab({ career, updateCareer }) {
           <div className="text-xs text-atext-dim">Long-term investment. Effects compound across the season.</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Overall Rating" value={`${totalLevel}/${maxTotal}`} accent="#4ADBE8" />
+          <Stat label="Overall Rating" value={`${totalLevel}/${maxTotal}`} accent="var(--A-accent)" />
           <Stat label="Cash" value={fmtK(career.finance.cash)} accent="var(--A-accent)" />
         </div>
       </div>
@@ -1284,7 +1284,7 @@ function FacilitiesTab({ career, updateCareer }) {
                   </div>
                   <div className="flex items-center justify-between mt-3">
                     <div className="text-xs text-atext-dim">
-                      {maxed ? <span className="text-[#4AE89A]">⭐ Max level</span> : <>Upgrade: <span className={canAfford ? "text-atext font-bold" : "text-[#E84A6F] font-bold"}>${(cost/1000).toFixed(0)}k</span></>}
+                      {maxed ? <span className="text-apos">⭐ Max level</span> : <>Upgrade: <span className={canAfford ? "text-atext font-bold" : "text-aneg font-bold"}>${(cost/1000).toFixed(0)}k</span></>}
                     </div>
                     <button onClick={()=>upgrade(key)} disabled={maxed||!canAfford} className={maxed||!canAfford ? "px-3 py-1.5 rounded-lg text-xs font-bold bg-apanel-2 text-atext-mute" : `${css.btnPrimary} text-xs px-3 py-1.5`}>
                       {maxed ? "Maxed" : "Upgrade"}
@@ -1405,7 +1405,7 @@ function StaffTab({ career, updateCareer }) {
           <div className="text-xs text-atext-dim">Your support team shapes training outcomes, recruitment quality and player development.</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Avg Rating" value={avgRating} accent="#4AE89A" />
+          <Stat label="Avg Rating" value={avgRating} accent="var(--A-pos)" />
           <Stat label="Staff headcount" value={`${roster.length}/${MAX_STAFF_ROWS}`} accent="#A78BFA" />
         </div>
       </div>
@@ -1648,7 +1648,7 @@ function StaffTab({ career, updateCareer }) {
               <Bar value={s.rating} small />
             </div>
             <div className="col-span-1 text-center text-sm">{s.contract}y</div>
-            <div className="col-span-2 text-right text-sm font-mono">{s.volunteer ? <span className="text-[#4AE89A]">Volunteer</span> : `$${(s.wage/1000).toFixed(0)}k`}</div>
+            <div className="col-span-2 text-right text-sm font-mono">{s.volunteer ? <span className="text-apos">Volunteer</span> : `$${(s.wage/1000).toFixed(0)}k`}</div>
             <div className="col-span-1 flex justify-end">
               <button onClick={()=>replaceStaff(idx)} className="text-xs px-3 py-1.5 rounded-lg border border-aline hover:border-[var(--A-accent)] hover:text-aaccent transition">Replace</button>
             </div>

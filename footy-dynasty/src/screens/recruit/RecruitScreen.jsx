@@ -256,7 +256,7 @@ function FreeAgentsTab({ career, updateCareer }) {
                 <div className="font-semibold">{fa.firstName} {fa.lastName}</div>
                 <div className="text-[10px] text-atext-dim">{fa.freeAgentType || 'UFA'} · age {fa.age}</div>
               </div>
-              <div className="col-span-2"><Pill color="#4ADBE8">{fa.position}</Pill></div>
+              <div className="col-span-2"><Pill color="var(--A-accent)">{fa.position}</Pill></div>
               <div className="col-span-2"><RatingDot value={fa.overall} /></div>
               <div className="col-span-2 text-right font-mono text-xs">{fmtK(fa.wageAsk)}/yr · {fa.contractYearsAsk}y</div>
               <div className="col-span-2 text-right">
@@ -531,9 +531,9 @@ function TradeTab({ career, updateCareer }) {
           <div className={`${css.h1} text-3xl`}>TRADE MARKET</div>
           <div className="text-xs text-atext-dim">Players currently available across the league pyramid.</div>
         </div>
-        <div className="flex items-center gap-3">
-          <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="#4ADBE8" />
-          <Stat label="Cap headroom" value={fmtK(headroom)} accent={headroom > 0 ? "#4AE89A" : "#E84A6F"} />
+        <div className="flex items-center flex-wrap gap-3">
+          <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="var(--A-accent)" />
+          <Stat label="Cap headroom" value={fmtK(headroom)} accent={headroom > 0 ? "var(--A-pos)" : "var(--A-neg)"} />
           <Stat label="Squad Size" value={`${career.squad.length}/40`} accent="var(--A-accent)" />
         </div>
       </div>
@@ -594,9 +594,9 @@ function TradeTab({ career, updateCareer }) {
             const okMax = wageCap <= 0 || canAffordSigning(career, maxAsk);
             let capPill;
             if (wageCap <= 0) capPill = <Pill color="#64748B">—</Pill>;
-            else if (okMax) capPill = <Pill color="#4AE89A">OK</Pill>;
+            else if (okMax) capPill = <Pill color="var(--A-pos)">OK</Pill>;
             else if (okListed) capPill = <Pill color="#FFB347" title={`Worst-case opening ask ~${fmtK(maxAsk)}/yr — tighten recruiter staff or counter.`}>Listed</Pill>;
-            else capPill = <Pill color="#E84A6F" title={`Listed ${fmtK(lw)} · upper ask ~${fmtK(maxAsk)}/yr`}>No</Pill>;
+            else capPill = <Pill color="var(--A-neg)" title={`Listed ${fmtK(lw)} · upper ask ~${fmtK(maxAsk)}/yr`}>No</Pill>;
             return (
               <div key={p.id}>
                 <div className={`gap-2 px-4 py-3 items-center transition-colors grid min-w-[720px] cursor-pointer ${selectedPlayer?.id === p.id ? 'bg-aaccent/10' : ''}`} style={{borderBottom: isNeg ? "none" : "1px solid var(--A-line)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}} onClick={() => setSelectedPlayer(p)} onMouseEnter={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="rgba(0,224,255,0.05)"; }} onMouseLeave={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="transparent"; }}>
@@ -604,15 +604,15 @@ function TradeTab({ career, updateCareer }) {
                     <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
                     <div className="text-[10px] text-atext-dim">{p.gamesPlayed ?? 0} gp · Ask {fmtK(p.wage)}/yr</div>
                   </div>
-                  <div><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
+                  <div><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>
                   <div className="text-sm text-center">{p.age}</div>
                   <div className="flex justify-center"><RatingDot value={p.overall} /></div>
-                  <div className="text-sm text-center text-[#4AE89A]">{p.potential}</div>
+                  <div className="text-sm text-center text-apos">{p.potential}</div>
                   <div className="flex items-center gap-1.5 min-w-0">
                     {sellerClub ? <ClubBadge club={sellerClub} size="xs" /> : null}
                     <span className="text-[10px] text-atext-dim truncate" title={p.fromClub}>{p.fromClub}</span>
                   </div>
-                  <div className="text-right text-sm font-mono font-bold" style={{color: canAfford ? "#4AE89A" : "#E84A6F"}}>{fmtK(p.value)}</div>
+                  <div className="text-right text-sm font-mono font-bold" style={{color: canAfford ? "var(--A-pos)" : "var(--A-neg)"}}>{fmtK(p.value)}</div>
                   <div className="text-right text-xs font-mono text-atext-dim">{fmtK(p.wage)}</div>
                   <div className="flex justify-center">
                     {capPill}
@@ -625,7 +625,7 @@ function TradeTab({ career, updateCareer }) {
                   </div>
                 </div>
                 {isNeg && (
-                  <div className="mx-4 mb-3 rounded-xl p-4" style={{background:"rgba(74,232,154,0.08)", border:"1px solid rgba(74,232,154,0.25)"}}>
+                  <div className="mx-4 mb-3 rounded-xl p-4" style={{background:"color-mix(in srgb, var(--A-pos) 8%, transparent)", border:"1px solid color-mix(in srgb, var(--A-pos) 25%, transparent)"}}>
 
                     <div className="text-xs font-bold mb-2" style={{color:"var(--A-pos)"}}>📋 {p.firstName} {p.lastName}'s demands</div>
                     <div className="flex gap-6 mb-3">
@@ -639,10 +639,10 @@ function TradeTab({ career, updateCareer }) {
                       </div>
                       <div>
                         <div className="text-[10px] text-atext-dim uppercase tracking-wider">Cap room after</div>
-                        <div className={`font-display text-xl ${capBlock ? 'text-[#E84A6F]' : 'text-[#4AE89A]'}`}>{fmtK(capRoom - negotiating.wage)}</div>
+                        <div className={`font-display text-xl ${capBlock ? 'text-aneg' : 'text-apos'}`}>{fmtK(capRoom - negotiating.wage)}</div>
                       </div>
                     </div>
-                    {capBlock && <div className="text-xs text-[#E84A6F] mb-2">⚠️ Signing this player would exceed your salary cap.</div>}
+                    {capBlock && <div className="text-xs text-aneg mb-2">⚠️ Signing this player would exceed your salary cap.</div>}
                     <div className="flex gap-2">
                       <button onClick={()=>acceptDeal(p)} disabled={capBlock} className={capBlock ? "px-4 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute" : `${css.btnPrimary} text-xs px-4 py-2`}>
                         ✅ Accept deal
@@ -681,9 +681,9 @@ function TradeTab({ career, updateCareer }) {
           const okMax = wageCap <= 0 || canAffordSigning(career, maxAsk);
           let capMob;
           if (wageCap <= 0) capMob = <Pill color="#64748B">—</Pill>;
-          else if (okMax) capMob = <Pill color="#4AE89A">Cap OK</Pill>;
+          else if (okMax) capMob = <Pill color="var(--A-pos)">Cap OK</Pill>;
           else if (okListed) capMob = <Pill color="#FFB347">Listed only</Pill>;
-          else capMob = <Pill color="#E84A6F">Cap no</Pill>;
+          else capMob = <Pill color="var(--A-neg)">Cap no</Pill>;
           return (
             <div key={p.id} className="rounded-2xl border border-[var(--A-line)] bg-[var(--A-panel)] p-4">
               <div className="flex gap-3">
@@ -693,8 +693,8 @@ function TradeTab({ career, updateCareer }) {
                   <div className="text-xs text-atext-dim mt-1">{formatPositionSlash(p)} · age {p.age} · {p.fromClub}</div>
                   <div className="flex flex-wrap gap-2 mt-3 items-center">
                     <RatingDot value={p.overall} size="sm" />
-                    <span className="text-xs text-[#4AE89A] font-bold">Pot {p.potential}</span>
-                    <span className="text-xs font-mono font-bold" style={{ color: canAfford ? "#4AE89A" : "#E84A6F" }}>{fmtK(p.value)}</span>
+                    <span className="text-xs text-apos font-bold">Pot {p.potential}</span>
+                    <span className="text-xs font-mono font-bold" style={{ color: canAfford ? "var(--A-pos)" : "var(--A-neg)" }}>{fmtK(p.value)}</span>
                     <span className="text-xs font-mono text-atext-dim">{fmtK(p.wage)}/yr</span>
                     {capMob}
                   </div>
@@ -721,7 +721,7 @@ function TradeTab({ career, updateCareer }) {
                 )}
               </div>
               {isNeg && (
-                <div className="mt-3 rounded-xl p-4" style={{ background: "rgba(74,232,154,0.08)", border: "1px solid rgba(74,232,154,0.25)" }}>
+                <div className="mt-3 rounded-xl p-4" style={{ background: "color-mix(in srgb, var(--A-pos) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--A-pos) 25%, transparent)" }}>
                   <div className="text-xs font-bold mb-2" style={{color:"var(--A-pos)"}}>📋 {p.firstName} {p.lastName}&apos;s demands</div>
                   <div className="flex flex-wrap gap-4 mb-3">
                     <div>
@@ -740,10 +740,10 @@ function TradeTab({ career, updateCareer }) {
                     </div>
                     <div>
                       <div className="text-[10px] text-atext-dim uppercase tracking-wider">Cap room after</div>
-                      <div className={`font-display text-xl ${capBlock ? "text-[#E84A6F]" : "text-[#4AE89A]"}`}>{fmtK(capRoom - negotiating.wage)}</div>
+                      <div className={`font-display text-xl ${capBlock ? "text-aneg" : "text-apos"}`}>{fmtK(capRoom - negotiating.wage)}</div>
                     </div>
                   </div>
-                  {capBlock && <div className="text-xs text-[#E84A6F] mb-2">⚠️ Signing this player would exceed your salary cap.</div>}
+                  {capBlock && <div className="text-xs text-aneg mb-2">⚠️ Signing this player would exceed your salary cap.</div>}
                   <div className="flex flex-wrap gap-2">
                     <button type="button" onClick={() => acceptDeal(p)} disabled={capBlock} className={capBlock ? "px-4 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute min-h-[44px]" : `${css.btnPrimary} text-xs px-4 py-2 min-h-[44px]`}>
                       Accept deal
@@ -880,7 +880,7 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
           <div className="text-xs text-atext-dim">{statusLine}</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Pool" value={basePool.length} accent="#4AE89A" />
+          <Stat label="Pool" value={basePool.length} accent="var(--A-pos)" />
           <Stat label="Squad" value={`${career.squad.length}/40`} accent="var(--A-accent)" />
         </div>
       </div>
@@ -968,7 +968,7 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
               <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                 <div className="col-span-1 font-bold text-aaccent">#{i+1}</div>
                 <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">(draft age ~17–19)</span></div>
-                <div className="col-span-1"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
+                <div className="col-span-1"><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>
                 <div className="col-span-1">
                   {st >= 3 ? (
                     <RatingDot value={p.overall} />
@@ -980,8 +980,8 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
                 <div className="col-span-2 flex flex-col gap-0.5 min-h-[2rem] justify-center">
                   {st >= 3 ? (
                     <div className="flex items-center gap-2">
-                      <div className="font-bold text-[#4AE89A]">{p.potential}</div>
-                      <Bar value={p.potential} color="#4AE89A" small />
+                      <div className="font-bold text-apos">{p.potential}</div>
+                      <Bar value={p.potential} color="var(--A-pos)" small />
                     </div>
                   ) : (
                     <span className="font-bold text-atext-dim">{potDisp.label}</span>
@@ -990,7 +990,7 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
                 </div>
                 <div className="col-span-2 text-right text-sm font-mono">
                   <span style={{
-                    color: wageAccurate ? (capOk ? '#4AE89A' : '#E84A6F') : 'var(--A-accent)',
+                    color: wageAccurate ? (capOk ? 'var(--A-pos)' : 'var(--A-neg)') : 'var(--A-accent)',
                   }}>{wageDisp.label}</span>
                   <span className="text-[10px] text-atext-dim block">{wageDisp.hint || 'est. rookie'}</span>
                 </div>
@@ -1022,7 +1022,7 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
                   <div className="font-semibold text-atext mt-1">{p.firstName} {p.lastName}</div>
                   <div className="text-[10px] text-atext-dim">Draft age ~17–19</div>
                 </div>
-                <Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill>
+                <Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill>
               </div>
               <div className="flex flex-wrap gap-3 mt-3 items-center">
                 {st >= 3 ? (
@@ -1032,8 +1032,8 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
                 )}
                 {st >= 3 ? (
                   <>
-                    <div className="font-bold text-[#4AE89A]">Pot {p.potential}</div>
-                    <Bar value={p.potential} color="#4AE89A" small />
+                    <div className="font-bold text-apos">Pot {p.potential}</div>
+                    <Bar value={p.potential} color="var(--A-pos)" small />
                   </>
                 ) : (
                   <div className="font-bold text-atext-dim">Pot {potDisp.label}</div>
@@ -1041,7 +1041,7 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
                 <span
                   className="text-sm font-mono"
                   style={{
-                    color: wageAccurate ? (capOk ? "#4AE89A" : "#E84A6F") : "var(--A-accent)",
+                    color: wageAccurate ? (capOk ? "var(--A-pos)" : "var(--A-neg)") : "var(--A-accent)",
                   }}
                 >
                   {wageDisp.label}
@@ -1161,14 +1161,14 @@ function YouthTab({ career, club, updateCareer }) {
           <div className="text-xs text-atext-dim">Develop talent from the {club.state} zone. Build the next generation.</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Program Level" value={`${youth.programLevel}/5`} accent="#4AE89A" />
-          <Stat label="Zone" value={youth.zone} accent="#4ADBE8" />
+          <Stat label="Program Level" value={`${youth.programLevel}/5`} accent="var(--A-pos)" />
+          <Stat label="Zone" value={youth.zone} accent="var(--A-accent)" />
         </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className={`${css.panel} p-5 lg:col-span-1 space-y-4`}>
-          <div className="flex items-center gap-2"><GraduationCap className="w-5 h-5 text-[#4AE89A]" /><div className="font-bold tracking-wide">Academy Settings</div></div>
+          <div className="flex items-center gap-2"><GraduationCap className="w-5 h-5 text-apos" /><div className="font-bold tracking-wide">Academy Settings</div></div>
           <div>
             <div className={css.label}>Recruitment Zone</div>
             <select value={youth.zone} onChange={e=>updateCareer({ youth: { ...youth, zone: e.target.value }})} className="w-full mt-2 bg-apanel border border-aline rounded-lg px-3 py-2 text-sm text-atext">
@@ -1195,7 +1195,7 @@ function YouthTab({ career, club, updateCareer }) {
 
         <div className={`${css.panel} p-5 lg:col-span-2`}>
           <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2"><Sprout className="w-5 h-5 text-[#4AE89A]" /><div className="font-bold tracking-wide">Current Intake</div></div>
+            <div className="flex items-center gap-2"><Sprout className="w-5 h-5 text-apos" /><div className="font-bold tracking-wide">Current Intake</div></div>
             <div className="text-xs text-atext-dim">{generated.length} recruit{generated.length !== 1 ? "s" : ""}</div>
           </div>
           {generated.length === 0 ? (
@@ -1208,11 +1208,11 @@ function YouthTab({ career, club, updateCareer }) {
                     <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
                     <div className="text-[10px] text-atext-dim">Age {rand(16,18)} · From {youth.zone}</div>
                   </div>
-                  <div className="col-span-1"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
+                  <div className="col-span-1"><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>
                   <div className="col-span-2"><RatingDot value={p.overall} /></div>
                   <div className="col-span-2">
                     <div className="text-[10px] text-atext-dim">Potential</div>
-                    <div className="flex items-center gap-1"><span className="text-xs font-bold text-[#4AE89A]">{p.potential}</span><Bar value={p.potential} color="#4AE89A" small /></div>
+                    <div className="flex items-center gap-1"><span className="text-xs font-bold text-apos">{p.potential}</span><Bar value={p.potential} color="var(--A-pos)" small /></div>
                   </div>
                   <div className="col-span-3 flex justify-end">
                     <button
@@ -1365,7 +1365,7 @@ function LocalTab({ career, club, updateCareer }) {
         </div>
         <div className="flex items-center gap-3">
           <Stat label="Listed signing" value={feeLabel} sub="fee + wages" accent="var(--A-accent)" />
-          <Stat label="Walk-on" value="$0" sub="same wages" accent="#4AE89A" />
+          <Stat label="Walk-on" value="$0" sub="same wages" accent="var(--A-pos)" />
         </div>
       </div>
 
@@ -1384,7 +1384,7 @@ function LocalTab({ career, club, updateCareer }) {
                         <div className="font-bold text-sm">{l.short}</div>
                         <div className="text-[10px] text-atext-dim">{l.name}</div>
                       </div>
-                      <Pill color="#4ADBE8">T{l.tier}</Pill>
+                      <Pill color="var(--A-accent)">T{l.tier}</Pill>
                     </div>
                     <div className="text-[10px] text-atext-dim mt-1">{l.clubs.length} clubs · No travel fee</div>
                   </button>
@@ -1470,11 +1470,11 @@ function LocalTab({ career, club, updateCareer }) {
                         <div className="text-[10px] text-atext-dim">From {p.fromLocal} · Age {p.age}</div>
                       </div>
                     </div>
-                    <div className="col-span-1"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
+                    <div className="col-span-1"><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>
                     <div className="col-span-2"><RatingDot value={p.scoutedOverall ?? p.overall} /></div>
                     <div className="col-span-2">
                       <div className="text-[10px] text-atext-dim">Potential</div>
-                      <div className="flex items-center gap-1"><span className="text-xs font-bold text-[#4AE89A]">{p.potential}</span><Bar value={p.potential} color="#4AE89A" small /></div>
+                      <div className="flex items-center gap-1"><span className="text-xs font-bold text-apos">{p.potential}</span><Bar value={p.potential} color="var(--A-pos)" small /></div>
                     </div>
                     <div className="col-span-3 flex flex-col gap-1 items-stretch">
                       <button type="button" onClick={()=>sign(p)} disabled={!can}
