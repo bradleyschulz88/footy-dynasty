@@ -797,7 +797,7 @@ function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
               <span
                 className="font-display text-base"
                 style={{
-                  color: trainingInjuryProb > 0.04 ? "#E84A6F" : trainingInjuryProb > 0.02 ? "var(--A-accent)" : "#4AE89A",
+                  color: trainingInjuryProb > 0.04 ? "var(--A-neg)" : trainingInjuryProb > 0.02 ? "var(--A-accent)" : "var(--A-pos)",
                 }}
               >
                 {(trainingInjuryProb * 100).toFixed(2)}%
@@ -813,7 +813,7 @@ function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
         <div className={`${css.panel} p-5`}>
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
             <h3 className={`${css.h1} text-2xl`}>TRAINING FOCUS</h3>
-            <Pill color={focusSum === 100 ? "#4AE89A" : "var(--A-accent-2)"}>Total {focusSum}%</Pill>
+            <Pill color={focusSum === 100 ? "var(--A-pos)" : "var(--A-accent-2)"}>Total {focusSum}%</Pill>
           </div>
           <p className="text-xs text-atext-dim mb-2">
             Shares must total 100 — each slider redistributes the rest. Boost aligns with{" "}
