@@ -12,7 +12,7 @@ export default function PremiershipScreen({ moment, club, onContinue }) {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-6 py-12"
-      style={{ background: "linear-gradient(165deg, #1a1208 0%, #0F172A 45%, #1E293B 100%)" }}
+      style={{ background: "linear-gradient(165deg, #1a1208 0%, var(--A-bg) 45%, var(--A-bg-2) 100%)" }}
     >
       <motion.div
         className="text-center max-w-lg anim-in"
@@ -33,9 +33,9 @@ export default function PremiershipScreen({ moment, club, onContinue }) {
         >
           {moment?.leagueShort} · Season {moment?.season}
         </div>
-        <h1 className="font-display text-5xl md:text-6xl text-white mb-2">PREMIERS</h1>
-        <p className="text-xl text-amber-200/90 font-semibold mb-6">{club?.name || moment?.clubName}</p>
-        <p className="text-sm text-slate-400 leading-relaxed mb-8">
+        <h1 className="font-display text-5xl md:text-6xl text-atext mb-2">PREMIERS</h1>
+        <p className="text-xl text-aaccent-2/90 font-semibold mb-6">{club?.name || moment?.clubName}</p>
+        <p className="text-sm text-atext-dim leading-relaxed mb-8">
           The siren sounds. The flag is yours. {moment?.leagueName} champions for {moment?.season}.
         </p>
         {prize > 0 && (

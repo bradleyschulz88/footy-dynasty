@@ -68,7 +68,7 @@ function SetupPyramidHint({ state, tier, leagueKey }) {
             <div
               key={i}
               title={`Division ${i + 1}`}
-              className="flex-1 max-w-[56px] rounded-t border border-aaccent/30 bg-gradient-to-t from-[#4ADBE8]/25 to-aaccent/40"
+              className="flex-1 max-w-[56px] rounded-t border border-aaccent/30 bg-gradient-to-t from-aaccent/25 to-aaccent/40"
               style={{ height: `${36 + ((i + 1) / k) * 100}%`, minHeight: 22 }}
             />
           ))}
@@ -425,8 +425,8 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
               <div className="grid md:grid-cols-3 gap-3">
                 {[
                   { id: 'normal', title: 'Career', sub: 'Standard rules — full board pressure and sacks.', color: 'var(--A-accent)' },
-                  { id: 'sandbox', title: 'Sandbox', sub: 'Extra cash and steadier board. No sacks or confidence votes.', color: '#4AE89A' },
-                  { id: 'challenge', title: 'Challenge', sub: 'Lean cash and nervous board — Under the pump.', color: '#E84A6F' },
+                  { id: 'sandbox', title: 'Sandbox', sub: 'Extra cash and steadier board. No sacks or confidence votes.', color: 'var(--A-pos)' },
+                  { id: 'challenge', title: 'Challenge', sub: 'Lean cash and nervous board — Under the pump.', color: 'var(--A-neg)' },
                 ].map((m) => (
                   <button
                     key={m.id}
@@ -451,7 +451,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                       type="button"
                       onClick={() => setChallengePersist(ch.id)}
                       className={`${css.panelHover} p-3 text-left rounded-lg border transition`}
-                      style={{ borderColor: challengeId === ch.id ? '#E84A6F' : 'var(--A-line)' }}
+                      style={{ borderColor: challengeId === ch.id ? 'var(--A-neg)' : 'var(--A-line)' }}
                     >
                       <div className="font-bold text-sm text-atext">{ch.title}</div>
                       <motion.div className="text-[10px] text-atext-dim mt-1">{ch.sub}</motion.div>
@@ -624,11 +624,11 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
             <div className={`grid gap-4 ${tiersForState.length === 1 ? 'md:grid-cols-1 max-w-sm' : tiersForState.length === 2 ? 'md:grid-cols-2 max-w-2xl' : 'md:grid-cols-3'}`}>
               {tiersForState.includes(3) && (
                 <button type="button" onClick={() => { setTier(3); setLeagueKey(null); setClubId(null); setStep(3); }} className={`${css.panelHover} p-6 text-left`}>
-                  <Pill color="#4ADBE8">Underdog</Pill>
+                  <Pill color="var(--A-accent)">Underdog</Pill>
                   <div className={`${css.h1} text-4xl mt-3`}>TIER 3</div>
                   <div className="text-sm text-atext font-semibold mt-1">Community / Local</div>
                   <div className="text-[12px] text-atext-dim mt-3">Suburban grounds. Tiny budgets. Long road. Most rewarding climb.</div>
-                  <div className="text-[#4ADBE8] text-xs mt-4 font-bold uppercase tracking-widest">3 Promotions to AFL</div>
+                  <div className="text-aaccent text-xs mt-4 font-bold uppercase tracking-widest">3 Promotions to AFL</div>
                 </button>
               )}
               {tiersForState.includes(2) && (
@@ -642,11 +642,11 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
               )}
               {tiersForState.includes(1) && (
                 <button type="button" onClick={() => { setTier(1); setLeagueKey(null); setClubId(null); setStep(3); }} className={`${css.panelHover} p-6 text-left`}>
-                  <Pill color="#E84A6F">Big Time</Pill>
+                  <Pill color="var(--A-neg)">Big Time</Pill>
                   <div className={`${css.h1} text-4xl mt-3`}>TIER 1</div>
                   <div className="text-sm text-atext font-semibold mt-1">AFL</div>
                   <div className="text-[12px] text-atext-dim mt-3">Premiership pressure. Salary caps. Trade weeks. Every game on TV.</div>
-                  <div className="text-[#E84A6F] text-xs mt-4 font-bold uppercase tracking-widest">Win the Cup</div>
+                  <div className="text-aneg text-xs mt-4 font-bold uppercase tracking-widest">Win the Cup</div>
                 </button>
               )}
             </div>

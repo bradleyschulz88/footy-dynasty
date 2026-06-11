@@ -226,7 +226,7 @@ function PlayersTab({ career, updateCareer }) {
           {players.map((p) => {
             const inLineup = lineupHasPlayer(career.lineup, p.id);
             const isSelected = selected?.id === p.id;
-            const formColor = p.form >= 75 ? "#4AE89A" : p.form >= 55 ? "var(--A-accent)" : "#E84A6F";
+            const formColor = p.form >= 75 ? "var(--A-pos)" : p.form >= 55 ? "var(--A-accent)" : "var(--A-neg)";
             return (
               <button
                 key={p.id}
@@ -248,8 +248,8 @@ function PlayersTab({ career, updateCareer }) {
                 <div className="flex flex-wrap items-center gap-2 mt-2 text-[10px]">
                   <span className="font-bold" style={{ color: formColor }}>Form {p.form}</span>
                   <span className="text-atext-mute">Fitness {p.fitness}</span>
-                  {inLineup && <Pill color="#4AE89A">23</Pill>}
-                  {p.injured > 0 && <Pill color="#E84A6F">{p.injured}w</Pill>}
+                  {inLineup && <Pill color="var(--A-pos)">23</Pill>}
+                  {p.injured > 0 && <Pill color="var(--A-neg)">{p.injured}w</Pill>}
                 </div>
               </button>
             );
@@ -266,8 +266,8 @@ function PlayersTab({ career, updateCareer }) {
             {players.map((p, i) => {
               const inLineup = lineupHasPlayer(career.lineup, p.id);
               const isSelected = selected?.id === p.id;
-              const formColor = p.form >= 75 ? "#4AE89A" : p.form >= 55 ? "var(--A-accent)" : "#E84A6F";
-              const fitColor  = p.fitness >= 80 ? "#4AE89A" : p.fitness >= 60 ? "var(--A-accent)" : "#E84A6F";
+              const formColor = p.form >= 75 ? "var(--A-pos)" : p.form >= 55 ? "var(--A-accent)" : "var(--A-neg)";
+              const fitColor  = p.fitness >= 80 ? "var(--A-pos)" : p.fitness >= 60 ? "var(--A-accent)" : "var(--A-neg)";
               return (
                 <button key={p.id} onClick={()=>setSelected(isSelected ? null : p)}
                   type="button"
@@ -282,13 +282,13 @@ function PlayersTab({ career, updateCareer }) {
                   onMouseLeave={e=>{if(!isSelected) e.currentTarget.style.background="transparent";}}>
                   <div className="text-atext-mute text-sm font-bold text-left">{i+1}</div>
                   <div className="flex items-center gap-2 min-w-0 text-left">
-                    {p.injured > 0 && <Heart className="w-3 h-3 flex-shrink-0 text-[#E84A6F]" />}
-                    {inLineup && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:"#4AE89A", boxShadow:"0 0 4px #4AE89A"}} />}
+                    {p.injured > 0 && <Heart className="w-3 h-3 flex-shrink-0 text-aneg" />}
+                    {inLineup && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:"var(--A-pos)", boxShadow:"0 0 4px var(--A-pos)"}} />}
                     <span className="truncate text-sm font-semibold text-atext">{pName(p)}</span>
-                    {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"#4ADBE822",color:"#4ADBE8"}}>R</span>}
+                    {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"color-mix(in srgb, var(--A-accent) 13%, transparent)",color:"var(--A-accent)"}}>R</span>}
                   </div>
-                  <div className="text-center"><Pill color="#4ADBE8">{formatPositionSlash(p)}</Pill></div>
-                  <div className="text-center text-sm text-[#8A9AB8]">{p.age}</div>
+                  <div className="text-center"><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>
+                  <div className="text-center text-sm text-atext-dim">{p.age}</div>
                   <div className="text-center flex justify-center"><RatingDot value={p.overall} size="sm" /></div>
                   <div className="flex items-center gap-1">
                     <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
@@ -307,9 +307,9 @@ function PlayersTab({ career, updateCareer }) {
                     {p.suspended > 0
                       ? <Pill color="#A78BFA">SUS {p.suspended}w</Pill>
                       : p.injured > 0
-                        ? <Pill color="#E84A6F">{p.injured}w</Pill>
+                        ? <Pill color="var(--A-neg)">{p.injured}w</Pill>
                         : inLineup
-                          ? <Pill color="#4AE89A">23</Pill>
+                          ? <Pill color="var(--A-pos)">23</Pill>
                           : <span className="text-atext-mute text-xs">—</span>}
                   </div>
                 </button>
@@ -430,9 +430,9 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
         </div>
         {/* Form / Fitness / Morale row */}
         <div className="grid grid-cols-3 gap-2">
-          {[["Form", player.form, player.form>=75?"#4AE89A":player.form>=55?"var(--A-accent)":"#E84A6F"],
-            ["Fitness", player.fitness, player.fitness>=80?"#4AE89A":player.fitness>=60?"var(--A-accent)":"#E84A6F"],
-            ["Morale", player.morale, player.morale>=75?"#4AE89A":"var(--A-accent)"]].map(([l,v,c])=>(
+          {[["Form", player.form, player.form>=75?"var(--A-pos)":player.form>=55?"var(--A-accent)":"var(--A-neg)"],
+            ["Fitness", player.fitness, player.fitness>=80?"var(--A-pos)":player.fitness>=60?"var(--A-accent)":"var(--A-neg)"],
+            ["Morale", player.morale, player.morale>=75?"var(--A-pos)":"var(--A-accent)"]].map(([l,v,c])=>(
             <div key={l} className="rounded-xl p-2.5 text-center" style={{background:"var(--A-panel-2)"}}>
               <div className="text-[8px] font-black uppercase tracking-widest text-atext-mute">{l}</div>
               <div className="font-display text-2xl leading-tight" style={{color:c}}>{v}</div>
@@ -452,7 +452,7 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
             const color = ATTR_COLORS[k] || "var(--A-accent)";
             return (
               <div key={k} className="flex items-center gap-2">
-                <div className="text-[11px] capitalize font-semibold text-[#8A9AB8] w-20 flex-shrink-0">{k}</div>
+                <div className="text-[11px] capitalize font-semibold text-atext-dim w-20 flex-shrink-0">{k}</div>
                 <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
                   <div className="h-full rounded-full transition-all" style={{width:`${v}%`, background:`linear-gradient(90deg,${color}88,${color})`}} />
                 </div>
@@ -467,7 +467,7 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
       <div className="px-4 pb-4" style={{borderTop:"1px solid var(--A-line)", paddingTop:"1rem"}}>
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute mb-3">Season Stats</div>
         <div className="grid grid-cols-4 gap-2">
-          {[["G", player.goals,"#4AE89A"],["B",player.behinds,"var(--A-accent)"],["DSP",player.disposals,"#4ADBE8"],["M",player.marks,"#A78BFA"]].map(([l,v,c])=>(
+          {[["G", player.goals,"var(--A-pos)"],["B",player.behinds,"var(--A-accent)"],["DSP",player.disposals,"var(--A-accent)"],["M",player.marks,"#A78BFA"]].map(([l,v,c])=>(
             <div key={l} className="rounded-xl p-2.5 text-center" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)"}}>
               <div className="text-[9px] font-black uppercase tracking-widest" style={{color:c}}>{l}</div>
               <div className="font-display text-2xl leading-tight text-atext">{v}</div>
