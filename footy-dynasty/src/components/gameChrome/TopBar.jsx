@@ -77,7 +77,7 @@ export function TopBar({
     <header className="sticky top-0 z-20 bg-apanel/90 backdrop-blur-md border-b border-aline shadow-[0_1px_0_rgba(0,224,255,0.06)] overflow-hidden">
       <motion.div
         key={timeTick}
-        className="h-0.5 origin-left bg-gradient-to-r from-[var(--A-accent)] via-[#4ADBE8] to-transparent"
+        className="h-0.5 origin-left bg-gradient-to-r from-[var(--A-accent)] via-[var(--A-accent-2)] to-transparent"
         initial={{ scaleX: 0, opacity: 0.9 }}
         animate={{ scaleX: 1, opacity: 0 }}
         transition={{ duration: 0.55, ease: tickEase }}
@@ -158,9 +158,9 @@ export function TopBar({
             }
             whileTap={advanceDisabled ? undefined : { scale: 0.94 }}
             transition={{ type: 'spring', stiffness: 520, damping: 28 }}
-            className={`${css.btnPrimary} hidden md:flex items-center gap-1.5 md:gap-2 glow text-[11px] md:text-xs px-3 md:px-5 ${tutorialSpotlightAdvance ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${advanceDisabled ? "opacity-45 cursor-not-allowed" : ""}`}
+            className={`hidden md:flex items-center gap-2 btn-primary px-5 py-3 text-sm font-display tracking-widest ${tutorialSpotlightAdvance ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${advanceDisabled ? "opacity-45 cursor-not-allowed" : ""}`}
           >
-            <Play className="w-4 h-4" /> {ctx.buttonLabel.toUpperCase()}
+            <Play className="w-4 h-4" fill="currentColor" /> {ctx.buttonLabel.toUpperCase()}
             {!advanceDisabled && advanceAgendaCount > 0 && (
               <span
                 className="ml-0.5 min-w-[1.25rem] h-5 px-1 rounded-md text-[10px] font-mono font-bold flex items-center justify-center"

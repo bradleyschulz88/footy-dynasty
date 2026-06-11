@@ -35,7 +35,7 @@ export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos 
       {/* Brand */}
       <div className="px-5 py-4 border-b border-aline hidden md:block">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{background:"linear-gradient(135deg, var(--A-accent), #0f766e)", boxShadow:"0 4px 12px rgba(13,148,136,0.2)"}}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{background:"linear-gradient(135deg, var(--A-accent), var(--A-accent-2))", boxShadow:"0 4px 12px color-mix(in srgb, var(--A-accent) 20%, transparent)"}}>
             <Trophy className="w-5 h-5 text-white" />
           </div>
           <div>
