@@ -778,7 +778,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           <div className="flex items-center gap-3">
             <span className="text-3xl">📋</span>
             <div>
-              <div className="font-display text-xl text-aaccent">NATIONAL DRAFT COUNTDOWN</div>
+              <div className="font-display text-xl text-aaccent">{career.draftPickBank ? 'NATIONAL DRAFT COUNTDOWN' : 'OFF-SEASON COUNTDOWN'}</div>
               <div className="text-xs text-atext-dim">{career.postSeasonDraftCountdown ?? POST_TRADE_DRAFT_COUNTDOWN_DAYS} step{(career.postSeasonDraftCountdown ?? POST_TRADE_DRAFT_COUNTDOWN_DAYS) === 1 ? '' : 's'} until list reset &amp; new pre-season</div>
             </div>
           </div>

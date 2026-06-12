@@ -229,7 +229,9 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
 // Pre-season: Dec 1 of (season-1) through Feb 28 of season
 // Regular season: from Mar 21 of season, one round per week
 // ---------------------------------------------------------------------------
-export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId) {
+export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId, opts = {}) {
+  // National Draft Day is an AFL (tier 1) event — pass { nationalDraft: false } for lower tiers.
+  const { nationalDraft = true } = opts;
   const events = [];
   let counter  = 0;
   const eid    = () => `ev_${++counter}`;
@@ -265,12 +267,14 @@ export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId) {
     description: 'The trade and free-agent market is now open. Approach players and negotiate deals before the draft.',
     action: 'recruit', phase: 'preseason', completed: false,
   });
-  events.push({
-    id: eid(), date: `${season - 1}-11-20`, type: 'key_event',
-    name: 'National Draft Day',
-    description: 'Select the best young talent from this year\'s draft pool to build your future.',
-    action: 'recruit', phase: 'preseason', completed: false,
-  });
+  if (nationalDraft) {
+    events.push({
+      id: eid(), date: `${season - 1}-11-20`, type: 'key_event',
+      name: 'National Draft Day',
+      description: 'Select the best young talent from this year\'s draft pool to build your future.',
+      action: 'recruit', phase: 'preseason', completed: false,
+    });
+  }
   events.push({
     id: eid(), date: `${season - 1}-12-15`, type: 'key_event',
     name: 'Trade Period Closes',

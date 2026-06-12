@@ -476,7 +476,9 @@ function AFLManagerInner() {
     const compClubsNew = getCompetitionClubs(offer.leagueKey, newRegionState, newLocalDivision);
     const newFixtures = generateFixtures(compClubsNew);
     const SEASON = career.season + 1;
-    const eventQueue = generateSeasonCalendar(SEASON, compClubsNew, newFixtures, newClub.id);
+    const eventQueue = generateSeasonCalendar(SEASON, compClubsNew, newFixtures, newClub.id, {
+      nationalDraft: newLeague.tier === 1,
+    });
     const interviewBump = offer.interviewStartingBoardBonus ?? 0;
     const startingBoard = clamp(
       ((career.coachReputation ?? 30) >= 60 ? 65 : 55) + interviewBump,

@@ -10,6 +10,47 @@ const ACADEMY_CLUBS = () => (PYRAMID.TalentLeague?.clubs || []).map(c => c.id);
 export const DRAFT_POOL_SIZE = 60;
 export const DRAFT_ROUNDS = 3;
 
+/** Prospects at the very top of the class generate AFL-ready. */
+export const ELITE_PROSPECT_COUNT = 8;
+
+/** The national draft is an AFL institution — only tier 1 careers take part. */
+export function careerHasNationalDraft(c, league) {
+  const tier = PYRAMID[c?.leagueKey]?.tier ?? league?.tier;
+  return tier === 1;
+}
+
+/**
+ * Shape a generated player into a draft prospect: every prospect is 18 years old,
+ * and quality follows the pool index — the top of the class is AFL-ready, the
+ * tail is project players. `i` is the pool slot (0 = projected #1 pick).
+ */
+function shapeDraftProspect(p, i) {
+  const target = i < ELITE_PROSPECT_COUNT
+    ? rand(74, 84)               // AFL-ready: walks into a senior side
+    : i < 30
+      ? rand(62, 74)             // solid draftable talent
+      : rand(50, 64);            // developmental projects
+  const scale = target / Math.max(1, p.overall);
+  const attrs = {};
+  Object.entries(p.attrs || {}).forEach(([k, v]) => {
+    attrs[k] = Math.max(30, Math.min(99, Math.round(v * scale)));
+  });
+  const overall = Math.round(Object.values(attrs).reduce((a, b) => a + b, 0) / 8) || target;
+  const potential = Math.min(99, overall + (i < ELITE_PROSPECT_COUNT ? rand(8, 15) : rand(6, 20)));
+  return {
+    ...p,
+    attrs,
+    overall,
+    potential,
+    trueRating: overall,
+    potentialTrue: potential,
+    age: 18,
+    rookie: true,
+    contract: 2,
+    value: Math.round(overall * overall * 70 * (0.8 + (rand(0, 50) / 100))),
+  };
+}
+
 /** Snake draft: round 1 order, even rounds reversed. Optional bonusPicks are inserted before the snake. */
 export function buildSnakeDraftOrder(round1ClubIds, rounds = DRAFT_ROUNDS, bonusPicks = []) {
   if (!round1ClubIds?.length) return [];
@@ -62,12 +103,22 @@ function competitionClubIds(c, league) {
 
 /**
  * Populate draftPool and draftOrder on career. Idempotent if pool already exists unless force=true.
+ * Tier 2/3 careers do not take part in the national draft — their draft state is cleared instead.
  * @param {object} c — career (mutated)
  * @param {object} league
- * @param {{ ladderSnapshot?: object[], inaugural?: boolean, force?: boolean }} [options]
+ * @param {{ ladderSnapshot?: object[], inaugural?: boolean, force?: boolean, revealAll?: boolean }} [options]
+ *   revealAll — fully scout every prospect (used for a player's very first draft so they can learn the system).
  */
 export function seedNationalDraft(c, league, options = {}) {
-  const { ladderSnapshot, inaugural = false, force = false, rounds = DRAFT_ROUNDS } = options;
+  const { ladderSnapshot, inaugural = false, force = false, rounds = DRAFT_ROUNDS, revealAll = false } = options;
+
+  if (!careerHasNationalDraft(c, league)) {
+    c.draftPool = [];
+    c.draftOrder = [];
+    c.draftPhase = 'complete';
+    return c;
+  }
+
   if (!force && (c.draftPool?.length > 0) && (c.draftOrder?.length > 0)) return c;
 
   const season = c.season || 2026;
@@ -75,9 +126,12 @@ export function seedNationalDraft(c, league, options = {}) {
   const academyIds = ACADEMY_CLUBS();
   c.draftPool = Array.from({ length: DRAFT_POOL_SIZE }, (_, i) => {
     const academyClub = academyIds.length ? academyIds[rand(0, academyIds.length - 1)] : 'draft';
-    return withDraftScoutingDefaults(
+    const prospect = shapeDraftProspect(
       generatePlayer(2, 9000 + i + season * 100, { clubId: academyClub, season }),
+      i,
     );
+    const withDefaults = withDraftScoutingDefaults(prospect);
+    return revealAll ? { ...withDefaults, scoutReveal: 3 } : withDefaults;
   });
 
   const clubIds = competitionClubIds(c, league);

@@ -231,7 +231,8 @@ export function beginPostSeasonTradePeriod(c, league, leagueKey) {
   c.freeAgencyOpen = true;
   c.freeAgentBalance = { gained: 0, lost: 0 };
   c.tradeHistory = c.tradeHistory || [];
-  c.draftPickBank = buildDraftPickBank(c, league);
+  // Draft pick capital only exists at AFL level — the national draft is tier-1 only.
+  c.draftPickBank = league?.tier === 1 ? buildDraftPickBank(c, league) : null;
   c.offSeasonFreeAgents = buildOffSeasonFreeAgents(c);
   seedRng(c.season * 911 + 3);
   c.tradePool = generateTradePool(leagueKey, c.season);
@@ -293,7 +294,7 @@ export function closeTradePeriodStartDraftCountdown(c) {
     {
       week: c.week,
       type: 'info',
-      text: `✅ Trade Period closed. National Draft / list reset in ${POST_TRADE_DRAFT_COUNTDOWN_DAYS} steps — keep advancing from the Hub.`,
+      text: `✅ Trade Period closed. ${c.draftPickBank ? 'National Draft / list reset' : 'List reset'} in ${POST_TRADE_DRAFT_COUNTDOWN_DAYS} steps — keep advancing from the Hub.`,
     },
     ...(c.news || []),
   ].slice(0, 20);
