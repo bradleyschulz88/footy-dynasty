@@ -115,7 +115,7 @@ const slideIn = {
   transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
 };
 
-export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
+export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass = 'dirB' }) {
   const saved = loadSetup();
   const [gameMode, setGameMode] = useState(saved.gameMode ?? 'normal');
   const [challengeId, setChallengeId] = useState(saved.challengeId ?? 'under_the_pump');
@@ -273,6 +273,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
           confirmBeforeDeleteSlot: true,
           uiDensity: 'comfortable',
           reduceMotion: false,
+          theme: (() => { try { return localStorage.getItem('fd-theme') ?? 'dark'; } catch { return 'dark'; } })(),
         },
         pendingTradeOffers: [],
         inbox: [],
@@ -370,7 +371,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     tier === 3 ? step : step <= 3 ? step : step === 5 ? 4 : Math.min(step, 4);
 
   return (
-    <div className="dirB min-h-screen font-sans text-atext flex flex-col">
+    <div className={`${themeClass} min-h-screen font-sans text-atext flex flex-col`}>
       {/* ── Hero ─────────────────────────────────────────────── */}
       <div className="relative overflow-hidden border-b border-aline">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 15% 60%, color-mix(in srgb, var(--A-accent) 10%, transparent) 0%, transparent 55%)' }} />

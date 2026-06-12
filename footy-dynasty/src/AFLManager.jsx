@@ -106,9 +106,19 @@ import { advanceCareerNextEvent, triggerSackState, fastForwardFinals } from './l
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
 
-/** Stadium Carbon dark theme — dirB maps --A-* tokens to black + orange palette. */
-function themeWrapperClass() {
-  return 'dirB';
+const THEME_STORAGE_KEY = 'fd-theme';
+
+function resolveThemeClass(career) {
+  try {
+    const pref = career?.options?.theme ?? localStorage.getItem(THEME_STORAGE_KEY) ?? 'dark';
+    return pref === 'light' ? 'dirA' : 'dirB';
+  } catch {
+    return 'dirB';
+  }
+}
+
+function persistTheme(theme) {
+  try { localStorage.setItem(THEME_STORAGE_KEY, theme ?? 'dark'); } catch { /* ignore */ }
 }
 
 function AppMotionConfig({ reducedMotion, children }) {
@@ -160,6 +170,13 @@ function AFLManagerInner() {
   const [pwaNeedsUpdate, setPwaNeedsUpdate] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const installPromptRef = useRef(null);
+
+  const themeClass = resolveThemeClass(career);
+
+  // Persist theme preference to localStorage so it applies before a career loads
+  useEffect(() => {
+    persistTheme(career?.options?.theme ?? 'dark');
+  }, [career?.options?.theme]);
 
   useEffect(() => {
     const handler = () => setPwaNeedsUpdate(true);
@@ -640,6 +657,7 @@ function AFLManagerInner() {
       <AppMotionConfig reducedMotion={motionReduced}>
         <LandingScreen
           hasSaves={hasSaves}
+          themeClass={themeClass}
           onNewCareer={() => setShowLanding(false)}
           onLoadGame={() => setShowLanding(false)}
         />
@@ -689,7 +707,7 @@ function AFLManagerInner() {
           });
           setCareer(initialised);
           setScreen("hub");
-        }} existingSlots={readSlotMeta()} onResume={(slot) => { handleSwitchSlot(slot); }} />
+        }} existingSlots={readSlotMeta()} onResume={(slot) => { handleSwitchSlot(slot); }} themeClass={themeClass} />
       </AppMotionConfig>
     );
   }
@@ -715,7 +733,7 @@ function AFLManagerInner() {
   if (career.isSacked) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <SackingSequence
           career={career}
@@ -756,7 +774,7 @@ function AFLManagerInner() {
   if (career.gameOver && !career.isSacked) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <GameOverScreen
           career={career}
@@ -787,7 +805,7 @@ function AFLManagerInner() {
   if (career.showPremiershipScreen && career.premiershipMoment) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <motion.div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <motion.div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <PremiershipScreen
             moment={career.premiershipMoment}
@@ -802,7 +820,7 @@ function AFLManagerInner() {
   if (career.showFinalsQualification && career.finalsQualification) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <motion.div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <motion.div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <FinalsQualificationScreen
             qualification={career.finalsQualification}
@@ -817,7 +835,7 @@ function AFLManagerInner() {
   if (career.showFinalsEliminated) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <motion.div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <motion.div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <FinalsEliminatedScreen
             career={career}
@@ -836,7 +854,7 @@ function AFLManagerInner() {
   if (career.showSeasonSummary && career.seasonSummary) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <SeasonSummaryScreen
           summary={career.seasonSummary}
@@ -853,7 +871,7 @@ function AFLManagerInner() {
   if (career.inMatchDay && career.currentMatchResult) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <MatchDayScreen
           result={career.currentMatchResult}
@@ -886,7 +904,7 @@ function AFLManagerInner() {
   if (career.boardCrisis?.phase === 'active') {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <VoteOfConfidenceFlow
           career={career}
@@ -923,7 +941,7 @@ function AFLManagerInner() {
   if (career.boardMeetingBlocking) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <BoardMeetingScreen
           career={career}
@@ -947,7 +965,7 @@ function AFLManagerInner() {
   if (career.arrivalBriefing?.pending) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <ArrivalBriefingFlow
           career={career}
@@ -968,7 +986,7 @@ function AFLManagerInner() {
 
   return (
     <AppMotionConfig reducedMotion={motionReduced}>
-    <div className={`${themeWrapperClass()} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
+    <div className={`${themeClass} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
       {globalStyle}
       <Sidebar screen={screen} onNavigate={onNavScreen} club={club} league={league} career={career} myLadderPos={myLadderPos} />
       <main className="flex-1 overflow-y-auto min-w-0">

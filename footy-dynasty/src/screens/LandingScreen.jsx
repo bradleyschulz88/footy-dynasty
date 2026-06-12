@@ -9,7 +9,7 @@ const TAGLINES = [
   "Every great dynasty started somewhere.",
 ];
 
-export default function LandingScreen({ hasSaves, onNewCareer, onLoadGame }) {
+export default function LandingScreen({ hasSaves, themeClass = 'dirB', onNewCareer, onLoadGame }) {
   const [tagline] = useState(() => TAGLINES[Math.floor(Math.random() * TAGLINES.length)]);
   const [ready, setReady] = useState(false);
 
@@ -20,7 +20,7 @@ export default function LandingScreen({ hasSaves, onNewCareer, onLoadGame }) {
 
   return (
     <div
-      className="dirB min-h-screen font-sans text-atext flex flex-col items-center justify-center relative overflow-hidden select-none"
+      className={`${themeClass} min-h-screen font-sans text-atext flex flex-col items-center justify-center relative overflow-hidden select-none`}
       style={{ background: 'var(--A-bg, #080c10)' }}
     >
       {/* Radial glows */}
