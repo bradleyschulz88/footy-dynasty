@@ -208,7 +208,9 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
       const squad = scaledSquadToFitCap({ clubId, leagueKey, difficulty, finance: tunedFinance, squad: squadRaw });
       const lineup = squad.slice().sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map(p => p.id);
       const fixtures = generateFixtures(compClubs);
-      const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId);
+      const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId, {
+        nationalDraft: league.tier === 1,
+      });
       const facilities = DEFAULT_FACILITIES();
       const clubGround = getClubGround(club, facilities.stadium.level, league.tier);
       const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
@@ -352,7 +354,8 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
       generateSeasonObjectives(newCareer, league);
       planSeasonBoardMeetings(newCareer);
       primeSeasonStoryState(newCareer);
-      seedNationalDraft(newCareer, league, { inaugural: true, force: true });
+      // First-ever draft is fully scouted so new players can read the board.
+      seedNationalDraft(newCareer, league, { inaugural: true, force: true, revealAll: true });
       onStart(newCareer);
     } catch (err) {
       setStartError(err.message);

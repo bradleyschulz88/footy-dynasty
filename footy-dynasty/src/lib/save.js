@@ -393,6 +393,23 @@ export function migrate(save) {
     s.finalsRivalryLog = s.finalsRivalryLog || [];
   }
 
+  if (v < 28) {
+    s.saveVersion = 28;
+    // National draft became tier-1 only: scrub draft state + calendar event from lower-tier saves.
+    const tier = s.leagueKey ? PYRAMID[s.leagueKey]?.tier : null;
+    if (tier != null && tier !== 1) {
+      s.draftPool = [];
+      s.draftOrder = [];
+      s.draftPhase = 'complete';
+      s.draftPickBank = null;
+      if (Array.isArray(s.eventQueue)) {
+        s.eventQueue = s.eventQueue.filter(
+          (e) => !(e.type === 'key_event' && e.name === 'National Draft Day' && !e.completed),
+        );
+      }
+    }
+  }
+
   return s;
 }
 

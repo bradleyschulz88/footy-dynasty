@@ -24,7 +24,7 @@ import { applyLeagueTradeNews } from './tradeEngine.js';
 import { recordFinalsRivalryEvent, clubFinalsGrudgeTowardPlayer } from './finalsRivalry.js';
 import { awayTravelRatingPenalty } from './travelFatigue.js';
 import { generateTradePool } from './defaults.js';
-import { seedNationalDraft } from './draftSeed.js';
+import { seedNationalDraft, careerHasNationalDraft } from './draftSeed.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
@@ -781,7 +781,9 @@ function finishSeason(c, league) {
   c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier, c.season);
   c.tradePool = generateTradePool(c.leagueKey, c.season);
   seedNationalDraft(c, league, { ladderSnapshot: sorted, inaugural: false, force: true });
-  c.draftPhase = 'scouting';
+  // seedNationalDraft clears the pool and marks 'complete' for tier 2/3 careers —
+  // only tier 1 re-enters the scouting window.
+  if (careerHasNationalDraft(c, league)) c.draftPhase = 'scouting';
   c.draftHistory = [];
   syncRecruitPhaseInboxRows(c);
 
@@ -959,7 +961,9 @@ function finishSeason(c, league) {
   c.groundName = regGround.shortName;
   const calPool = competitionClubsForCareer(c);
   const calClubs = calPool.length ? calPool : nextLeagueForCal.clubs;
-  c.eventQueue = generateSeasonCalendar(c.season, calClubs, c.fixtures, c.clubId);
+  c.eventQueue = generateSeasonCalendar(c.season, calClubs, c.fixtures, c.clubId, {
+    nationalDraft: nextLeagueForCal.tier === 1,
+  });
   ensureCareerBoard(c, seasonClub, nextLeagueForCal);
   generateSeasonObjectives(c, nextLeagueForCal);
   planSeasonBoardMeetings(c);
@@ -1224,10 +1228,12 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         extraNews.push({ week: c.week, type: 'info', text: `📨 ${offers.length} new trade offer${offers.length > 1 ? 's' : ''} on the table — check Recruit → Trades.` });
       }
     }
-    if (ev.name === 'National Draft Day') {
+    if (ev.name === 'National Draft Day' && careerHasNationalDraft(c, league)) {
       const inaugural = !(c.history?.length);
       if (!(c.draftPool?.length) || !(c.draftOrder?.length)) {
-        seedNationalDraft(c, league, { inaugural, force: true });
+        // A player's very first draft arrives fully scouted so they can learn the board;
+        // later drafts start hidden and need combine scouting through the year.
+        seedNationalDraft(c, league, { inaugural, force: true, revealAll: inaugural });
       }
       c.draftPhase = 'live';
       c.draftHistory = c.draftHistory || [];

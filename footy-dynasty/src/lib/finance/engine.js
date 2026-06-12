@@ -252,7 +252,9 @@ export function canAffordSigning(career, wageOffer) {
 
 // Scale all player wages down so the squad fits under the effective cap (e.g. new career).
 // Returns a new squad array; leaves `career` immutable.
-export function scaledSquadToFitCap(career, headroom = 0.92) {
+// 0.80 default leaves real cap room at career start — a fresh club shouldn't open
+// on a "salary cap is tight" warning with no headroom for renewals or trades.
+export function scaledSquadToFitCap(career, headroom = 0.80) {
   const squad = career?.squad || [];
   const cap = effectiveWageCap(career);
   if (cap <= 0) return squad.map(p => ({ ...p }));

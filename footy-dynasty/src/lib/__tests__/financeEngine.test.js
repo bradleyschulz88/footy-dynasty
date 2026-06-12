@@ -133,10 +133,10 @@ describe('matchDayRevenue (per-game model)', () => {
 describe('continuous vs match-day split (no double counting)', () => {
   it('continuous income excludes gate/broadcast/sponsor (smoothed lines only)', () => {
     const c = baseCareer();
-    // Continuous slice is membership + merch (20%) of the headline model — strictly
+    // Continuous slice is membership + merch (30%) of the headline model — strictly
     // less than the full projected income, which also includes match-day lines.
     expect(continuousAnnualIncome(c)).toBeLessThan(incomeBreakdown(c).grandTotal);
-    expect(continuousAnnualIncome(c)).toBe(Math.round(recomputeAnnualIncome(c) * 0.20));
+    expect(continuousAnnualIncome(c)).toBe(Math.round(recomputeAnnualIncome(c) * 0.30));
   });
 
   it('income projection sums all five lines', () => {

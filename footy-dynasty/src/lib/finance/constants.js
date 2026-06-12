@@ -41,11 +41,13 @@ export const FACILITY_UPKEEP_PER_LEVEL_ANNUAL = {
 // so only membership + merchandise accrue continuously each calendar day.
 // `broadcast`/`gate` here are retained purely so the FinancesTab annual
 // projection can scale the smoothed slice; the live money comes match by match.
+// Membership + merch carry 30% of income so clubs aren't starved through the
+// long pre-season months when no match money arrives.
 export const INCOME_MIX = {
-  broadcast: 0.45,
-  gate:      0.35,
-  membership: 0.15,
-  merchandise: 0.05,
+  broadcast: 0.40,
+  gate:      0.30,
+  membership: 0.22,
+  merchandise: 0.08,
 };
 
 // Fraction of the headline annual income that accrues continuously (smoothed)

@@ -99,7 +99,9 @@ function RecruitOffSeasonStrip({ career }) {
 export default function RecruitScreen({ career, club, updateCareer, tab, setTab, league, onOpenDraftRoom }) {
   const offerCount = (career.pendingTradeOffers || []).filter(o => o.status === 'pending').length;
   const inTradePeriod = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
-  const showPicks = !!career.draftPickBank;
+  // National draft + youth academy are AFL (tier 1) institutions; local football scouting is for everyone.
+  const isTopTier = (league?.tier ?? 1) === 1;
+  const showPicks = isTopTier && !!career.draftPickBank;
   const t = tab || (offerCount > 0 ? "offers" : "trade");
 
   useEffect(() => {
@@ -123,8 +125,8 @@ export default function RecruitScreen({ career, club, updateCareer, tab, setTab,
     ...(inTradePeriod ? [{ key: "freeagents", label: career.freeAgencyOpen ? "Free agents" : "Free agents (closed)", icon: UserPlus }] : []),
     ...(showPicks ? [{ key: "picks", label: "Draft picks", icon: FileText }] : []),
     { key: "trade", label: inTradePeriod ? "Player market" : "Trades", icon: Repeat },
-    { key: "draft", label: "Draft", icon: Award },
-    { key: "youth", label: "Youth Academy", icon: GraduationCap },
+    ...(isTopTier ? [{ key: "draft", label: "Draft", icon: Award }] : []),
+    ...(isTopTier ? [{ key: "youth", label: "Youth Academy", icon: GraduationCap }] : []),
     { key: "local", label: "Local Football", icon: Map },
   ];
   return (
@@ -139,8 +141,12 @@ export default function RecruitScreen({ career, club, updateCareer, tab, setTab,
         <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Draft capital is prepared when the Trade Period opens.</div>
       ))}
       {t === "trade" && <TradeTab career={career} updateCareer={updateCareer} />}
-      {t === "draft" && <DraftTab career={career} club={club} league={league} updateCareer={updateCareer} onOpenDraftRoom={onOpenDraftRoom} />}
-      {t === "youth" && <YouthTab career={career} club={club} updateCareer={updateCareer} />}
+      {t === "draft" && (isTopTier ? <DraftTab career={career} club={club} league={league} updateCareer={updateCareer} onOpenDraftRoom={onOpenDraftRoom} /> : (
+        <div className={`${css.panel} p-8 text-sm text-atext-dim`}>The National Draft is for AFL clubs only. Recruit through Local Football and trades at this level.</div>
+      ))}
+      {t === "youth" && (isTopTier ? <YouthTab career={career} club={club} updateCareer={updateCareer} /> : (
+        <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Youth academies are run by AFL clubs. Develop talent through Local Football scouting at this level.</div>
+      ))}
       {t === "local" && <LocalTab career={career} club={club} updateCareer={updateCareer} />}
     </div>
   );

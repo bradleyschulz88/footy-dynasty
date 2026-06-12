@@ -160,7 +160,7 @@ function applyAiPickAt(order, pool, aiSquads, pickIndex) {
   const nextPool = pool.filter((x) => x.id !== aiPick.id);
   const nextAi = { ...aiSquads };
   nextAi[pickEntry.clubId] = nextAi[pickEntry.clubId] || [];
-  nextAi[pickEntry.clubId] = [...nextAi[pickEntry.clubId], { ...aiPick, age: rand(18, 19) }];
+  nextAi[pickEntry.clubId] = [...nextAi[pickEntry.clubId], { ...aiPick, age: 18 }];
   const nextOrder = markPickUsed(order, pickIndex, {
     prospectName: `${aiPick.firstName} ${aiPick.lastName}`,
     prospectOverall: aiPick.overall,
@@ -277,7 +277,7 @@ export function draftProspectOnClock(career, club, prospect) {
     id: `r_${Date.now()}_${rand(1e9, 2e9 - 1)}`,
     wage: rw,
     contract: 2,
-    age: rand(18, 19),
+    age: 18,
     rookie: true,
   };
 
