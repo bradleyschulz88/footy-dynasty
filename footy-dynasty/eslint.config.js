@@ -22,7 +22,10 @@ export default [
     },
     rules: {
       ...reactPlugin.configs.flat.recommended.rules,
-      ...reactHooks.configs.recommended.rules,
+      // Only the two fundamental hooks rules — v7 recommended adds React Compiler
+      // rules that don't apply to this non-compiler codebase.
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "off",
       // Legacy UI copy and empty catch blocks — tighten incrementally.
@@ -37,7 +40,6 @@ export default [
           caughtErrors: "none",
         },
       ],
-      "react-hooks/exhaustive-deps": "warn",
     },
     settings: {
       react: { version: "detect" },
