@@ -136,7 +136,7 @@ export default function SettingsScreen({
                 }}
               >
                 <div className="font-display text-lg mb-1" style={{ color: profile.color }}>{profile.label}</div>
-                <div className="text-[11px] text-atext-dim leading-snug">{profile.summary}</div>
+                <div className="text-[11px] text-atext-dim leading-snug">{profile.tagline ?? profile.summary}</div>
               </button>
             );
           })}
@@ -176,6 +176,33 @@ export default function SettingsScreen({
 
       <div className={`${css.panel} p-5 space-y-4`}>
         <h3 className={`${css.h1} text-2xl`}>DISPLAY</h3>
+
+        {/* Theme */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-bold text-sm">Colour theme</div>
+            <div className="text-[11px] text-atext-dim">Dark: Stadium Carbon (orange on black). Light: Teal on white.</div>
+          </div>
+          <div className="flex rounded-lg overflow-hidden border border-aline">
+            {([
+              { id: 'dark',  label: '🌙 Dark'  },
+              { id: 'light', label: '☀️ Light' },
+            ]).map(({ id, label }) => {
+              const active = (opts.theme ?? 'dark') === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => patchOpts({ theme: id })}
+                  className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition ${active ? 'bg-aaccent text-[#001520]' : 'bg-apanel-2 text-atext-dim'}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="font-bold text-sm">UI density</div>
