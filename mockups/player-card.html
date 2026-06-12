@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Footy Dynasty — Player Card Mockup</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  background: #04080f;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  padding: 40px 24px;
+  overflow-x: hidden;
+}
+
+/* ── Page background ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 45%, rgba(0,218,155,0.05) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 40% at 80% 20%, rgba(56,130,250,0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ── Header ── */
+.page-header {
+  text-align: center;
+  position: relative; z-index: 2;
+}
+.page-label {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(240,246,255,0.3);
+  margin-bottom: 6px;
+}
+.page-title {
+  font-size: 22px; font-weight: 800;
+  letter-spacing: -0.02em; color: rgba(240,246,255,0.9);
+}
+.page-sub {
+  font-size: 11px; color: rgba(240,246,255,0.28);
+  margin-top: 4px; letter-spacing: 0.04em;
+}
+
+/* ── Card wrapper — handles mouse events ── */
+.card-wrapper {
+  position: relative; z-index: 2;
+  width: 300px; height: 430px;
+  cursor: pointer;
+  perspective: 900px;
+}
+
+/* ── 3D card ── */
+.card-3d {
+  width: 100%; height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.72s cubic-bezier(0.23, 1, 0.32, 1);
+  border-radius: 20px;
+}
+
+.card-3d.flipped {
+  transform: rotateY(180deg) !important;
+}
+
+/* ── Shared face styles ── */
+.card-face {
+  position: absolute; inset: 0;
+  border-radius: 20px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+  box-shadow:
+    0 30px 80px rgba(0,0,0,0.7),
+    0 0 0 1px rgba(255,255,255,0.1);
+}
+
+/* ── FRONT ── */
+.card-front {
+  background: #0a1020;
+  display: flex; flex-direction: column;
+}
+
+/* Club colour header band */
+.card-header {
+  height: 120px;
+  position: relative;
+  background: linear-gradient(160deg, #0d3060 0%, #06205a 50%, #041540 100%);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.card-header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 80% at 30% 30%, rgba(255,255,255,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 90%, rgba(0,218,155,0.12) 0%, transparent 50%);
+}
+
+/* Diagonal slash accent */
+.card-header::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; left: 0; right: 0;
+  height: 40px;
+  background: #0a1020;
+  clip-path: polygon(0 60%, 100% 0%, 100% 100%, 0% 100%);
+}
+
+.header-badge {
+  position: absolute;
+  top: 18px; left: 50%;
+  transform: translateX(-50%);
+  width: 56px; height: 56px; border-radius: 16px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px);
+}
+
+.header-club-name {
+  position: absolute;
+  bottom: 16px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+  white-space: nowrap;
+  z-index: 2;
+}
+
+/* Rating + player info section */
+.card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 20px 18px;
+  position: relative;
+}
+
+/* Giant rating number */
+.rating-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.rating-number {
+  font-size: 88px;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+  color: #f0f6ff;
+  text-shadow: 0 0 60px rgba(0,218,155,0.2);
+  flex-shrink: 0;
+  margin-top: -4px;
+}
+
+.rating-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.pos-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 9px; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  background: rgba(0,218,155,0.18);
+  border: 1px solid rgba(0,218,155,0.35);
+  color: #00da9b;
+}
+
+.rating-label {
+  font-size: 7.5px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(240,246,255,0.28);
+}
+
+/* Player name */
+.player-name {
+  font-size: 20px; font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #f0f6ff;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.player-meta {
+  font-size: 10px; color: rgba(240,246,255,0.38);
+  letter-spacing: 0.04em; margin-bottom: 14px;
+}
+
+/* Mini stat pills */
+.mini-stats {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+
+.mini-stat {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 8px; border-radius: 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.07);
+  flex: 1; min-width: 0;
+}
+
+.ms-label {
+  font-size: 7.5px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(240,246,255,0.3);
+}
+
+.ms-val {
+  font-size: 12px; font-weight: 800;
+  color: #f0f6ff; margin-left: auto;
+}
+
+/* Holographic shimmer overlay */
+.holo {
+  position: absolute; inset: 0;
+  border-radius: 20px;
+  mix-blend-mode: color-dodge;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Foil texture lines */
+.foil-lines {
+  position: absolute; inset: 0;
+  border-radius: 20px;
+  background: repeating-linear-gradient(
+    105deg,
+    transparent 0px,
+    transparent 3px,
+    rgba(255,255,255,0.012) 3px,
+    rgba(255,255,255,0.012) 4px
+  );
+  pointer-events: none; z-index: 19;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+/* Flip hint */
+.flip-hint {
+  position: absolute;
+  bottom: 14px; right: 16px;
+  font-size: 8px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(240,246,255,0.22);
+  display: flex; align-items: center; gap: 4px;
+}
+
+/* ── BACK ── */
+.card-back {
+  background: #0c1220;
+  transform: rotateY(180deg);
+  display: flex; flex-direction: column;
+  padding: 20px;
+}
+
+.back-header {
+  margin-bottom: 16px;
+}
+
+.back-name {
+  font-size: 14px; font-weight: 800;
+  letter-spacing: 0.02em; color: #f0f6ff;
+}
+
+.back-meta {
+  font-size: 9.5px; color: rgba(240,246,255,0.35);
+  margin-top: 2px; letter-spacing: 0.04em;
+}
+
+/* Stats on back */
+.back-stats {
+  display: flex; flex-direction: column; gap: 9px;
+  margin-bottom: 16px;
+}
+
+.stat-row {
+  display: flex; align-items: center; gap: 8px;
+}
+
+.stat-name {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(240,246,255,0.38);
+  width: 60px; flex-shrink: 0;
+}
+
+.stat-bar-bg {
+  flex: 1; height: 4px; border-radius: 3px;
+  background: rgba(255,255,255,0.07); overflow: hidden;
+}
+
+.stat-bar-fg {
+  height: 100%; border-radius: 3px;
+}
+
+.stat-num {
+  font-size: 11px; font-weight: 800;
+  color: #f0f6ff; width: 24px;
+  text-align: right; flex-shrink: 0;
+}
+
+/* Divider */
+.back-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  margin-bottom: 14px;
+}
+
+/* Info grid */
+.back-info {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; margin-bottom: 16px;
+}
+
+.info-block { display: flex; flex-direction: column; gap: 2px; }
+
+.info-lbl {
+  font-size: 7.5px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(240,246,255,0.25);
+}
+
+.info-val {
+  font-size: 11.5px; font-weight: 700;
+  color: rgba(240,246,255,0.85);
+}
+
+/* Club band at bottom of back */
+.back-footer {
+  margin-top: auto;
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.back-club-pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 11px; border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.back-club-name {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(240,246,255,0.5);
+}
+
+.season-tag {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgba(240,246,255,0.25);
+}
+
+/* ── Squad list preview below card ── */
+.squad-row {
+  display: flex; gap: 12px; position: relative; z-index: 2;
+  overflow-x: auto; padding-bottom: 4px;
+  -ms-overflow-style: none; scrollbar-width: none;
+}
+.squad-row::-webkit-scrollbar { display: none; }
+
+.mini-card {
+  width: 90px; height: 120px; border-radius: 12px;
+  flex-shrink: 0; cursor: pointer;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 4px; transition: transform 0.2s, border-color 0.2s;
+  position: relative; overflow: hidden;
+}
+
+.mini-card:hover { transform: translateY(-3px); border-color: rgba(0,218,155,0.25); }
+
+.mini-card.selected {
+  border-color: rgba(0,218,155,0.5);
+  background: rgba(0,218,155,0.07);
+}
+
+.mc-rating {
+  font-size: 22px; font-weight: 900;
+  letter-spacing: -0.04em; color: #f0f6ff;
+}
+
+.mc-name {
+  font-size: 8px; font-weight: 600;
+  color: rgba(240,246,255,0.5);
+  text-align: center; line-height: 1.3;
+}
+
+.mc-pos {
+  font-size: 7px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(240,246,255,0.4);
+}
+
+.mc-color-band {
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px; border-radius: 12px 12px 0 0;
+}
+
+/* Instructions */
+.instructions {
+  position: relative; z-index: 2;
+  text-align: center;
+  font-size: 10px; color: rgba(240,246,255,0.22);
+  letter-spacing: 0.06em;
+  line-height: 1.8;
+}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-label">Footy Dynasty &nbsp;·&nbsp; Design Concept</div>
+  <div class="page-title">Player Card</div>
+  <div class="page-sub">Hover to tilt &nbsp;·&nbsp; Click to flip &nbsp;·&nbsp; Scroll squad below</div>
+</div>
+
+<!-- ── Player Card ── -->
+<div class="card-wrapper" id="cardWrapper">
+  <div class="card-3d" id="card3d">
+
+    <!-- FRONT -->
+    <div class="card-face card-front">
+
+      <!-- Club header with badge -->
+      <div class="card-header">
+        <div class="header-badge">
+          <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+            <circle cx="15" cy="15" r="13" fill="rgba(255,255,255,0.08)"/>
+            <text x="15" y="20" text-anchor="middle" fill="white" font-size="9" font-weight="900" font-family="-apple-system,system-ui">GC</text>
+          </svg>
+        </div>
+        <div class="header-club-name">Geelong Cats</div>
+      </div>
+
+      <!-- Body -->
+      <div class="card-body">
+
+        <!-- Rating + position -->
+        <div class="rating-block">
+          <div class="rating-number">92</div>
+          <div class="rating-side">
+            <div class="pos-badge">MID</div>
+            <div class="rating-label">Overall</div>
+          </div>
+        </div>
+
+        <!-- Name -->
+        <div class="player-name">Marcus Johnson</div>
+        <div class="player-meta">24 yrs &nbsp;·&nbsp; 188 cm &nbsp;·&nbsp; 86 kg</div>
+
+        <!-- Key stats -->
+        <div class="mini-stats">
+          <div class="mini-stat">
+            <span class="ms-label">Kick</span>
+            <span class="ms-val" style="color:#00da9b;">91</span>
+          </div>
+          <div class="mini-stat">
+            <span class="ms-label">Hand</span>
+            <span class="ms-val">88</span>
+          </div>
+          <div class="mini-stat">
+            <span class="ms-label">Mark</span>
+            <span class="ms-val">82</span>
+          </div>
+          <div class="mini-stat">
+            <span class="ms-label">Speed</span>
+            <span class="ms-val">87</span>
+          </div>
+        </div>
+
+      </div><!-- /card-body -->
+
+      <!-- Holographic overlay (JS-driven) -->
+      <div class="holo" id="holo"></div>
+      <div class="foil-lines" id="foilLines"></div>
+
+      <div class="flip-hint">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 6c0-2.21 1.79-4 4-4s4 1.79 4 4" stroke="rgba(240,246,255,0.4)" stroke-width="1.2" stroke-linecap="round"/>
+          <path d="M9 4.5L10 6l1-1.5" stroke="rgba(240,246,255,0.4)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Flip
+      </div>
+
+    </div><!-- /card-front -->
+
+    <!-- BACK -->
+    <div class="card-face card-back">
+
+      <div class="back-header">
+        <div class="back-name">Marcus Johnson</div>
+        <div class="back-meta">Midfielder &nbsp;·&nbsp; #23 &nbsp;·&nbsp; Geelong Cats</div>
+      </div>
+
+      <!-- Full stats -->
+      <div class="back-stats">
+
+        <div class="stat-row">
+          <div class="stat-name">Kick</div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fg" style="width:91%;background:linear-gradient(90deg,#00da9b,#0096c7);"></div>
+          </div>
+          <div class="stat-num">91</div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-name">Handball</div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fg" style="width:88%;background:linear-gradient(90deg,#00da9b,#0096c7);"></div>
+          </div>
+          <div class="stat-num">88</div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-name">Marking</div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fg" style="width:82%;background:linear-gradient(90deg,#3882fa,#0096c7);"></div>
+          </div>
+          <div class="stat-num">82</div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-name">Speed</div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fg" style="width:87%;background:linear-gradient(90deg,#3882fa,#0096c7);"></div>
+          </div>
+          <div class="stat-num">87</div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-name">Tackle</div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fg" style="width:79%;background:linear-gradient(90deg,#f0a500,#e07000);"></div>
+          </div>
+          <div class="stat-num">79</div>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat-name">Contest</div>
+          <div class="stat-bar-bg">
+            <div class="stat-bar-fg" style="width:85%;background:linear-gradient(90deg,#3882fa,#0096c7);"></div>
+          </div>
+          <div class="stat-num">85</div>
+        </div>
+
+      </div><!-- /back-stats -->
+
+      <div class="back-divider"></div>
+
+      <div class="back-info">
+        <div class="info-block">
+          <div class="info-lbl">Age</div>
+          <div class="info-val">24</div>
+        </div>
+        <div class="info-block">
+          <div class="info-lbl">Height</div>
+          <div class="info-val">188 cm</div>
+        </div>
+        <div class="info-block">
+          <div class="info-lbl">Contract</div>
+          <div class="info-val">2 years</div>
+        </div>
+        <div class="info-block">
+          <div class="info-lbl">Weekly Wage</div>
+          <div class="info-val">$420K</div>
+        </div>
+        <div class="info-block">
+          <div class="info-lbl">Draft Year</div>
+          <div class="info-val">2020 · Pick 3</div>
+        </div>
+        <div class="info-block">
+          <div class="info-lbl">Games</div>
+          <div class="info-val">68</div>
+        </div>
+      </div>
+
+      <div class="back-footer">
+        <div class="back-club-pill">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <circle cx="7" cy="7" r="6" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+            <text x="7" y="10.5" text-anchor="middle" fill="white" font-size="4.5" font-weight="900" font-family="-apple-system,system-ui">GC</text>
+          </svg>
+          <div class="back-club-name">Geelong Cats</div>
+        </div>
+        <div class="season-tag">Season 2026</div>
+      </div>
+
+    </div><!-- /card-back -->
+
+  </div><!-- /card-3d -->
+</div><!-- /card-wrapper -->
+
+<!-- Squad row preview -->
+<div class="squad-row">
+
+  <div class="mini-card selected">
+    <div class="mc-color-band" style="background:linear-gradient(90deg,#00da9b,#0096c7);"></div>
+    <div class="mc-rating" style="color:#00da9b;">92</div>
+    <div class="mc-name">M. Johnson</div>
+    <div class="mc-pos">MID</div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-color-band" style="background:linear-gradient(90deg,#3882fa,#0060d0);"></div>
+    <div class="mc-rating">88</div>
+    <div class="mc-name">T. Hawkins</div>
+    <div class="mc-pos">FWD</div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-color-band" style="background:linear-gradient(90deg,#3882fa,#0060d0);"></div>
+    <div class="mc-rating">86</div>
+    <div class="mc-name">J. Selwood</div>
+    <div class="mc-pos">MID</div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-color-band" style="background:linear-gradient(90deg,#f0a500,#c07000);"></div>
+    <div class="mc-rating">84</div>
+    <div class="mc-name">P. Dangerfield</div>
+    <div class="mc-pos">MID</div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-color-band" style="background:linear-gradient(90deg,#3882fa,#0060d0);"></div>
+    <div class="mc-rating">82</div>
+    <div class="mc-name">Z. Guthrie</div>
+    <div class="mc-pos">MID</div>
+  </div>
+
+  <div class="mini-card">
+    <div class="mc-color-band" style="background:rgba(255,255,255,0.15);"></div>
+    <div class="mc-rating" style="color:rgba(240,246,255,0.4);">79</div>
+    <div class="mc-name">B. Close</div>
+    <div class="mc-pos">DEF</div>
+  </div>
+
+</div>
+
+<div class="instructions">
+  Hover over the card to see the tilt + holographic effect<br>
+  Click the card to flip to player stats
+</div>
+
+<script>
+const wrapper = document.getElementById('cardWrapper');
+const card    = document.getElementById('card3d');
+const holo    = document.getElementById('holo');
+const foil    = document.getElementById('foilLines');
+
+let flipped = false;
+let animating = false;
+
+/* 3D tilt + holographic shimmer on mouse move */
+wrapper.addEventListener('mousemove', (e) => {
+  if (flipped || animating) return;
+
+  const rect = wrapper.getBoundingClientRect();
+  const x  = e.clientX - rect.left;
+  const y  = e.clientY - rect.top;
+  const nx = (x / rect.width  - 0.5);  // −0.5 → +0.5
+  const ny = (y / rect.height - 0.5);
+
+  const rotX = -ny * 18;
+  const rotY =  nx * 18;
+
+  card.style.transition = 'transform 0.08s ease';
+  card.style.transform  = `perspective(900px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale3d(1.02,1.02,1.02)`;
+
+  /* Holographic shimmer — moves with cursor position */
+  const hx = ((x / rect.width)  * 100).toFixed(1);
+  const hy = ((y / rect.height) * 100).toFixed(1);
+  const angle = (nx * 360 + 180).toFixed(1);
+
+  holo.style.background = `
+    conic-gradient(
+      from ${angle}deg at ${hx}% ${hy}%,
+      rgba(255,  0,128, 0.20),
+      rgba(255,180,  0, 0.18),
+      rgba(  0,255,128, 0.18),
+      rgba(  0,200,255, 0.18),
+      rgba(160,  0,255, 0.18),
+      rgba(255,  0,128, 0.20)
+    )
+  `;
+  holo.style.opacity = '1';
+  foil.style.opacity = '0.8';
+});
+
+/* Reset on mouse leave */
+wrapper.addEventListener('mouseleave', () => {
+  card.style.transition = 'transform 0.65s cubic-bezier(0.23, 1, 0.32, 1)';
+  card.style.transform  = flipped
+    ? 'perspective(900px) rotateY(180deg)'
+    : 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1)';
+  holo.style.opacity = '0';
+  foil.style.opacity = '0';
+});
+
+/* Click to flip */
+wrapper.addEventListener('click', () => {
+  if (animating) return;
+  animating = true;
+  flipped = !flipped;
+
+  card.style.transition = 'transform 0.72s cubic-bezier(0.23, 1, 0.32, 1)';
+  card.style.transform  = flipped
+    ? 'perspective(900px) rotateY(180deg)'
+    : 'perspective(900px) rotateX(0deg) rotateY(0deg)';
+
+  setTimeout(() => { animating = false; }, 750);
+});
+
+/* Mini-card click updates main card (visual only) */
+document.querySelectorAll('.mini-card').forEach(mc => {
+  mc.addEventListener('click', () => {
+    document.querySelectorAll('.mini-card').forEach(c => c.classList.remove('selected'));
+    mc.classList.add('selected');
+  });
+});
+</script>
+</body>
+</html>

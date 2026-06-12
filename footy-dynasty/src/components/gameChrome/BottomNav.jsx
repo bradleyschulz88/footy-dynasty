@@ -137,13 +137,14 @@ export function BottomNav({
               onClick={onAdvance}
               disabled={advanceDisabled}
               aria-label={`Advance: ${ctx.buttonLabel}`}
-              className={`relative -mt-5 flex flex-col items-center justify-center w-16 h-16 rounded-full text-white shadow-lg transition-transform active:scale-95 ${
-                advanceDisabled ? "opacity-45" : ""
+              className={`relative -mt-5 flex flex-col items-center justify-center w-16 h-16 rounded-full shadow-lg transition-transform active:scale-95 ${
+                advanceDisabled ? "opacity-45 text-white" : "advance-breathe"
               }`}
               style={{
                 background: advanceDisabled
                   ? "linear-gradient(135deg,#3a3a3a,#242424)"
                   : "linear-gradient(135deg, var(--A-accent), var(--A-accent-2))",
+                color: advanceDisabled ? undefined : "var(--fd-on-accent)",
                 boxShadow: advanceDisabled ? "none" : "0 6px 20px color-mix(in srgb, var(--A-accent) 35%, transparent)",
               }}
             >

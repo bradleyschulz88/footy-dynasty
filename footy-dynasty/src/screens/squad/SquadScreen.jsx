@@ -25,6 +25,7 @@ import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, r
 import { trainingStaffSupportLine } from '../../lib/staffModifiers.js';
 import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
 import { RenewalsTab } from "../contracts/ContractRenewals.jsx";
+import PlayerCard3D from "../../components/PlayerCard3D.jsx";
 
 // ============================================================================
 // SHARED TAB NAV
@@ -408,26 +409,23 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
   };
   const ATTR_COLORS = { kicking:"#4ADBE8", marking:"#4AE89A", handball:"#A78BFA", tackling:"#E84A6F", speed:"var(--A-accent)", endurance:"#4AE89A", strength:"#E84A6F", decision:"#4ADBE8" };
 
+  const detailClub = findClub(career.clubId);
+
   return (
     <div className="rounded-2xl overflow-hidden sticky top-20" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)"}}>
       {/* Header */}
-      <div className="p-4" style={{background:`linear-gradient(135deg, var(--A-panel), var(--A-panel-2))`}}>
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-dim mb-0.5">
-              {POSITION_NAMES[player.position]}{player.secondaryPosition ? ` · ${POSITION_NAMES[player.secondaryPosition]}` : ''}
-            </div>
-            <h3 className="font-display text-2xl text-atext leading-tight truncate">{pName.toUpperCase()}</h3>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="text-[11px] text-atext-dim">Age {player.age}</span>
-              <span className="text-aline-2">·</span>
-              <span className={`text-[11px] ${player.contract <= 1 ? 'text-[#FFB347] font-bold' : 'text-atext-dim'}`}>{player.contract}yr</span>
-              <span className="text-aline-2">·</span>
-              <span className="text-[11px] text-atext-dim">{fmtK(player.wage)}/yr</span>
-              {player.contract <= 1 && <Pill color="#FFB347">Renew soon</Pill>}
-            </div>
+      <div className="p-3" style={{background:`linear-gradient(135deg, var(--A-panel), var(--A-panel-2))`}}>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-dim truncate">
+            {POSITION_NAMES[player.position]}{player.secondaryPosition ? ` · ${POSITION_NAMES[player.secondaryPosition]}` : ''}
           </div>
-          <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            {player.contract <= 1 && <Pill color="#FFB347">Renew soon</Pill>}
+            {player.trueRating && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{background:"#4ADBE814",color:"#4ADBE8",border:"1px solid #4ADBE830"}}>
+                Scout {player.trueRating}
+              </span>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -436,15 +434,10 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="flex flex-col items-center gap-1.5">
-            <RatingDot value={player.overall} size="lg" />
-            {player.trueRating && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{background:"#4ADBE814",color:"#4ADBE8",border:"1px solid #4ADBE830"}}>
-                Scout {player.trueRating}
-              </span>
-            )}
-            </div>
           </div>
+        </div>
+        <div className="mb-3">
+          <PlayerCard3D player={player} club={detailClub} />
         </div>
         {/* Form / Fitness / Morale row */}
         <div className="grid grid-cols-3 gap-2">
@@ -477,7 +470,7 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
               <div key={k} className="flex items-center gap-2">
                 <div className="text-[11px] capitalize font-semibold text-atext-dim w-20 flex-shrink-0">{k}</div>
                 <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
-                  <div className="h-full rounded-full transition-all" style={{width:`${v}%`, background:`linear-gradient(90deg,${color}88,${color})`}} />
+                  <div className="h-full rounded-full transition-all" style={{width:`${v}%`, background:`linear-gradient(90deg, color-mix(in srgb, ${color} 55%, transparent), ${color})`}} />
                 </div>
                 <div className="text-[12px] font-black w-7 text-right" style={{color}}>{v}</div>
               </div>

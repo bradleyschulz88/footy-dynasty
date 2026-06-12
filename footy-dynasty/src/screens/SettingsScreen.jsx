@@ -181,7 +181,7 @@ export default function SettingsScreen({
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="font-bold text-sm">Colour theme</div>
-            <div className="text-[11px] text-atext-dim">Dark: Stadium Carbon (orange on black). Light: Teal on white.</div>
+            <div className="text-[11px] text-atext-dim">Dark: Midnight Stadium (teal on navy). Light: Daylight (clean white).</div>
           </div>
           <div className="flex rounded-lg overflow-hidden border border-aline">
             {([

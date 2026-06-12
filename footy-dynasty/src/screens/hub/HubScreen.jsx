@@ -378,11 +378,10 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           <button
             type="button"
             onClick={onAdvance}
-            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-display text-xl tracking-wider transition-all active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-display text-lg uppercase tracking-[0.14em] transition-all active:scale-[0.98] advance-breathe btn-sheen"
             style={{
-              background: 'linear-gradient(135deg, var(--A-accent), var(--A-accent-2))',
-              color: '#0A0A0A',
-              boxShadow: '0 4px 16px color-mix(in srgb, var(--A-accent) 25%, transparent)',
+              background: 'linear-gradient(120deg, var(--A-accent), var(--A-accent-2))',
+              color: 'var(--fd-on-accent)',
             }}
           >
             <Play className="w-5 h-5" fill="currentColor" />
@@ -667,8 +666,8 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
             <button
               type="button"
               onClick={onAdvance}
-              className="rounded-xl px-3 py-2 text-[11px] font-bold text-white inline-flex items-center gap-2 shrink-0"
-              style={{ background: 'linear-gradient(135deg,var(--A-accent),var(--A-accent-2))' }}
+              className="rounded-xl px-3 py-2 text-[11px] font-bold inline-flex items-center gap-2 shrink-0"
+              style={{ background: 'linear-gradient(135deg,var(--A-accent),var(--A-accent-2))', color: 'var(--fd-on-accent)' }}
             >
               <Play className="w-4 h-4" />
               <span>{advanceCtx.buttonLabel}</span>
@@ -712,8 +711,8 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
             <div className="flex-shrink-0 flex flex-col items-center justify-center min-w-[90px] gap-1">
               <div className="text-[10px] font-mono text-atext-mute uppercase tracking-widest mb-1">Next up</div>
               <div className="text-xs font-semibold text-atext mb-1">{advanceCtx.nextEventShort}</div>
-              <button type="button" onClick={onAdvance} className="rounded-xl px-3 py-2 text-[11px] font-bold text-white flex flex-col items-center gap-1"
-                style={{background:'linear-gradient(135deg,var(--A-accent),var(--A-accent-2))'}}>
+              <button type="button" onClick={onAdvance} className="rounded-xl px-3 py-2 text-[11px] font-bold flex flex-col items-center gap-1"
+                style={{background:'linear-gradient(135deg,var(--A-accent),var(--A-accent-2))', color:'var(--fd-on-accent)'}}>
                 <Play className="w-4 h-4" />
                 <span>{advanceCtx.buttonLabel}</span>
               </button>

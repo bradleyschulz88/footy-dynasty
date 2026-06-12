@@ -31,7 +31,7 @@ export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos 
     { key: "settings", label: "Settings",    icon: Settings,   desc: "Save slots & preferences" },
   ];
   return (
-    <aside className="hidden md:flex w-64 flex-col md:sticky md:top-0 md:h-screen shrink-0 bg-apanel md:border-r border-aline">
+    <aside className="hidden md:flex w-64 flex-col md:sticky md:top-0 md:h-screen shrink-0 bg-apanel/75 backdrop-blur-xl md:border-r border-aline">
       {/* Brand */}
       <div className="px-5 py-4 border-b border-aline hidden md:block">
         <div className="flex items-center gap-3">
