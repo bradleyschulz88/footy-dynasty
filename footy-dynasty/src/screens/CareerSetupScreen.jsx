@@ -273,7 +273,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
           confirmBeforeDeleteSlot: true,
           uiDensity: 'comfortable',
           reduceMotion: false,
-          theme: (() => { try { return localStorage.getItem('fd-theme') ?? 'dark'; } catch { return 'dark'; } })(),
+          theme: (() => { try { return localStorage.getItem('fd-theme') ?? 'light'; } catch { return 'light'; } })(),
         },
         pendingTradeOffers: [],
         inbox: [],

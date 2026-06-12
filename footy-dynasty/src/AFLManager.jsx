@@ -110,10 +110,10 @@ const THEME_STORAGE_KEY = 'fd-theme';
 
 function resolveThemeClass(career) {
   try {
-    const pref = career?.options?.theme ?? localStorage.getItem(THEME_STORAGE_KEY) ?? 'dark';
+    const pref = career?.options?.theme ?? localStorage.getItem(THEME_STORAGE_KEY) ?? 'light';
     return pref === 'light' ? 'dirA' : 'dirB';
   } catch {
-    return 'dirB';
+    return 'dirA';
   }
 }
 
@@ -175,7 +175,7 @@ function AFLManagerInner() {
 
   // Persist theme preference to localStorage so it applies before a career loads
   useEffect(() => {
-    persistTheme(career?.options?.theme ?? 'dark');
+    persistTheme(career?.options?.theme ?? 'light');
   }, [career?.options?.theme]);
 
   useEffect(() => {
