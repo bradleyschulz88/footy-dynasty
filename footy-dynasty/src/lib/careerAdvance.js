@@ -44,6 +44,7 @@ import {
   committeeMessage, bumpCommitteeMood, postMatchFundraiser,
   ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
   groundConditionBand, journalistMatchLine,
+  updateFanbase, TIER_FANBASE_BASE,
 } from './community.js';
 import {
   coachTierFromScore, applyEndOfSeasonReputation,
@@ -60,7 +61,7 @@ import {
 import {
   tickSponsorYears, proposalForRenewal, generateSponsorOffers,
 } from './finance/sponsors.js';
-import { buildRenewalQueue } from './finance/contracts.js';
+import { buildRenewalQueue, buildAutoRenewList } from './finance/contracts.js';
 import { buildStaffRenewalQueue, flushUnhandledStaffRenewals } from './staffRenewals.js';
 import {
   INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT,
@@ -897,8 +898,26 @@ function finishSeason(c, league) {
 
   c.finance.annualIncome = recomputeAnnualIncome(c);
 
-  c.pendingRenewals = buildRenewalQueue(c);
+  // Lower tiers: auto-renew bottom-ranked expiring players at their current wage.
+  const autoRenewPlayers = buildAutoRenewList(c, { tier: league.tier });
+  if (autoRenewPlayers.length > 0) {
+    c.squad = c.squad.map((p) => {
+      if (autoRenewPlayers.some((ar) => ar.id === p.id)) {
+        return { ...p, contract: (p.contract ?? 0) + 2 };
+      }
+      return p;
+    });
+    c.news = [{
+      week: 0, type: 'info',
+      text: `📋 ${autoRenewPlayers.length} fringe player${autoRenewPlayers.length > 1 ? 's' : ''} auto-renewed at existing terms.`,
+    }, ...(c.news || [])].slice(0, 20);
+  }
+  c.pendingRenewals = buildRenewalQueue(c, { tier: league.tier });
   c.renewalsClosed = false;
+  // Reset rival when moving between divisions so a new one is assigned next season.
+  if (promoted || relegated) c.rivalClubId = null;
+  // Fanbase shifts at season end based on promotion/relegation.
+  c.fanbase = updateFanbase(c, league.tier, { promoted, relegated: relegated && !promoted });
 
   c.lastFinanceTickWeek = null;
   c.lastFinanceTickDay = null;
@@ -1356,6 +1375,12 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
   if (ev.type === 'round') {
     const round = ev.matches || [];
 
+    // Assign a local rival once per stint at a club — picked from same-division opponents.
+    if (!c.rivalClubId) {
+      const leagueClubs = competitionClubsForCareer(c).filter((cl) => cl.id !== c.clubId);
+      if (leagueClubs.length > 0) c.rivalClubId = pick(leagueClubs).id;
+    }
+
     c.aiSquads = ensureSquadsForLeague(c, league);
 
     round.forEach((m) => {
@@ -1609,11 +1634,14 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   // sponsor activation (every match). This is the club's live, event-driven
   // income — earned each time it plays, not smoothed across the calendar.
   const rev = matchDayRevenue(c, { isHome, leagueTier: league.tier });
-  c.finance.cash += rev.total;
+  const isDerby = !!(c.rivalClubId && myResult.opp?.id === c.rivalClubId);
+  const derbyGateBonus = isDerby && isHome ? Math.round(rev.gate * 0.5) : 0;
+  c.finance.cash += rev.total + derbyGateBonus;
   c.lastMatchRevenue = {
     ...rev,
     round: meta.round,
     opp: myResult.opp?.short || null,
+    isDerby,
   };
   if (Array.isArray(c.weeklyHistory) && c.weeklyHistory.length > 0) {
     const last = c.weeklyHistory[c.weeklyHistory.length - 1];
@@ -1641,6 +1669,15 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   applyMatchStreaks(c, won, drew, isHome);
   const boardDelta = won ? winBump : drew ? drawDelta : lossDrop;
   c.finance.fanHappiness = clamp(c.finance.fanHappiness + (won ? 3 : drew ? 0 : -2), 10, 100);
+  c.fanbase = updateFanbase(c, league.tier, { won, drew });
+  if (isDerby) {
+    const derbySuffix = won ? '🔥 Derby bragging rights are ours!' : drew ? 'Derby honours shared — we\'ll take it.' : 'Derby loss hurts. They\'ll celebrate tonight.';
+    c.news = [{
+      week: meta.round, type: won ? 'win' : drew ? 'draw' : 'loss',
+      text: `⚔️ LOCAL DERBY vs ${myResult.opp?.short || 'rivals'}. ${derbySuffix}${derbyGateBonus ? ` Big crowd boost +${fmtK(derbyGateBonus)}.` : ''}`,
+    }, ...(c.news || [])].slice(0, 20);
+    c.committee = bumpCommitteeMood(c.committee, 'President', won ? 5 : -3);
+  }
   ensureCareerBoard(c, findClub(c.clubId), league);
   applyBoardConfidenceDelta(c, boardDelta);
   c.lastBoardConfidenceDelta = c.finance.boardConfidence - prevBoard;

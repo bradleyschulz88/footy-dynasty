@@ -67,12 +67,27 @@ export function proposeRenewal(player, options = {}) {
 }
 
 // Build the renewal queue for the whole squad at season end.
-// Players with contract <= 1 (will expire next season) get a proposal.
-export function buildRenewalQueue(career) {
-  return (career.squad || [])
-    .filter(p => (p.contract ?? 0) <= 1)
-    .map(p => proposeRenewal(p))
-    .filter(Boolean);
+// tier 1: all expiring players get formal offers.
+// tier 2: top 12 by overall rating get formal offers; rest auto-renew (see buildAutoRenewList).
+// tier 3: top 6 by overall rating get formal offers; rest auto-renew.
+export function buildRenewalQueue(career, opts = {}) {
+  const tier = opts.tier ?? 1;
+  const expiring = (career.squad || []).filter(p => (p.contract ?? 0) <= 1);
+  if (tier === 1) return expiring.map(p => proposeRenewal(p)).filter(Boolean);
+  const sorted = [...expiring].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
+  const formalCap = tier === 2 ? 12 : 6;
+  return sorted.slice(0, formalCap).map(p => proposeRenewal(p)).filter(Boolean);
+}
+
+// Players who bypass the formal renewal queue at tier 2/3 and auto-renew at current terms.
+// Returns raw player objects (not proposals). Empty array for tier 1.
+export function buildAutoRenewList(career, opts = {}) {
+  const tier = opts.tier ?? 1;
+  if (tier === 1) return [];
+  const expiring = (career.squad || []).filter(p => (p.contract ?? 0) <= 1);
+  const sorted = [...expiring].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
+  const formalCap = tier === 2 ? 12 : 6;
+  return sorted.slice(formalCap);
 }
 
 // Accept a renewal — extends the player's contract + sets new wage.
