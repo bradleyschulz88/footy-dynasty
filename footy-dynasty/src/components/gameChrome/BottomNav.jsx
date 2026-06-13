@@ -7,10 +7,17 @@
 // ---------------------------------------------------------------------------
 import React, { useState } from "react";
 import {
-  Home, Users, Building2, Trophy, Repeat, Calendar, Settings, Play, MoreHorizontal, X,
+  Home, Users, Building2, Trophy, Repeat, Calendar, Settings, Play, MoreHorizontal, X, Bell,
 } from "lucide-react";
-import { getAdvanceContext } from "../../lib/advanceContext.js";
+import { getAdvanceContext, advanceTimeFingerprint } from "../../lib/advanceContext.js";
 import { tutorialAllowsNavigation } from "../TutorialOverlay.jsx";
+import { useStatTrend, trendGlyph, trendColor } from "./useStatTrend.js";
+
+function repPct(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
 
 const PRIMARY = [
   { key: "hub",   label: "Hub",   icon: Home },
@@ -31,10 +38,19 @@ export function BottomNav({
   league,
   onAdvance,
   advanceDisabled,
+  advanceDisabledReason,
+  onShowNotifications,
   advanceAgendaCount = 0,
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const ctx = getAdvanceContext(career, league);
+  const tick = advanceTimeFingerprint(career);
+  const board = repPct(career?.finance?.boardConfidence);
+  const fans = repPct(career?.finance?.fanHappiness);
+  const boardTrend = useStatTrend(board, tick);
+  const fansTrend = useStatTrend(fans, tick);
+  // A gated advance can route to the bell instead of dead-ending.
+  const blockedToBell = advanceDisabled && !!onShowNotifications;
   const tutorialOn = career && !career.tutorialComplete;
   const tutStep = career?.tutorialStep ?? 0;
 
@@ -120,10 +136,30 @@ export function BottomNav({
         className="md:hidden fixed inset-x-0 bottom-0 z-30 bg-apanel/95 backdrop-blur-md border-t border-aline"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        {/* Next-step hint — always tells you what ADVANCE does */}
-        <div className="flex items-center justify-center gap-1.5 h-5 text-[10px] text-atext-mute border-b border-aline/60">
-          <span className="font-mono uppercase tracking-widest">Next</span>
-          <span className="font-semibold text-atext-dim truncate max-w-[60vw]">{ctx.nextEventShort}{ctx.mode === "finals" ? " 🏆" : ""}</span>
+        {/* Next-step hint (or block reason) + reputation — always tells you what
+            ADVANCE does and how the club's standing is trending. */}
+        {advanceDisabled && advanceDisabledReason ? (
+          <div className="flex items-center justify-center gap-1.5 h-5 text-[10px] border-b border-aline/60" style={{ color: "#E84A6F" }}>
+            <span className="font-mono uppercase tracking-widest">Hold</span>
+            <span className="font-semibold truncate max-w-[72vw]">{advanceDisabledReason}</span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-1.5 h-5 text-[10px] text-atext-mute border-b border-aline/60">
+            <span className="font-mono uppercase tracking-widest">Next</span>
+            <span className="font-semibold text-atext-dim truncate max-w-[60vw]">{ctx.nextEventShort}{ctx.mode === "finals" ? " 🏆" : ""}</span>
+          </div>
+        )}
+        <div className="flex items-center justify-center gap-4 h-5 text-[10px] border-b border-aline/60">
+          <span className="flex items-center gap-1">
+            <span className="font-mono uppercase tracking-widest text-atext-mute">Board</span>
+            <span className="font-display" style={{ color: "var(--A-accent-2)" }}>{board}</span>
+            {boardTrend ? <span style={{ color: trendColor(boardTrend) }}>{trendGlyph(boardTrend)}</span> : null}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="font-mono uppercase tracking-widest text-atext-mute">Fans</span>
+            <span className="font-display" style={{ color: "#A78BFA" }}>{fans}</span>
+            {fansTrend ? <span style={{ color: trendColor(fansTrend) }}>{trendGlyph(fansTrend)}</span> : null}
+          </span>
         </div>
 
         <div className="flex items-stretch h-14 px-1">
@@ -134,21 +170,25 @@ export function BottomNav({
           <div className="flex-1 flex justify-center">
             <button
               type="button"
-              onClick={onAdvance}
-              disabled={advanceDisabled}
-              aria-label={`Advance: ${ctx.buttonLabel}`}
+              onClick={blockedToBell ? onShowNotifications : onAdvance}
+              disabled={advanceDisabled && !blockedToBell}
+              aria-label={blockedToBell ? "A decision is waiting — open notifications" : `Advance: ${ctx.buttonLabel}`}
               className={`relative -mt-5 flex flex-col items-center justify-center w-16 h-16 rounded-full shadow-lg transition-transform active:scale-95 ${
-                advanceDisabled ? "opacity-45 text-white" : "advance-breathe"
+                blockedToBell ? "animate-pulse text-white" : advanceDisabled ? "opacity-45 text-white" : "advance-breathe"
               }`}
               style={{
-                background: advanceDisabled
+                background: blockedToBell
+                  ? "linear-gradient(135deg,#E84A6F,#a32a47)"
+                  : advanceDisabled
                   ? "linear-gradient(135deg,#3a3a3a,#242424)"
                   : "linear-gradient(135deg, var(--A-accent), var(--A-accent-2))",
-                color: advanceDisabled ? undefined : "var(--fd-on-accent)",
-                boxShadow: advanceDisabled ? "none" : "0 6px 20px color-mix(in srgb, var(--A-accent) 35%, transparent)",
+                color: advanceDisabled && !blockedToBell ? undefined : blockedToBell ? "#fff" : "var(--fd-on-accent)",
+                boxShadow: blockedToBell
+                  ? "0 6px 20px rgba(232,74,111,0.4)"
+                  : advanceDisabled ? "none" : "0 6px 20px color-mix(in srgb, var(--A-accent) 35%, transparent)",
               }}
             >
-              <Play className="w-6 h-6" fill="currentColor" />
+              {blockedToBell ? <Bell className="w-6 h-6" /> : <Play className="w-6 h-6" fill="currentColor" />}
               {!advanceDisabled && advanceAgendaCount > 0 && (
                 <span
                   className="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full text-[9px] font-mono font-bold flex items-center justify-center"

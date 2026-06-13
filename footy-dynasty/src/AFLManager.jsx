@@ -47,6 +47,7 @@ import TutorialOverlay, {
   tutorialLocksAdvanceButton,
 } from './components/TutorialOverlay.jsx';
 import { advanceBlockedByCareerNeeds, applyCareerPatch } from './lib/inbox.js';
+import { hasBlockingNotification, pruneHandledNotifications } from './lib/notifications.js';
 import { HubScreen } from './screens/hub/HubScreen.jsx';
 import AppErrorBoundary from './components/AppErrorBoundary.jsx';
 import { CareerSetup } from './screens/CareerSetupScreen.jsx';
@@ -170,6 +171,7 @@ function AFLManagerInner() {
   const [advanceAgendaItems, setAdvanceAgendaItems] = useState([]);
   const [pwaNeedsUpdate, setPwaNeedsUpdate] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const installPromptRef = useRef(null);
 
   const themeClass = resolveThemeClass(career);
@@ -764,7 +766,12 @@ function AFLManagerInner() {
   // Dispatch an action from the notification bell (staff/player/club approaches).
   function handleNotificationAction(item, actionId) {
     if (!item) return;
-    const dropItem = (c) => (c.inbox || []).filter((m) => m.id !== item.id);
+    // Mark the item handled (with an outcome line) and keep it as history, then
+    // prune so the resolved trail can't grow without bound.
+    const resolve = (c, outcome) =>
+      pruneHandledNotifications(
+        (c.inbox || []).map((m) => (m.id === item.id ? { ...m, resolved: true, resolvedAt: Date.now(), outcome } : m))
+      );
 
     // Club approach — accept jumps to the new club; decline just clears it.
     if (item.kind === "job_offer") {
@@ -773,7 +780,7 @@ function AFLManagerInner() {
         if (offer) { acceptNewJob(offer); return; }
       }
       updateCareer((c) => ({
-        inbox: dropItem(c),
+        inbox: resolve(c, actionId === "accept" ? "Approach accepted" : "Declined — stayed put"),
         jobApproach: null,
         news: [{ week: c.week ?? 0, type: "info", text: actionId === "accept" ? "✅ Approach accepted." : "🤝 You turned down the approach and stayed put." }, ...(c.news || [])].slice(0, 20),
       }));
@@ -791,7 +798,7 @@ function AFLManagerInner() {
         });
         return {
           squad,
-          inbox: dropItem(c),
+          inbox: resolve(c, actionId === "approve" ? `${item.payload?.playerName} transfer-listed` : `Talked ${item.payload?.playerName} round`),
           news: [{ week: c.week ?? 0, type: "info", text: actionId === "approve"
             ? `📋 ${item.payload?.playerName} added to the transfer list.`
             : `🗣️ You talked ${item.payload?.playerName} round — for now.` }, ...(c.news || [])].slice(0, 20),
@@ -809,7 +816,7 @@ function AFLManagerInner() {
           : (c.staff || []).filter((s) => s.id !== sid);
         return {
           staff,
-          inbox: dropItem(c),
+          inbox: resolve(c, keep ? `${item.payload?.staffName} stayed` : `${item.payload?.staffName} left`),
           news: [{ week: c.week ?? 0, type: "info", text: keep
             ? `🤝 ${item.payload?.staffName} stays at the club.`
             : `👋 ${item.payload?.staffName} (${item.payload?.role}) has left the club.` }, ...(c.news || [])].slice(0, 20),
@@ -824,7 +831,7 @@ function AFLManagerInner() {
         const staff = accept && item.payload?.staff ? [...(c.staff || []), item.payload.staff] : (c.staff || []);
         return {
           staff,
-          inbox: dropItem(c),
+          inbox: resolve(c, accept ? `${item.payload?.staff?.name} joined` : "Declined"),
           news: accept
             ? [{ week: c.week ?? 0, type: "info", text: `🙌 ${item.payload?.staff?.name} joins as ${item.payload?.staff?.role}.` }, ...(c.news || [])].slice(0, 20)
             : (c.news || []),
@@ -833,8 +840,8 @@ function AFLManagerInner() {
       return;
     }
 
-    // Unknown kind — just clear it.
-    updateCareer((c) => ({ inbox: dropItem(c) }));
+    // Unknown kind — just mark it handled.
+    updateCareer((c) => ({ inbox: resolve(c, "Handled") }));
   }
 
   const tutorialActive = career && !career.tutorialComplete;
@@ -1140,6 +1147,9 @@ function AFLManagerInner() {
           advanceAgendaCount={visibleAdvanceAgendaCount}
           tutorialSpotlightAdvance={!!tutorialActive && (career.tutorialStep ?? 0) === TUTORIAL_STEPS.length - 1}
           onNotificationAction={handleNotificationAction}
+          notifOpen={notifOpen}
+          onNotifOpenChange={setNotifOpen}
+          onBlockedAdvance={hasBlockingNotification(career) ? () => setNotifOpen(true) : undefined}
         />
         <InboxBanner
           career={career}
@@ -1273,6 +1283,16 @@ function AFLManagerInner() {
         advanceDisabled={
           tutorialLocksAdvanceButton(career) || advanceBlockedByCareerNeeds(career)
         }
+        advanceDisabledReason={
+          tutorialLocksAdvanceButton(career)
+            ? "Finish the tutorial step first"
+            : hasBlockingNotification(career)
+              ? "Tap the bell — a decision is waiting"
+              : advanceBlockedByCareerNeeds(career)
+                ? "Resolve your inbox / trades first"
+                : undefined
+        }
+        onShowNotifications={hasBlockingNotification(career) ? () => setNotifOpen(true) : undefined}
         advanceAgendaCount={visibleAdvanceAgendaCount}
       />
       {/* Tutorial Overlay (Spec Section 1) */}

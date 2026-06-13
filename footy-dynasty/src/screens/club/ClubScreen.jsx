@@ -1656,9 +1656,21 @@ function StaffTab({ career, updateCareer }) {
             <div className="col-span-4 min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-sm truncate">{s.name}</span>
-                {(s.loyalty ?? 0) >= 3 && (
-                  <span className="text-[9px] uppercase tracking-wider px-1 py-0.5 rounded font-bold flex-shrink-0" style={{ background: "rgba(74,232,154,0.16)", color: "#4AE89A" }} title={`${s.loyalty} seasons of service`}>Loyal</span>
-                )}
+                {(s.loyalty ?? 0) >= 1 && (() => {
+                  const ly = s.loyalty ?? 0;
+                  const filled = Math.min(3, ly);
+                  const full = ly >= 3;
+                  return (
+                    <span className="flex items-center gap-1 flex-shrink-0" title={`${ly} season${ly === 1 ? '' : 's'} of service${full ? ' · loyal' : ''}`}>
+                      <span className="flex items-center gap-[2px]">
+                        {[0, 1, 2].map((i) => (
+                          <span key={i} className="w-[5px] h-[5px] rounded-full" style={{ background: i < filled ? "#4AE89A" : "var(--A-line-2)" }} />
+                        ))}
+                      </span>
+                      {full && <span className="text-[9px] uppercase tracking-wider px-1 py-0.5 rounded font-bold" style={{ background: "rgba(74,232,154,0.16)", color: "#4AE89A" }}>Loyal</span>}
+                    </span>
+                  );
+                })()}
               </div>
               <div className="text-[11px] text-atext-dim truncate">{s.role}</div>
             </div>
