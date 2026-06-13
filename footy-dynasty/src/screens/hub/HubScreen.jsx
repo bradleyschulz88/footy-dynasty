@@ -6,6 +6,7 @@ import {
   Handshake,
   Trophy,
   Play,
+  FastForward,
   FileText,
   Newspaper,
   Building2,
@@ -248,7 +249,7 @@ function DifficultyMiniSummary({ career, cfg }) {
   );
 }
 
-export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance, updateCareer }) {
+export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance, onQuickAdvance, updateCareer }) {
   const advanceCtx = getAdvanceContext(career, league);
   const hubRoundTheme =
     career.phase === "season" && !career.inFinals && career.week
@@ -387,6 +388,18 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
             <Play className="w-5 h-5" fill="currentColor" />
             {advanceCtx.buttonLabel.toUpperCase()}
           </button>
+          {onQuickAdvance && (
+            <button
+              type="button"
+              onClick={onQuickAdvance}
+              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-[0.16em] text-atext-dim hover:text-atext transition-colors"
+              style={{ border: '1px solid var(--A-line)' }}
+              title="Batch through training days and stop at the next match, key event or decision"
+            >
+              <FastForward className="w-3.5 h-3.5" />
+              Sim to next key moment
+            </button>
+          )}
         </div>
       </motion.div>
 
