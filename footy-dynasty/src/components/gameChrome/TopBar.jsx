@@ -9,6 +9,7 @@ import { fmtK } from "../../lib/format.js";
 import { css } from "../primitives.jsx";
 import SeasonStrip from "../SeasonStrip.jsx";
 import { NotificationBell } from "./NotificationBell.jsx";
+import { useStatTrend, trendGlyph, trendColor } from "./useStatTrend.js";
 
 const tickEase = [0.22, 1, 0.36, 1];
 
@@ -30,9 +31,17 @@ export function TopBar({
   advanceAgendaCount = 0,
   tutorialSpotlightAdvance,
   onNotificationAction,
+  notifOpen,
+  onNotifOpenChange,
+  onBlockedAdvance,
 }) {
   const ctx = getAdvanceContext(career, league);
   const timeTick = advanceTimeFingerprint(career);
+  const boardTrend = useStatTrend(barStatPct(career.finance.boardConfidence), timeTick);
+  const fansTrend = useStatTrend(barStatPct(career.finance.fanHappiness), timeTick);
+  // When advance is gated by a waiting decision, the button routes to the bell
+  // instead of dead-ending — so the block is never a mystery.
+  const blockedToBell = advanceDisabled && !!onBlockedAdvance;
   const nextEv = (career.eventQueue || []).find(e => !e.completed);
   const phaseColors = { preseason: 'var(--A-accent)', season: 'var(--A-accent-2)', finals: 'var(--A-neg)', offseason: '#A78BFA' };
   const phaseLabel  = { preseason: 'Pre-Season', season: 'Season', finals: 'Finals', offseason: 'Off-Season' };
@@ -103,9 +112,9 @@ export function TopBar({
           {[
             { label: "Cash",     value: fmtK(career.finance.cash),           color: "var(--A-pos)",       hideBelow: 'sm' },
             { label: "Transfer", value: fmtK(career.finance.transferBudget), color: "var(--A-accent)",    hideBelow: 'lg' },
-            { label: "Board",    value: barStatPct(career.finance.boardConfidence), color: "var(--A-accent-2)", bar: true, hideBelow: 'md' },
-            { label: "Fans",     value: barStatPct(career.finance.fanHappiness), color: "#A78BFA", bar: true, hideBelow: 'lg' },
-          ].map(({ label, value, color, bar, hideBelow }) => {
+            { label: "Board",    value: barStatPct(career.finance.boardConfidence), color: "var(--A-accent-2)", bar: true, hideBelow: 'md', trend: boardTrend },
+            { label: "Fans",     value: barStatPct(career.finance.fanHappiness), color: "#A78BFA", bar: true, hideBelow: 'lg', trend: fansTrend },
+          ].map(({ label, value, color, bar, hideBelow, trend }) => {
             const cls = hideBelow === 'lg' ? 'hidden lg:flex' : hideBelow === 'md' ? 'hidden md:flex' : hideBelow === 'sm' ? 'hidden sm:flex' : 'flex';
             return (
               <motion.div
@@ -123,6 +132,7 @@ export function TopBar({
                         <div className="h-full rounded-full" style={{width:`${value}%`, background:`linear-gradient(90deg,${color}88,${color})`}} />
                       </div>
                       <span className="font-display text-lg leading-none" style={{color}}>{value}</span>
+                      {trend ? <span className="text-[10px] leading-none" style={{ color: trendColor(trend) }} title={trend > 0 ? 'Up since last' : 'Down since last'}>{trendGlyph(trend)}</span> : null}
                     </div>
                   ) : (
                     <div className="font-display text-lg md:text-xl leading-tight" style={{color}}>{value}</div>
@@ -135,7 +145,7 @@ export function TopBar({
 
         {/* Right: notifications + next event + advance button */}
         <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-          <NotificationBell career={career} onAction={onNotificationAction} />
+          <NotificationBell career={career} onAction={onNotificationAction} open={notifOpen} onOpenChange={onNotifOpenChange} />
           <div className="text-right hidden lg:block max-w-[min(280px,40vw)] overflow-hidden">
             <div className="text-[11px] font-mono font-bold uppercase tracking-widest text-atext-mute">Next</div>
             <motion.div
@@ -151,19 +161,19 @@ export function TopBar({
           </div>
           <motion.button
             type="button"
-            onClick={onAdvance}
-            disabled={advanceDisabled}
+            onClick={blockedToBell ? onBlockedAdvance : onAdvance}
+            disabled={advanceDisabled && !blockedToBell}
             title={
               advanceDisabled
                 ? advanceDisabledReason ??
                   "Finish the tutorial step in the card (or skip) before advancing time."
                 : undefined
             }
-            whileTap={advanceDisabled ? undefined : { scale: 0.94 }}
+            whileTap={advanceDisabled && !blockedToBell ? undefined : { scale: 0.94 }}
             transition={{ type: 'spring', stiffness: 520, damping: 28 }}
-            className={`hidden md:flex items-center gap-2 btn-primary px-5 py-3 text-sm font-display tracking-widest ${tutorialSpotlightAdvance ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${advanceDisabled ? "opacity-45 cursor-not-allowed" : ""}`}
+            className={`hidden md:flex items-center gap-2 btn-primary px-5 py-3 text-sm font-display tracking-widest ${tutorialSpotlightAdvance ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : ""} ${blockedToBell ? "opacity-80 ring-1 ring-[#E84A6F]/60" : advanceDisabled ? "opacity-45 cursor-not-allowed" : ""}`}
           >
-            <Play className="w-4 h-4" fill="currentColor" /> {ctx.buttonLabel.toUpperCase()}
+            <Play className="w-4 h-4" fill="currentColor" /> {blockedToBell ? "DECISION ▸" : ctx.buttonLabel.toUpperCase()}
             {!advanceDisabled && advanceAgendaCount > 0 && (
               <span
                 className="ml-0.5 min-w-[1.25rem] h-5 px-1 rounded-md text-[10px] font-mono font-bold flex items-center justify-center"

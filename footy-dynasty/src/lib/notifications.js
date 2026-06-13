@@ -29,14 +29,39 @@ export function isBlockingNotificationKind(kind) {
   return BLOCKING_NOTIFICATION_KINDS.includes(kind);
 }
 
-/** Items the bell should render (excludes resolved + internal mirrors). */
+/** Items the bell should render (excludes resolved + internal mirrors). Blocking first. */
 export function notificationItems(career) {
-  return (career?.inbox || []).filter((m) => isNotificationKind(m.kind) && !m.resolved);
+  return (career?.inbox || [])
+    .filter((m) => isNotificationKind(m.kind) && !m.resolved)
+    .sort((a, b) => (b.blocking ? 1 : 0) - (a.blocking ? 1 : 0));
 }
 
 /** Count for the unread badge. */
 export function notificationCount(career) {
   return notificationItems(career).length;
+}
+
+/** True when at least one pending notification gates calendar advance. */
+export function hasBlockingNotification(career) {
+  return notificationItems(career).some((m) => m.blocking);
+}
+
+/** Already-actioned notifications, newest first — the bell's "Recently handled" trail. */
+export function recentlyHandledNotifications(career, limit = 6) {
+  return (career?.inbox || [])
+    .filter((m) => isNotificationKind(m.kind) && m.resolved)
+    .sort((a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0))
+    .slice(0, limit);
+}
+
+/** Prune resolved notification rows so the inbox can't grow without bound. */
+export function pruneHandledNotifications(inbox, keep = 15) {
+  const list = inbox || [];
+  const handled = list
+    .filter((m) => isNotificationKind(m.kind) && m.resolved)
+    .sort((a, b) => (b.resolvedAt ?? 0) - (a.resolvedAt ?? 0));
+  const keepIds = new Set(handled.slice(0, keep).map((m) => m.id));
+  return list.filter((m) => !(isNotificationKind(m.kind) && m.resolved) || keepIds.has(m.id));
 }
 
 const pickName = () => `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
@@ -51,9 +76,9 @@ export function buildStaffLeaveNotice(staff, { poach = false } = {}) {
     resolved: false,
     title: poach ? 'Staff poaching attempt' : 'Staff wants to move on',
     detail: poach
-      ? `A rival club has made ${staff.name} (${staff.role}) an offer. Match it to keep them, or let them go.`
-      : `${staff.name} (${staff.role}) is unsettled and may leave. Offer a renewal or let them walk.`,
-    payload: { staffId: staff.id, staffName: staff.name, role: staff.role },
+      ? `A rival club has made ${staff.name} (${staff.role}${staff.rating ? `, rated ${staff.rating}` : ''}) an offer. Match it to keep them, or let them go.`
+      : `${staff.name} (${staff.role}${staff.rating ? `, rated ${staff.rating}` : ''}) is unsettled and may leave. Offer a renewal or let them walk.`,
+    payload: { staffId: staff.id, staffName: staff.name, role: staff.role, rating: staff.rating },
     actions: poach
       ? [{ id: 'match', label: 'Match offer' }, { id: 'let_go', label: 'Let go' }]
       : [{ id: 'renew', label: 'Offer renewal' }, { id: 'let_go', label: 'Let go' }],
@@ -84,8 +109,8 @@ export function buildVolunteerJoinNotice(tier) {
     blocking: false,
     resolved: false,
     title: 'Volunteer offer',
-    detail: `${name} from around the club wants to help out as ${role}. Bring them on board?`,
-    payload: { staff },
+    detail: `${name} from around the club wants to help out as ${role} (rated ${staff.rating}). Bring them on board?`,
+    payload: { staff, rating: staff.rating, role },
     actions: [{ id: 'accept', label: 'Welcome aboard' }, { id: 'decline', label: 'Politely decline' }],
   };
 }
