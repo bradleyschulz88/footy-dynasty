@@ -86,11 +86,11 @@ describe('postMatchFundraiser', () => {
   it('returns null for away games', () => {
     expect(postMatchFundraiser({ squad: [{ id: 'a' }] }, 3, false)).toBe(null);
   });
-  it('Tier 3 home game produces $150–400 income', () => {
+  it('Tier 3 home game produces bar & canteen income ($700–2000)', () => {
     seedRng(4);
     const out = postMatchFundraiser({ squad: [{ id: 'a', firstName: 'A', lastName: 'B' }] }, 3, true);
-    expect(out.income).toBeGreaterThanOrEqual(150);
-    expect(out.income).toBeLessThanOrEqual(400);
+    expect(out.income).toBeGreaterThanOrEqual(700);
+    expect(out.income).toBeLessThanOrEqual(2000);
   });
   it('Tier 1 home game produces a sponsor cocktail income range', () => {
     seedRng(4);

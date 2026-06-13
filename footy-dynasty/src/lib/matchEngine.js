@@ -647,6 +647,25 @@ export function aiClubRating(clubId, tier) {
   return tierMean + ((sum % 17) - 8);
 }
 
+/**
+ * Difficulty-aware opponent strength. Difficulty previously had no effect on
+ * match outcomes, so a strong squad never lost. This adds a flat bump plus a
+ * gap-closing term: when you outclass the opponent, a fraction of that gap is
+ * handed back to them, so a great team still wins but stops cruising to 100-pt
+ * margins. The boost only ever raises the opponent (never makes games easier),
+ * and is capped so weak clubs can't become superhuman.
+ *
+ * @param {number} oppRating  the opponent's raw rating
+ * @param {number} myRating   the player's match rating
+ * @param {{flat?:number, gapClose?:number, cap?:number}} opts
+ * @returns {number} adjusted opponent rating
+ */
+export function competitiveOppRating(oppRating, myRating, { flat = 0, gapClose = 0, cap = 16 } = {}) {
+  const gap = Math.max(0, myRating - oppRating);
+  const delta = Math.min(cap, flat + gap * gapClose);
+  return oppRating + delta;
+}
+
 // Compute a rating from a full AI squad (tier-2 fallback when no squad available)
 export function aiSquadRating(squad) {
   if (!squad || squad.length === 0) return 60;

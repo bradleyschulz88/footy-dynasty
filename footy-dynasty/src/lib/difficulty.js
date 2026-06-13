@@ -75,6 +75,11 @@ export function getDifficultyConfig(difficulty) {
       injuryMultiplier:      0.5,
       scoutAccuracyBonus:    15,
       aiQuality:             'poor',
+      // Match competitiveness: how hard opponents push back. `aiRatingFlat` is a
+      // flat strength bump; `aiGapClose` closes a fraction of the gap when your
+      // squad outclasses them, so a great team still wins but stops cruising.
+      aiRatingFlat:          0,
+      aiGapClose:            0.25,
       showAssistantTips:     true,
       transferBudgetMultiplier: 1.5,
       moraleFloor:           50,
@@ -90,6 +95,8 @@ export function getDifficultyConfig(difficulty) {
       injuryMultiplier:      1.0,
       scoutAccuracyBonus:    0,
       aiQuality:             'normal',
+      aiRatingFlat:          3,
+      aiGapClose:            0.45,
       showAssistantTips:     true,
       transferBudgetMultiplier: 1.0,
       moraleFloor:           30,
@@ -105,6 +112,8 @@ export function getDifficultyConfig(difficulty) {
       injuryMultiplier:      2.0,
       scoutAccuracyBonus:   -15,
       aiQuality:             'smart',
+      aiRatingFlat:          6,
+      aiGapClose:            0.65,
       showAssistantTips:     false,
       transferBudgetMultiplier: 0.7,
       moraleFloor:           10,

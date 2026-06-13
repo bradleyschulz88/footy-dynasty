@@ -517,20 +517,20 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       )}
 
       {boardObjectiveRows.length > 0 && (
-        <motion.div variants={hubItem} className={`${css.panel} p-4`}>
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <h3 className="font-display text-lg text-atext tracking-wide">BOARD OBJECTIVES</h3>
+        <motion.div variants={hubItem}>
+        <CollapsibleSection
+          id="board_objectives"
+          title="Board objectives"
+          right={(
             <button
               type="button"
-              onClick={() => {
-                setScreen("club");
-                setTab?.("board");
-              }}
-              className={`${css.btnGhost} text-[10px] py-1.5 px-2.5`}
+              onClick={() => { setScreen("club"); setTab?.("board"); }}
+              className={`${css.btnGhost} text-[10px] py-1.5 px-2.5 shrink-0`}
             >
               Open board tab →
             </button>
-          </div>
+          )}
+        >
           <ul className="space-y-2">
             {boardObjectiveRows.map((row) => (
               <li
@@ -565,6 +565,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               </li>
             ))}
           </ul>
+        </CollapsibleSection>
         </motion.div>
       )}
 

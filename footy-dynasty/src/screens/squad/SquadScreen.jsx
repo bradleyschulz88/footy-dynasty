@@ -1,11 +1,11 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Users, Dumbbell,
   Zap, Heart, Target, Activity, Flame,
   TrendingUp, X,
   ShieldCheck,
   FileText,
-  UserPlus, Wand2,
+  UserPlus, Wand2, ListFilter,
 } from "lucide-react";
 import { PYRAMID, findClub } from '../../data/pyramid.js';
 import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash } from '../../lib/playerGen.js';
@@ -30,6 +30,38 @@ import PlayerCard3D from "../../components/PlayerCard3D.jsx";
 // ============================================================================
 // SHARED TAB NAV
 // ============================================================================
+
+/** True on lg+ screens. Lets us show an inline side panel on desktop but pop a
+ *  modal on phones so a tapped player card appears immediately, not below. */
+function useIsLg() {
+  const [isLg, setIsLg] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => setIsLg(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return isLg;
+}
+
+/** Phone/tablet bottom-sheet that pops the player card immediately on tap. */
+function PlayerCardModal({ player, career, updateCareer, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="relative w-full sm:max-w-md max-h-[88vh] overflow-y-auto bg-apanel rounded-t-2xl sm:rounded-2xl border border-aline anim-in"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        <PlayerDetail player={player} career={career} updateCareer={updateCareer} onClose={onClose} />
+      </div>
+    </div>
+  );
+}
+
 // ============================================================================
 // SQUAD SCREEN — players, tactics, training
 // ============================================================================
@@ -46,6 +78,7 @@ export default function SquadScreen({ career, club, updateCareer, tab, setTab, t
       : 'Renewals';
   const tabs = [
     { key: "players",  label: "Players",  icon: Users },
+    { key: "all",      label: "All Players", icon: ListFilter },
     { key: "tactics",  label: "Tactics",  icon: Target },
     { key: "training", label: "Training", icon: Dumbbell },
     { key: "recruit",  label: "Recruit",  icon: UserPlus },
@@ -76,6 +109,7 @@ export default function SquadScreen({ career, club, updateCareer, tab, setTab, t
         growButtons={false}
       />
       {t === "players"  && <PlayersTab career={career} updateCareer={updateCareer} />}
+      {t === "all"      && <AllPlayersTab career={career} updateCareer={updateCareer} />}
       {t === "tactics"  && <TacticsTab career={career} updateCareer={updateCareer} onOpenClubStaff={onOpenClubStaff} />}
       {t === "training" && <TrainingTab career={career} updateCareer={updateCareer} onOpenClubStaff={onOpenClubStaff} />}
       {t === "renewals" && <RenewalsTab career={career} updateCareer={updateCareer} />}
@@ -107,6 +141,7 @@ function PlayersTab({ career, updateCareer }) {
   const [filterPos, setFilterPos] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selected, setSelected] = useState(null);
+  const isLg = useIsLg();
   const rowHoverBg = 'rgba(13, 148, 136, 0.06)';
   const rowSelectBg = 'rgba(13, 148, 136, 0.1)';
   const name = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || ""));
@@ -340,21 +375,200 @@ function PlayersTab({ career, updateCareer }) {
         </>
       </div>
 
-      <div className="w-full lg:w-80 xl:w-72 flex-shrink-0">
-        {selected ? (
-          <PlayerDetail player={selected} career={career} updateCareer={updateCareer} onClose={()=>setSelected(null)} />
-        ) : (
-          <div className="rounded-2xl p-8 text-center border border-aline bg-apanel-2/50 lg:sticky lg:top-20">
-            <Users className="w-10 h-10 mx-auto mb-3 text-aline-2 opacity-80" />
-            <div className="text-sm text-atext-mute font-medium">Select a player</div>
-            <p className="text-[11px] text-atext-mute mt-2 leading-snug">
-              Tap a row or a map slot to open their profile and contract actions.
-            </p>
-          </div>
-        )}
-      </div>
+      {isLg && (
+        <div className="w-80 xl:w-72 flex-shrink-0">
+          {selected ? (
+            <PlayerDetail player={selected} career={career} updateCareer={updateCareer} onClose={()=>setSelected(null)} />
+          ) : (
+            <div className="rounded-2xl p-8 text-center border border-aline bg-apanel-2/50 lg:sticky lg:top-20">
+              <Users className="w-10 h-10 mx-auto mb-3 text-aline-2 opacity-80" />
+              <div className="text-sm text-atext-mute font-medium">Select a player</div>
+              <p className="text-[11px] text-atext-mute mt-2 leading-snug">
+                Tap a row or a map slot to open their profile and contract actions.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
       </section>
+      {!isLg && selected && (
+        <PlayerCardModal player={selected} career={career} updateCareer={updateCareer} onClose={() => setSelected(null)} />
+      )}
+    </div>
+  );
+}
+
+const ALL_VIEWS = [
+  { key: "overview",  label: "Overview" },
+  { key: "condition", label: "Condition" },
+  { key: "contracts", label: "Contracts" },
+  { key: "stats",     label: "Season stats" },
+];
+
+function statColor(v) {
+  return v >= 75 ? "var(--A-pos)" : v >= 55 ? "var(--A-accent)" : "var(--A-neg)";
+}
+
+const contractBadge = (out) => (
+  <span
+    className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap"
+    style={out
+      ? { background: "rgba(232,74,111,0.16)", color: "#E84A6F", border: "1px solid rgba(232,74,111,0.4)" }
+      : { background: "rgba(255,179,71,0.14)", color: "#FFB347", border: "1px solid rgba(255,179,71,0.4)" }}
+  >
+    {out ? "Out of contract" : "1y left"}
+  </span>
+);
+
+/**
+ * All Players — a single data-dense grid of the whole list. Toggle the column
+ * group (Overview / Condition / Contracts / Season stats), sort any way, and
+ * click any row to pop the full player card immediately.
+ */
+function AllPlayersTab({ career, updateCareer }) {
+  const [view, setView] = useState("overview");
+  const [sort, setSort] = useState("overall");
+  const [selected, setSelected] = useState(null);
+  const nm = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || "Player"));
+
+  const rows = useMemo(() => {
+    const arr = [...(career.squad || [])];
+    arr.sort((a, b) => {
+      switch (sort) {
+        case "name": return nm(a).localeCompare(nm(b));
+        case "age": return (a.age ?? 0) - (b.age ?? 0);
+        case "form": return (b.form ?? 0) - (a.form ?? 0);
+        case "fitness": return (b.fitness ?? 0) - (a.fitness ?? 0);
+        case "morale": return (b.morale ?? 0) - (a.morale ?? 0);
+        case "wage": return (b.wage ?? 0) - (a.wage ?? 0);
+        case "contract": return (a.contract ?? 0) - (b.contract ?? 0);
+        case "potential": return (b.potential ?? 0) - (a.potential ?? 0);
+        default: return (b.overall ?? 0) - (a.overall ?? 0);
+      }
+    });
+    return arr;
+  }, [career.squad, sort]);
+
+  const statCell = (v) => <span className="font-bold" style={{ color: statColor(v ?? 0) }}>{v ?? "—"}</span>;
+  const posCell = (p) => <Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill>;
+
+  const columns = {
+    overview: [
+      { head: "Pos", render: posCell },
+      { head: "Age", render: (p) => p.age, align: "center" },
+      { head: "OVR", render: (p) => <RatingDot value={p.overall} size="sm" />, align: "center" },
+      { head: "Pot", render: (p) => p.potential ?? "—", align: "center" },
+      { head: "Wage", render: (p) => fmtK(p.wage), align: "right" },
+    ],
+    condition: [
+      { head: "Pos", render: posCell },
+      { head: "Form", render: (p) => statCell(p.form), align: "center" },
+      { head: "Fitness", render: (p) => statCell(p.fitness), align: "center" },
+      { head: "Morale", render: (p) => statCell(p.morale), align: "center" },
+      { head: "Status", render: (p) => p.suspended > 0 ? <Pill color="#A78BFA">SUS {p.suspended}w</Pill> : p.injured > 0 ? <Pill color="var(--A-neg)">{p.injured}w</Pill> : <span className="text-atext-mute text-xs">Fit</span>, align: "center" },
+    ],
+    contracts: [
+      { head: "Pos", render: posCell },
+      { head: "Age", render: (p) => p.age, align: "center" },
+      { head: "Wage", render: (p) => fmtK(p.wage), align: "right" },
+      { head: "Yrs", render: (p) => `${p.contract ?? 0}y`, align: "center" },
+      { head: "Status", render: (p) => (p.contract ?? 0) <= 1 ? contractBadge((p.contract ?? 0) <= 0) : <span className="text-atext-mute text-xs">Signed</span>, align: "right" },
+    ],
+    stats: [
+      { head: "Pos", render: posCell },
+      { head: "G", render: (p) => p.goals ?? 0, align: "center" },
+      { head: "B", render: (p) => p.behinds ?? 0, align: "center" },
+      { head: "Disp", render: (p) => p.disposals ?? 0, align: "center" },
+      { head: "Marks", render: (p) => p.marks ?? 0, align: "center" },
+    ],
+  }[view];
+
+  const template = `2rem minmax(140px,1.4fr) ${columns.map(() => "minmax(56px,1fr)").join(" ")}`;
+  const alignCls = (a) => (a === "right" ? "text-right justify-end" : a === "center" ? "text-center justify-center" : "text-left");
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-1">
+        <h3 className={`${css.h1} text-xl md:text-2xl tracking-wide`}>All players</h3>
+        <p className="text-xs text-atext-dim max-w-2xl leading-relaxed">
+          The whole list in one grid. Switch the column group to compare ratings, condition, contracts or season output — then tap anyone to open their card.
+        </p>
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5">
+          {ALL_VIEWS.map((v) => (
+            <button
+              key={v.key}
+              type="button"
+              onClick={() => setView(v.key)}
+              className={`text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${
+                view === v.key
+                  ? "bg-[linear-gradient(135deg,var(--A-accent),#0099b0)] text-[#001520] border-transparent"
+                  : "bg-apanel border-aline text-atext-dim hover:border-aaccent/35"
+              }`}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <span className={css.label}>Sort</span>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="text-sm font-semibold rounded-lg px-3 py-2 border border-aline bg-apanel text-atext"
+          >
+            <option value="overall">Rating</option>
+            <option value="potential">Potential</option>
+            <option value="age">Age</option>
+            <option value="form">Form</option>
+            <option value="fitness">Fitness</option>
+            <option value="morale">Morale</option>
+            <option value="wage">Wage</option>
+            <option value="contract">Contract (yrs left)</option>
+            <option value="name">Name</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="rounded-2xl overflow-hidden border border-aline">
+        <div className="overflow-x-auto">
+          <div className="grid px-4 py-3 min-w-[640px]" style={{ gridTemplateColumns: template, gap: "0.5rem", background: "var(--A-panel-2)", borderBottom: "1px solid var(--A-line)" }}>
+            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute">#</div>
+            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute">Player</div>
+            {columns.map((c) => (
+              <div key={c.head} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${alignCls(c.align)}`}>{c.head}</div>
+            ))}
+          </div>
+          <div className="max-h-[68vh] overflow-y-auto min-w-[640px] [scrollbar-width:thin]" style={{ background: "var(--A-panel)" }}>
+            {rows.map((p, i) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setSelected(p)}
+                className="w-full grid px-4 py-2.5 text-left transition-colors hover:bg-aaccent/5"
+                style={{ gridTemplateColumns: template, gap: "0.5rem", borderBottom: "1px solid var(--A-line)" }}
+              >
+                <div className="text-atext-mute text-sm font-bold">{i + 1}</div>
+                <div className="flex items-center gap-2 min-w-0">
+                  {p.injured > 0 && <Heart className="w-3 h-3 flex-shrink-0 text-aneg" />}
+                  <span className="truncate text-sm font-semibold text-atext">{nm(p)}</span>
+                  {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{ background: "color-mix(in srgb, var(--A-accent) 13%, transparent)", color: "var(--A-accent)" }}>R</span>}
+                </div>
+                {columns.map((c) => (
+                  <div key={c.head} className={`flex items-center text-sm text-atext ${alignCls(c.align)}`}>{c.render(p)}</div>
+                ))}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {selected && (
+        <PlayerCardModal player={selected} career={career} updateCareer={updateCareer} onClose={() => setSelected(null)} />
+      )}
     </div>
   );
 }

@@ -57,10 +57,13 @@ export const CONTINUOUS_INCOME_FRACTION = INCOME_MIX.membership + INCOME_MIX.mer
 // Broadcast / TV-rights money paid for EVERY match played (home and away), by tier.
 // This is the single biggest match-day line at tier 1 and the reason a deep
 // finals run is so lucrative.
+// Tier 3 is local/community footy: no TV-rights money. Clubs may stream games
+// locally for exposure, but that brings no income — so tier 3 is set to 0 and
+// makes its match-day money from the gate (small) and the bar/canteen instead.
 export const BROADCAST_PER_MATCH = {
   1: 1_900_000,
   2: 110_000,
-  3: 1_800,
+  3: 0,
 };
 
 // Approximate matches per season (home + away) used to (a) project per-match
@@ -132,11 +135,12 @@ export const SPONSOR_RENEWAL = {
   losingDiscount:  [0.92, 0.97], // bottom 4
 };
 
-// Stadium gate revenue per attendee, by tier.
-export const TICKET_PRICE = { 1: 38, 2: 16, 3: 10 };
+// Stadium gate revenue per attendee, by tier. Tier 3 is gold-coin / small entry
+// — the bar and canteen are where a local club actually makes its game-day money.
+export const TICKET_PRICE = { 1: 38, 2: 16, 3: 5 };
 
 // Base attendance, by tier (multiplied by stadium level + fan happiness).
-export const BASE_ATTENDANCE = { 1: 35_000, 2: 4_000, 3: 600 };
+export const BASE_ATTENDANCE = { 1: 35_000, 2: 4_000, 3: 350 };
 
 // Transfer budget — how much unused budget rolls over season-to-season.
 export const TRANSFER_BUDGET_ROLLOVER_FRACTION = 0.30;
