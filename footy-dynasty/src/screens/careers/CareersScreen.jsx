@@ -16,6 +16,7 @@ import {
   getJobFollowUpInterview,
 } from "../../lib/coachReputation.js";
 import { seedRng } from "../../lib/rng.js";
+import { offerStartType, startTypeLabel } from "../../lib/jobMove.js";
 import { JobOfferCard } from "./JobOfferCard.jsx";
 import {
   MAX_APPLICATIONS_PER_SEASON,
@@ -107,7 +108,7 @@ export default function CareersScreen({ career, club, league, updateCareer, onAc
     if (!focus) return;
     const total = needsFollowUp ? round1Bonus + round2Bonus : round1Bonus;
     // acceptNewJob replaces the whole career, so no need to record the offer.
-    onAcceptJob({ ...focus, interviewStartingBoardBonus: total });
+    onAcceptJob({ ...focus, interviewStartingBoardBonus: total }, offerStartType(focus, career));
   };
 
   // ---- Rejection screen ----------------------------------------------------
@@ -169,7 +170,11 @@ export default function CareersScreen({ career, club, league, updateCareer, onAc
           ))}
         </div>
         <div className="text-[11px] text-atext-mute text-center mb-3 leading-snug">
-          Signing moves you to {focus.clubShort} for next season — your campaign at {club.short} ends here.
+          {offerStartType(focus, career) === 'immediate'
+            ? `Signing takes you to ${focus.clubShort} now — you'll pick up their season mid-run and leave ${club.short} behind.`
+            : offerStartType(focus, career) === 'endOfSeason'
+              ? `You'll finish the season with ${club.short}, then take over ${focus.clubShort} — agreed now, move at season's end.`
+              : `Signing moves you to ${focus.clubShort} for next season — your campaign at ${club.short} ends here.`}
         </div>
         <div className="flex flex-wrap gap-2 justify-center">
           <button
@@ -226,12 +231,21 @@ export default function CareersScreen({ career, club, league, updateCareer, onAc
             const status = applicationStatus(career, o.clubId);
             const allowed = canApply(career, o);
             const longShot = rep < (o.minReputation ?? 0);
+            const startType = offerStartType(o, career);
+            const timing = (
+              <div
+                className="text-[10px] font-bold mb-2 text-center"
+                style={{ color: startType === 'immediate' ? 'var(--A-pos)' : 'var(--A-text-mute)' }}
+              >
+                {startType === 'immediate' ? '🪑 ' : '📆 '}{startTypeLabel(startType)}
+              </div>
+            );
             const footer =
               status === "rejected" ? (
                 <div className="text-[11px] text-aneg font-bold mb-2 text-center">Passed on you this season</div>
               ) : remaining === 0 ? (
                 <div className="text-[11px] text-atext-mute mb-2 text-center">No applications left this season</div>
-              ) : null;
+              ) : timing;
             return (
               <JobOfferCard
                 key={o.clubId}

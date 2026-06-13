@@ -437,6 +437,12 @@ export function migrate(save) {
     if (s.jobApplications === undefined) s.jobApplications = null;
   }
 
+  if (v < 32) {
+    s.saveVersion = 32;
+    // End-of-season job moves: the agreed offer that fires at the next rollover.
+    if (s.pendingJobOffer === undefined) s.pendingJobOffer = null;
+  }
+
   return s;
 }
 
