@@ -109,13 +109,20 @@ export function competitionClubsForCareer(c) {
   return getCompetitionClubs(c.leagueKey, region, div, c.season);
 }
 
+// Cap on a single competition's home-and-away rounds. Real AFL/state leagues
+// play ~22-23 games, NOT a full 34-round double round-robin — so big comps are
+// trimmed (the base single round-robin plus a partial return set = an authentic
+// *unbalanced* fixture where you meet some clubs twice and others once). Small
+// community comps fall under the cap and play a full, balanced home-and-away.
+export const MAX_SEASON_ROUNDS = 23;
+
 // Full home-and-away season: a double round-robin. The base single round-robin
 // (circle method) is generated with the venue alternated per round/game so no
 // club gets a long home or away run; then a mirror set of rounds replays every
-// pairing with the venue reversed. Net result: every club hosts AND visits every
-// other club exactly once, so each team plays an equal number of home and away
-// games. Pass { homeAndAway: false } for a single round-robin.
-export function generateFixtures(leagueClubs, { homeAndAway = true } = {}) {
+// pairing with the venue reversed. Large comps are trimmed to MAX_SEASON_ROUNDS
+// (override with { maxRounds }). Pass { homeAndAway: false } for a single
+// round-robin.
+export function generateFixtures(leagueClubs, { homeAndAway = true, maxRounds = MAX_SEASON_ROUNDS } = {}) {
   const ids = leagueClubs.map(c => c.id);
   const arr = [...ids];
   if (arr.length % 2 !== 0) arr.push(null);
@@ -138,7 +145,8 @@ export function generateFixtures(leagueClubs, { homeAndAway = true } = {}) {
   }
   if (!homeAndAway) return baseRounds;
   const returnRounds = baseRounds.map(round => round.map(m => ({ home: m.away, away: m.home })));
-  return [...baseRounds, ...returnRounds];
+  const full = [...baseRounds, ...returnRounds];
+  return maxRounds && full.length > maxRounds ? full.slice(0, maxRounds) : full;
 }
 
 export function blankLadder(leagueClubs) {

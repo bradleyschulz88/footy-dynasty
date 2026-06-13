@@ -141,6 +141,21 @@ describe('generateFixtures', () => {
     expect(generateFixtures(CLUBS, { homeAndAway: false })).toHaveLength(CLUBS.length - 1);
   });
 
+  it('caps big comps to an authentic (unbalanced) season instead of 2(n-1)', () => {
+    const afl = Array.from({ length: 18 }, (_, i) => ({ id: `c${i}`, name: `C${i}`, short: `C${i}` }));
+    const fixtures = generateFixtures(afl); // full double RR would be 34 rounds
+    expect(fixtures).toHaveLength(23); // MAX_SEASON_ROUNDS
+    // Every club still plays once per round → 23 games each (unbalanced opponents).
+    const games = {};
+    fixtures.forEach(round => round.forEach(m => {
+      games[m.home] = (games[m.home] || 0) + 1;
+      games[m.away] = (games[m.away] || 0) + 1;
+    }));
+    afl.forEach(c => expect(games[c.id]).toBe(23));
+    // maxRounds is overridable.
+    expect(generateFixtures(afl, { maxRounds: 18 })).toHaveLength(18);
+  });
+
   it('every pair meets exactly twice — once at each venue', () => {
     const fixtures = generateFixtures(CLUBS);
     const venues = new Map(); // "A-B" (sorted) -> Set of home club ids
