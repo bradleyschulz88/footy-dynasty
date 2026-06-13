@@ -291,14 +291,17 @@ export function simMatch(home, away, isPlayerHome, playerStrength, homeFixtureAd
 }
 
 // =============================================================================
-// simMatchEvents — quarter-by-quarter event-driven sim
-// Returns the same shape as simMatchWithQuarters PLUS:
-//   events: per-quarter event objects with timeline-ready data
-//   votes:  Brownlow-style 3/2/1 votes for player team only (when supplied)
-//   keyMoments: array of human-readable highlights
-//   playerLineupSquad: optional array (passed in) used to attribute goals
+// Steppable match sim — initMatchSim / simMatchQuarter / finishMatchSim.
+// State is plain serializable data so a half-time pause can persist to the
+// save file (coaching calls re-enter via simMatchQuarter with strength mods).
+// simMatchEvents below wraps these for the classic one-shot API.
 // =============================================================================
-export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = {}) {
+
+/**
+ * Build serializable sim state. Strength-per-quarter callbacks (pure functions)
+ * are evaluated up front into arrays so the state can live in localStorage.
+ */
+export function initMatchSim(home, away, isPlayerHome, playerStrength, opts = {}) {
   const tactic = opts.tactic || 'balanced';
   const profile = TACTIC_PROFILES[tactic] || TACTIC_PROFILES.balanced;
   const playerLineup = opts.playerLineup || []; // [{id, position, overall, ...}]
@@ -321,10 +324,59 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
     defensivePressureMod(playerLineup, oppLineup, tactic)
     * weatherAccuracyMod(weather, oppTactic)
     * (1 - (oppProfile.riskMod - 1) * 0.15);
-  const homeAccMod = isPlayerHome ? playerSideAccMod : oppSideAccMod;
-  const awayAccMod = isPlayerHome ? oppSideAccMod : playerSideAccMod;
 
-  const hAdv = opts.homeFixtureAdvantage ?? 4;
+  const strengthArray = (fn, fallbackArr) => {
+    if (Array.isArray(fallbackArr) && fallbackArr.length === 4) return fallbackArr;
+    if (typeof fn === 'function') return [1, 2, 3, 4].map((qn) => fn(qn));
+    return null;
+  };
+
+  return {
+    cfg: {
+      isPlayerHome,
+      tactic,
+      oppTactic,
+      playerLineup,
+      oppLineup,
+      groundScoring,
+      groundAccuracy,
+      homeAccMod: isPlayerHome ? playerSideAccMod : oppSideAccMod,
+      awayAccMod: isPlayerHome ? oppSideAccMod : playerSideAccMod,
+      hAdv: opts.homeFixtureAdvantage ?? 4,
+      homeRating: home?.rating ?? 60,
+      awayRating: away?.rating ?? 60,
+      playerStrength,
+      playerStrengthByQuarter: strengthArray(opts.getPlayerStrengthForQuarter, opts.playerStrengthByQuarter),
+      oppStrengthByQuarter: strengthArray(opts.getOppStrengthForQuarter, opts.oppStrengthByQuarter),
+    },
+    momentum: 0, // -1 .. +1, positive = home
+    runHomePts: 0,
+    runAwayPts: 0,
+    quarters: [],
+    events: [],   // flat timeline
+    keyMoments: [],
+    goalAttribution: {}, // playerId -> { goals, behinds, votesScore }
+    injuredPlayerIds: [],
+    reportedPlayerIds: [],
+  };
+}
+
+/**
+ * Simulate the next quarter in place.
+ * @param {object} state from initMatchSim (mutated and returned)
+ * @param {{ playerStrengthDelta?: number, oppStrengthDelta?: number }} [mods]
+ *   Coaching-call strength adjustments applied to this quarter only.
+ */
+export function simMatchQuarter(state, mods = {}) {
+  const { cfg } = state;
+  const q = state.quarters.length;
+  if (q >= 4) return state;
+  const {
+    isPlayerHome, tactic, oppTactic, playerLineup, oppLineup,
+    groundScoring, groundAccuracy, homeAccMod, awayAccMod, hAdv,
+  } = cfg;
+  const profile = TACTIC_PROFILES[tactic] || TACTIC_PROFILES.balanced;
+  const oppProfile = TACTIC_PROFILES[oppTactic] || TACTIC_PROFILES.balanced;
 
   // Apply tactic mods to whichever side is the player
   const playerSideMod = profile.goalRateMod;
@@ -332,189 +384,186 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
   const oppSideMod    = oppProfile.goalRateMod;
   const oppOppMod     = oppProfile.oppRateMod;
 
-  let momentum = 0; // -1 .. +1, positive = home
-  let runHomePts = 0;
-  let runAwayPts = 0;
-  const quarters = [];
-  const events = [];   // flat timeline
-  const keyMoments = [];
-  const goalAttribution = {}; // playerId -> { goals, behinds, votesScore }
-  const injuredPlayerIds = [];
-  const reportedPlayerIds = [];
+  let momentum = state.momentum;
+  if (q > 0) {
+    momentum *= 0.72;
+    const marginPts = state.runHomePts - state.runAwayPts;
+    const marginNudge = clamp(marginPts / 48, -1, 1) * 0.14;
+    momentum = clamp(momentum + marginNudge, -1, 1);
+  }
+  const quarterNum = q + 1;
+  const playerStrNow =
+    (cfg.playerStrengthByQuarter ? cfg.playerStrengthByQuarter[q] : cfg.playerStrength)
+    + (mods.playerStrengthDelta ?? 0);
+  const oppStrBase = cfg.oppStrengthByQuarter ? cfg.oppStrengthByQuarter[q] : null;
+  const oppStrNow = oppStrBase != null ? oppStrBase + (mods.oppStrengthDelta ?? 0) : null;
+  const oppFallbackDelta = mods.oppStrengthDelta ?? 0;
 
-  for (let q = 0; q < 4; q++) {
-    if (q > 0) {
-      momentum *= 0.72;
-      const marginPts = runHomePts - runAwayPts;
-      const marginNudge = clamp(marginPts / 48, -1, 1) * 0.14;
-      momentum = clamp(momentum + marginNudge, -1, 1);
-    }
-    const quarterNum = q + 1;
-    const playerStrNow = typeof opts.getPlayerStrengthForQuarter === 'function'
-      ? opts.getPlayerStrengthForQuarter(quarterNum)
-      : playerStrength;
-    const oppStrNow = typeof opts.getOppStrengthForQuarter === 'function'
-      ? opts.getOppStrengthForQuarter(quarterNum)
-      : null;
+  let hStr;
+  let aStr;
+  if (isPlayerHome) {
+    hStr = playerStrNow + hAdv;
+    aStr = oppStrNow != null ? oppStrNow : cfg.awayRating + oppFallbackDelta;
+  } else {
+    hStr = (oppStrNow != null ? oppStrNow : cfg.homeRating + oppFallbackDelta) + hAdv;
+    aStr = playerStrNow;
+  }
+  const diff = (hStr - aStr) + momentum * 9; // momentum tilts effective strength (~9 pts at full swing)
+  const stop = resolveStoppageQuarter(playerLineup, oppLineup, tactic, oppTactic, isPlayerHome);
+  const diffWithStop = diff + stop.margin * 6;
+  const rates = shotRates(diffWithStop);
 
-    let hStr;
-    let aStr;
-    if (isPlayerHome) {
-      hStr = playerStrNow + hAdv;
-      aStr = oppStrNow != null ? oppStrNow : away.rating;
-    } else {
-      hStr = (oppStrNow != null ? oppStrNow : home.rating) + hAdv;
-      aStr = playerStrNow;
-    }
-    const diff = (hStr - aStr) + momentum * 9; // momentum tilts effective strength (~9 pts at full swing)
-    const stop = resolveStoppageQuarter(playerLineup, oppLineup, tactic, oppTactic, isPlayerHome);
-    const diffWithStop = diff + stop.margin * 6;
-    const rates = shotRates(diffWithStop);
+  // Apply tactic shot-rate adjustments. A side's oppRateMod scales the
+  // OTHER side's shot volume: defensive/flood/press suppress the opposition,
+  // attack concedes shots on the rebound. Suppression bites harder against
+  // overextended gameplans (scales with the target's own goalRateMod), which
+  // is what makes containment a genuine counter to all-out attack.
+  const suppressScale = (oppMod, targetGoalMod) =>
+    oppMod < 0 ? 0.5 + Math.max(0, targetGoalMod) * 2 : 0.5;
+  const homeSideMod = isPlayerHome ? playerSideMod : oppSideMod;
+  const awaySideMod = isPlayerHome ? oppSideMod : playerSideMod;
+  const homeOppPressure = isPlayerHome ? oppOppMod : playerOppMod;
+  const awayOppPressure = isPlayerHome ? playerOppMod : oppOppMod;
+  const homeShotMean =
+    rates.home * (1 + homeSideMod) * (1 + homeOppPressure * suppressScale(homeOppPressure, homeSideMod));
+  const awayShotMean =
+    rates.away * (1 + awaySideMod) * (1 + awayOppPressure * suppressScale(awayOppPressure, awaySideMod));
 
-    // Apply tactic shot-rate adjustments. A side's oppRateMod scales the
-    // OTHER side's shot volume: defensive/flood/press suppress the opposition,
-    // attack concedes shots on the rebound. Suppression bites harder against
-    // overextended gameplans (scales with the target's own goalRateMod), which
-    // is what makes containment a genuine counter to all-out attack.
-    const suppressScale = (oppMod, targetGoalMod) =>
-      oppMod < 0 ? 0.5 + Math.max(0, targetGoalMod) * 2 : 0.5;
-    const homeSideMod = isPlayerHome ? playerSideMod : oppSideMod;
-    const awaySideMod = isPlayerHome ? oppSideMod : playerSideMod;
-    const homeOppPressure = isPlayerHome ? oppOppMod : playerOppMod;
-    const awayOppPressure = isPlayerHome ? playerOppMod : oppOppMod;
-    const homeShotMean =
-      rates.home * (1 + homeSideMod) * (1 + homeOppPressure * suppressScale(homeOppPressure, homeSideMod));
-    const awayShotMean =
-      rates.away * (1 + awaySideMod) * (1 + awayOppPressure * suppressScale(awayOppPressure, awaySideMod));
+  const plQ = TACTIC_QUARTER_MULT[tactic]?.[q] ?? 1;
+  const opQ = TACTIC_QUARTER_MULT[oppTactic]?.[q] ?? 1;
+  const homeQuarterMult = isPlayerHome ? plQ : opQ;
+  const awayQuarterMult = isPlayerHome ? opQ : plQ;
+  const homeShotMeanPhased = homeShotMean * homeQuarterMult;
+  const awayShotMeanPhased = awayShotMean * awayQuarterMult;
 
-    const plQ = TACTIC_QUARTER_MULT[tactic]?.[q] ?? 1;
-    const opQ = TACTIC_QUARTER_MULT[oppTactic]?.[q] ?? 1;
-    const homeQuarterMult = isPlayerHome ? plQ : opQ;
-    const awayQuarterMult = isPlayerHome ? opQ : plQ;
-    const homeShotMeanPhased = homeShotMean * homeQuarterMult;
-    const awayShotMeanPhased = awayShotMean * awayQuarterMult;
+  const homeShots = poisson(Math.max(2, homeShotMeanPhased * groundScoring));
+  const awayShots = poisson(Math.max(2, awayShotMeanPhased * groundScoring));
 
-    const homeShots = poisson(Math.max(2, homeShotMeanPhased * groundScoring));
-    const awayShots = poisson(Math.max(2, awayShotMeanPhased * groundScoring));
-
-    let hG = 0, hB = 0, aG = 0, aB = 0;
-    const qEvents = [];
-    if (stop.homeClearances + stop.awayClearances > 0) {
-      qEvents.push({
-        q: quarterNum,
-        minute: rand(q * 25, q * 25 + 8),
-        side: stop.margin >= 0 ? 'home' : 'away',
-        kind: 'stoppage',
-        text: `Contested ball — ${stop.homeClearances}–${stop.awayClearances} clearances this quarter`,
-      });
-    }
-
-    // Resolve home shots
-    for (let i = 0; i < homeShots; i++) {
-      const accuracy = clamp((0.42 + diffWithStop * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy * homeAccMod, 0.10, 0.78);
-      const minute = rand(q * 25, q * 25 + 24);
-      const r = rng();
-      if (r < accuracy) {
-        hG++;
-        const scorer = isPlayerHome ? pickScorerId(playerLineup) : null;
-        if (scorer) {
-          goalAttribution[scorer] = goalAttribution[scorer] || { goals: 0, behinds: 0, votesScore: 0 };
-          goalAttribution[scorer].goals++;
-          goalAttribution[scorer].votesScore += 8;
-        }
-        qEvents.push({ q: q + 1, minute, side: 'home', kind: 'goal', scorer });
-        momentum = clamp(momentum + 0.05 * profile.momentumGain, -1, 1);
-      } else if (r < accuracy + 0.30) {
-        hB++;
-        const scorer = isPlayerHome ? pickScorerId(playerLineup) : null;
-        if (scorer) {
-          goalAttribution[scorer] = goalAttribution[scorer] || { goals: 0, behinds: 0, votesScore: 0 };
-          goalAttribution[scorer].behinds++;
-          goalAttribution[scorer].votesScore += 1;
-        }
-        qEvents.push({ q: q + 1, minute, side: 'home', kind: 'behind', scorer });
-      } else {
-        qEvents.push({ q: q + 1, minute, side: 'home', kind: 'miss' });
-      }
-    }
-    // Resolve away shots
-    for (let i = 0; i < awayShots; i++) {
-      const accuracy = clamp((0.42 - diffWithStop * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy * awayAccMod, 0.10, 0.78);
-      const minute = rand(q * 25, q * 25 + 24);
-      const r = rng();
-      if (r < accuracy) {
-        aG++;
-        const scorer = !isPlayerHome ? pickScorerId(playerLineup) : null;
-        if (scorer) {
-          goalAttribution[scorer] = goalAttribution[scorer] || { goals: 0, behinds: 0, votesScore: 0 };
-          goalAttribution[scorer].goals++;
-          goalAttribution[scorer].votesScore += 8;
-        }
-        qEvents.push({ q: q + 1, minute, side: 'away', kind: 'goal', scorer });
-        momentum = clamp(momentum - 0.05 * oppProfile.momentumGain, -1, 1);
-      } else if (r < accuracy + 0.30) {
-        aB++;
-        const scorer = !isPlayerHome ? pickScorerId(playerLineup) : null;
-        if (scorer) {
-          goalAttribution[scorer] = goalAttribution[scorer] || { goals: 0, behinds: 0, votesScore: 0 };
-          goalAttribution[scorer].behinds++;
-          goalAttribution[scorer].votesScore += 1;
-        }
-        qEvents.push({ q: q + 1, minute, side: 'away', kind: 'behind', scorer });
-      } else {
-        qEvents.push({ q: q + 1, minute, side: 'away', kind: 'miss' });
-      }
-    }
-
-    // Key moments — 0–2 per quarter
-    const numMoments = rng() < 0.45 ? 1 : rng() < 0.20 ? 2 : 0;
-    for (let i = 0; i < numMoments; i++) {
-      const moment = pickMoment();
-      const side = rng() < 0.5 ? 'home' : 'away';
-      let playerId = null;
-      if (side === (isPlayerHome ? 'home' : 'away') && playerLineup.length) {
-        const filtered = moment.posKey
-          ? playerLineup.filter(p => moment.posKey.includes(p.position) || moment.posKey.includes(p.secondaryPosition))
-          : playerLineup;
-        playerId = filtered.length ? pick(filtered).id : pick(playerLineup).id;
-      }
-      const ke = {
-        q: q + 1,
-        minute: rand(q * 25, q * 25 + 24),
-        side,
-        kind: 'moment',
-        moment: moment.id,
-        text: moment.text,
-        playerId,
-      };
-      qEvents.push(ke);
-      keyMoments.push(ke);
-      if (moment.injuryRisk && playerId) injuredPlayerIds.push(playerId);
-      if (moment.suspensionRisk && playerId) reportedPlayerIds.push(playerId);
-      if (moment.voteImpact && playerId) {
-        goalAttribution[playerId] = goalAttribution[playerId] || { goals: 0, behinds: 0, votesScore: 0 };
-        goalAttribution[playerId].votesScore += 4 * moment.voteImpact;
-      }
-      momentum = clamp(momentum + (side === 'home' ? 1 : -1) * moment.momentumImpact, -1, 1);
-    }
-
-    // Sort within quarter by minute
-    qEvents.sort((a, b) => a.minute - b.minute);
-    events.push(...qEvents);
-
-    const qHomeTot = hG * 6 + hB;
-    const qAwayTot = aG * 6 + aB;
-    runHomePts += qHomeTot;
-    runAwayPts += qAwayTot;
-
-    quarters.push({
-      homeGoals: hG, homeBehinds: hB, homeTotal: qHomeTot,
-      awayGoals: aG, awayBehinds: aB, awayTotal: qAwayTot,
-      events: qEvents,
-      momentumEnd: momentum,
+  let hG = 0, hB = 0, aG = 0, aB = 0;
+  const qEvents = [];
+  if (stop.homeClearances + stop.awayClearances > 0) {
+    qEvents.push({
+      q: quarterNum,
+      minute: rand(q * 25, q * 25 + 8),
+      side: stop.margin >= 0 ? 'home' : 'away',
+      kind: 'stoppage',
+      text: `Contested ball — ${stop.homeClearances}–${stop.awayClearances} clearances this quarter`,
     });
   }
 
+  const goalAttribution = state.goalAttribution;
+
+  // Resolve home shots
+  for (let i = 0; i < homeShots; i++) {
+    const accuracy = clamp((0.42 + diffWithStop * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy * homeAccMod, 0.10, 0.78);
+    const minute = rand(q * 25, q * 25 + 24);
+    const r = rng();
+    if (r < accuracy) {
+      hG++;
+      const scorer = isPlayerHome ? pickScorerId(playerLineup) : null;
+      if (scorer) {
+        goalAttribution[scorer] = goalAttribution[scorer] || { goals: 0, behinds: 0, votesScore: 0 };
+        goalAttribution[scorer].goals++;
+        goalAttribution[scorer].votesScore += 8;
+      }
+      qEvents.push({ q: q + 1, minute, side: 'home', kind: 'goal', scorer });
+      momentum = clamp(momentum + 0.05 * profile.momentumGain, -1, 1);
+    } else if (r < accuracy + 0.30) {
+      hB++;
+      const scorer = isPlayerHome ? pickScorerId(playerLineup) : null;
+      if (scorer) {
+        goalAttribution[scorer] = goalAttribution[scorer] || { goals: 0, behinds: 0, votesScore: 0 };
+        goalAttribution[scorer].behinds++;
+        goalAttribution[scorer].votesScore += 1;
+      }
+      qEvents.push({ q: q + 1, minute, side: 'home', kind: 'behind', scorer });
+    } else {
+      qEvents.push({ q: q + 1, minute, side: 'home', kind: 'miss' });
+    }
+  }
+  // Resolve away shots
+  for (let i = 0; i < awayShots; i++) {
+    const accuracy = clamp((0.42 - diffWithStop * 0.004 + (rng() - 0.5) * 0.18) * groundAccuracy * awayAccMod, 0.10, 0.78);
+    const minute = rand(q * 25, q * 25 + 24);
+    const r = rng();
+    if (r < accuracy) {
+      aG++;
+      const scorer = !isPlayerHome ? pickScorerId(playerLineup) : null;
+      if (scorer) {
+        goalAttribution[scorer] = goalAttribution[scorer] || { goals: 0, behinds: 0, votesScore: 0 };
+        goalAttribution[scorer].goals++;
+        goalAttribution[scorer].votesScore += 8;
+      }
+      qEvents.push({ q: q + 1, minute, side: 'away', kind: 'goal', scorer });
+      momentum = clamp(momentum - 0.05 * oppProfile.momentumGain, -1, 1);
+    } else if (r < accuracy + 0.30) {
+      aB++;
+      const scorer = !isPlayerHome ? pickScorerId(playerLineup) : null;
+      if (scorer) {
+        goalAttribution[scorer] = goalAttribution[scorer] || { goals: 0, behinds: 0, votesScore: 0 };
+        goalAttribution[scorer].behinds++;
+        goalAttribution[scorer].votesScore += 1;
+      }
+      qEvents.push({ q: q + 1, minute, side: 'away', kind: 'behind', scorer });
+    } else {
+      qEvents.push({ q: q + 1, minute, side: 'away', kind: 'miss' });
+    }
+  }
+
+  // Key moments — 0–2 per quarter
+  const numMoments = rng() < 0.45 ? 1 : rng() < 0.20 ? 2 : 0;
+  for (let i = 0; i < numMoments; i++) {
+    const moment = pickMoment();
+    const side = rng() < 0.5 ? 'home' : 'away';
+    let playerId = null;
+    if (side === (isPlayerHome ? 'home' : 'away') && playerLineup.length) {
+      const filtered = moment.posKey
+        ? playerLineup.filter(p => moment.posKey.includes(p.position) || moment.posKey.includes(p.secondaryPosition))
+        : playerLineup;
+      playerId = filtered.length ? pick(filtered).id : pick(playerLineup).id;
+    }
+    const ke = {
+      q: q + 1,
+      minute: rand(q * 25, q * 25 + 24),
+      side,
+      kind: 'moment',
+      moment: moment.id,
+      text: moment.text,
+      playerId,
+    };
+    qEvents.push(ke);
+    state.keyMoments.push(ke);
+    if (moment.injuryRisk && playerId) state.injuredPlayerIds.push(playerId);
+    if (moment.suspensionRisk && playerId) state.reportedPlayerIds.push(playerId);
+    if (moment.voteImpact && playerId) {
+      goalAttribution[playerId] = goalAttribution[playerId] || { goals: 0, behinds: 0, votesScore: 0 };
+      goalAttribution[playerId].votesScore += 4 * moment.voteImpact;
+    }
+    momentum = clamp(momentum + (side === 'home' ? 1 : -1) * moment.momentumImpact, -1, 1);
+  }
+
+  // Sort within quarter by minute
+  qEvents.sort((a, b) => a.minute - b.minute);
+  state.events.push(...qEvents);
+
+  const qHomeTot = hG * 6 + hB;
+  const qAwayTot = aG * 6 + aB;
+  state.runHomePts += qHomeTot;
+  state.runAwayPts += qAwayTot;
+  state.momentum = momentum;
+
+  state.quarters.push({
+    homeGoals: hG, homeBehinds: hB, homeTotal: qHomeTot,
+    awayGoals: aG, awayBehinds: aB, awayTotal: qAwayTot,
+    events: qEvents,
+    momentumEnd: momentum,
+  });
+  return state;
+}
+
+/** Assemble the final result object from completed sim state (4 quarters). */
+export function finishMatchSim(state) {
+  const { quarters, events, keyMoments, goalAttribution, injuredPlayerIds, reportedPlayerIds } = state;
   const homeGoals = quarters.reduce((a, q) => a + q.homeGoals, 0);
   const homeBehinds = quarters.reduce((a, q) => a + q.homeBehinds, 0);
   const awayGoals = quarters.reduce((a, q) => a + q.awayGoals, 0);
@@ -541,6 +590,16 @@ export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = 
     injuredPlayerIds,
     reportedPlayerIds,
   };
+}
+
+// =============================================================================
+// simMatchEvents — quarter-by-quarter event-driven sim (one-shot wrapper over
+// the steppable initMatchSim / simMatchQuarter / finishMatchSim API).
+// =============================================================================
+export function simMatchEvents(home, away, isPlayerHome, playerStrength, opts = {}) {
+  const state = initMatchSim(home, away, isPlayerHome, playerStrength, opts);
+  for (let q = 0; q < 4; q++) simMatchQuarter(state);
+  return finishMatchSim(state);
 }
 
 // =============================================================================

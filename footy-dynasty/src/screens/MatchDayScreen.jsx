@@ -1,9 +1,27 @@
 import React, { useMemo, useState } from "react";
 import { formatDate } from "../lib/calendar.js";
+import { COACHING_CALLS } from "../lib/coachingCalls.js";
+import { playCrowdCheer, playSiren, playWhistle, soundEnabled } from "../lib/sound.js";
 
-export default function MatchDayScreen({ result, league, career, club, onContinue }) {
+export default function MatchDayScreen({ result, league, career, club, onContinue, onCoachCall }) {
   const [revealed, setRevealed] = useState(0);
   const [showEvents, setShowEvents] = useState(true);
+  // Live match: only the first half exists — the coach's call sims the rest.
+  const isLive = !!result.live;
+  const sound = soundEnabled(career);
+
+  const revealNextQuarter = () => {
+    setRevealed((r) => {
+      const next = Math.min(r + 1, (result.quarters || []).length);
+      if (sound) {
+        const q = (result.quarters || [])[next - 1];
+        const goals = (q?.homeGoals ?? 0) + (q?.awayGoals ?? 0);
+        if (!isLive && next >= (result.quarters || []).length) playSiren();
+        else playCrowdCheer(Math.min(1, 0.35 + goals * 0.08));
+      }
+      return next;
+    });
+  };
 
   const qLabels = ["Q1", "Q2", "Q3", "Q4"];
 
@@ -51,11 +69,12 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
   const drew = result.drew;
   const resultColor = won ? "var(--A-pos)" : drew ? "var(--A-accent)" : "var(--A-neg)";
 
-  const fullTime = quarters.length === 0 || revealed >= quarters.length;
+  const atHalfTime = isLive && revealed >= 2;
+  const fullTime = !isLive && (quarters.length === 0 || revealed >= quarters.length);
   const scoreIdx = fullTime
     ? quarters.length - 1
     : revealed > 0
-      ? revealed - 1
+      ? Math.min(revealed, quarters.length) - 1
       : -1;
   const headerHome =
     scoreIdx >= 0 && cumHome[scoreIdx] ? cumHome[scoreIdx].total : null;
@@ -69,9 +88,11 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
       : drew
         ? "DRAW"
         : "LOSS"
-    : revealed === 0
-      ? "READY"
-      : `END Q${revealed}`;
+    : atHalfTime
+      ? "HALF TIME"
+      : revealed === 0
+        ? "READY"
+        : `END Q${revealed}`;
   const headerColor = fullTime ? resultColor : "var(--A-accent)";
 
   const commentary =
@@ -343,7 +364,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
 
           {quarters.length > 0 && revealed < quarters.length && (
             <button
-              onClick={() => setRevealed((r) => Math.min(r + 1, quarters.length))}
+              onClick={revealNextQuarter}
               className="mt-4 w-full rounded-xl py-3 text-sm font-bold uppercase tracking-widest transition-all"
               style={{
                 background: "color-mix(in srgb, var(--A-accent) 10%, transparent)",
@@ -353,6 +374,63 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
             >
               Show {qLabels[revealed]} →
             </button>
+          )}
+
+          {/* ── Half-time: the coach's call ── */}
+          {atHalfTime && (
+            <div
+              className="mt-4 rounded-2xl p-4"
+              style={{
+                background: "color-mix(in srgb, var(--A-accent) 7%, var(--A-panel-2))",
+                border: "2px solid color-mix(in srgb, var(--A-accent) 35%, transparent)",
+              }}
+            >
+              <div className="font-display text-xl text-aaccent mb-0.5">HALF-TIME — COACH'S CALL</div>
+              <div className="text-xs text-atext-dim mb-3">
+                {headerHome != null && headerAway != null && (
+                  <>
+                    {(result.isHome ? headerHome - headerAway : headerAway - headerHome) > 0
+                      ? `You lead by ${Math.abs(headerHome - headerAway)}. `
+                      : (result.isHome ? headerHome - headerAway : headerAway - headerHome) < 0
+                        ? `You trail by ${Math.abs(headerHome - headerAway)}. `
+                        : "Scores level. "}
+                  </>
+                )}
+                One call shapes the second half — choose how the rooms respond.
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {COACHING_CALLS.map((call) => (
+                  <button
+                    key={call.id}
+                    onClick={() => { if (sound) playWhistle(); onCoachCall?.(call.id); }}
+                    className="rounded-xl p-3 text-left transition-all hover:-translate-y-0.5 touch-manipulation"
+                    style={{ background: "var(--A-panel)", border: "1px solid var(--A-line)" }}
+                  >
+                    <div className="text-sm font-bold text-atext flex items-center gap-2">
+                      <span aria-hidden>{call.icon}</span> {call.label}
+                    </div>
+                    <div className="text-[11px] text-atext-dim mt-1 leading-snug">{call.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Coach's call result banner (second half) ── */}
+          {!isLive && result.coachCall && revealed >= 2 && (
+            <div
+              className="mt-4 rounded-xl px-4 py-3 text-sm flex items-center gap-2"
+              style={{
+                background: "color-mix(in srgb, var(--A-accent) 8%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)",
+              }}
+            >
+              <span aria-hidden>{result.coachCall.icon}</span>
+              <span className="text-atext">
+                <strong>{result.coachCall.label}</strong>
+                {result.coachCall.note ? ` — ${result.coachCall.note}` : ""}
+              </span>
+            </div>
           )}
         </div>
 
@@ -378,9 +456,9 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
 
       <div className="px-6 py-5" style={{ borderTop: "1px solid var(--A-line)" }}>
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          {revealed < quarters.length && quarters.length > 0 ? (
+          {!isLive && revealed < quarters.length && quarters.length > 0 ? (
             <button
-              onClick={() => setRevealed(quarters.length)}
+              onClick={() => { if (sound) playSiren(); setRevealed(quarters.length); }}
               className="flex-1 py-3 rounded-xl text-sm font-bold text-atext-mute uppercase tracking-widest"
               style={{ border: "1px solid var(--A-line-2)" }}
             >
@@ -398,7 +476,13 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
               boxShadow: fullTime ? `0 4px 20px ${resultColor}44` : "none",
             }}
           >
-            {fullTime ? "Continue →" : "Reveal all quarters first"}
+            {fullTime
+              ? "Continue →"
+              : atHalfTime
+                ? "Make your half-time call above"
+                : isLive
+                  ? "Play the first half"
+                  : "Reveal all quarters first"}
           </button>
         </div>
       </div>

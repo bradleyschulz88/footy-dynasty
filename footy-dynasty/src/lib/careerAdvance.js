@@ -4,7 +4,8 @@
 import { rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub, getAFLClubsForSeason } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred } from './playerGen.js';
-import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus } from './matchEngine.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim } from './matchEngine.js';
+import { getCoachingCall, resolveCoachingCall } from './coachingCalls.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import {
@@ -711,6 +712,14 @@ function finishSeason(c, league) {
     baf: bafPlayer
       ? { name: pName(bafPlayer), overall: bafPlayer.overall, games: bafPlayer.gamesPlayed || 0, votes: bafFromVotes?.votes ?? 0 }
       : null,
+    risingStar: (() => {
+      const pool = c.squad.filter((p) => (p.age ?? 30) <= 21 && (p.gamesPlayed || 0) >= 5);
+      const score = (p) => (p.overall ?? 0) + (c.brownlow?.[p.id] || 0) * 2;
+      const star = pool.sort((a, b) => score(b) - score(a))[0] || null;
+      return star
+        ? { name: pName(star), age: star.age, overall: star.overall, games: star.gamesPlayed || 0 }
+        : null;
+    })(),
   };
   c.showSeasonSummary = true;
 
@@ -993,6 +1002,12 @@ export function primeSeasonStoryState(career) {
  */
 export function advanceCareerNextEvent({ career, league, club, setCareer, setScreen }) {
   const c = JSON.parse(JSON.stringify(career));
+
+  // A live match is paused at half time — the coach's call must resolve it first.
+  if (c.liveMatch) {
+    setCareer(c);
+    return;
+  }
 
   // Selection integrity: injured/suspended players can't take the field, and ids
   // belonging to retired/released/traded players are cleared from their slots.
@@ -1340,17 +1355,13 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 
   if (ev.type === 'round') {
     const round = ev.matches || [];
-    const myMatch = round.find((m) => m.home === c.clubId || m.away === c.clubId);
-    let myResult = null;
 
     c.aiSquads = ensureSquadsForLeague(c, league);
 
-    let turningPointPlayedThisRound = null;
     round.forEach((m) => {
       if (m.home === c.clubId || m.away === c.clubId) {
         const isHome = m.home === c.clubId;
         const opp = findClub(isHome ? m.away : m.home);
-        turningPointPlayedThisRound = m.turningPoint || null;
         let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
         myRating += getCaptainMatchBonus(c, false);
         const scoutPrep = scoutPrepRatingBonus(c, opp.id, ev.round);
@@ -1383,7 +1394,9 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
               teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
               + benchStrengthBonus(oppSquad, oppLineupIds, qi)
           : null;
-        const result = simMatchWithQuarters(
+        // Simulate the first half now; the second half waits on the coach's
+        // half-time call (resolveLiveMatchHalfTime applies the call + finishes).
+        const simState = initMatchSim(
           { rating: isHome ? myRating : oppRating },
           { rating: isHome ? oppRating : myRating },
           isHome, myRating,
@@ -1397,79 +1410,22 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
             ),
           },
         );
-        const myTotal = isHome ? result.homeTotal : result.awayTotal;
-        const oppTotal = isHome ? result.awayTotal : result.homeTotal;
-        const won = myTotal > oppTotal;
-        const drew = myTotal === oppTotal;
-        c.pendingPlayerMatchResult = {
-          home: m.home,
-          away: m.away,
-          homeTotal: result.homeTotal,
-          awayTotal: result.awayTotal,
-          round: ev.round,
+        simMatchQuarter(simState);
+        simMatchQuarter(simState);
+        c.liveMatch = {
+          simState,
+          meta: {
+            round: ev.round,
+            phase: ev.phase,
+            date: ev.date,
+            themedRound: ev.themedRound ?? null,
+            home: m.home,
+            away: m.away,
+            isHome,
+            oppId: opp.id,
+            turningPoint: m.turningPoint || null,
+          },
         };
-        myResult = { isHome, opp, result, myTotal, oppTotal, won, drew };
-
-        const attribution = result.goalAttribution || {};
-        const votesById = {};
-        (result.votes || []).forEach((v) => { votesById[v.playerId] = v.votes; });
-        // Attribute-centred stat multiplier (generation mean ≈ 68): skilled players
-        // rack up more of the ball, so box scores read as earned, not rolled.
-        const attrStatMult = (val) => clamp(1 + ((val ?? 60) - 68) * 0.012, 0.75, 1.35);
-        c.squad = c.squad.map((p) => {
-          if (!c.lineup.includes(p.id)) return p;
-          const fitDrop = rand(8, 18);
-          // Best-on-ground performances carry personal form, even in a loss.
-          const formChange = (won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1)) + (votesById[p.id] || 0);
-          const att = attribution[p.id] || { goals: 0, behinds: 0 };
-          const ballSkill = ((p.attrs?.decision ?? 60) + (p.attrs?.handball ?? 60) + (p.attrs?.endurance ?? 60)) / 3;
-          const dispAdd = Math.round((isMidPreferred(p) ? rand(15, 32) : rand(8, 22)) * attrStatMult(ballSkill));
-          const markAdd = Math.round(rand(2, 7) * attrStatMult(p.attrs?.marking));
-          const tackleAdd = Math.round(rand(1, 5) * attrStatMult(p.attrs?.tackling));
-          const newForm = clamp(p.form + formChange, 30, 100);
-          const formHistory = [...(p.formHistory || []), p.form].slice(-5);
-          return {
-            ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
-            goals: p.goals + (att.goals || 0), behinds: p.behinds + (att.behinds || 0), disposals: p.disposals + dispAdd,
-            marks: p.marks + markAdd, tackles: p.tackles + tackleAdd, gamesPlayed: p.gamesPlayed + 1,
-          };
-        });
-
-        const intensity = c.training?.intensity ?? 60;
-        const medLevel = c.facilities?.medical?.level ?? 1;
-        const recoveryFocus = c.training?.focus?.recovery ?? 20;
-        const mit = medicalStaffMitigation(c.staff);
-        const baseInjuryProb =
-          0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001 - mit.probReduce;
-        const injuryProb = effectiveInjuryRate(c, clamp(baseInjuryProb, 0.04, 0.28));
-        (result.injuredPlayerIds || []).forEach((pid) => {
-          if (!c.lineup.includes(pid)) return;
-          const baseWeeks = rand(1, 4);
-          const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
-          c.squad = c.squad.map((p) => (p.id === pid ? { ...p, injured: weeks } : p));
-        });
-        const matchInjuryPool = lineupPlayersOrdered(c.squad, c.lineup);
-        if (rng() < injuryProb && matchInjuryPool.length > 0) {
-          const injId = pick(matchInjuryPool).id;
-          const baseWeeks = rand(1, 4);
-          const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
-          c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
-        }
-        (result.reportedPlayerIds || []).forEach((pid) => {
-          if (rng() < 0.35) {
-            const weeks = rand(1, 3);
-            c.squad = c.squad.map((p) => (p.id === pid ? { ...p, suspended: (p.suspended || 0) + weeks } : p));
-            const player = c.squad.find((p) => p.id === pid);
-            if (player) {
-              c.news = [{ week: c.week, type: 'loss', text: `⚖️ ${player.firstName} ${player.lastName} suspended ${weeks} match${weeks > 1 ? 'es' : ''} at the tribunal` }, ...(c.news || [])].slice(0, 20);
-            }
-          }
-        });
-
-        c.brownlow = c.brownlow || {};
-        (result.votes || []).forEach((v) => {
-          c.brownlow[v.playerId] = (c.brownlow[v.playerId] || 0) + v.votes;
-        });
       } else {
         const r1 = aiVsAiTeamRating(c, league, m.home);
         const r2 = aiVsAiTeamRating(c, league, m.away);
@@ -1501,229 +1457,412 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       return { ...p, fitness: clamp(p.fitness + rand(8, 14), 30, 100), injured: Math.max(0, p.injured - 1) };
     });
 
-    // Per-match revenue: gate (home only) + broadcast/TV (every match) +
-    // sponsor activation (every match). This is the club's live, event-driven
-    // income — earned each time it plays, not smoothed across the calendar.
-    if (myMatch) {
-      const isHome = myMatch.home === c.clubId;
-      const rev = matchDayRevenue(c, { isHome, leagueTier: league.tier });
-      c.finance.cash += rev.total;
-      c.lastMatchRevenue = {
-        ...rev,
-        round: ev.round,
-        opp: myResult?.opp?.short || null,
-      };
-      if (Array.isArray(c.weeklyHistory) && c.weeklyHistory.length > 0) {
-        const last = c.weeklyHistory[c.weeklyHistory.length - 1];
-        c.weeklyHistory[c.weeklyHistory.length - 1] = {
-          ...last,
-          profit: (last.profit ?? 0) + rev.total,
-          cash: c.finance.cash,
-          matchRevenue: rev.total,
-          ticketRev: rev.gate,
-          attendance: rev.attendance,
-        };
-      }
-      const bits = [];
-      if (rev.gate) bits.push(`gate ${fmtK(rev.gate)}`);
-      if (rev.broadcast) bits.push(`TV ${fmtK(rev.broadcast)}`);
-      if (rev.sponsor) bits.push(`sponsor ${fmtK(rev.sponsor)}`);
-      c.news = [{ week: ev.round, type: 'info',
-        text: `💰 Match-day income +${fmtK(rev.total)}${bits.length ? ` (${bits.join(', ')})` : ''}` },
-      ...(c.news || [])].slice(0, 14);
-    }
-
-    const cfg = getDifficultyConfig(c.difficulty);
-    const winBump = Math.max(2, Math.abs(cfg.boardLossConfidence) - 1);
-    const lossDrop = cfg.boardLossConfidence;
-    const drawDelta = 0;
-    const prevBoard = c.finance.boardConfidence;
-    let boardDelta;
-    if (myResult) {
-      applyMatchStreaks(c, myResult.won, myResult.drew, myResult.isHome);
-      boardDelta = myResult.won ? winBump : myResult.drew ? drawDelta : lossDrop;
-      c.finance.fanHappiness = clamp(c.finance.fanHappiness + (myResult.won ? 3 : myResult.drew ? 0 : -2), 10, 100);
-      ensureCareerBoard(c, findClub(c.clubId), league);
-      applyBoardConfidenceDelta(c, boardDelta);
-      c.lastBoardConfidenceDelta = c.finance.boardConfidence - prevBoard;
-      if (myResult.won) { dynastyRecordHomeAwayWin(c); recordCareerWin(c); }
-      const rdBase = `Rd ${ev.round}: ${myResult.isHome ? 'vs' : '@'} ${myResult.opp?.short} ${myResult.myTotal}–${myResult.oppTotal} (${myResult.won ? 'W' : myResult.drew ? 'D' : 'L'})`;
-      const rdFlavor = myResult.won ? pick(ROUND_REPORT_WIN_CLOSERS) : myResult.drew ? pick(ROUND_REPORT_DRAW_CLOSERS) : pick(ROUND_REPORT_LOSS_CLOSERS);
-      c.news = [{ week: ev.round, type: myResult.won ? 'win' : myResult.drew ? 'draw' : 'loss',
-        text: `${rdBase} ${rdFlavor}` },
-      ...(c.news || [])].slice(0, 12);
-
-      if (c.journalist) {
-        c.journalist = { ...c.journalist, satisfaction: clamp((c.journalist.satisfaction ?? 50) + (myResult.won ? 2 : myResult.drew ? 0 : -3), 0, 100) };
-      }
-
-      c.committee = bumpCommitteeMood(c.committee, 'President', myResult.won ? 3 : myResult.drew ? 0 : -2);
-      if (myResult.won) {
-        const presMsg = committeeMessage(c, 'President', 'win');
-        if (presMsg) c.news = [{ week: ev.round, ...presMsg }, ...(c.news || [])].slice(0, 20);
-      }
-
-      if (myResult.isHome) {
-        const fundraiser = postMatchFundraiser(c, league.tier, true);
-        if (fundraiser) {
-          c.finance.cash += fundraiser.income;
-          c.news = [{ week: ev.round, ...fundraiser.news }, ...(c.news || [])].slice(0, 20);
-          if (fundraiser.moralePlayerId) {
-            c.squad = c.squad.map((p) => (p.id === fundraiser.moralePlayerId
-              ? { ...p, morale: clamp((p.morale ?? 70) + fundraiser.moraleDelta, cfg.moraleFloor, 100) } : p));
-          }
-        }
-      }
-
-      const oppId = myResult.opp?.id;
-      if (oppId) {
-        const wasBogey = c.bogeyTeamId === oppId;
-        const prevStreak = c.headToHead?.[oppId]?.streak ?? 0;
-        const diff = myResult.myTotal - myResult.oppTotal;
-        const lbl = `${myResult.won ? 'W' : myResult.drew ? 'D' : 'L'} ${Math.abs(diff)}pt`;
-        recordHeadToHead(c, oppId, myResult.won, myResult.drew, diff, lbl);
-        celebrateBogeyBreakIfNeeded(c, oppId, myResult.won, wasBogey, prevStreak, findClub);
-      }
-      const hg = myResult.isHome ? (myResult.result?.homeGoals ?? 0) : (myResult.result?.awayGoals ?? 0);
-      const hb = myResult.isHome ? (myResult.result?.homeBehinds ?? 0) : (myResult.result?.awayBehinds ?? 0);
-      const ag = myResult.isHome ? (myResult.result?.awayGoals ?? 0) : (myResult.result?.homeGoals ?? 0);
-      const ab = myResult.isHome ? (myResult.result?.awayBehinds ?? 0) : (myResult.result?.homeBehinds ?? 0);
-      pushTeamStatsFromResult(c, hg, hb, ag, ab, myResult.won, myResult.drew);
-
-      if (turningPointPlayedThisRound === 'must_win') {
-        ensureCareerBoard(c, findClub(c.clubId), league);
-        applyBoardConfidenceDelta(c, myResult.won ? 5 : myResult.drew ? 0 : -8);
-      } else if (turningPointPlayedThisRound === 'undefeated_run') {
-        if (!myResult.won && !myResult.drew) {
-          c.squad = c.squad.map((p) => ({ ...p, morale: clamp((p.morale ?? 70) - 2, cfg.moraleFloor, 100) }));
-        }
-      } else if (turningPointPlayedThisRound === 'bogey_buster' && myResult.won) {
-        bumpClubCulture(c, 2);
-      }
-    }
-
-    // Streak-driven squad morale: win/lose 3+ in a row creates momentum
-    if (myResult && ev.phase === 'season') {
-      const streak = c.winStreak ?? 0;
-      const margin = Math.abs(myResult.myTotal - myResult.oppTotal);
-      let moraleDelta = 0;
-      if (streak >= 3) moraleDelta += 1;
-      else if (streak <= -3) moraleDelta -= 1;
-      if (myResult.won && margin >= 40) moraleDelta += 1;
-      else if (!myResult.won && !myResult.drew && margin >= 40) moraleDelta -= 1;
-      if (moraleDelta !== 0) {
-        c.squad = c.squad.map((p) =>
-          c.lineup.includes(p.id)
-            ? { ...p, morale: clamp((p.morale ?? 70) + moraleDelta, cfg.moraleFloor, 100) }
-            : p
-        );
-      }
-    }
-
-    if (myResult && myResult.isHome) {
-      const weather = ensureWeatherForWeek(c, ev.round);
-      c.groundCondition = applyGroundDegradation(c.groundCondition ?? 85, weather, c.facilities?.stadium?.level ?? 1);
-    }
-
-    const inBoardCrisis = c.boardCrisis?.phase === 'active';
-    const sackPatience = cfg.boardPatienceSeasons === 1 ? 1 : 2;
-    const sandbox = c.gameMode === 'sandbox';
-    if (sandbox) {
-      c.boardWarning = 0;
-    } else {
-    if (!inBoardCrisis) {
-      if (c.finance.boardConfidence <= 0) {
-        c.boardWarning = sackPatience;
-      } else if (c.finance.boardConfidence <= 10) {
-        c.boardWarning = (c.boardWarning || 0) + 1;
-      }
-    }
-    if (!c.isSacked && !inBoardCrisis) {
-      const prepLine = maybeEnqueueBoardCrisisPrep(c, league, sackPatience, c.boardWarning || 0);
-      if (prepLine) {
-        c.news = [{ week: ev.round, type: 'board', text: prepLine }, ...(c.news || [])].slice(0, 20);
-      }
-    }
-    if ((c.boardWarning || 0) >= sackPatience && !c.isSacked && !inBoardCrisis) {
-      const instantSack = c.finance.boardConfidence <= 0 || (c.boardWarning || 0) >= 99;
-      if (instantSack) {
-        triggerSackState(c, club.name, ev.round);
-      } else {
-        c.boardCrisis = { phase: 'active', step: 0 };
-        if (c.board) c.board.voteScheduled = true;
-        c.news = [{ week: ev.round, type: 'loss', text: '📋 Emergency board meeting: a vote of confidence is underway. Address the chair before play continues.' }, ...(c.news || [])].slice(0, 20);
-      }
-    } else if (!inBoardCrisis && c.finance.boardConfidence > 30) {
-      c.boardWarning = 0;
-    } else if (!inBoardCrisis && c.finance.boardConfidence <= 20) {
-      c.news = [{ week: ev.round, type: 'loss', text: '⚠️ Board confidence is critical — your job is on the line.' }, ...(c.news || [])].slice(0, 20);
-    }
-    }
-
-    c.week = ev.round;
-    if (ev.phase === 'season') {
-      refreshTurningPointForNextFixture(c, league);
-      refreshCrucialFive(c, league, ev.round);
-    }
-    c.lastEvent = myResult
-      ? { type: 'round', round: ev.round, date: ev.date, themedRound: ev.themedRound ?? null, ...myResult }
-      : null;
-
-    if (ev.phase === 'season' && !c.isSacked && c.boardCrisis?.phase !== 'active') {
-      const due = findDueBoardMeetingSlot(c, c.week);
-      if (due) {
-        c.boardMeetingBlocking = openBoardMeetingBlockingFromSlot(due, league.tier);
-      }
-    }
-
-    if (ev.phase === 'season' && myResult && !c.isSacked) {
-      const comms = maybeEnqueueBoardMessage(c, league);
-      if (comms) {
-        c.news = [{ week: ev.round, type: 'board', text: comms }, ...(c.news || [])].slice(0, 20);
-      }
-    }
-
-    if (ev.phase === 'season' && myResult && !c.isSacked) {
-      const cap = effectiveWageCap(c);
-      const wages = currentPlayerWageBill(c);
-      if (cap > 0 && wages > cap) {
-        const overRatio = wages / cap - 1;
-        const confidenceDrain = overRatio > 0.15 ? -2 : -1;
-        ensureCareerBoard(c, findClub(c.clubId), league);
-        applyBoardConfidenceDelta(c, confidenceDrain);
-        if ((c.capBreachedBoardNoteSeason ?? null) !== c.season) {
-          c.capBreachedBoardNoteSeason = c.season;
-          const pct = Math.round(overRatio * 100);
-          c.news = [{
-            week: ev.round, type: 'board',
-            text: `⚖️ Cap breach (${pct}% over): board confidence draining every round until wages are trimmed.`,
-          }, ...(c.news || [])].slice(0, 25);
-        }
-      }
-    }
-
-    const hasMoreRounds = (c.eventQueue || []).some((e) => !e.completed && e.type === 'round' && e.phase === 'season');
-    if (!hasMoreRounds) {
-      const finalists = getFinalsTeams(c.ladder, league.tier);
-      if (finalists.length >= 2) startFinals(c, league);
-      else beginPostSeasonTradePeriod(c, league, c.leagueKey);
-    }
-
-    if (myResult) {
+    // Player match in progress — pause at half time for the coach's call.
+    // Match effects (stats, revenue, board, news) apply at full time via
+    // resolveLiveMatchHalfTime; everything above (AI results, squad ticks)
+    // already happened.
+    if (c.liveMatch) {
+      const lmOpp = findClub(c.liveMatch.meta.oppId);
       c.inMatchDay = true;
       c.currentMatchResult = {
-        ...myResult.result,
-        isHome: myResult.isHome, opp: myResult.opp,
-        myTotal: myResult.myTotal, oppTotal: myResult.oppTotal, won: myResult.won, drew: myResult.drew,
-        isPreseason: false, label: `Round ${ev.round}`, isAFL: league.tier === 1,
+        live: true,
+        isHome: c.liveMatch.meta.isHome,
+        opp: lmOpp,
+        quarters: c.liveMatch.simState.quarters,
+        events: c.liveMatch.simState.events,
+        isPreseason: false,
+        label: `Round ${ev.round}`,
+        isAFL: league.tier === 1,
       };
-      c.lastMatchSummary = buildPostMatchSummary(c, league, club, myResult, ev.round);
+      markTutorialCompleteAfterAdvance(c);
+      setCareer(c);
+      return;
     }
+
+    // Bye round — no player match this week.
+    applyPostRoundBoardAndCalendar(c, league, club, {
+      round: ev.round, phase: ev.phase, date: ev.date, themedRound: ev.themedRound ?? null, turningPoint: null,
+    }, null);
     markTutorialCompleteAfterAdvance(c);
     setCareer(c);
     return;
   }
 
   markTutorialCompleteAfterAdvance(c);
+  setCareer(c);
+}
+
+// =============================================================================
+// Live match — half-time coaching call + deferred full-time effects
+// =============================================================================
+
+const MILESTONE_GAMES = new Set([1, 50, 100, 150, 200, 250, 300]);
+
+/** Player story beats from one match: debuts, game milestones, first goals, big bags. */
+function collectMatchMilestones(c, attribution, round) {
+  const items = [];
+  const boostIds = new Set();
+  c.squad.forEach((p) => {
+    if (!c.lineup.includes(p.id)) return;
+    const name = p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player');
+    const newGames = (p.gamesPlayed || 0) + 1;
+    const att = attribution[p.id] || { goals: 0 };
+    if (newGames === 1) {
+      items.push({ week: round, type: 'win', text: `🌟 ${name} makes his senior debut — a moment the kid will never forget.` });
+      boostIds.add(p.id);
+    } else if (MILESTONE_GAMES.has(newGames)) {
+      items.push({ week: round, type: 'win', text: `🏅 Game ${newGames} for ${name} — the banner gets a workout.` });
+      boostIds.add(p.id);
+    }
+    if ((p.goals || 0) === 0 && (att.goals || 0) > 0) {
+      items.push({ week: round, type: 'win', text: `⚽ First career goal for ${name}! The bench loved that one.` });
+      boostIds.add(p.id);
+    }
+    if ((att.goals || 0) >= 5) {
+      items.push({ week: round, type: 'win', text: `🎯 ${name} kicks ${att.goals} — a bag to remember.` });
+      boostIds.add(p.id);
+    }
+  });
+  return { items, boostIds };
+}
+
+/**
+ * Everything that needs the final player-match result: stats, injuries, votes,
+ * revenue, board confidence, fan mood, news and rivalry tracking. Runs at full
+ * time (resolveLiveMatchHalfTime), not when the calendar advances.
+ */
+function applyPlayerMatchEffects(c, league, meta, myResult) {
+  const { result, won, drew, isHome } = myResult;
+  const cfg = getDifficultyConfig(c.difficulty);
+
+  const attribution = result.goalAttribution || {};
+  const votesById = {};
+  (result.votes || []).forEach((v) => { votesById[v.playerId] = v.votes; });
+
+  // Player story beats use pre-match career totals — collect before stats apply.
+  const milestones = collectMatchMilestones(c, attribution, meta.round);
+
+  // Attribute-centred stat multiplier (generation mean ≈ 68): skilled players
+  // rack up more of the ball, so box scores read as earned, not rolled.
+  const attrStatMult = (val) => clamp(1 + ((val ?? 60) - 68) * 0.012, 0.75, 1.35);
+  c.squad = c.squad.map((p) => {
+    if (!c.lineup.includes(p.id)) return p;
+    const fitDrop = rand(8, 18);
+    // Best-on-ground performances carry personal form, even in a loss.
+    const formChange = (won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1)) + (votesById[p.id] || 0);
+    const att = attribution[p.id] || { goals: 0, behinds: 0 };
+    const ballSkill = ((p.attrs?.decision ?? 60) + (p.attrs?.handball ?? 60) + (p.attrs?.endurance ?? 60)) / 3;
+    const dispAdd = Math.round((isMidPreferred(p) ? rand(15, 32) : rand(8, 22)) * attrStatMult(ballSkill));
+    const markAdd = Math.round(rand(2, 7) * attrStatMult(p.attrs?.marking));
+    const tackleAdd = Math.round(rand(1, 5) * attrStatMult(p.attrs?.tackling));
+    const newForm = clamp(p.form + formChange, 30, 100);
+    const formHistory = [...(p.formHistory || []), p.form].slice(-5);
+    const milestoneMorale = milestones.boostIds.has(p.id) ? 3 : 0;
+    return {
+      ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
+      morale: clamp((p.morale ?? 70) + milestoneMorale, cfg.moraleFloor, 100),
+      goals: p.goals + (att.goals || 0), behinds: p.behinds + (att.behinds || 0), disposals: p.disposals + dispAdd,
+      marks: p.marks + markAdd, tackles: p.tackles + tackleAdd, gamesPlayed: p.gamesPlayed + 1,
+    };
+  });
+  if (milestones.items.length > 0) {
+    c.news = [...milestones.items, ...(c.news || [])].slice(0, 22);
+  }
+
+  const intensity = c.training?.intensity ?? 60;
+  const medLevel = c.facilities?.medical?.level ?? 1;
+  const recoveryFocus = c.training?.focus?.recovery ?? 20;
+  const mit = medicalStaffMitigation(c.staff);
+  const baseInjuryProb =
+    0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001 - mit.probReduce;
+  const injuryProb = effectiveInjuryRate(c, clamp(baseInjuryProb, 0.04, 0.28));
+  (result.injuredPlayerIds || []).forEach((pid) => {
+    if (!c.lineup.includes(pid)) return;
+    const baseWeeks = rand(1, 4);
+    const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
+    c.squad = c.squad.map((p) => (p.id === pid ? { ...p, injured: weeks } : p));
+  });
+  const matchInjuryPool = lineupPlayersOrdered(c.squad, c.lineup);
+  if (rng() < injuryProb && matchInjuryPool.length > 0) {
+    const injId = pick(matchInjuryPool).id;
+    const baseWeeks = rand(1, 4);
+    const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
+    c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
+  }
+  (result.reportedPlayerIds || []).forEach((pid) => {
+    if (rng() < 0.35) {
+      const weeks = rand(1, 3);
+      c.squad = c.squad.map((p) => (p.id === pid ? { ...p, suspended: (p.suspended || 0) + weeks } : p));
+      const player = c.squad.find((p) => p.id === pid);
+      if (player) {
+        c.news = [{ week: c.week, type: 'loss', text: `⚖️ ${player.firstName} ${player.lastName} suspended ${weeks} match${weeks > 1 ? 'es' : ''} at the tribunal` }, ...(c.news || [])].slice(0, 20);
+      }
+    }
+  });
+
+  c.brownlow = c.brownlow || {};
+  (result.votes || []).forEach((v) => {
+    c.brownlow[v.playerId] = (c.brownlow[v.playerId] || 0) + v.votes;
+  });
+
+  // Per-match revenue: gate (home only) + broadcast/TV (every match) +
+  // sponsor activation (every match). This is the club's live, event-driven
+  // income — earned each time it plays, not smoothed across the calendar.
+  const rev = matchDayRevenue(c, { isHome, leagueTier: league.tier });
+  c.finance.cash += rev.total;
+  c.lastMatchRevenue = {
+    ...rev,
+    round: meta.round,
+    opp: myResult.opp?.short || null,
+  };
+  if (Array.isArray(c.weeklyHistory) && c.weeklyHistory.length > 0) {
+    const last = c.weeklyHistory[c.weeklyHistory.length - 1];
+    c.weeklyHistory[c.weeklyHistory.length - 1] = {
+      ...last,
+      profit: (last.profit ?? 0) + rev.total,
+      cash: c.finance.cash,
+      matchRevenue: rev.total,
+      ticketRev: rev.gate,
+      attendance: rev.attendance,
+    };
+  }
+  const bits = [];
+  if (rev.gate) bits.push(`gate ${fmtK(rev.gate)}`);
+  if (rev.broadcast) bits.push(`TV ${fmtK(rev.broadcast)}`);
+  if (rev.sponsor) bits.push(`sponsor ${fmtK(rev.sponsor)}`);
+  c.news = [{ week: meta.round, type: 'info',
+    text: `💰 Match-day income +${fmtK(rev.total)}${bits.length ? ` (${bits.join(', ')})` : ''}` },
+  ...(c.news || [])].slice(0, 14);
+
+  const winBump = Math.max(2, Math.abs(cfg.boardLossConfidence) - 1);
+  const lossDrop = cfg.boardLossConfidence;
+  const drawDelta = 0;
+  const prevBoard = c.finance.boardConfidence;
+  applyMatchStreaks(c, won, drew, isHome);
+  const boardDelta = won ? winBump : drew ? drawDelta : lossDrop;
+  c.finance.fanHappiness = clamp(c.finance.fanHappiness + (won ? 3 : drew ? 0 : -2), 10, 100);
+  ensureCareerBoard(c, findClub(c.clubId), league);
+  applyBoardConfidenceDelta(c, boardDelta);
+  c.lastBoardConfidenceDelta = c.finance.boardConfidence - prevBoard;
+  if (won) { dynastyRecordHomeAwayWin(c); recordCareerWin(c); }
+  const rdBase = `Rd ${meta.round}: ${isHome ? 'vs' : '@'} ${myResult.opp?.short} ${myResult.myTotal}–${myResult.oppTotal} (${won ? 'W' : drew ? 'D' : 'L'})`;
+  const rdFlavor = won ? pick(ROUND_REPORT_WIN_CLOSERS) : drew ? pick(ROUND_REPORT_DRAW_CLOSERS) : pick(ROUND_REPORT_LOSS_CLOSERS);
+  c.news = [{ week: meta.round, type: won ? 'win' : drew ? 'draw' : 'loss',
+    text: `${rdBase} ${rdFlavor}` },
+  ...(c.news || [])].slice(0, 12);
+
+  if (c.journalist) {
+    c.journalist = { ...c.journalist, satisfaction: clamp((c.journalist.satisfaction ?? 50) + (won ? 2 : drew ? 0 : -3), 0, 100) };
+  }
+
+  c.committee = bumpCommitteeMood(c.committee, 'President', won ? 3 : drew ? 0 : -2);
+  if (won) {
+    const presMsg = committeeMessage(c, 'President', 'win');
+    if (presMsg) c.news = [{ week: meta.round, ...presMsg }, ...(c.news || [])].slice(0, 20);
+  }
+
+  if (isHome) {
+    const fundraiser = postMatchFundraiser(c, league.tier, true);
+    if (fundraiser) {
+      c.finance.cash += fundraiser.income;
+      c.news = [{ week: meta.round, ...fundraiser.news }, ...(c.news || [])].slice(0, 20);
+      if (fundraiser.moralePlayerId) {
+        c.squad = c.squad.map((p) => (p.id === fundraiser.moralePlayerId
+          ? { ...p, morale: clamp((p.morale ?? 70) + fundraiser.moraleDelta, cfg.moraleFloor, 100) } : p));
+      }
+    }
+  }
+
+  const oppId = myResult.opp?.id;
+  if (oppId) {
+    const wasBogey = c.bogeyTeamId === oppId;
+    const prevStreak = c.headToHead?.[oppId]?.streak ?? 0;
+    const diff = myResult.myTotal - myResult.oppTotal;
+    const lbl = `${won ? 'W' : drew ? 'D' : 'L'} ${Math.abs(diff)}pt`;
+    recordHeadToHead(c, oppId, won, drew, diff, lbl);
+    celebrateBogeyBreakIfNeeded(c, oppId, won, wasBogey, prevStreak, findClub);
+  }
+  const hg = isHome ? (result.homeGoals ?? 0) : (result.awayGoals ?? 0);
+  const hb = isHome ? (result.homeBehinds ?? 0) : (result.awayBehinds ?? 0);
+  const ag = isHome ? (result.awayGoals ?? 0) : (result.homeGoals ?? 0);
+  const ab = isHome ? (result.awayBehinds ?? 0) : (result.homeBehinds ?? 0);
+  pushTeamStatsFromResult(c, hg, hb, ag, ab, won, drew);
+
+  if (meta.turningPoint === 'must_win') {
+    ensureCareerBoard(c, findClub(c.clubId), league);
+    applyBoardConfidenceDelta(c, won ? 5 : drew ? 0 : -8);
+  } else if (meta.turningPoint === 'undefeated_run') {
+    if (!won && !drew) {
+      c.squad = c.squad.map((p) => ({ ...p, morale: clamp((p.morale ?? 70) - 2, cfg.moraleFloor, 100) }));
+    }
+  } else if (meta.turningPoint === 'bogey_buster' && won) {
+    bumpClubCulture(c, 2);
+  }
+
+  // Streak-driven squad morale: win/lose 3+ in a row creates momentum
+  if (meta.phase === 'season') {
+    const streak = c.winStreak ?? 0;
+    const margin = Math.abs(myResult.myTotal - myResult.oppTotal);
+    let moraleDelta = 0;
+    if (streak >= 3) moraleDelta += 1;
+    else if (streak <= -3) moraleDelta -= 1;
+    if (won && margin >= 40) moraleDelta += 1;
+    else if (!won && !drew && margin >= 40) moraleDelta -= 1;
+    if (moraleDelta !== 0) {
+      c.squad = c.squad.map((p) =>
+        c.lineup.includes(p.id)
+          ? { ...p, morale: clamp((p.morale ?? 70) + moraleDelta, cfg.moraleFloor, 100) }
+          : p
+      );
+    }
+  }
+
+  if (isHome) {
+    const weather = ensureWeatherForWeek(c, meta.round);
+    c.groundCondition = applyGroundDegradation(c.groundCondition ?? 85, weather, c.facilities?.stadium?.level ?? 1);
+  }
+}
+
+/**
+ * Round bookkeeping shared by player-match full time and bye weeks:
+ * board pressure / sack checks, week counter, turning-point refresh,
+ * board meetings, cap-breach drain and the season → finals handover.
+ */
+function applyPostRoundBoardAndCalendar(c, league, club, meta, myResult) {
+  const cfg = getDifficultyConfig(c.difficulty);
+  const inBoardCrisis = c.boardCrisis?.phase === 'active';
+  const sackPatience = cfg.boardPatienceSeasons === 1 ? 1 : 2;
+  const sandbox = c.gameMode === 'sandbox';
+  if (sandbox) {
+    c.boardWarning = 0;
+  } else {
+  if (!inBoardCrisis) {
+    if (c.finance.boardConfidence <= 0) {
+      c.boardWarning = sackPatience;
+    } else if (c.finance.boardConfidence <= 10) {
+      c.boardWarning = (c.boardWarning || 0) + 1;
+    }
+  }
+  if (!c.isSacked && !inBoardCrisis) {
+    const prepLine = maybeEnqueueBoardCrisisPrep(c, league, sackPatience, c.boardWarning || 0);
+    if (prepLine) {
+      c.news = [{ week: meta.round, type: 'board', text: prepLine }, ...(c.news || [])].slice(0, 20);
+    }
+  }
+  if ((c.boardWarning || 0) >= sackPatience && !c.isSacked && !inBoardCrisis) {
+    const instantSack = c.finance.boardConfidence <= 0 || (c.boardWarning || 0) >= 99;
+    if (instantSack) {
+      triggerSackState(c, club.name, meta.round);
+    } else {
+      c.boardCrisis = { phase: 'active', step: 0 };
+      if (c.board) c.board.voteScheduled = true;
+      c.news = [{ week: meta.round, type: 'loss', text: '📋 Emergency board meeting: a vote of confidence is underway. Address the chair before play continues.' }, ...(c.news || [])].slice(0, 20);
+    }
+  } else if (!inBoardCrisis && c.finance.boardConfidence > 30) {
+    c.boardWarning = 0;
+  } else if (!inBoardCrisis && c.finance.boardConfidence <= 20) {
+    c.news = [{ week: meta.round, type: 'loss', text: '⚠️ Board confidence is critical — your job is on the line.' }, ...(c.news || [])].slice(0, 20);
+  }
+  }
+
+  c.week = meta.round;
+  if (meta.phase === 'season') {
+    refreshTurningPointForNextFixture(c, league);
+    refreshCrucialFive(c, league, meta.round);
+  }
+  c.lastEvent = myResult
+    ? { type: 'round', round: meta.round, date: meta.date, themedRound: meta.themedRound ?? null, ...myResult }
+    : null;
+
+  if (meta.phase === 'season' && !c.isSacked && c.boardCrisis?.phase !== 'active') {
+    const due = findDueBoardMeetingSlot(c, c.week);
+    if (due) {
+      c.boardMeetingBlocking = openBoardMeetingBlockingFromSlot(due, league.tier);
+    }
+  }
+
+  if (meta.phase === 'season' && myResult && !c.isSacked) {
+    const comms = maybeEnqueueBoardMessage(c, league);
+    if (comms) {
+      c.news = [{ week: meta.round, type: 'board', text: comms }, ...(c.news || [])].slice(0, 20);
+    }
+  }
+
+  if (meta.phase === 'season' && myResult && !c.isSacked) {
+    const cap = effectiveWageCap(c);
+    const wages = currentPlayerWageBill(c);
+    if (cap > 0 && wages > cap) {
+      const overRatio = wages / cap - 1;
+      const confidenceDrain = overRatio > 0.15 ? -2 : -1;
+      ensureCareerBoard(c, findClub(c.clubId), league);
+      applyBoardConfidenceDelta(c, confidenceDrain);
+      if ((c.capBreachedBoardNoteSeason ?? null) !== c.season) {
+        c.capBreachedBoardNoteSeason = c.season;
+        const pct = Math.round(overRatio * 100);
+        c.news = [{
+          week: meta.round, type: 'board',
+          text: `⚖️ Cap breach (${pct}% over): board confidence draining every round until wages are trimmed.`,
+        }, ...(c.news || [])].slice(0, 25);
+      }
+    }
+  }
+
+  const hasMoreRounds = (c.eventQueue || []).some((e) => !e.completed && e.type === 'round' && e.phase === 'season');
+  if (!hasMoreRounds) {
+    const finalists = getFinalsTeams(c.ladder, league.tier);
+    if (finalists.length >= 2) startFinals(c, league);
+    else beginPostSeasonTradePeriod(c, league, c.leagueKey);
+  }
+}
+
+/**
+ * The coach's half-time call: applies the chosen adjustment to Q3 + Q4,
+ * finishes the live sim, and runs every full-time effect that used to fire
+ * when the calendar advanced. Mirrors advanceCareerNextEvent's clone+set flow.
+ */
+export function resolveLiveMatchHalfTime({ career, league, club, callId, setCareer }) {
+  const c = JSON.parse(JSON.stringify(career));
+  const lm = c.liveMatch;
+  if (!lm?.simState || !lm?.meta) {
+    setCareer(c);
+    return;
+  }
+
+  const call = getCoachingCall(callId);
+  const mods = resolveCoachingCall(callId);
+  simMatchQuarter(lm.simState, mods);
+  simMatchQuarter(lm.simState, mods);
+  const result = finishMatchSim(lm.simState);
+
+  const meta = lm.meta;
+  const isHome = meta.isHome;
+  const opp = findClub(meta.oppId);
+  const myTotal = isHome ? result.homeTotal : result.awayTotal;
+  const oppTotal = isHome ? result.awayTotal : result.homeTotal;
+  const won = myTotal > oppTotal;
+  const drew = myTotal === oppTotal;
+  c.pendingPlayerMatchResult = {
+    home: meta.home,
+    away: meta.away,
+    homeTotal: result.homeTotal,
+    awayTotal: result.awayTotal,
+    round: meta.round,
+  };
+  const myResult = { isHome, opp, result, myTotal, oppTotal, won, drew };
+
+  applyPlayerMatchEffects(c, league, meta, myResult);
+  applyPostRoundBoardAndCalendar(c, league, club, meta, myResult);
+
+  c.liveMatch = null;
+  c.inMatchDay = true;
+  c.currentMatchResult = {
+    ...result,
+    isHome, opp, myTotal, oppTotal, won, drew,
+    isPreseason: false,
+    label: `Round ${meta.round}`,
+    isAFL: league.tier === 1,
+    coachCall: { id: call.id, icon: call.icon, label: call.label, note: mods.note },
+  };
+  c.lastMatchSummary = buildPostMatchSummary(c, league, club, myResult, meta.round);
   setCareer(c);
 }

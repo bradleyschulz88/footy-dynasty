@@ -3,6 +3,47 @@ import { DollarSign, AlertCircle } from "lucide-react";
 import { fmtK } from "../lib/format.js";
 import { css } from "../components/primitives.jsx";
 
+const CONFETTI_COLORS = ["#FFD700", "#4AE89A", "#4ADBE8", "#E84A6F", "#A78BFA", "#FF9A3C"];
+
+/** Pure-CSS celebration confetti — used for premierships and promotions. */
+function Confetti({ count = 28 }) {
+  const pieces = Array.from({ length: count }, (_, i) => ({
+    left: (i * 37) % 100,
+    delay: ((i * 13) % 30) / 10,
+    duration: 3 + ((i * 7) % 25) / 10,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    size: 6 + (i % 3) * 3,
+    spin: i % 2 === 0 ? 1 : -1,
+  }));
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+      <style>{`
+        @keyframes fdConfettiFall {
+          0%   { transform: translateY(-40px) rotate(0deg); opacity: 1; }
+          85%  { opacity: 1; }
+          100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+      `}</style>
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: `${p.left}%`,
+            width: p.size,
+            height: p.size * 0.45,
+            background: p.color,
+            borderRadius: 2,
+            animation: `fdConfettiFall ${p.duration}s linear ${p.delay}s infinite`,
+            transform: `rotate(${p.spin * 25}deg)`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function EosFinTile({ label, value, accent = "var(--A-accent)", sub }) {
   return (
     <div className="rounded-xl p-3" style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}>
@@ -71,9 +112,12 @@ export default function SeasonSummaryScreen({
     </div>
   );
 
+  const celebrate = summary.champion || summary.promoted;
+
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg,#0F172A 0%,#1E293B 100%)" }}>
-      <div className="text-center px-6 py-10" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+    <div className="min-h-screen flex flex-col relative" style={{ background: "linear-gradient(160deg,#0F172A 0%,#1E293B 100%)" }}>
+      {celebrate && <Confetti />}
+      <div className="text-center px-6 py-10 relative" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
         <div className="text-5xl mb-4">{outcomeIcon}</div>
         <div className="text-[11px] font-bold uppercase tracking-[0.3em] mb-2" style={{ color: tierColor }}>
           {summary.leagueName} · Season {summary.season}
@@ -152,6 +196,16 @@ export default function SeasonSummaryScreen({
           sub={summary.brownlow?.position}
         />
 
+        {summary.risingStar && (
+          <AwardCard
+            icon="🌟"
+            label="Rising Star"
+            name={summary.risingStar.name}
+            stat={`${summary.risingStar.overall} OVR · age ${summary.risingStar.age}`}
+            sub={`${summary.risingStar.games} games`}
+          />
+        )}
+
         {retiredThisSeason && retiredThisSeason.length > 0 && (
           <div
             className="rounded-2xl p-4 mt-2"
@@ -174,21 +228,37 @@ export default function SeasonSummaryScreen({
           </div>
         )}
 
-        {(summary.promoted || summary.relegated) && (
+        {summary.promoted && (
+          <div
+            className="rounded-2xl p-5 mt-2 text-center"
+            style={{
+              background: "linear-gradient(135deg,rgba(74,232,154,0.18),rgba(74,219,232,0.10))",
+              border: "2px solid rgba(74,232,154,0.45)",
+            }}
+          >
+            <div className="text-4xl mb-2">🎉</div>
+            <div className="font-display text-3xl text-[#4AE89A]">PROMOTED!</div>
+            <div className="text-sm text-slate-300 mt-1">
+              {club.name} are going up — the whole town will talk about this one for years.
+            </div>
+            <div className="text-xs text-slate-400 mt-2">
+              A new challenge awaits in the division above. Bigger crowds, bigger budgets, bigger stage.
+            </div>
+          </div>
+        )}
+        {summary.relegated && (
           <div
             className="rounded-2xl p-4 mt-2"
             style={{
-              background: summary.promoted ? "rgba(74,232,154,0.1)" : "rgba(232,74,111,0.1)",
-              border: `1px solid ${summary.promoted ? "rgba(74,232,154,0.3)" : "rgba(232,74,111,0.3)"}`,
+              background: "rgba(232,74,111,0.1)",
+              border: "1px solid rgba(232,74,111,0.3)",
             }}
           >
-            <div className="font-bold text-base" style={{ color: summary.promoted ? "#4AE89A" : "#E84A6F" }}>
-              {summary.promoted ? "⬆️ Promoted!" : "⬇️ Relegated"}
+            <div className="font-bold text-base" style={{ color: "#E84A6F" }}>
+              ⬇️ Relegated
             </div>
             <div className="text-sm text-slate-400 mt-1">
-              {summary.promoted
-                ? "A new challenge awaits in the division above."
-                : "Time to rebuild and fight back up."}
+              Time to rebuild and fight back up.
             </div>
           </div>
         )}

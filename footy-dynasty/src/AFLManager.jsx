@@ -103,7 +103,7 @@ import {
 } from './lib/board.js';
 import { getClubGround } from './data/grounds.js';
 import { buildMatchDayExitPatch } from './lib/matchDayFinalize.js';
-import { advanceCareerNextEvent, triggerSackState, fastForwardFinals } from './lib/careerAdvance.js';
+import { advanceCareerNextEvent, resolveLiveMatchHalfTime, triggerSackState, fastForwardFinals } from './lib/careerAdvance.js';
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
 
@@ -227,6 +227,49 @@ function AFLManagerInner() {
 
   const advanceToNextEvent = requestAdvance;
 
+  // "Sim to next key moment" — batch through uneventful training days and stop
+  // at the first thing that needs the coach: a match, key event, blocker, or
+  // phase change. Respects the same gates as a normal advance.
+  const quickAdvance = useCallback(() => {
+    const { career: start, setCareer: sc, setScreen: ss, setTab: st } = advanceShellRef.current;
+    if (!start?.clubId) return;
+    if (tutorialLocksAdvanceButton(start) || advanceBlockedByCareerNeeds(start)) return;
+    let cur = start;
+    let navScreen = null;
+    for (let i = 0; i < 30; i++) {
+      const nextEv = (cur.eventQueue || []).find((e) => !e.completed);
+      if (!nextEv) {
+        // Post-season phases advance one step at a time through the normal flow.
+        if (i === 0) performAdvance();
+        return;
+      }
+      let result = null;
+      advanceCareerNextEvent({
+        career: cur,
+        league: PYRAMID[cur.leagueKey],
+        club: findClub(cur.clubId),
+        setCareer: (c) => { result = c; },
+        // Training events nudge back to the hub — only a real navigation
+        // (draft room, etc.) should interrupt the batch.
+        setScreen: (s) => { if (s !== 'hub') navScreen = s; },
+        setTab: st,
+      });
+      if (!result) break;
+      cur = result;
+      const stop =
+        navScreen ||
+        cur.inMatchDay || cur.liveMatch || cur.isSacked || cur.gameOver ||
+        cur.showSeasonSummary || cur.boardCrisis?.phase === 'active' ||
+        cur.boardMeetingBlocking || cur.inFinals ||
+        (cur.postSeasonPhase === 'trade_period' && cur.inTradePeriod) ||
+        advanceBlockedByCareerNeeds(cur) ||
+        nextEv.type !== 'training';
+      if (stop) break;
+    }
+    sc(cur);
+    if (navScreen) ss(navScreen);
+  }, [performAdvance]);
+
   const handleAdvanceAgendaClose = useCallback(() => {
     setAdvanceAgendaOpen(false);
     setAdvanceAgendaItems([]);
@@ -254,6 +297,7 @@ function AFLManagerInner() {
   const completeMatchDay = useCallback((autoAdvanceCalendar = false) => {
     const { career: c, setCareer: sc, setScreen: ss, setTab: st } = advanceShellRef.current;
     if (!c?.clubId) return;
+    if (c.liveMatch) return; // half-time pause — coach's call resolves the match first
     const patched = applyCareerPatch(c, buildMatchDayExitPatch);
     const isPreseason = !!c.currentMatchResult?.isPreseason;
     const isFinals = !!c.currentMatchResult?.isFinals;
@@ -881,6 +925,17 @@ function AFLManagerInner() {
           league={league}
           career={career}
           club={club}
+          onCoachCall={(callId) => {
+            const { career: c, setCareer: sc } = advanceShellRef.current;
+            if (!c?.liveMatch) return;
+            resolveLiveMatchHalfTime({
+              career: c,
+              league: PYRAMID[c.leagueKey],
+              club: findClub(c.clubId),
+              callId,
+              setCareer: sc,
+            });
+          }}
           onContinue={() => {
             if (career.lastMatchSummary && !career.currentMatchResult.isPreseason) {
               setShowPostMatch(true);
@@ -1046,6 +1101,7 @@ function AFLManagerInner() {
                   setScreen={onNavScreen}
                   setTab={setTab}
                   onAdvance={advanceToNextEvent}
+                  onQuickAdvance={quickAdvance}
                   updateCareer={updateCareer}
                 />
               )}
