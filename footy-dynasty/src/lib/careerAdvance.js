@@ -27,6 +27,7 @@ import { awayTravelRatingPenalty } from './travelFatigue.js';
 import { generateTradePool } from './defaults.js';
 import { seedNationalDraft, careerHasNationalDraft } from './draftSeed.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
+import { generateOffseasonNotifications } from './notifications.js';
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
 import { ensureSquadsForLeague, tickAiSquads, ageAiSquads, selectAiLineup } from './aiSquads.js';
@@ -869,6 +870,9 @@ function finishSeason(c, league) {
   };
   checkLegacyMilestonesAfterSeason(c, league.tier);
 
+  // Staff tenure builds loyalty — long-serving staff resist poaching/leave events.
+  c.staff = (c.staff || []).map((s) => ({ ...s, loyalty: (s.loyalty ?? 0) + 1 }));
+
   // Unsolicited job approach — only after an undefeated season, and only from a
   // higher tier. Browsing/applying remains available separately.
   const dominantApproach = buildDominantSeasonApproach(c, {
@@ -888,12 +892,20 @@ function finishSeason(c, league) {
       c.inbox.unshift({
         id: approachId,
         kind: 'job_offer',
-        blocking: false,
+        blocking: true,
         resolved: false,
         title: 'Club approach',
-        detail: `${dominantApproach.clubName} want to talk after your unbeaten ${c.season} season.`,
+        detail: `${dominantApproach.clubName} (${dominantApproach.leagueShort}) want to talk after your unbeaten ${c.season} season. Wage ${fmtK(dominantApproach.wage)}/yr — "${dominantApproach.chairmanLine}"`,
+        payload: { offer: dominantApproach },
+        actions: [{ id: 'accept', label: 'Take the job' }, { id: 'decline', label: 'Stay loyal' }],
       });
     }
+  }
+
+  // Off-season notifications (staff moves, volunteer offers, transfer requests).
+  if (!Array.isArray(c.inbox)) c.inbox = [];
+  for (const note of generateOffseasonNotifications(c, league.tier)) {
+    if (!c.inbox.some((m) => m.id === note.id)) c.inbox.unshift(note);
   }
 
   c.groundCondition = recoverGroundPreseason(c.groundCondition ?? 85);

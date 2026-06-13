@@ -761,6 +761,82 @@ function AFLManagerInner() {
   // ============== UPDATER ==============
   const updateCareer = (patchOrFn) => setCareer((c) => applyCareerPatch(c, patchOrFn));
 
+  // Dispatch an action from the notification bell (staff/player/club approaches).
+  function handleNotificationAction(item, actionId) {
+    if (!item) return;
+    const dropItem = (c) => (c.inbox || []).filter((m) => m.id !== item.id);
+
+    // Club approach — accept jumps to the new club; decline just clears it.
+    if (item.kind === "job_offer") {
+      if (actionId === "accept") {
+        const offer = item.payload?.offer || career.jobApproach;
+        if (offer) { acceptNewJob(offer); return; }
+      }
+      updateCareer((c) => ({
+        inbox: dropItem(c),
+        jobApproach: null,
+        news: [{ week: c.week ?? 0, type: "info", text: actionId === "accept" ? "✅ Approach accepted." : "🤝 You turned down the approach and stayed put." }, ...(c.news || [])].slice(0, 20),
+      }));
+      return;
+    }
+
+    if (item.kind === "player_transfer_request") {
+      const pid = item.payload?.playerId;
+      updateCareer((c) => {
+        const squad = (c.squad || []).map((p) => {
+          if (p.id !== pid) return p;
+          return actionId === "approve"
+            ? { ...p, transferListed: true }
+            : { ...p, morale: Math.max(0, Math.min(100, (p.morale ?? 70) - 4)) };
+        });
+        return {
+          squad,
+          inbox: dropItem(c),
+          news: [{ week: c.week ?? 0, type: "info", text: actionId === "approve"
+            ? `📋 ${item.payload?.playerName} added to the transfer list.`
+            : `🗣️ You talked ${item.payload?.playerName} round — for now.` }, ...(c.news || [])].slice(0, 20),
+        };
+      });
+      return;
+    }
+
+    if (item.kind === "staff_leave" || item.kind === "staff_poach") {
+      const sid = item.payload?.staffId;
+      updateCareer((c) => {
+        const keep = actionId === "renew" || actionId === "match";
+        const staff = keep
+          ? (c.staff || []).map((s) => (s.id === sid ? { ...s, contract: (s.contract ?? 1) + (item.kind === "staff_poach" ? 1 : 2), loyalty: (s.loyalty ?? 0) + 1 } : s))
+          : (c.staff || []).filter((s) => s.id !== sid);
+        return {
+          staff,
+          inbox: dropItem(c),
+          news: [{ week: c.week ?? 0, type: "info", text: keep
+            ? `🤝 ${item.payload?.staffName} stays at the club.`
+            : `👋 ${item.payload?.staffName} (${item.payload?.role}) has left the club.` }, ...(c.news || [])].slice(0, 20),
+        };
+      });
+      return;
+    }
+
+    if (item.kind === "volunteer_join") {
+      updateCareer((c) => {
+        const accept = actionId === "accept";
+        const staff = accept && item.payload?.staff ? [...(c.staff || []), item.payload.staff] : (c.staff || []);
+        return {
+          staff,
+          inbox: dropItem(c),
+          news: accept
+            ? [{ week: c.week ?? 0, type: "info", text: `🙌 ${item.payload?.staff?.name} joins as ${item.payload?.staff?.role}.` }, ...(c.news || [])].slice(0, 20)
+            : (c.news || []),
+        };
+      });
+      return;
+    }
+
+    // Unknown kind — just clear it.
+    updateCareer((c) => ({ inbox: dropItem(c) }));
+  }
+
   const tutorialActive = career && !career.tutorialComplete;
   const visibleAdvanceAgendaCount =
     !tutorialLocksAdvanceButton(career) && !advanceBlockedByCareerNeeds(career)
@@ -1058,11 +1134,12 @@ function AFLManagerInner() {
             tutorialLocksAdvanceButton(career)
               ? undefined
               : advanceBlockedByCareerNeeds(career)
-                ? "Finish Club → Board inbox replies, resolve trade-period offers (Recruit → Trades), or clear other blocking inbox items before advancing."
+                ? "Respond to pending notifications (the bell), finish Club → Board inbox replies, or resolve trade-period offers (Recruit → Trades) before advancing."
                 : undefined
           }
           advanceAgendaCount={visibleAdvanceAgendaCount}
           tutorialSpotlightAdvance={!!tutorialActive && (career.tutorialStep ?? 0) === TUTORIAL_STEPS.length - 1}
+          onNotificationAction={handleNotificationAction}
         />
         <InboxBanner
           career={career}

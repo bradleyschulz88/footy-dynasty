@@ -8,6 +8,7 @@ import { findClub } from "../../data/pyramid.js";
 import { fmtK } from "../../lib/format.js";
 import { css } from "../primitives.jsx";
 import SeasonStrip from "../SeasonStrip.jsx";
+import { NotificationBell } from "./NotificationBell.jsx";
 
 const tickEase = [0.22, 1, 0.36, 1];
 
@@ -28,6 +29,7 @@ export function TopBar({
   advanceDisabledReason,
   advanceAgendaCount = 0,
   tutorialSpotlightAdvance,
+  onNotificationAction,
 }) {
   const ctx = getAdvanceContext(career, league);
   const timeTick = advanceTimeFingerprint(career);
@@ -131,8 +133,9 @@ export function TopBar({
           })}
         </div>
 
-        {/* Right: next event + advance button */}
+        {/* Right: notifications + next event + advance button */}
         <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+          <NotificationBell career={career} onAction={onNotificationAction} />
           <div className="text-right hidden lg:block max-w-[min(280px,40vw)] overflow-hidden">
             <div className="text-[11px] font-mono font-bold uppercase tracking-widest text-atext-mute">Next</div>
             <motion.div
