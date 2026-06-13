@@ -421,6 +421,14 @@ export function migrate(save) {
     if (s.rivalClubId === undefined) s.rivalClubId = null;
   }
 
+  if (v < 30) {
+    s.saveVersion = 30;
+    // Consecutive Division-1 flags drive the tier-3 → tier-2 promotion playoff.
+    if (s.tier3Div1Titles == null) s.tier3Div1Titles = 0;
+    if (s.lastPromotionPlayoff === undefined) s.lastPromotionPlayoff = null;
+    if (!Array.isArray(s.inbox)) s.inbox = [];
+  }
+
   return s;
 }
 

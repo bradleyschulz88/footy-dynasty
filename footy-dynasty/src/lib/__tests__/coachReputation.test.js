@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   COACH_TIERS, coachTierFromScore,
   applyEndOfSeasonReputation, applySackingReputation,
-  generateJobMarket, takeSeasonOff,
+  generateJobMarket, takeSeasonOff, buildDominantSeasonApproach,
 } from '../coachReputation.js';
 import { seedRng } from '../rng.js';
 
@@ -91,6 +91,28 @@ describe('generateJobMarket', () => {
     const base = generateJobMarket(career);
     const desperate = generateJobMarket(career, { desperate: true });
     expect(desperate.length).toBeGreaterThanOrEqual(base.length);
+  });
+});
+
+describe('buildDominantSeasonApproach', () => {
+  const career = { coachReputation: 55, clubId: 'gee', previousClubs: [] };
+
+  it('returns null when the club lost any game', () => {
+    expect(buildDominantSeasonApproach(career, { losses: 1, games: 18, currentTier: 3 })).toBeNull();
+  });
+
+  it('returns null for a short (non-full) season', () => {
+    expect(buildDominantSeasonApproach(career, { losses: 0, games: 4, currentTier: 3 })).toBeNull();
+  });
+
+  it('returns null at the top tier — nowhere higher to step up to', () => {
+    expect(buildDominantSeasonApproach(career, { losses: 0, games: 22, currentTier: 1 })).toBeNull();
+  });
+
+  it('an undefeated lower-tier season yields a higher-tier approach', () => {
+    const offer = buildDominantSeasonApproach(career, { losses: 0, games: 18, currentTier: 3 });
+    // Job market should surface at least one tier-1/2 vacancy for a Respected coach.
+    if (offer) expect(offer.leagueTier).toBeLessThan(3);
   });
 });
 

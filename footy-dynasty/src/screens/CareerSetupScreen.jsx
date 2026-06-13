@@ -21,7 +21,7 @@ import { getPlayerPrefs, setPlayerPrefs } from "../lib/playerPrefs.js";
 import { DIFFICULTY_IDS, getDifficultyConfig, getDifficultyProfile } from "../lib/difficulty.js";
 import { generateCommittee, generateJournalist, rollPlayerTrait } from "../lib/community.js";
 import { makeStartingFinance, scaledSquadToFitCap } from "../lib/finance/engine.js";
-import { buildInitialSponsorOffers } from "../lib/finance/sponsors.js";
+import { buildStartingSponsors } from "../lib/finance/sponsors.js";
 import { getClubGround } from "../data/grounds.js";
 import { assignDefaultCaptains, defaultClubCulture } from "../lib/gameDepth.js";
 import {
@@ -214,7 +214,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
       const facilities = DEFAULT_FACILITIES();
       const clubGround = getClubGround(club, facilities.stadium.level, league.tier);
       const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
-      const startOffers = buildInitialSponsorOffers({ leagueTier: league.tier, difficulty, clubId, ladder: ladder0, coachReputation: 30 });
+      const startingSponsors = buildStartingSponsors(league.tier);
       const newCareer = {
         managerName: managerName || "Coach",
         clubId,
@@ -234,7 +234,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
         training: DEFAULT_TRAINING(),
         facilities,
         finance: tunedFinance,
-        sponsors: [],
+        sponsors: startingSponsors,
         staff: generateStaff(league.tier),
         staffTasks: DEFAULT_STAFF_TASKS(),
         kits: defaultKits(club.colors),
@@ -245,7 +245,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
         youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
         news: [
           { week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` },
-          { week: 0, type: "info", text: "🤝 No sponsors locked in yet — visit Club → Sponsors to choose from incoming offers." },
+          { week: 0, type: "info", text: "🤝 One local sponsor is on the books. Win games and build the club's reputation to attract bigger backers." },
           ...(gameMode === 'sandbox'
             ? [{ week: 0, type: 'info', text: '🧪 Sandbox: boosted treasury & board patience — sacks and confidence votes are disabled.' }]
             : []),
@@ -298,6 +298,8 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
         homeWinStreak: 0,
         coachReputation: 30,
         coachTier: 'Journeyman',
+        tier3Div1Titles: 0,
+        lastPromotionPlayoff: null,
         coachStats: {
           totalWins: 0, totalLosses: 0, totalDraws: 0,
           premierships: 0, promotions: 0, relegations: 0,
@@ -320,7 +322,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
         cashCrisisLevel: 0,
         bankLoan: null,
         sponsorRenewalProposals: [],
-        sponsorOffers: startOffers,
+        sponsorOffers: [],
         expiredSponsorsLastSeason: [],
         pendingRenewals: [],
         renewalsClosed: false,

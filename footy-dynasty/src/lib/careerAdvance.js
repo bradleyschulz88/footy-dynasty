@@ -27,6 +27,7 @@ import { awayTravelRatingPenalty } from './travelFatigue.js';
 import { generateTradePool } from './defaults.js';
 import { seedNationalDraft, careerHasNationalDraft } from './draftSeed.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
+import { generateOffseasonNotifications } from './notifications.js';
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
 import { ensureSquadsForLeague, tickAiSquads, ageAiSquads, selectAiLineup } from './aiSquads.js';
@@ -48,8 +49,12 @@ import {
 } from './community.js';
 import {
   coachTierFromScore, applyEndOfSeasonReputation,
-  applySackingReputation,
+  applySackingReputation, buildDominantSeasonApproach,
 } from './coachReputation.js';
+import {
+  isPromotionPlayoffEligible, clubBacksPromotion, runPromotionPlayoff,
+  TIER3_PROMOTION_TITLE_REQ,
+} from './promotionPlayoff.js';
 import {
   recomputeAnnualIncome, tickWeeklyCashflow,
   cashCrisisLevel, applyPrizeMoney, applyPromotionRipple,
@@ -669,27 +674,53 @@ function finishSeason(c, league) {
     c.localDivision = div;
     if (champion) {
       if (div > 1) {
+        // Won a lower local division — climb one division within tier 3.
         promoted = true;
         c.localDivision = div - 1;
+        c.tier3Div1Titles = 0; // arriving fresh in the higher division
         const clubs = getCompetitionClubs(c.leagueKey, region, c.localDivision);
         c.fixtures = generateFixtures(clubs);
         c.ladder = blankLadder(clubs);
       } else {
-        promoted = true;
-        const newLeagueKey = pickPromotionLeague(league);
-        if (newLeagueKey) {
-          c.leagueKey = newLeagueKey;
-          c.localDivision = null;
-          const clubs = getCompetitionClubs(newLeagueKey, region, null);
-          c.fixtures = generateFixtures(clubs);
-          c.ladder = blankLadder(clubs);
+        // Division 1 flag: NO automatic jump to the state league. A community club
+        // only earns a tier-2 spot through sustained dominance — four straight
+        // Division 1 flags unlock a promotion playoff the club can enter.
+        c.tier3Div1Titles = (c.tier3Div1Titles || 0) + 1;
+        const titles = c.tier3Div1Titles;
+        let promotedViaPlayoff = false;
+        if (isPromotionPlayoffEligible(c) && clubBacksPromotion(c)) {
+          const playoff = runPromotionPlayoff(c);
+          c.lastPromotionPlayoff = playoff;
+          c.news = [{ week: 0, type: playoff.won ? 'win' : 'info', text: playoff.summary }, ...(c.news || [])].slice(0, 25);
+          if (playoff.won) {
+            const newLeagueKey = pickPromotionLeague(league);
+            if (newLeagueKey) {
+              promoted = true;
+              promotedViaPlayoff = true;
+              c.leagueKey = newLeagueKey;
+              c.localDivision = null;
+              c.tier3Div1Titles = 0;
+              const clubs = getCompetitionClubs(newLeagueKey, region, null);
+              c.fixtures = generateFixtures(clubs);
+              c.ladder = blankLadder(clubs);
+            }
+          }
+        } else if (isPromotionPlayoffEligible(c) && !clubBacksPromotion(c)) {
+          c.news = [{ week: 0, type: 'info', text: `🏆 ${titles} straight Division 1 flags — but the board won't back a state-league push while confidence is low. Keep them on side.` }, ...(c.news || [])].slice(0, 25);
         } else {
-          const clubs = getCompetitionClubs(c.leagueKey, region, div);
+          const left = TIER3_PROMOTION_TITLE_REQ - titles;
+          c.news = [{ week: 0, type: 'win', text: `🏆 Division 1 Premiers (${titles} in a row). ${left > 0 ? `${left} more straight flag${left > 1 ? 's' : ''} unlocks a tier-2 promotion playoff.` : ''}` }, ...(c.news || [])].slice(0, 25);
+        }
+        if (!promotedViaPlayoff) {
+          // Stay in Division 1 and defend the flag.
+          const clubs = getCompetitionClubs(c.leagueKey, region, 1);
           c.fixtures = generateFixtures(clubs);
           c.ladder = blankLadder(clubs);
         }
       }
     } else {
+      // Streak of Division 1 flags is broken by any non-championship season there.
+      if (div === 1) c.tier3Div1Titles = 0;
       const clubs = getCompetitionClubs(c.leagueKey, region, div);
       c.fixtures = generateFixtures(clubs);
       c.ladder = blankLadder(clubs);
@@ -838,6 +869,44 @@ function finishSeason(c, league) {
     seasonsManaged: (c.coachStats?.seasonsManaged || 1) + 1,
   };
   checkLegacyMilestonesAfterSeason(c, league.tier);
+
+  // Staff tenure builds loyalty — long-serving staff resist poaching/leave events.
+  c.staff = (c.staff || []).map((s) => ({ ...s, loyalty: (s.loyalty ?? 0) + 1 }));
+
+  // Unsolicited job approach — only after an undefeated season, and only from a
+  // higher tier. Browsing/applying remains available separately.
+  const dominantApproach = buildDominantSeasonApproach(c, {
+    losses: myRow.L || 0,
+    games,
+    currentTier: league.tier,
+  });
+  c.jobApproach = dominantApproach || null;
+  if (dominantApproach) {
+    c.news = [{
+      week: 0, type: 'info',
+      text: `📞 ${dominantApproach.clubName} (${dominantApproach.leagueShort}) have made an approach after your undefeated season.`,
+    }, ...(c.news || [])].slice(0, 25);
+    if (!Array.isArray(c.inbox)) c.inbox = [];
+    const approachId = `approach_${c.season}_${dominantApproach.clubId}`;
+    if (!c.inbox.some((m) => m.id === approachId)) {
+      c.inbox.unshift({
+        id: approachId,
+        kind: 'job_offer',
+        blocking: true,
+        resolved: false,
+        title: 'Club approach',
+        detail: `${dominantApproach.clubName} (${dominantApproach.leagueShort}) want to talk after your unbeaten ${c.season} season. Wage ${fmtK(dominantApproach.wage)}/yr — "${dominantApproach.chairmanLine}"`,
+        payload: { offer: dominantApproach },
+        actions: [{ id: 'accept', label: 'Take the job' }, { id: 'decline', label: 'Stay loyal' }],
+      });
+    }
+  }
+
+  // Off-season notifications (staff moves, volunteer offers, transfer requests).
+  if (!Array.isArray(c.inbox)) c.inbox = [];
+  for (const note of generateOffseasonNotifications(c, league.tier)) {
+    if (!c.inbox.some((m) => m.id === note.id)) c.inbox.unshift(note);
+  }
 
   c.groundCondition = recoverGroundPreseason(c.groundCondition ?? 85);
   c.weeklyWeather = {};

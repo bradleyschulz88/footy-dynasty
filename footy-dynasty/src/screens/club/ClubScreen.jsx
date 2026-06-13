@@ -37,7 +37,7 @@ import {
   applyMemberConfidenceDelta,
 } from '../../lib/board.js';
 import { getClubGround } from '../../data/grounds.js';
-import { ensureStaffTasks } from '../../lib/staffTasks.js';
+import { ensureStaffTasks, autoAssignStaffTasks } from '../../lib/staffTasks.js';
 import {
   listExpandableHires,
   hireBlueprintStaff,
@@ -1630,27 +1630,46 @@ function StaffTab({ career, updateCareer }) {
         </div>
       </div>
 
+      <div className="flex items-center justify-between mb-2">
+        <div className={`${css.h1} text-base`}>Staff roster <span className="text-atext-mute text-xs font-normal">· avg {avgRating}</span></div>
+        <button
+          type="button"
+          onClick={() => updateCareer({
+            staffTasks: autoAssignStaffTasks(career),
+            news: [{ week: career.week, type: 'info', text: '🧩 Staff roles auto-assigned to your best-rated people.' }, ...(career.news || [])].slice(0, 15),
+          })}
+          className="text-[11px] px-3 py-1.5 rounded-lg border border-aline hover:border-[var(--A-accent)] hover:text-aaccent transition whitespace-nowrap"
+        >
+          Auto-assign roles
+        </button>
+      </div>
+
       <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
         <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
-          <div className="col-span-3">Name</div>
-          <div className="col-span-3">Role</div>
-          <div className="col-span-2">Rating</div>
-          <div className="col-span-1 text-center">Years</div>
-          <div className="col-span-2 text-right">Wage</div>
-          <div className="col-span-1"></div>
+          <div className="col-span-4">Name</div>
+          <div className="col-span-3">Rating</div>
+          <div className="col-span-2 text-center">Yrs</div>
+          <div className="col-span-3 text-right">Wage</div>
         </div>
         {career.staff.map((s, idx) => (
           <div key={`${s.id}-${idx}`} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-            <div className="col-span-3 font-semibold text-sm">{s.name}</div>
-            <div className="col-span-3 text-sm text-atext-dim">{s.role}</div>
-            <div className="col-span-2 flex items-center gap-2">
+            <div className="col-span-4 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-sm truncate">{s.name}</span>
+                {(s.loyalty ?? 0) >= 3 && (
+                  <span className="text-[9px] uppercase tracking-wider px-1 py-0.5 rounded font-bold flex-shrink-0" style={{ background: "rgba(74,232,154,0.16)", color: "#4AE89A" }} title={`${s.loyalty} seasons of service`}>Loyal</span>
+                )}
+              </div>
+              <div className="text-[11px] text-atext-dim truncate">{s.role}</div>
+            </div>
+            <div className="col-span-3 flex items-center gap-2 min-w-0">
               <RatingDot value={s.rating} />
               <Bar value={s.rating} small />
             </div>
-            <div className="col-span-1 text-center text-sm">{s.contract}y</div>
-            <div className="col-span-2 text-right text-sm font-mono">{s.volunteer ? <span className="text-apos">Volunteer</span> : `$${(s.wage/1000).toFixed(0)}k`}</div>
-            <div className="col-span-1 flex justify-end">
-              <button onClick={()=>replaceStaff(idx)} className="text-xs px-3 py-1.5 rounded-lg border border-aline hover:border-[var(--A-accent)] hover:text-aaccent transition">Replace</button>
+            <div className="col-span-2 text-center text-sm">{s.contract}y</div>
+            <div className="col-span-3 flex flex-col items-end gap-1.5 min-w-0">
+              <span className="text-xs font-mono whitespace-nowrap text-atext-dim">{s.volunteer ? <span className="text-apos">Volunteer</span> : `$${(s.wage/1000).toFixed(0)}k`}</span>
+              <button onClick={()=>replaceStaff(idx)} className="text-[11px] px-2.5 py-1 rounded-lg border border-aline hover:border-[var(--A-accent)] hover:text-aaccent transition whitespace-nowrap">Replace</button>
             </div>
           </div>
         ))}

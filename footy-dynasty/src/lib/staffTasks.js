@@ -20,6 +20,34 @@ export const DEFAULT_STAFF_TASKS = () => ({
   tradeNegotiatorId: null,
 });
 
+/**
+ * Auto-fill every staff assignment from the current roster: the best-rated
+ * coach leads training, the best scout/recruiter take scouting and trade
+ * negotiation, match prep scales with the analyst, and the recruiting priority
+ * defaults to the club's home state. Robust to thin lower-tier rosters.
+ */
+export function autoAssignStaffTasks(career) {
+  const staff = (career && Array.isArray(career.staff)) ? career.staff : [];
+  const best = (pred) => staff.filter(pred).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0] || null;
+  const anyBest = best(() => true);
+  const coach = best((s) => /coach|strength|conditioning|midfield|assistant|runner|fitness/i.test(s.role || '')) || anyBest;
+  const scout = best((s) => /scout|recruit/i.test(s.role || '')) || anyBest;
+  const recruiter = best((s) => /recruit/i.test(s.role || '')) || scout;
+  const analyst = best((s) => /analyst/i.test(s.role || ''));
+  const ar = analyst?.rating ?? 0;
+  const matchPrepTier = ar >= 72 ? 2 : ar >= 55 ? 1 : 0;
+  return ensureStaffTasks({
+    staff,
+    staffTasks: {
+      recruitPriorityState: career?.regionState ?? null,
+      matchPrepTier,
+      trainingLeadId: coach?.id ?? null,
+      scoutLeadId: scout?.id ?? null,
+      tradeNegotiatorId: recruiter?.id ?? null,
+    },
+  });
+}
+
 function normalizeTaskStaffId(staff, id) {
   if (id == null || id === '') return null;
   const s = String(id);
