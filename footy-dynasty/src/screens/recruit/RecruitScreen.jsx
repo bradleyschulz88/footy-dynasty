@@ -308,16 +308,34 @@ function OffersTab({ career, club: _club, updateCareer }) {
     });
   };
 
+  // Mark an offer no longer doable and drop it from the pending list, always
+  // with a visible reason so an accept never just silently does nothing.
+  const expireOffer = (offer, text) => {
+    updateCareer({
+      pendingTradeOffers: (career.pendingTradeOffers || []).map(o => o.id === offer.id ? { ...o, status: 'expired' } : o),
+      news: [{ week: career.week, type: 'loss', text }, ...(career.news || [])].slice(0, 20),
+    });
+    setInspectOffer(null);
+  };
+
   const acceptOffer = (offer) => {
     const targetPlayer = career.squad.find(p => p.id === offer.targetPlayerId);
-    if (!targetPlayer) return;
+    if (!targetPlayer) {
+      expireOffer(offer, `⌛ That trade lapsed — the player involved is no longer on your list.`);
+      return;
+    }
     if (playerBlockedFromTrade(targetPlayer, career.season)) {
       updateCareer({ news: [{ week: career.week, type: 'loss', text: `⛔ ${targetPlayer.firstName} ${targetPlayer.lastName} can't be traded until next season (recently arrived).` }, ...(career.news || [])].slice(0, 20) });
       return;
     }
-    const incomingPlayer = offer.offerPlayerSnapshot || offer.offerPlayerId
-      ? resolveIncomingPlayer(offer)
-      : null;
+    const swapPromised = !!(offer.offerPlayerId || offer.offerPlayerSnapshot);
+    const incomingPlayer = swapPromised ? resolveIncomingPlayer(offer) : null;
+    // A swap was promised but the player they offered has since moved on — don't
+    // silently complete this as a cash-only deal (which would rob the user).
+    if (swapPromised && !incomingPlayer) {
+      expireOffer(offer, `⌛ ${offer.fromClubName} pulled the player from the deal — offer withdrawn.`);
+      return;
+    }
     // Cap check: if a swap player is incoming, ensure their wage fits after target leaves
     if (incomingPlayer) {
       const wageDelta = Number(incomingPlayer.wage ?? 0) - Number(targetPlayer.wage ?? 0);
@@ -376,7 +394,9 @@ function OffersTab({ career, club: _club, updateCareer }) {
       {offers.length === 0 ? (
         <div className={`${css.panel} p-12 text-center text-sm text-atext-dim`}>
           <Repeat className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          No active offers right now. Wait for the trade window or check back after key events.
+          {(PYRAMID[career.leagueKey]?.tier ?? 1) === 3
+            ? "Local footy has no trade market. Players come and go by word of mouth — recruit through the notifications bell (recommendations & walk-ups) and by developing your own in Training."
+            : "No active offers right now. Wait for the trade window or check back after key events."}
         </div>
       ) : (
         <div className="grid xl:grid-cols-[1fr_minmax(280px,360px)] gap-4 items-start">

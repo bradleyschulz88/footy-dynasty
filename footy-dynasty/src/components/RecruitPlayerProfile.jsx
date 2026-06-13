@@ -127,10 +127,18 @@ export default function RecruitPlayerProfile({ player, onClose, listedFee, fromC
         </div>
       )}
 
+      {(() => {
+        // Prefer last-season scouting numbers for an unsigned recruit (their live
+        // counters are zero until they play for us); fall back to live stats.
+        const ls = player.lastSeasonStats;
+        const stats = ls
+          ? { label: "Last season", goals: ls.goals, behinds: ls.behinds, disposals: ls.disposals, marks: ls.marks }
+          : { label: "Season stats", goals: player.goals ?? 0, behinds: player.behinds ?? 0, disposals: player.disposals ?? 0, marks: player.marks ?? 0 };
+        return (
       <div className="px-4 pb-4" style={{ borderTop: "1px solid var(--A-line)", paddingTop: "1rem" }}>
-        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute mb-3">Season stats</div>
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute mb-3">{stats.label}</div>
         <div className="grid grid-cols-4 gap-2">
-          {[["G", player.goals ?? 0, "#4AE89A"], ["B", player.behinds ?? 0, "var(--A-accent)"], ["DSP", player.disposals ?? 0, "#4ADBE8"], ["M", player.marks ?? 0, "#A78BFA"]].map(([l, v, c]) => (
+          {[["G", stats.goals ?? 0, "#4AE89A"], ["B", stats.behinds ?? 0, "var(--A-accent)"], ["DSP", stats.disposals ?? 0, "#4ADBE8"], ["M", stats.marks ?? 0, "#A78BFA"]].map(([l, v, c]) => (
             <div key={l} className="rounded-xl p-2.5 text-center" style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}>
               <div className="text-[9px] font-black uppercase tracking-widest" style={{ color: c }}>{l}</div>
               <div className="font-display text-2xl leading-tight text-atext">{v}</div>
@@ -138,6 +146,8 @@ export default function RecruitPlayerProfile({ player, onClose, listedFee, fromC
           ))}
         </div>
       </div>
+        );
+      })()}
 
       {careerLog.length > 0 && (
         <div className="px-4 pb-4" style={{ borderTop: "1px solid var(--A-line)", paddingTop: "1rem" }}>

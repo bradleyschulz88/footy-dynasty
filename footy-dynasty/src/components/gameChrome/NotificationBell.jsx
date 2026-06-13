@@ -12,6 +12,8 @@ const KIND_ICON = {
   staff_leave: "👋",
   volunteer_join: "🙌",
   staff_poach: "🎯",
+  player_join: "🤝",
+  player_leave: "🚶",
 };
 
 function ratingChipColor(value) {

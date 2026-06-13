@@ -10,6 +10,7 @@ import {
   pickPromotionLeague,
   pickRelegationLeague,
 } from '../leagueEngine.js';
+import { pairFinalsRound } from '../finalsBracket.js';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -131,19 +132,39 @@ describe('sortedLadder', () => {
 // generateFixtures
 // ---------------------------------------------------------------------------
 describe('generateFixtures', () => {
-  it('produces n-1 rounds for n teams (round-robin)', () => {
+  it('produces a full home-and-away season: 2(n-1) rounds for n teams', () => {
     const fixtures = generateFixtures(CLUBS);
-    expect(fixtures).toHaveLength(CLUBS.length - 1);
+    expect(fixtures).toHaveLength(2 * (CLUBS.length - 1));
   });
 
-  it('every pair of clubs meets exactly once', () => {
+  it('a single round-robin is available via { homeAndAway: false }', () => {
+    expect(generateFixtures(CLUBS, { homeAndAway: false })).toHaveLength(CLUBS.length - 1);
+  });
+
+  it('every pair meets exactly twice — once at each venue', () => {
     const fixtures = generateFixtures(CLUBS);
-    const matchups = new Set();
+    const venues = new Map(); // "A-B" (sorted) -> Set of home club ids
     fixtures.forEach(round =>
-      round.forEach(m => matchups.add([m.home, m.away].sort().join('-')))
+      round.forEach(m => {
+        const key = [m.home, m.away].sort().join('-');
+        if (!venues.has(key)) venues.set(key, new Set());
+        venues.get(key).add(m.home);
+      })
     );
-    const expected = (CLUBS.length * (CLUBS.length - 1)) / 2;
-    expect(matchups.size).toBe(expected);
+    const pairs = (CLUBS.length * (CLUBS.length - 1)) / 2;
+    expect(venues.size).toBe(pairs);
+    // Each pair hosted by both clubs exactly once.
+    for (const homeSet of venues.values()) expect(homeSet.size).toBe(2);
+  });
+
+  it('every club plays an equal number of home and away games', () => {
+    const fixtures = generateFixtures(CLUBS);
+    const home = {}; const away = {};
+    fixtures.forEach(round => round.forEach(m => {
+      home[m.home] = (home[m.home] || 0) + 1;
+      away[m.away] = (away[m.away] || 0) + 1;
+    }));
+    CLUBS.forEach(c => expect(home[c.id]).toBe(away[c.id]));
   });
 
   it('no club plays itself', () => {
@@ -155,7 +176,6 @@ describe('generateFixtures', () => {
   it('works for an odd number of clubs (bye handling)', () => {
     const oddClubs = CLUBS.slice(0, 3); // 3 clubs
     const fixtures = generateFixtures(oddClubs);
-    // With a bye, each round has floor(n/2) games and there are n rounds
     fixtures.forEach(round => {
       round.forEach(m => {
         expect(m.home).not.toBe(m.away);
@@ -179,8 +199,18 @@ describe('getFinalsTeams', () => {
     expect(getFinalsTeams(makeLadder(9), 2)).toHaveLength(6);
   });
 
-  it('selects the top 4 for tier-3 competitions', () => {
-    expect(getFinalsTeams(makeLadder(8), 3)).toHaveLength(4);
+  it('selects the top 6 for tier-3 competitions (final six)', () => {
+    expect(getFinalsTeams(makeLadder(10), 3)).toHaveLength(6);
+  });
+
+  it('tier-3 final six pairs 1v6, 2v5, 3v4 with the top three at home', () => {
+    const ladder = makeLadder(10);
+    const seeds = getFinalsTeams(ladder, 3).map((r) => r.id);
+    const pairs = pairFinalsRound(seeds, seeds, 3);
+    expect(pairs).toHaveLength(3);
+    expect(pairs[0]).toMatchObject({ home: seeds[0], away: seeds[5] }); // 1 v 6
+    expect(pairs[1]).toMatchObject({ home: seeds[1], away: seeds[4] }); // 2 v 5
+    expect(pairs[2]).toMatchObject({ home: seeds[2], away: seeds[3] }); // 3 v 4
   });
 
   it('returns all clubs when ladder is smaller than the finals quota', () => {

@@ -894,6 +894,47 @@ function AFLManagerInner() {
       return;
     }
 
+    // Tier-3 recruitment: a local player wants to sign on.
+    if (item.kind === "player_join") {
+      updateCareer((c) => {
+        const sign = actionId === "sign";
+        const p = item.payload?.player;
+        const full = (c.squad || []).length >= 40;
+        const added = sign && p && !full ? [...(c.squad || []), p] : (c.squad || []);
+        const name = p ? `${p.firstName} ${p.lastName}` : "the player";
+        return {
+          squad: added,
+          inbox: resolve(c, sign && !full ? `${name} signed` : full ? "List full" : "Declined"),
+          news: sign
+            ? [{ week: c.week ?? 0, type: "info", text: full
+                ? `📋 Couldn't sign ${name} — your list is full.`
+                : `🤝 ${name} (${p?.overall} OVR) signs on at the club.` }, ...(c.news || [])].slice(0, 20)
+            : (c.news || []),
+        };
+      });
+      return;
+    }
+
+    // Tier-3 departure: a player is thinking of walking away.
+    if (item.kind === "player_leave") {
+      const pid = item.payload?.playerId;
+      updateCareer((c) => {
+        const keep = actionId === "convince";
+        const squad = keep
+          ? (c.squad || []).map((p) => (p.id === pid ? { ...p, morale: Math.min(100, (p.morale ?? 70) + 10) } : p))
+          : (c.squad || []).filter((p) => p.id !== pid);
+        return {
+          squad,
+          lineup: keep ? c.lineup : (c.lineup || []).filter((id) => id !== pid),
+          inbox: resolve(c, keep ? `${item.payload?.playerName} stayed` : `${item.payload?.playerName} left`),
+          news: [{ week: c.week ?? 0, type: "info", text: keep
+            ? `🗣️ You talked ${item.payload?.playerName} into staying on.`
+            : `🚶 ${item.payload?.playerName} has left the club.` }, ...(c.news || [])].slice(0, 20),
+        };
+      });
+      return;
+    }
+
     // Unknown kind — just mark it handled.
     updateCareer((c) => ({ inbox: resolve(c, "Handled") }));
   }

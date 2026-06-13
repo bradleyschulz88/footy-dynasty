@@ -9,6 +9,8 @@ import {
   buildStaffLeaveNotice,
   buildVolunteerJoinNotice,
   buildPlayerTransferRequestNotice,
+  buildPlayerJoinNotice,
+  buildPlayerDepartureNotice,
   generateOffseasonNotifications,
 } from '../notifications.js';
 import { autoAssignStaffTasks } from '../staffTasks.js';
@@ -64,6 +66,39 @@ describe('notification builders', () => {
     expect(n.kind).toBe('player_transfer_request');
     expect(n.blocking).toBe(true);
     expect(n.detail).toContain('Sam Walsh');
+  });
+
+  it('tier-3 player join carries a ready-to-sign player and a recommender line', () => {
+    const n = buildPlayerJoinNotice(3, { recommenderName: 'Jack Smith' });
+    expect(n.kind).toBe('player_join');
+    expect(n.blocking).toBe(false);
+    expect(n.payload.player).toBeTruthy();
+    expect(n.payload.player.gamesPlayed).toBe(0); // fresh, no inflated stats
+    expect(n.detail).toContain('Jack Smith');
+    expect(n.actions.map((a) => a.id)).toEqual(['sign', 'decline']);
+  });
+
+  it('tier-3 player departure names the player and offers to talk them round', () => {
+    const n = buildPlayerDepartureNotice({ id: 'p9', firstName: 'Mo', lastName: 'Lane', overall: 71 });
+    expect(n.kind).toBe('player_leave');
+    expect(n.payload.playerId).toBe('p9');
+    expect(n.detail).toContain('Mo Lane');
+    expect(n.actions.map((a) => a.id)).toEqual(['convince', 'let_go']);
+  });
+
+  it('tier-3 off-season can surface a player join; tier 1 never does', () => {
+    const career = { squad: [{ id: 'p1', firstName: 'A', lastName: 'B', age: 24, morale: 70 }], staff: [] };
+    let found = false;
+    for (let s = 1; s <= 12 && !found; s++) {
+      seedRng(s);
+      if (generateOffseasonNotifications(career, 3).some((n) => n.kind === 'player_join')) found = true;
+    }
+    expect(found).toBe(true);
+
+    for (let s = 1; s <= 12; s++) {
+      seedRng(s);
+      expect(generateOffseasonNotifications(career, 1).some((n) => n.kind === 'player_join' || n.kind === 'player_leave')).toBe(false);
+    }
   });
 });
 
