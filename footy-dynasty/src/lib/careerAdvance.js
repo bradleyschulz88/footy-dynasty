@@ -110,28 +110,113 @@ import {
   checkLegacyMilestonesAfterSeason,
 } from './dynastyQuests.js';
 
-const ROUND_REPORT_WIN_CLOSERS = [
+// Margin-aware match report phrases — indexed by outcome + margin band.
+const WIN_CLOSE = [   // margin 1-12
+  'Scraped through by the barest of margins.',
+  'Survived a late charge to hold on.',
+  'Three-quarter time anxiety, four-quarter-time relief.',
+  'Ugly but it counts the same — two points.',
+  'Hung on through a nervous last five minutes.',
+];
+const WIN_COMFORT = [ // margin 13-35
+  'Took control mid-game and didn\'t look back.',
   'Fans lingered after the siren.',
   'The song echoed across the terraces.',
-  'Change rooms stayed loud well past cool-down.',
-  'Hard nuts-to-oranges win on the road.',
-  'Four-quarter effort finally stuck.',
+  'Four-quarter effort that pleased the coaching staff.',
+  'Efficient ball movement created the difference.',
 ];
-
-const ROUND_REPORT_DRAW_CLOSERS = [
+const WIN_BLOWOUT = [ // margin 36+
+  'A statement win — the score tells the full story.',
+  'Dominant from the first bounce.',
+  'Outclassed them in every department.',
+  'The match was over by quarter-time.',
+  'One of those days where everything clicked.',
+];
+const LOSS_CLOSE = [  // margin 1-12
+  'Agonisingly close — one kick could have changed history.',
+  'Left points on the board at the worst moment.',
+  'Hurt more because it was there for the taking.',
+  'One quarter short of the points.',
+  'So close. The rooms were silent.',
+];
+const LOSS_COMFORT = [ // margin 13-35
+  'Coaches\' box ran out of answers late.',
+  'Review tape will hurt tomorrow.',
+  'Momentum never quite flipped our way.',
+  'Errors compounded when it mattered most.',
+  'Outworked in the contested ball — need a response.',
+];
+const LOSS_BLOWOUT = [ // margin 36+
+  'A tough day at the office — need honest reflection.',
+  'Outclassed on every front. Time for a reset.',
+  'The scoreboard doesn\'t lie — back to the drawing board.',
+  'They were a class above us today.',
+  'The captain\'s review will be a tough watch.',
+];
+const DRAW_CLOSERS = [
   'Neither coach blinked at the last centre bounce.',
   'Honours even — replay vibes without the fixture.',
   'One kick either way all afternoon.',
   'Shared points, split moods in the rooms.',
+  'A point each feels right after that tussle.',
 ];
 
-const ROUND_REPORT_LOSS_CLOSERS = [
-  'Dressing room fell quiet quick.',
-  'Coaches\' box ran out of answers late.',
-  'Errors compounded when it mattered.',
-  'Review tape will hurt tomorrow.',
-  'Momentum never quite flipped.',
-];
+// Keep deprecated aliases so existing call-sites don't break
+const ROUND_REPORT_WIN_CLOSERS  = WIN_COMFORT;
+const ROUND_REPORT_DRAW_CLOSERS = DRAW_CLOSERS;
+const ROUND_REPORT_LOSS_CLOSERS = LOSS_COMFORT;
+
+/** Build a journalist-voice match report line with margin + player context. */
+function buildMatchReportLine(c, meta, myResult, won, drew, isHome, result) {
+  const { myTotal, oppTotal, opp } = myResult;
+  const margin = Math.abs((myTotal ?? 0) - (oppTotal ?? 0));
+  const oppShort = opp?.short ?? 'them';
+  const venueTag = isHome ? 'vs' : '@';
+
+  // Score in AFL goals.behinds.total format when available
+  const hG = isHome ? (result.homeGoals ?? 0) : (result.awayGoals ?? 0);
+  const hB = isHome ? (result.homeBehinds ?? 0) : (result.awayBehinds ?? 0);
+  const aG = isHome ? (result.awayGoals ?? 0) : (result.homeGoals ?? 0);
+  const aB = isHome ? (result.awayBehinds ?? 0) : (result.homeBehinds ?? 0);
+  const hasGoalData = hG + hB + aG + aB > 0;
+  const myScore = hasGoalData ? `${hG}.${hB}.${myTotal}` : String(myTotal ?? 0);
+  const oppScore = hasGoalData ? `${aG}.${aB}.${oppTotal}` : String(oppTotal ?? 0);
+
+  // Best on ground: highest vote-getter in our lineup
+  let bogLine = '';
+  const votes = result?.votes ?? [];
+  if (votes.length > 0) {
+    const topVote = [...votes].sort((a, b) => b.votes - a.votes)[0];
+    const bogPlayer = c.squad.find(p => p.id === topVote.playerId);
+    if (bogPlayer) {
+      const pName = bogPlayer.firstName ? `${bogPlayer.firstName[0]}. ${bogPlayer.lastName}` : bogPlayer.name;
+      bogLine = ` Best: ${pName} (${topVote.votes}v).`;
+    }
+  }
+
+  // Streak context
+  const streak = c.winStreak ?? 0;
+  let streakLine = '';
+  if (Math.abs(streak) >= 4) {
+    streakLine = won
+      ? ` ${streak} on the trot — the run is building.`
+      : streak <= -4 ? ` That's ${Math.abs(streak)} in a row — something needs to change.` : '';
+  }
+
+  // Margin-aware flavor
+  let flavor;
+  if (drew) {
+    flavor = pick(DRAW_CLOSERS);
+  } else if (won) {
+    flavor = margin <= 12 ? pick(WIN_CLOSE) : margin <= 35 ? pick(WIN_COMFORT) : pick(WIN_BLOWOUT);
+  } else {
+    flavor = margin <= 12 ? pick(LOSS_CLOSE) : margin <= 35 ? pick(LOSS_COMFORT) : pick(LOSS_BLOWOUT);
+  }
+
+  const resultTag = won ? 'W' : drew ? 'D' : 'L';
+  const base = `Rd ${meta.round}: ${venueTag} ${oppShort} ${myScore}–${oppScore} (${resultTag})`;
+  return `${base} ${flavor}${bogLine}${streakLine}`;
+}
 
 /** First day of the home-and-away season: formal renewal window closes; auto-fill staff gaps. */
 export function applySeasonRenewalDeadline(c, league) {
@@ -1450,10 +1535,11 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         marks: p.marks + rand(1, 4), tackles: p.tackles + rand(1, 3), gamesPlayed: p.gamesPlayed + 1,
       };
     });
-    const preBase = `${ev.label}: ${isHome ? 'vs' : '@'} ${opp?.short} ${myTotal}–${oppTotal} (${won ? 'W' : drew ? 'D' : 'L'})`;
-    const preFlavor = won ? pick(ROUND_REPORT_WIN_CLOSERS) : drew ? pick(ROUND_REPORT_DRAW_CLOSERS) : pick(ROUND_REPORT_LOSS_CLOSERS);
+    const preMeta = { round: 0 };
+    const preMyResult = { myTotal, oppTotal, opp };
     c.news = [{ week: 0, type: won ? 'win' : drew ? 'draw' : 'loss',
-      text: `${preBase} ${preFlavor}` }, ...(c.news || [])].slice(0, 15);
+      text: buildMatchReportLine(c, preMeta, preMyResult, won, drew, isHome, result).replace('Rd 0:', `${ev.label}:`) },
+    ...(c.news || [])].slice(0, 15);
     c.lastEvent = {
       type: 'preseason_match', label: ev.label, date: ev.date, isHome, opp, result, myTotal, oppTotal, won, drew,
     };
@@ -1783,10 +1869,8 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   applyBoardConfidenceDelta(c, boardDelta);
   c.lastBoardConfidenceDelta = c.finance.boardConfidence - prevBoard;
   if (won) { dynastyRecordHomeAwayWin(c); recordCareerWin(c); }
-  const rdBase = `Rd ${meta.round}: ${isHome ? 'vs' : '@'} ${myResult.opp?.short} ${myResult.myTotal}–${myResult.oppTotal} (${won ? 'W' : drew ? 'D' : 'L'})`;
-  const rdFlavor = won ? pick(ROUND_REPORT_WIN_CLOSERS) : drew ? pick(ROUND_REPORT_DRAW_CLOSERS) : pick(ROUND_REPORT_LOSS_CLOSERS);
   c.news = [{ week: meta.round, type: won ? 'win' : drew ? 'draw' : 'loss',
-    text: `${rdBase} ${rdFlavor}` },
+    text: buildMatchReportLine(c, meta, myResult, won, drew, isHome, result) },
   ...(c.news || [])].slice(0, 12);
 
   if (c.journalist) {

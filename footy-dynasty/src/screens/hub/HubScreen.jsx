@@ -37,6 +37,7 @@ import { themedRoundForNumber } from "../../lib/themedRounds.js";
 import { css, Pill, Stat, CollapsibleSection } from "../../components/primitives.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 import { finalsMagicNumber } from "../../lib/magicNumber.js";
+import { seasonNarrative } from "../../lib/seasonNarrative.js";
 
 const hubContainer = {
   hidden: { opacity: 1 },
@@ -345,6 +346,31 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           )}
         </motion.div>
       )}
+
+      {/* Season narrative arc */}
+      {(() => {
+        const narr = seasonNarrative(career, sorted, league);
+        if (!narr) return null;
+        const toneColor = narr.tone === 'positive' ? 'var(--A-pos)'
+          : narr.tone === 'negative' ? 'var(--A-neg)'
+          : narr.tone === 'tense' ? 'var(--A-accent-2)'
+          : 'var(--A-accent)';
+        const toneEmoji = narr.tone === 'positive' ? '📈'
+          : narr.tone === 'negative' ? '📉'
+          : narr.tone === 'tense' ? '⚡'
+          : '📰';
+        return (
+          <motion.div variants={hubItem}
+            className="rounded-2xl px-4 py-3 flex items-start gap-3"
+            style={{ background: `color-mix(in srgb, ${toneColor} 6%, var(--A-panel))`, border: `1px solid color-mix(in srgb, ${toneColor} 22%, var(--A-line))` }}>
+            <span className="text-xl flex-shrink-0 mt-0.5">{toneEmoji}</span>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-widest font-mono mb-1" style={{ color: toneColor }}>{narr.headline}</div>
+              <div className="text-sm text-atext leading-relaxed">{narr.body}</div>
+            </div>
+          </motion.div>
+        );
+      })()}
 
       {/* Match preview — moved up so it's the first thing after the hero */}
       <motion.div variants={hubItem}>
