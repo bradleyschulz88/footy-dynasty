@@ -42,6 +42,14 @@ export default defineConfig({
           },
           workbox: {
             globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+            // Clear caches from previous deployments so stale JS chunks don't
+            // cause a blank page after a new Vercel deployment.
+            cleanupOutdatedCaches: true,
+            skipWaiting: true,
+            clientsClaim: true,
+            // SPA fallback — all navigation requests serve index.html.
+            navigateFallback: 'index.html',
+            navigateFallbackDenylist: [/^\/api\//],
           },
         }),
       ],
