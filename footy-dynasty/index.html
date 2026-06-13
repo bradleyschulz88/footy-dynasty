@@ -15,6 +15,33 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+    (function(){
+      // If React hasn't mounted after 5s, the SW is likely serving stale chunks.
+      // Unregister all service workers, clear all caches, and hard-reload.
+      setTimeout(function(){
+        var root=document.getElementById('root');
+        if(root&&root.children.length===0){
+          if('serviceWorker' in navigator){
+            navigator.serviceWorker.getRegistrations().then(function(regs){
+              var p=regs.map(function(r){return r.unregister();});
+              Promise.all(p).then(function(){
+                if(window.caches){
+                  caches.keys().then(function(keys){
+                    Promise.all(keys.map(function(k){return caches.delete(k);})).then(function(){
+                      window.location.reload(true);
+                    });
+                  });
+                } else {
+                  window.location.reload(true);
+                }
+              });
+            }).catch(function(){window.location.reload(true);});
+          }
+        }
+      },5000);
+    })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
