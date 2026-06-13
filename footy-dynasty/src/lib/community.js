@@ -257,7 +257,9 @@ const COMMITTEE_TIER1_COCKTAIL_LINES = [
 export function postMatchFundraiser(career, tier, isHomeGame) {
   if (!isHomeGame) return null;
   if (tier === 3) {
-    const income = rand(150, 400);
+    // The bar & canteen are a local club's main game-day earner now that the
+    // gate is small and there's no TV money — so this is the bigger line.
+    const income = rand(700, 2000);
     const winnerRoll = rand(0, 100);
     if (winnerRoll < 20 && (career.squad || []).length > 0) {
       const winner = pick(career.squad);

@@ -77,6 +77,7 @@ const ClubScreenLazy = lazy(() => import('./screens/club/ClubScreen.jsx'));
 const RecruitScreenLazy = lazy(() => import('./screens/recruit/RecruitScreen.jsx'));
 const DraftRoomScreenLazy = lazy(() => import('./screens/DraftRoomScreen.jsx'));
 const SettingsScreenLazy = lazy(() => import('./screens/SettingsScreen.jsx'));
+const CareersScreenLazy = lazy(() => import('./screens/careers/CareersScreen.jsx'));
 
 // --- Gameplay systems spec (Sections 1-3) ---
 import { getDifficultyConfig } from "./lib/difficulty.js";
@@ -88,6 +89,7 @@ import {
 import {
   generateJobMarket, takeSeasonOff,
 } from './lib/coachReputation.js';
+import { simulatePartialSeason } from './lib/jobMove.js';
 // --- Finance system rebuild ---
 import { makeStartingFinance, scaledSquadToFitCap } from './lib/finance/engine.js';
 import { buildStartingSponsors } from './lib/finance/sponsors.js';
@@ -501,14 +503,21 @@ function AFLManagerInner() {
   }
 
   // ============== JOB MARKET — accept a new job at a different club ==============
-  function acceptNewJob(offer) {
+  // startMode: 'nextSeason' (default — fresh pre-season, season+1) ·
+  //            'sameSeasonPreseason' (end-of-season move firing after rollover) ·
+  //            'midSeason' (immediate vacancy takeover, this season already underway)
+  function acceptNewJob(offer, opts = {}) {
+    const startMode = opts.startMode || 'nextSeason';
     const newLeague = PYRAMID[offer.leagueKey];
     if (!newLeague) return;
     const newClub = newLeague.clubs.find(c => c.id === offer.clubId);
     if (!newClub) return;
     seedRng(Date.now() % 100000);
     const cfg = getDifficultyConfig(career.difficulty);
-    const newSquad = generateSquad(newClub.id, newLeague.tier, 32, career.season + 1).map(p => ({
+    // Mid-season + end-of-season moves keep the current season number; only a
+    // plain next-season move advances the year.
+    const SEASON = startMode === 'nextSeason' ? career.season + 1 : career.season;
+    const newSquad = generateSquad(newClub.id, newLeague.tier, 32, SEASON).map(p => ({
       ...p,
       // Spec 3F: legacy follows you — premiership winners boost morale, relegation history sows doubt
       morale: clamp((p.morale ?? 70)
@@ -521,10 +530,26 @@ function AFLManagerInner() {
     const newLocalDivision = newLeague.tier === 3 ? localDivisionForClub(newClub.id, offer.leagueKey, newRegionState) : null;
     const compClubsNew = getCompetitionClubs(offer.leagueKey, newRegionState, newLocalDivision);
     const newFixtures = generateFixtures(compClubsNew);
-    const SEASON = career.season + 1;
     const eventQueue = generateSeasonCalendar(SEASON, compClubsNew, newFixtures, newClub.id, {
       nationalDraft: newLeague.tier === 1,
     });
+    // Resolve the calendar position. Mid-season takeover fast-forwards the
+    // calendar to "now" and seeds a believable ladder + record so far.
+    let startWeek = 0;
+    let startPhase = 'preseason';
+    let startDate = `${SEASON - 1}-12-01`;
+    let startLadder = blankLadder(compClubsNew);
+    if (startMode === 'midSeason') {
+      startDate = career.currentDate || startDate;
+      const roundEvents = eventQueue.filter(e => e.type === 'round');
+      const playedRounds = roundEvents.filter(e => e.date < startDate).length;
+      eventQueue.forEach(e => { if (e.date < startDate) e.completed = true; });
+      const sim = simulatePartialSeason(compClubsNew, newFixtures, playedRounds, newLeague.tier, newClub.id);
+      startLadder = sim.ladder;
+      const nextRound = roundEvents.find(e => !e.completed);
+      startWeek = nextRound ? nextRound.round : (roundEvents.length ? roundEvents[roundEvents.length - 1].round : 0);
+      startPhase = playedRounds > 0 ? 'season' : 'preseason';
+    }
     const interviewBump = offer.interviewStartingBoardBonus ?? 0;
     const startingBoard = clamp(
       ((career.coachReputation ?? 30) >= 60 ? 65 : 55) + interviewBump,
@@ -532,7 +557,6 @@ function AFLManagerInner() {
       78,
     );
     const newFinance = makeStartingFinance(newLeague.tier, career.difficulty, startingBoard);
-    const newLadder = blankLadder(compClubsNew);
     const squadForCap = scaledSquadToFitCap({
       clubId: newClub.id,
       leagueKey: offer.leagueKey,
@@ -570,16 +594,17 @@ function AFLManagerInner() {
       regionState: newRegionState,
       localDivision: newLocalDivision,
       season:    SEASON,
-      week:      0,
+      week:      startWeek,
       winStreak: 0,
       homeWinStreak: 0,
-      currentDate: `${SEASON - 1}-12-01`,
-      phase:     'preseason',
+      currentDate: startDate,
+      phase:     startPhase,
+      pendingJobOffer: null,
       eventQueue,
       squad:     squadForCap,
       lineup:    newLineup,
       kits:      defaultKits(newClub.colors),
-      ladder:    newLadder,
+      ladder:    startLadder,
       fixtures:  newFixtures,
       finance:   newFinance,
       sponsors:  initialSponsors,
@@ -651,8 +676,11 @@ function AFLManagerInner() {
         ? { ...generateJournalist(), satisfaction: 65 }
         : generateJournalist(),
       news: [
-        { week: 0, type: 'win', text: `✍️ Welcome to ${newClub.name}, ${career.managerName}. ${offer.chairmanLine.replace(/&ldquo;|&rdquo;|&quot;|"/g, '').trim()}` },
-        { week: 0, type: 'info', text: '🤝 No shirt sponsors signed yet — open the Club tab to review incoming offers.' },
+        { week: startWeek, type: 'win', text: `✍️ Welcome to ${newClub.name}, ${career.managerName}. ${offer.chairmanLine.replace(/&ldquo;|&rdquo;|&quot;|"/g, '').trim()}` },
+        ...(startMode === 'midSeason'
+          ? [{ week: startWeek, type: 'info', text: `🪑 You step in mid-season with the club sitting where they are on the ladder — pick up the run home.` }]
+          : []),
+        { week: startWeek, type: 'info', text: '🤝 No shirt sponsors signed yet — open the Club tab to review incoming offers.' },
       ],
     };
     resetExecutiveBoard(nextCareer, newClub, newLeague, newFinance.boardConfidence);
@@ -665,6 +693,32 @@ function AFLManagerInner() {
     setScreen('hub');
     setTab(null);
   }
+
+  // Route a Job Centre signing by its start timing. Immediate vacancies take you
+  // over now; end-of-season deals are agreed but wait until the season finishes.
+  function handleAcceptJobFromCentre(offer, startType) {
+    if (startType === 'endOfSeason') {
+      updateCareer((c) => ({
+        pendingJobOffer: { ...offer, agreedSeason: c.season },
+        news: [{ week: c.week ?? 0, type: 'info', text: `🤝 You've agreed to take over ${offer.clubName} at season's end — finish strong with ${club?.short || 'your club'}.` }, ...(c.news || [])].slice(0, 20),
+      }));
+      setScreen('hub');
+      setTab(null);
+      return;
+    }
+    acceptNewJob(offer, { startMode: startType === 'immediate' ? 'midSeason' : 'nextSeason' });
+  }
+
+  // End-of-season move: once the agreed season has rolled into the new
+  // pre-season, relocate to the club you committed to.
+  useEffect(() => {
+    const po = career?.pendingJobOffer;
+    if (!po) return;
+    if (career.season > (po.agreedSeason ?? career.season) && career.phase === 'preseason' && !career.isSacked) {
+      acceptNewJob(po, { startMode: 'sameSeasonPreseason' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [career?.season, career?.phase, career?.pendingJobOffer]);
 
   const sortedLadderRows = useMemo(
     () => (career?.ladder?.length ? sortedLadder(career.ladder) : []),
@@ -1249,6 +1303,11 @@ function AFLManagerInner() {
               {screen === "compete" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading competition…" reducedMotion={motionReduced} />}>
                   <CompetitionScreenLazy career={career} club={club} league={league} tab={tab} setTab={setTab} onOpenCalendar={() => onNavScreen("schedule")} />
+                </Suspense>
+              )}
+              {screen === "careers" && (
+                <Suspense fallback={<LazyRouteFallback label="Loading careers…" reducedMotion={motionReduced} />}>
+                  <CareersScreenLazy career={career} club={club} league={league} updateCareer={updateCareer} onAcceptJob={handleAcceptJobFromCentre} />
                 </Suspense>
               )}
               {screen === "settings" && (

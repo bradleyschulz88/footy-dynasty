@@ -18,11 +18,19 @@ import { ClubBadge } from "../components/ClubBadge.jsx";
 export default function ScheduleScreen({ career, club: _club, league: _league, onOpenCompetition }) {
   const startDate = career.currentDate || `${career.season - 1}-12-01`;
   const [viewDate, setViewDate] = React.useState(startOfMonth(startDate));
+  const [selectedDate, setSelectedDate] = React.useState(startDate);
 
   React.useEffect(() => {
     const anchor = career.currentDate || `${career.season - 1}-12-01`;
     setViewDate(startOfMonth(anchor));
+    setSelectedDate(anchor);
   }, [career.season, career.currentDate]);
+
+  const goToToday = () => {
+    const anchor = career.currentDate || `${career.season - 1}-12-01`;
+    setViewDate(startOfMonth(anchor));
+    setSelectedDate(anchor);
+  };
 
   const allEvents = career.eventQueue || [];
   const eventsByDate = {};
@@ -84,6 +92,9 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
               Standings & ladder →
             </button>
           )}
+          <button type="button" onClick={goToToday} className={`${css.btnGhost} text-[11px] px-3 py-2 whitespace-nowrap`}>
+            Today
+          </button>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -118,9 +129,9 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
               <button
                 key={iso}
                 type="button"
-                onClick={() => setViewDate(startOfMonth(iso))}
+                onClick={() => { setViewDate(startOfMonth(iso)); setSelectedDate(iso); }}
                 className={`flex-shrink-0 rounded-xl border px-3 py-2 min-h-[72px] min-w-[4.25rem] text-left transition-colors ${
-                  isToday ? "ring-2 ring-[var(--A-accent)] border-transparent" : "border-[var(--A-line)]"
+                  isToday ? "ring-2 ring-[var(--A-accent)] border-transparent" : iso === selectedDate ? "ring-2 ring-[var(--A-accent-2)] border-transparent" : "border-[var(--A-line)]"
                 }`}
                 style={{
                   background: isToday ? "rgba(0,224,255,0.12)" : "var(--A-panel-2)",
@@ -171,11 +182,16 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
                 const dayEvs = eventsByDate[dateStr] || [];
                 const isTodayCell = dateStr === today;
                 const isPast = dateStr < today;
+                const isSelected = dateStr === selectedDate;
                 return (
                   <div
                     key={dateStr}
-                    className={`rounded-lg p-1.5 min-h-[76px] sm:min-h-[72px] transition-all ${
-                      isTodayCell ? "ring-2 ring-[var(--A-accent)]" : ""
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedDate(dateStr)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedDate(dateStr); } }}
+                    className={`rounded-lg p-1.5 min-h-[76px] sm:min-h-[72px] transition-all cursor-pointer ${
+                      isTodayCell ? "ring-2 ring-[var(--A-accent)]" : isSelected ? "ring-2 ring-[var(--A-accent-2)]" : ""
                     }`}
                     style={{
                       background: isTodayCell
@@ -239,6 +255,36 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
           </div>
         </div>
 
+        <div className="space-y-5">
+        <div className={`${css.panel} p-4`}>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-display text-lg text-atext tracking-wide" style={{ color: "var(--A-accent-2)" }}>SELECTED DAY</h3>
+            <span className="text-[11px] font-mono text-atext-mute">{formatDate(selectedDate)}</span>
+          </div>
+          {(eventsByDate[selectedDate] || []).length === 0 ? (
+            <div className="text-sm text-atext-dim py-3 text-center">Nothing scheduled on this day.</div>
+          ) : (
+            <div className="space-y-2">
+              {(eventsByDate[selectedDate] || []).map((ev, i) => {
+                const dot = evDot(ev);
+                return (
+                  <div key={ev.id ? `${ev.id}-${i}` : `${selectedDate}-${i}`} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line)", opacity: ev.completed ? 0.55 : 1 }}>
+                    {dot.oppClub ? (
+                      <ClubBadge club={dot.oppClub} size="sm" className="flex-shrink-0" />
+                    ) : (
+                      <div className="w-9 h-9 min-w-[2.25rem] rounded-lg flex items-center justify-center text-base flex-shrink-0" style={{ background: `${dot.color}18` }}>{dot.icon}</div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-atext leading-tight truncate">{dot.label}</div>
+                      {ev.completed && <div className="text-[10px] text-atext-mute uppercase tracking-wider">Completed</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <div className={`${css.panel} p-4`}>
           <h3 className="font-display text-lg text-atext tracking-wide mb-3">UPCOMING EVENTS</h3>
           <div className="space-y-2">
@@ -274,6 +320,7 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
               );
             })}
           </div>
+        </div>
         </div>
       </div>
     </div>

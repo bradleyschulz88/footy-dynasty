@@ -4,6 +4,7 @@
 // own — they're pure presentational helpers.
 // ---------------------------------------------------------------------------
 import React from "react";
+import { ChevronDown } from "lucide-react";
 
 export const css = {
   panel: "panel",
@@ -144,6 +145,42 @@ export function DataTable({ title, titleAction, columns, rows, rowKey, emptyLabe
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Collapsible panel for secondary dashboard sections. Open/closed state is
+ * remembered per `id` in localStorage so the hub stays as tidy as the player
+ * left it. An optional `right` node (e.g. a "view all" link) renders beside the
+ * title — kept outside the toggle button so it stays independently clickable.
+ */
+export function CollapsibleSection({ id, title, defaultOpen = false, right = null, children }) {
+  const storeKey = `fd_collapse_${id}`;
+  const [open, setOpen] = React.useState(() => {
+    try {
+      const v = localStorage.getItem(storeKey);
+      return v == null ? defaultOpen : v === "1";
+    } catch {
+      return defaultOpen;
+    }
+  });
+  const toggle = () =>
+    setOpen((o) => {
+      const next = !o;
+      try { localStorage.setItem(storeKey, next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  return (
+    <div className={`${css.panel} overflow-hidden`}>
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
+        <button type="button" onClick={toggle} aria-expanded={open} className="flex items-center gap-2 min-w-0 flex-1 text-left">
+          <ChevronDown className={`w-4 h-4 text-atext-mute transition-transform shrink-0 ${open ? "rotate-180" : ""}`} />
+          <span className="font-display text-base tracking-wide text-atext truncate">{title}</span>
+        </button>
+        {right}
+      </div>
+      {open && <div className="px-4 pb-4 anim-in">{children}</div>}
     </div>
   );
 }

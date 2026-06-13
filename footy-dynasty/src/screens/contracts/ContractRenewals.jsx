@@ -102,8 +102,66 @@ export function ContractsTab({ career, updateCareer }) {
           In pre-season, resolve these before the first home-and-away round — the window locks when the season starts.
         </div>
       </div>
+      <ExpiringContractsList career={career} />
       <RenewalsTab career={career} updateCareer={updateCareer} />
       <StaffRenewalsPanel career={career} updateCareer={updateCareer} leagueTier={leagueTier} />
+    </div>
+  );
+}
+
+/**
+ * Always-visible roster of players whose deals are running out — including those
+ * already OUT OF CONTRACT (contract <= 0), who can walk for nothing. Unlike the
+ * renewal queue (pre-season only), this is shown year-round so an expiring deal
+ * is never a surprise.
+ */
+export function ExpiringContractsList({ career }) {
+  const expiring = (career.squad || [])
+    .filter((p) => (p.contract ?? 99) <= 1)
+    .sort((a, b) => (a.contract ?? 0) - (b.contract ?? 0));
+  const outCount = expiring.filter((p) => (p.contract ?? 0) <= 0).length;
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className={`${css.h1} text-2xl`}>EXPIRING & OUT OF CONTRACT</div>
+        {expiring.length > 0 && (
+          <Stat label="Out of contract" value={outCount} accent={outCount > 0 ? 'var(--A-neg)' : 'var(--A-text-mute)'} />
+        )}
+      </div>
+      <div className="text-xs text-atext-dim max-w-2xl leading-relaxed">
+        Players in the final year of their deal, or already out of contract. Out-of-contract players can leave for nothing — renew them in pre-season (Squad → Renewals) or extend from their player card.
+      </div>
+      {expiring.length === 0 ? (
+        <div className={`${css.panel} p-8 text-center text-sm text-atext-dim`}>
+          Every player is signed for at least one more season. Nothing expiring right now.
+        </div>
+      ) : (
+        <div className="rounded-2xl overflow-hidden border border-aline" style={{ background: 'var(--A-panel)' }}>
+          {expiring.map((p) => {
+            const out = (p.contract ?? 0) <= 0;
+            const name = p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player');
+            return (
+              <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center border-b border-aline/70 last:border-b-0">
+                <div className="col-span-6 sm:col-span-5 min-w-0">
+                  <div className="font-semibold text-sm truncate">{name}</div>
+                  <div className="text-[11px] text-atext-dim">{p.position} · age {p.age} · OVR {p.overall}</div>
+                </div>
+                <div className="col-span-3 sm:col-span-3 text-xs font-mono text-atext-dim">{fmtK(p.wage)}/yr</div>
+                <div className="col-span-3 sm:col-span-4 text-right">
+                  <span
+                    className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md whitespace-nowrap"
+                    style={out
+                      ? { background: 'rgba(232,74,111,0.16)', color: '#E84A6F', border: '1px solid rgba(232,74,111,0.4)' }
+                      : { background: 'rgba(255,179,71,0.14)', color: '#FFB347', border: '1px solid rgba(255,179,71,0.4)' }}
+                  >
+                    {out ? 'Out of contract' : '1 year left'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

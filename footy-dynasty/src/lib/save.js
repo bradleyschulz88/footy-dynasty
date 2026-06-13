@@ -429,6 +429,20 @@ export function migrate(save) {
     if (!Array.isArray(s.inbox)) s.inbox = [];
   }
 
+  if (v < 31) {
+    s.saveVersion = 31;
+    // Browse-and-apply Job Centre: cached listings + per-season application ledger.
+    if (s.jobMarketBrowse === undefined) s.jobMarketBrowse = null;
+    if (s.jobMarketBrowseSeason === undefined) s.jobMarketBrowseSeason = null;
+    if (s.jobApplications === undefined) s.jobApplications = null;
+  }
+
+  if (v < 32) {
+    s.saveVersion = 32;
+    // End-of-season job moves: the agreed offer that fires at the next rollover.
+    if (s.pendingJobOffer === undefined) s.pendingJobOffer = null;
+  }
+
   return s;
 }
 

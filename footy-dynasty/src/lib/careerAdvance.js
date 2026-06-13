@@ -4,7 +4,7 @@
 import { rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub, getAFLClubsForSeason } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred } from './playerGen.js';
-import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim } from './matchEngine.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating } from './matchEngine.js';
 import { getCoachingCall, resolveCoachingCall } from './coachingCalls.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
@@ -358,6 +358,12 @@ function simFinalsPair(c, league, m, _roundLabel) {
       ? teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60)
       : aiClubRating(oppId, league.tier);
     const oppTactic = resolveAiOppTactic(oppId, oppRatingForTactics, myRating);
+    // Difficulty-aware competitiveness — opponents push back in finals too.
+    const finalsDiffCfg = getDifficultyConfig(c.difficulty);
+    const oppRatingDelta = competitiveOppRating(oppRatingForTactics, myRating, {
+      flat: finalsDiffCfg.aiRatingFlat ?? 0,
+      gapClose: finalsDiffCfg.aiGapClose ?? 0,
+    }) - oppRatingForTactics;
     const playerLineup = c.lineup.map((id) => c.squad.find((p) => p.id === id)).filter(Boolean);
     let groundScoringMod = 1.0;
     let groundAccuracyMod = 1.0;
@@ -377,9 +383,10 @@ function simFinalsPair(c, league, m, _roundLabel) {
       ? (qi) =>
           teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
           + benchStrengthBonus(oppSquad, oppLineupIds, qi)
+          + oppRatingDelta
       : null;
     result = simMatchWithQuarters(
-      { rating: homeR }, { rating: awayR }, isHome, myRating,
+      { rating: homeR + (isHome ? 0 : oppRatingDelta) }, { rating: awayR + (isHome ? oppRatingDelta : 0) }, isHome, myRating,
       {
         tactic: c.tacticChoice || 'balanced',
         playerLineup,
@@ -1464,9 +1471,17 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
         const oppLineupIds = oppLineup.map((p) => p.id);
         const neutralTraining = { intensity: 60, focus: {} };
-        const oppRating = oppSquad?.length
+        const baseOppRating = oppSquad?.length
           ? teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60)
           : aiClubRating(opp.id, league.tier);
+        // Difficulty-aware competitiveness: opponents push back harder so a
+        // strong squad no longer cruises every week (grassroots = gentle).
+        const diffCfg = getDifficultyConfig(c.difficulty);
+        const oppRating = competitiveOppRating(baseOppRating, myRating, {
+          flat: diffCfg.aiRatingFlat ?? 0,
+          gapClose: diffCfg.aiGapClose ?? 0,
+        });
+        const oppRatingDelta = oppRating - baseOppRating;
         const playerLineup = c.lineup.map((id) => c.squad.find((p) => p.id === id)).filter(Boolean);
         const oppTactic = resolveAiOppTactic(opp.id, oppRating, myRating);
         let groundScoringMod = 1.0; let groundAccuracyMod = 1.0;
@@ -1487,6 +1502,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
           ? (qi) =>
               teamRating(oppSquad, oppLineupIds, neutralTraining, 1, 60, qi)
               + benchStrengthBonus(oppSquad, oppLineupIds, qi)
+              + oppRatingDelta
           : null;
         // Simulate the first half now; the second half waits on the coach's
         // half-time call (resolveLiveMatchHalfTime applies the call + finishes).
