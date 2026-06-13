@@ -74,6 +74,24 @@ const TACTIC_PROFILES = {
   run:        { goalRateMod:  0.10, oppRateMod:  0.10, momentumGain: 1.2, riskMod: 1.15 },
 };
 
+/**
+ * AI coaches adjust at the breaks. From the second half on, an opponent
+ * protecting a clear lead locks down (defensive), while one chasing the game
+ * throws on the attack — instead of holding one tactic for four quarters. This
+ * makes a late-game flip feel real and rewards the player reading the contest.
+ * @param {string} baseTactic the opponent's pre-match plan
+ * @param {number} oppLead opponent points minus player points (this match)
+ * @param {number} quarterIndex 0-based (0=Q1 … 3=Q4)
+ */
+export function adaptiveOppTactic(baseTactic, oppLead, quarterIndex) {
+  if (quarterIndex < 2) return baseTactic;            // only adjust in the 2nd half
+  if (oppLead >= 19) return 'flood';                  // big lead, shut the game down
+  if (oppLead >= 10) return 'defensive';              // protect a handy lead
+  if (oppLead <= -19) return 'attack';                // must-score territory
+  if (oppLead <= -10) return 'run';                   // chase, but stay structured
+  return baseTactic;
+}
+
 /** Per-quarter shot-volume shape (indexes 0–3 = Q1–Q4). Tunable “phase” feel without extra events. */
 const TACTIC_QUARTER_MULT = {
   defensive:  [1.05, 1.03, 0.98, 0.94],
@@ -375,8 +393,13 @@ export function simMatchQuarter(state, mods = {}) {
     isPlayerHome, tactic, oppTactic, playerLineup, oppLineup,
     groundScoring, groundAccuracy, homeAccMod, awayAccMod, hAdv,
   } = cfg;
+  // AI reacts to the scoreboard from the second half on (protect a lead / chase).
+  const oppLeadNow = isPlayerHome
+    ? (state.runAwayPts ?? 0) - (state.runHomePts ?? 0)
+    : (state.runHomePts ?? 0) - (state.runAwayPts ?? 0);
+  const effectiveOppTactic = adaptiveOppTactic(oppTactic, oppLeadNow, q);
   const profile = TACTIC_PROFILES[tactic] || TACTIC_PROFILES.balanced;
-  const oppProfile = TACTIC_PROFILES[oppTactic] || TACTIC_PROFILES.balanced;
+  const oppProfile = TACTIC_PROFILES[effectiveOppTactic] || TACTIC_PROFILES.balanced;
 
   // Apply tactic mods to whichever side is the player
   const playerSideMod = profile.goalRateMod;
@@ -409,7 +432,7 @@ export function simMatchQuarter(state, mods = {}) {
     aStr = playerStrNow;
   }
   const diff = (hStr - aStr) + momentum * 9; // momentum tilts effective strength (~9 pts at full swing)
-  const stop = resolveStoppageQuarter(playerLineup, oppLineup, tactic, oppTactic, isPlayerHome);
+  const stop = resolveStoppageQuarter(playerLineup, oppLineup, tactic, effectiveOppTactic, isPlayerHome);
   const diffWithStop = diff + stop.margin * 6;
   const rates = shotRates(diffWithStop);
 
@@ -430,7 +453,7 @@ export function simMatchQuarter(state, mods = {}) {
     rates.away * (1 + awaySideMod) * (1 + awayOppPressure * suppressScale(awayOppPressure, awaySideMod));
 
   const plQ = TACTIC_QUARTER_MULT[tactic]?.[q] ?? 1;
-  const opQ = TACTIC_QUARTER_MULT[oppTactic]?.[q] ?? 1;
+  const opQ = TACTIC_QUARTER_MULT[effectiveOppTactic]?.[q] ?? 1;
   const homeQuarterMult = isPlayerHome ? plQ : opQ;
   const awayQuarterMult = isPlayerHome ? opQ : plQ;
   const homeShotMeanPhased = homeShotMean * homeQuarterMult;
