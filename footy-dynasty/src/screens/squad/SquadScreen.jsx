@@ -742,7 +742,7 @@ function autoSuggestTactic(avgOvr) {
   return 'defensive';
 }
 
-function ZoneTacticPicker({ zone, label, zoneColor, currentKey, onSelect, players }) {
+function ZoneTacticPicker({ label, zoneColor, currentKey, onSelect, players }) {
   const avgOvr = players.length
     ? Math.round(players.reduce((s, p) => s + (p.overall || 70), 0) / players.length)
     : null;

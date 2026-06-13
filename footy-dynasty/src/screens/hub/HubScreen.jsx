@@ -17,7 +17,7 @@ import {
 import { TaskList } from "../../components/TaskList.jsx";
 import { findClub } from "../../data/pyramid.js";
 import { finalsRoundLabel, playerFinalsOpponent, finalsSeedFor } from "../../lib/finalsBracket.js";
-import { fmtK, avgFacilities, avgStaff } from "../../lib/format.js";
+import { fmtK } from "../../lib/format.js";
 import { TRAINING_INFO, formatDate } from "../../lib/calendar.js";
 import { getAdvanceContext } from "../../lib/advanceContext.js";
 import { effectiveWageCap, currentPlayerWageBill } from "../../lib/finance/engine.js";
@@ -34,9 +34,10 @@ import {
 import { ladderNeighbourClubs } from "../../lib/hubRivals.js";
 import { boardObjectiveUiStatus, youthSeniorGameCount } from "../../lib/board.js";
 import { themedRoundForNumber } from "../../lib/themedRounds.js";
-import { css, Pill, Stat, Jersey, CollapsibleSection } from "../../components/primitives.jsx";
+import { css, Pill, Stat, CollapsibleSection } from "../../components/primitives.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 import { finalsMagicNumber } from "../../lib/magicNumber.js";
+import { seasonNarrative } from "../../lib/seasonNarrative.js";
 
 const hubContainer = {
   hidden: { opacity: 1 },
@@ -156,81 +157,6 @@ function CommitteeMiniSummary({ career, setScreen, setTab }) {
         VIEW COMMITTEE →
       </button>
     </div>
-  );
-}
-
-function HubSimulationSnippet({ career }) {
-  const cfg = getDifficultyConfig(career.difficulty);
-  const profile = getDifficultyProfile(career.difficulty);
-  let facAvg = null;
-  try {
-    const f = career.facilities;
-    if (f && typeof f === "object" && Object.keys(f).length > 0) {
-      facAvg = Math.round(avgFacilities(f) * 10) / 10;
-    }
-  } catch {
-    facAvg = null;
-  }
-  let staffAvg = null;
-  try {
-    if (Array.isArray(career.staff) && career.staff.length > 0) {
-      staffAvg = Math.round(avgStaff(career.staff) * 10) / 10;
-    }
-  } catch {
-    staffAvg = null;
-  }
-  const phaseBits =
-    career.phase === "preseason"
-      ? "Pre-season"
-      : career.inFinals
-        ? "Finals"
-        : `Round ${career.week ?? "—"}`;
-  const roundTheme =
-    career.phase === "season" && !career.inFinals && career.week
-      ? themedRoundForNumber(career.week)
-      : null;
-  const focusLead =
-    career.training?.focus &&
-    Object.entries(career.training.focus).sort((a, b) => b[1] - a[1])[0]?.[0];
-  return (
-    <motion.div variants={hubItem} className={`${css.panel} p-3`}>
-      <div className={css.label}>Simulation & club shape</div>
-      <div className="text-sm text-atext mt-1 leading-snug">
-        <span className="font-bold" style={{ color: profile.color }}>
-          {profile.label}
-        </span>
-        <span className="text-atext-dim"> · </span>
-        {phaseBits}
-        {roundTheme?.short && (
-          <>
-            <span className="text-atext-dim"> · </span>
-            <span style={{color:"var(--A-accent-2)"}}>{roundTheme.short}</span>
-          </>
-        )}
-        <span className="text-atext-dim"> · </span>
-        {cfg.boardPatienceSeasons} season{cfg.boardPatienceSeasons === 1 ? "" : "s"} board patience · {cfg.injuryMultiplier}× injuries
-      </div>
-      {career.phase === "season" && !career.inFinals && (
-        <div className="text-[11px] text-atext-dim mt-2 leading-relaxed">
-          Match plan <span className="font-semibold text-atext">{career.tacticChoice || "balanced"}</span>
-          {" · "}
-          training ~{career.training?.intensity ?? 60}%
-          {focusLead ? (
-            <>
-              {" "}
-              · focus leans <span className="text-atext">{focusLead}</span>
-            </>
-          ) : null}
-        </div>
-      )}
-      {(facAvg != null || staffAvg != null) && (
-        <div className="text-[11px] text-atext-dim mt-2 leading-relaxed">
-          {facAvg != null && <>Facilities ~{facAvg.toFixed(1)}</>}
-          {facAvg != null && staffAvg != null && <span> · </span>}
-          {staffAvg != null && <>Staff ~{staffAvg.toFixed(1)}</>}
-        </div>
-      )}
-    </motion.div>
   );
 }
 
@@ -420,6 +346,31 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           )}
         </motion.div>
       )}
+
+      {/* Season narrative arc */}
+      {(() => {
+        const narr = seasonNarrative(career, sorted, league);
+        if (!narr) return null;
+        const toneColor = narr.tone === 'positive' ? 'var(--A-pos)'
+          : narr.tone === 'negative' ? 'var(--A-neg)'
+          : narr.tone === 'tense' ? 'var(--A-accent-2)'
+          : 'var(--A-accent)';
+        const toneEmoji = narr.tone === 'positive' ? '📈'
+          : narr.tone === 'negative' ? '📉'
+          : narr.tone === 'tense' ? '⚡'
+          : '📰';
+        return (
+          <motion.div variants={hubItem}
+            className="rounded-2xl px-4 py-3 flex items-start gap-3"
+            style={{ background: `color-mix(in srgb, ${toneColor} 6%, var(--A-panel))`, border: `1px solid color-mix(in srgb, ${toneColor} 22%, var(--A-line))` }}>
+            <span className="text-xl flex-shrink-0 mt-0.5">{toneEmoji}</span>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-widest font-mono mb-1" style={{ color: toneColor }}>{narr.headline}</div>
+              <div className="text-sm text-atext leading-relaxed">{narr.body}</div>
+            </div>
+          </motion.div>
+        );
+      })()}
 
       {/* Match preview — moved up so it's the first thing after the hero */}
       <motion.div variants={hubItem}>

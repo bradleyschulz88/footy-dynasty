@@ -53,11 +53,14 @@ export function NotificationBell({ career, onAction, open: controlledOpen, onOpe
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
+    // setOpen is a stable wrapper; intentionally keyed on `open` only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   // Auto-close once everything is handled.
   useEffect(() => {
     if (count === 0) setOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [count]);
 
   // Pop the dropdown automatically when a brand-new blocking item arrives so a

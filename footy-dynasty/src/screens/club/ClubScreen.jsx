@@ -619,16 +619,23 @@ function FootyTripCard({ career, updateCareer }) {
 
 function HonoursTab({ career, club: _club }) {
   const history = career.history || [];
-  const titles  = history.filter(h => h.champion).length;
-  const promotions = history.filter(h => h.promoted).length;
+  const titles       = history.filter(h => h.champion).length;
+  const promotions   = history.filter(h => h.promoted).length;
+  const premierships = history.filter(h => h.champion);
+  const bafWinners   = history.filter(h => h.brownlow).map(h => ({ season: h.season, ...h.brownlow }));
+  const topScorers   = history.filter(h => h.topScorer).map(h => ({ season: h.season, ...h.topScorer }));
+  // Career best season (most wins in a single season)
+  const bestSeason   = history.length > 0 ? [...history].sort((a, b) => (b.W || 0) - (a.W || 0))[0] : null;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Trophy count strip */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>HONOURS</div>
-          <div className="text-xs text-atext-dim">Your career story, season by season.</div>
+          <div className="text-xs text-atext-dim">Your career trophy room, season by season.</div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Stat label="Premierships" value={titles} accent="#FFD200" icon={Trophy} />
           <Stat label="Promotions" value={promotions} accent="var(--A-pos)" icon={ChevronsUp} />
           <Stat label="Seasons" value={history.length} accent="var(--A-accent)" icon={Calendar} />
@@ -641,43 +648,121 @@ function HonoursTab({ career, club: _club }) {
           <div className="text-sm text-atext-dim">Your career honour roll fills up after each season ends. Get to work.</div>
         </div>
       ) : (
-        <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
-          <div className="overflow-x-auto">
-          <div className="grid gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b min-w-[760px]"
-            style={{gridTemplateColumns:"5rem 1fr 4rem 4rem 4rem 4rem 4rem 4rem 1fr 1fr",borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
-            <div>Season</div>
-            <div>League</div>
-            <div className="text-center">Pos</div>
-            <div className="text-center">W-L-D</div>
-            <div className="text-center">Pts</div>
-            <div className="text-center">%</div>
-            <div className="text-center">F</div>
-            <div className="text-center">A</div>
-            <div>Top Scorer</div>
-            <div>Brownlow</div>
-          </div>
-          {[...history].reverse().map((h, i) => (
-            <div key={i} className="grid gap-2 px-4 py-3 text-sm items-center min-w-[760px]"
-              style={{gridTemplateColumns:"5rem 1fr 4rem 4rem 4rem 4rem 4rem 4rem 1fr 1fr",borderBottom:"1px solid var(--A-line)"}}>
-              <div className="font-display text-lg text-aaccent">{h.season}</div>
-              <div>
-                <span className="font-semibold">{h.leagueShort}</span>
-                {h.champion && <Pill color="#FFD200">🏆 Premiers</Pill>}
-                {h.promoted && <Pill color="var(--A-pos)">⬆ Promoted</Pill>}
-                {h.relegated && <Pill color="var(--A-neg)">⬇ Relegated</Pill>}
+        <>
+          {/* Roll of Honour: Premierships */}
+          {premierships.length > 0 && (
+            <div className={`${css.panel} p-4`}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">🏆</span>
+                <h3 className="font-display text-base tracking-wider text-aaccent-2">PREMIERSHIPS</h3>
               </div>
-              <div className="text-center font-bold">{h.position}</div>
-              <div className="text-center font-mono text-xs">{h.W}-{h.L}-{h.D}</div>
-              <div className="text-center font-mono">{h.pts}</div>
-              <div className="text-center font-mono text-xs">{h.pct}%</div>
-              <div className="text-center font-mono text-xs">{h.F != null ? h.F : '—'}</div>
-              <div className="text-center font-mono text-xs">{h.A != null ? h.A : '—'}</div>
-              <div className="text-xs text-atext-dim truncate">{h.topScorer ? `${h.topScorer.name} · ${h.topScorer.goals}g` : '—'}</div>
-              <div className="text-xs text-atext-dim truncate">{h.brownlow ? `${h.brownlow.name} · ${h.brownlow.votes}v` : '—'}</div>
+              <div className="flex flex-wrap gap-2">
+                {premierships.map((h, i) => (
+                  <div key={i} className="rounded-xl px-3 py-2 text-center min-w-[80px]"
+                    style={{ background: 'rgba(255,210,0,0.08)', border: '1px solid rgba(255,210,0,0.35)' }}>
+                    <div className="font-display text-xl text-yellow-400">{h.season}</div>
+                    <div className="text-[10px] text-atext-dim mt-0.5">{h.leagueShort}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
+          )}
+
+          {/* Roll of Honour: B&F + Top Scorer two-column grid */}
+          {(bafWinners.length > 0 || topScorers.length > 0) && (
+            <div className="grid md:grid-cols-2 gap-4">
+              {bafWinners.length > 0 && (
+                <div className={`${css.panel} p-4`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xl">🎖️</span>
+                    <h3 className="font-display text-base tracking-wider text-aaccent">BEST & FAIREST</h3>
+                  </div>
+                  <div className="space-y-1.5">
+                    {bafWinners.slice(0, 6).map((w, i) => (
+                      <div key={i} className="flex items-center justify-between text-sm">
+                        <span className="text-atext font-semibold">{w.name}</span>
+                        <span className="text-atext-dim font-mono text-xs">{w.season} · {w.votes}v</span>
+                      </div>
+                    ))}
+                    {bafWinners.length > 6 && <div className="text-[10px] text-atext-mute">+{bafWinners.length - 6} more</div>}
+                  </div>
+                </div>
+              )}
+              {topScorers.length > 0 && (
+                <div className={`${css.panel} p-4`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xl">⚽</span>
+                    <h3 className="font-display text-base tracking-wider text-aaccent">TOP GOAL KICKERS</h3>
+                  </div>
+                  <div className="space-y-1.5">
+                    {topScorers.slice(0, 6).map((s, i) => (
+                      <div key={i} className="flex items-center justify-between text-sm">
+                        <span className="text-atext font-semibold">{s.name}</span>
+                        <span className="text-atext-dim font-mono text-xs">{s.season} · {s.goals}g</span>
+                      </div>
+                    ))}
+                    {topScorers.length > 6 && <div className="text-[10px] text-atext-mute">+{topScorers.length - 6} more</div>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Best season callout */}
+          {bestSeason && bestSeason.W >= 12 && (
+            <div className="rounded-2xl px-4 py-3 flex items-center gap-3"
+              style={{ background: 'color-mix(in srgb, var(--A-accent) 6%, var(--A-panel))', border: '1px solid color-mix(in srgb, var(--A-accent) 22%, var(--A-line))' }}>
+              <span className="text-2xl flex-shrink-0">⭐</span>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest font-mono text-aaccent mb-0.5">Best season</div>
+                <div className="text-sm text-atext">{bestSeason.season} · {bestSeason.leagueShort} · {bestSeason.W}W {bestSeason.L}L {bestSeason.D}D · #{bestSeason.position}</div>
+              </div>
+            </div>
+          )}
+
+          {/* Full season-by-season table */}
+          <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
+            <div className="overflow-x-auto">
+            <div className="grid gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b min-w-[760px]"
+              style={{gridTemplateColumns:"5rem 1fr 4rem 4rem 4rem 4rem 4rem 4rem 1fr 1fr",borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
+              <div>Season</div>
+              <div>League</div>
+              <div className="text-center">Pos</div>
+              <div className="text-center">W-L-D</div>
+              <div className="text-center">Pts</div>
+              <div className="text-center">%</div>
+              <div className="text-center">F</div>
+              <div className="text-center">A</div>
+              <div>Top Scorer</div>
+              <div>Best & Fairest</div>
+            </div>
+            {[...history].reverse().map((h, i) => (
+              <div key={i} className="grid gap-2 px-4 py-3 text-sm items-center min-w-[760px]"
+                style={{
+                  gridTemplateColumns:"5rem 1fr 4rem 4rem 4rem 4rem 4rem 4rem 1fr 1fr",
+                  borderBottom:"1px solid var(--A-line)",
+                  background: h.champion ? 'rgba(255,210,0,0.04)' : 'transparent',
+                }}>
+                <div className="font-display text-lg" style={{ color: h.champion ? '#FFD200' : 'var(--A-accent)' }}>{h.season}</div>
+                <div className="flex flex-wrap items-center gap-1">
+                  <span className="font-semibold text-xs">{h.leagueShort}</span>
+                  {h.champion && <Pill color="#FFD200">🏆</Pill>}
+                  {h.promoted && <Pill color="var(--A-pos)">⬆</Pill>}
+                  {h.relegated && <Pill color="var(--A-neg)">⬇</Pill>}
+                </div>
+                <div className="text-center font-bold">{h.position}</div>
+                <div className="text-center font-mono text-xs">{h.W}-{h.L}-{h.D}</div>
+                <div className="text-center font-mono">{h.pts}</div>
+                <div className="text-center font-mono text-xs">{h.pct}%</div>
+                <div className="text-center font-mono text-xs">{h.F != null ? h.F : '—'}</div>
+                <div className="text-center font-mono text-xs">{h.A != null ? h.A : '—'}</div>
+                <div className="text-xs text-atext-dim truncate">{h.topScorer ? `${h.topScorer.name} · ${h.topScorer.goals}g` : '—'}</div>
+                <div className="text-xs text-atext-dim truncate">{h.brownlow ? `${h.brownlow.name} · ${h.brownlow.votes}v` : '—'}</div>
+              </div>
+            ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

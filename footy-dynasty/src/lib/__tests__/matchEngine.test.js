@@ -9,6 +9,7 @@ import {
   defensivePressureMod,
   weatherAccuracyMod,
   playerEffectiveMatchRating,
+  adaptiveOppTactic,
 } from '../matchEngine.js';
 
 // ---------------------------------------------------------------------------
@@ -438,5 +439,27 @@ describe('benchStrengthBonus', () => {
     const q4 = benchStrengthBonus(squad, lineup, 4);
     expect(q3).toBeGreaterThan(0);
     expect(q4).toBeGreaterThanOrEqual(q3);
+  });
+});
+
+describe('adaptiveOppTactic — AI reacts to the scoreboard', () => {
+  it('holds the pre-match plan through the first half', () => {
+    expect(adaptiveOppTactic('balanced', 40, 0)).toBe('balanced');
+    expect(adaptiveOppTactic('attack', -40, 1)).toBe('attack');
+  });
+
+  it('locks down a lead in the second half', () => {
+    expect(adaptiveOppTactic('attack', 12, 2)).toBe('defensive'); // handy lead
+    expect(adaptiveOppTactic('balanced', 25, 3)).toBe('flood');   // big lead
+  });
+
+  it('chases the game when behind in the second half', () => {
+    expect(adaptiveOppTactic('balanced', -12, 2)).toBe('run');
+    expect(adaptiveOppTactic('defensive', -25, 3)).toBe('attack');
+  });
+
+  it('keeps the plan when the margin is tight', () => {
+    expect(adaptiveOppTactic('press', 6, 3)).toBe('press');
+    expect(adaptiveOppTactic('balanced', -5, 2)).toBe('balanced');
   });
 });
