@@ -53,23 +53,25 @@ export function proposalForRenewal(sponsor, career) {
 }
 
 // Build a fresh round of sponsor offers for clubs that need to backfill expired
-// deals. Performance + reputation-weighted.
+// deals. Performance + reputation-weighted. Losing clubs receive fewer and lower offers.
 export function generateSponsorOffers(career, leagueTier, count = 3) {
   const cfg = getDifficultyConfig(career.difficulty);
   const perf = performanceTier(career);
-  // Reputation also nudges valuation
+  // Performance shifts both offer count and value
+  const adjustedCount = perf === 'contending' ? count + 1
+                      : perf === 'losing'     ? Math.max(1, count - 2)
+                      : count;
   const repMult = (career.coachReputation ?? 30) >= 60 ? 1.10
                 : (career.coachReputation ?? 30) >= 40 ? 1.00
                 : 0.92;
-  const perfMult = perf === 'contending' ? 1.10 : perf === 'losing' ? 0.85 : 1.0;
+  const perfMult = perf === 'contending' ? 1.15 : perf === 'losing' ? 0.72 : 1.0;
   const raw = generateSponsors(leagueTier);
-  const offers = raw.slice(0, count).map(s => ({
+  return raw.slice(0, adjustedCount).map(s => ({
     ...s,
     annualValue: Math.round(s.annualValue * (cfg.sponsorMultiplier ?? 1.0) * repMult * perfMult),
     offerKind: 'new',
     offerId:  `offer_${s.id}`,
   }));
-  return offers;
 }
 
 // Startup/offers when the club has no signed sponsors yet (career creation, new job).

@@ -337,6 +337,28 @@ export function stadiumDescription(level) {
 }
 
 // =============================================================================
+// Supporter base (fanbase) — tracks long-run support growth
+// =============================================================================
+export const TIER_FANBASE_BASE = { 1: 5000, 2: 500, 3: 100 };
+export const TIER_FANBASE_MAX  = { 1: 100_000, 2: 5_000, 3: 1_000 };
+
+/**
+ * Returns an updated fanbase number after a match or season outcome.
+ * Won/drew/lost apply per-match; promoted/relegated apply at season end.
+ */
+export function updateFanbase(career, tier, { won = false, drew = false, promoted = false, relegated = false } = {}) {
+  const base = TIER_FANBASE_BASE[tier] ?? 100;
+  const max  = TIER_FANBASE_MAX[tier] ?? 1_000;
+  const current = career.fanbase ?? base;
+  let delta = 0;
+  if (promoted)        delta = Math.round(base * 0.25);
+  else if (relegated)  delta = -Math.round(base * 0.15);
+  else if (won)        delta = 2;
+  else if (!drew)      delta = -1;
+  return Math.max(1, Math.min(max, current + delta));
+}
+
+// =============================================================================
 // Minimal journalist stub (Section 8 placeholder)
 // =============================================================================
 export function generateJournalist() {

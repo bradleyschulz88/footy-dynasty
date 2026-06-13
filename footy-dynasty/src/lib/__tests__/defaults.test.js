@@ -26,13 +26,13 @@ describe('defaultFinance', () => {
   });
 
   it('tier-3 returns expected cash value', () => {
-    expect(defaultFinance(3).cash).toBe(180_000);
+    expect(defaultFinance(3).cash).toBe(120_000);
   });
 
   it('unknown tier falls back to the tier-3 baseline', () => {
     const f = defaultFinance(9);
-    expect(f.cash).toBe(180_000);
-    expect(f.annualIncome).toBe(480_000);
+    expect(f.cash).toBe(120_000);
+    expect(f.annualIncome).toBe(350_000);
   });
 
   it('returns all required financial fields', () => {

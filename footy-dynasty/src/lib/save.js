@@ -410,6 +410,17 @@ export function migrate(save) {
     }
   }
 
+  if (v < 29) {
+    s.saveVersion = 29;
+    // Supporter base — tier-appropriate starting value for existing saves.
+    if (s.fanbase == null) {
+      const t = s.leagueKey ? PYRAMID[s.leagueKey]?.tier : null;
+      s.fanbase = t === 1 ? 5000 : t === 2 ? 500 : 100;
+    }
+    // Local rival club — assigned lazily at first round event.
+    if (s.rivalClubId === undefined) s.rivalClubId = null;
+  }
+
   return s;
 }
 

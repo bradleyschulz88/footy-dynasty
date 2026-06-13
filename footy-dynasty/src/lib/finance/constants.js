@@ -21,10 +21,10 @@ export const TIER_FINANCE = {
     wageBudget:     1_400_000,
   },
   3: {
-    cash:           180_000,
-    annualIncome:   480_000,
-    transferBudget: 35_000,
-    wageBudget:     130_000,
+    cash:           120_000,
+    annualIncome:   350_000,
+    transferBudget: 20_000,
+    wageBudget:     55_000,
   },
 };
 
