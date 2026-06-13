@@ -161,11 +161,6 @@ const DRAW_CLOSERS = [
   'A point each feels right after that tussle.',
 ];
 
-// Keep deprecated aliases so existing call-sites don't break
-const ROUND_REPORT_WIN_CLOSERS  = WIN_COMFORT;
-const ROUND_REPORT_DRAW_CLOSERS = DRAW_CLOSERS;
-const ROUND_REPORT_LOSS_CLOSERS = LOSS_COMFORT;
-
 /** Build a journalist-voice match report line with margin + player context. */
 function buildMatchReportLine(c, meta, myResult, won, drew, isHome, result) {
   const { myTotal, oppTotal, opp } = myResult;

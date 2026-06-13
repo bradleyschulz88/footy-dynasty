@@ -3,7 +3,6 @@
  * Updated each call based on current phase, ladder position, form, and stakes.
  */
 
-import { sortedLadder } from './leagueEngine.js';
 
 /** Pull the player's recent form from the news log (last N match results). */
 function recentResults(career, n = 5) {
@@ -51,7 +50,7 @@ function posLabel(pos, total) {
   return `${pos}${pos === 2 ? 'nd' : pos === 3 ? 'rd' : 'th'}, ${gap} spot${gap === 1 ? '' : 's'} outside the top ${finalsN}`;
 }
 
-export function seasonNarrative(career, sortedLadderRows, league) {
+export function seasonNarrative(career, sortedLadderRows, _league) {
   const week    = career.week ?? 0;
   const phase   = career.phase ?? 'preseason';
   const inFinals = !!career.inFinals;
