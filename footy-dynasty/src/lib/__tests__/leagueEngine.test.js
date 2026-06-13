@@ -10,6 +10,7 @@ import {
   pickPromotionLeague,
   pickRelegationLeague,
 } from '../leagueEngine.js';
+import { pairFinalsRound } from '../finalsBracket.js';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -198,8 +199,18 @@ describe('getFinalsTeams', () => {
     expect(getFinalsTeams(makeLadder(9), 2)).toHaveLength(6);
   });
 
-  it('selects the top 4 for tier-3 competitions', () => {
-    expect(getFinalsTeams(makeLadder(8), 3)).toHaveLength(4);
+  it('selects the top 6 for tier-3 competitions (final six)', () => {
+    expect(getFinalsTeams(makeLadder(10), 3)).toHaveLength(6);
+  });
+
+  it('tier-3 final six pairs 1v6, 2v5, 3v4 with the top three at home', () => {
+    const ladder = makeLadder(10);
+    const seeds = getFinalsTeams(ladder, 3).map((r) => r.id);
+    const pairs = pairFinalsRound(seeds, seeds, 3);
+    expect(pairs).toHaveLength(3);
+    expect(pairs[0]).toMatchObject({ home: seeds[0], away: seeds[5] }); // 1 v 6
+    expect(pairs[1]).toMatchObject({ home: seeds[1], away: seeds[4] }); // 2 v 5
+    expect(pairs[2]).toMatchObject({ home: seeds[2], away: seeds[3] }); // 3 v 4
   });
 
   it('returns all clubs when ladder is smaller than the finals quota', () => {

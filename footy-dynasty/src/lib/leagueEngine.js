@@ -171,7 +171,8 @@ export function sortedLadder(ladder) {
 
 export function getFinalsTeams(ladder, leagueTier) {
   const sorted = sortedLadder(ladder);
-  const n = leagueTier === 1 ? 8 : leagueTier === 2 ? 6 : 4;
+  // Tier 1 = AFL final 8; tiers 2 & 3 = final 6 (week 1: 1v6, 2v5, 3v4, top 3 host).
+  const n = leagueTier === 1 ? 8 : 6;
   return sorted.slice(0, Math.min(n, sorted.length));
 }
 
