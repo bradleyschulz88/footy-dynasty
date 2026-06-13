@@ -53,8 +53,6 @@ export default function CareersScreen({ career, club, league, updateCareer, onAc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listings, career.clubId, career.season]);
 
-  const offers = listings || [];
-
   // Interview / outcome flow.
   const [focus, setFocus] = useState(null);
   const [stage, setStage] = useState("list"); // list | rejected | interview | followup
@@ -65,7 +63,7 @@ export default function CareersScreen({ career, club, league, updateCareer, onAc
   const [rejection, setRejection] = useState(null);
 
   const sortedOffers = useMemo(() => {
-    const arr = [...offers];
+    const arr = [...(listings || [])];
     arr.sort((a, b) => {
       const fa = a.interestLabel === "Preferred candidate" ? 2 : a.interestLabel === "Shortlisted" ? 1 : 0;
       const fb = b.interestLabel === "Preferred candidate" ? 2 : b.interestLabel === "Shortlisted" ? 1 : 0;
@@ -73,7 +71,7 @@ export default function CareersScreen({ career, club, league, updateCareer, onAc
       return a.leagueTier - b.leagueTier;
     });
     return arr;
-  }, [offers]);
+  }, [listings]);
 
   const refresh = () => {
     seedRng((Date.now() % 100000) + 1);

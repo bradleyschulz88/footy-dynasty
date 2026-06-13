@@ -45,7 +45,7 @@ import {
   committeeMessage, bumpCommitteeMood, postMatchFundraiser,
   ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
   groundConditionBand, journalistMatchLine,
-  updateFanbase, TIER_FANBASE_BASE,
+  updateFanbase,
 } from './community.js';
 import {
   coachTierFromScore, applyEndOfSeasonReputation,

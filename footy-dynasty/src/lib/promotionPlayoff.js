@@ -8,7 +8,7 @@
 // for (and win) a state-body promotion playoff — a four-team group round-robin
 // against the champions of neighbouring regions.
 // ---------------------------------------------------------------------------
-import { rand, rng, pick } from './rng.js';
+import { rng, pick } from './rng.js';
 import { ALL_CLUBS, findLeagueOf, findClub } from '../data/pyramid.js';
 
 /** Consecutive Division 1 premierships required before the club can apply. */

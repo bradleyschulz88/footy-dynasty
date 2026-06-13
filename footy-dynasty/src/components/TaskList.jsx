@@ -11,7 +11,7 @@
 import React, { useState } from "react";
 import { ChevronRight, ChevronDown, ChevronUp, AlertTriangle, Lightbulb, CheckCircle } from "lucide-react";
 import { css } from "./primitives.jsx";
-import { lineupPlayerCount, lineupHasPlayer, lineupPlayersOrdered, LINEUP_CAP } from "../lib/lineupHelpers.js";
+import { lineupPlayerCount, lineupHasPlayer, LINEUP_CAP } from "../lib/lineupHelpers.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -6,7 +6,6 @@ import { TRAINING_INFO, formatDate } from "../../lib/calendar.js";
 import { finalsRoundLabel, playerFinalsOpponent } from "../../lib/finalsBracket.js";
 import { findClub } from "../../data/pyramid.js";
 import { fmtK } from "../../lib/format.js";
-import { css } from "../primitives.jsx";
 import SeasonStrip from "../SeasonStrip.jsx";
 import { NotificationBell } from "./NotificationBell.jsx";
 import { useStatTrend, trendGlyph, trendColor } from "./useStatTrend.js";
