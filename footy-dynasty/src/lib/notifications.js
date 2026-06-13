@@ -7,7 +7,7 @@
 // (board / trade / draft), but are filtered into their own surface by kind.
 // ---------------------------------------------------------------------------
 import { rng, rand, pick } from './rng.js';
-import { FIRST_NAMES, LAST_NAMES } from './playerGen.js';
+import { FIRST_NAMES, LAST_NAMES, generatePlayer } from './playerGen.js';
 
 /** Kinds shown in the notification bell (everything else is an internal mirror). */
 export const NOTIFICATION_KINDS = [
@@ -16,6 +16,8 @@ export const NOTIFICATION_KINDS = [
   'staff_leave',
   'volunteer_join',
   'staff_poach',
+  'player_join',   // tier 3 — a local player / recommendation wants to sign
+  'player_leave',  // tier 3 — a player is thinking of moving on
 ];
 
 /** Major decisions pause calendar advance until answered; the rest are passive. */
@@ -129,6 +131,42 @@ export function buildPlayerTransferRequestNotice(player) {
   };
 }
 
+// Tier-3 recruitment: a local player wants in — sometimes a walk-up, sometimes
+// recommended by someone already at the club. Community terms (cheap).
+export function buildPlayerJoinNotice(tier, { recommenderName } = {}) {
+  const base = generatePlayer(3, rand(1000, 9999));
+  const player = { ...base, wage: rand(2, 12) * 1000, contract: 2, seasonsAtClub: 0 };
+  const name = `${player.firstName} ${player.lastName}`;
+  return {
+    id: `player_join_${player.id}`,
+    kind: 'player_join',
+    blocking: false,
+    resolved: false,
+    title: recommenderName ? 'Player recommendation' : 'Player wants to join',
+    detail: recommenderName
+      ? `${recommenderName} reckons his mate ${name} (${player.overall} OVR ${player.position}) is worth a run. Sign him on?`
+      : `${name} (${player.overall} OVR ${player.position}) has been training with the group and wants to join. Sign him on?`,
+    payload: { player, rating: player.overall },
+    actions: [{ id: 'sign', label: 'Sign him' }, { id: 'decline', label: 'Not now' }],
+  };
+}
+
+// Tier-3 departure: a player is thinking of moving on (no transfer fees here —
+// they can just walk). You can try to talk them round.
+export function buildPlayerDepartureNotice(player) {
+  const name = player.firstName ? `${player.firstName} ${player.lastName}` : (player.name || 'A player');
+  return {
+    id: `player_leave_${player.id}_${rand(1000, 9999)}`,
+    kind: 'player_leave',
+    blocking: false,
+    resolved: false,
+    title: 'Player thinking of leaving',
+    detail: `${name} (${player.overall} OVR) is weighing up walking away from the club. Have a word, or let him go.`,
+    payload: { playerId: player.id, playerName: name, rating: player.overall },
+    actions: [{ id: 'convince', label: 'Talk him round' }, { id: 'let_go', label: 'Let him go' }],
+  };
+}
+
 // --- Off-season generation -------------------------------------------------
 
 /**
@@ -169,6 +207,20 @@ export function generateOffseasonNotifications(career, tier) {
   const volunteerChance = tier === 3 ? 0.5 : tier === 2 ? 0.25 : 0.1;
   if (rng() < volunteerChance) {
     out.push(buildVolunteerJoinNotice(tier));
+  }
+
+  // Tier 3 has no trade market — players arrive (and leave) by word of mouth.
+  if (tier === 3) {
+    if (rng() < 0.55) {
+      const recommender = squad.length && rng() < 0.6 ? pick(squad) : null;
+      out.push(buildPlayerJoinNotice(tier, {
+        recommenderName: recommender ? `${recommender.firstName ?? ''} ${recommender.lastName ?? ''}`.trim() || null : null,
+      }));
+    }
+    const leavers = squad.filter((p) => (p.age ?? 25) >= 30 || (p.morale ?? 70) < 45);
+    if (leavers.length > 0 && rng() < 0.35) {
+      out.push(buildPlayerDepartureNotice(pick(leavers)));
+    }
   }
 
   return out;

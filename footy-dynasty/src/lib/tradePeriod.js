@@ -71,6 +71,10 @@ export const POST_TRADE_DRAFT_COUNTDOWN_DAYS = 7;
 
 /** AI trade offers use the same shape as pre-season pendingTradeOffers. */
 function seedAiTradeOffers(c, league) {
+  // Tier 3 is local/community footy — there's no trade market. Players come and
+  // go by word of mouth (see the tier-3 recruitment notifications), so no rival
+  // club ever tables a formal trade offer.
+  if ((league?.tier ?? 1) === 3) return;
   const fieldIds = new Set(
     (c.lineup || [])
       .slice(0, LINEUP_FIELD_COUNT)

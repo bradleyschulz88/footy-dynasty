@@ -859,6 +859,21 @@ function finishSeason(c, league) {
   const games = (myRow.W || 0) + (myRow.L || 0) + (myRow.D || 0);
   const winRate = games > 0 ? (myRow.W || 0) / games : 0;
   const madeFinals = (c.finalsFinalists || []).includes(c.clubId) || champion;
+
+  // End-of-season holidays. Everyone gets a break; clubs that missed finals get a
+  // longer one — players return refreshed (morale up) but a touch undercooked
+  // (fitness dips, to be rebuilt in pre-season). A deep run means a shorter rest.
+  if (!madeFinals) {
+    c.squad = c.squad.map((p) => ({
+      ...p,
+      morale: clamp((p.morale ?? 70) + rand(6, 14), 0, 100),
+      fitness: clamp((p.fitness ?? 90) - rand(4, 10), 40, 100),
+    }));
+    c.news = [{ week: 0, type: 'info', text: `🏖️ Season done — the playing group heads off on a well-earned holiday. They'll come back refreshed for pre-season.` }, ...(c.news || [])].slice(0, 20);
+  } else {
+    c.squad = c.squad.map((p) => ({ ...p, morale: clamp((p.morale ?? 70) + rand(2, 6), 0, 100) }));
+  }
+
   c.coachReputation = applyEndOfSeasonReputation(c.coachReputation, {
     premiership: champion,
     finals: madeFinals && !champion,
@@ -1294,7 +1309,8 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 
   if (ev.type === 'key_event') {
     const extraNews = [];
-    if (ev.name === 'Transfer Window Opens') {
+    if (ev.name === 'Transfer Window Opens' && league.tier !== 3) {
+      // Tier 3 has no trade market — recruitment happens by word of mouth.
       c.tradeWindowBriefingPending = true;
       const comp = competitionClubsForCareer(c);
       const aiClubs = (comp.length ? comp : (league.clubs || [])).filter((cl) => cl.id !== c.clubId).slice(0, 4);

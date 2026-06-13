@@ -190,22 +190,34 @@ export function enrichMarketPlayerCareer(p, season) {
       disposals: Math.round(games * (6 + rng() * 14)),
     });
   }
-  const gamesPlayed = careerLog.reduce((s, r) => s + r.games, 0);
+  const careerGames = careerLog.reduce((s, r) => s + r.games, 0);
   const lastSeason = careerLog[0];
   const goals = lastSeason ? Math.round(lastSeason.goals * (0.85 + rng() * 0.3)) : rand(0, 12);
   const disposals = lastSeason ? Math.round(lastSeason.disposals * (0.9 + rng() * 0.2)) : rand(50, 280);
   const marks = Math.round(disposals * (0.15 + rng() * 0.2));
   const tackles = Math.round(disposals * (0.08 + rng() * 0.12));
+  // Synthetic history is SCOUTING context only — it belongs in lastSeasonStats,
+  // not the live season counters. A player you sign starts this season on zero;
+  // the big numbers only ever come from games actually played for your club.
   return {
     ...p,
     fromClub,
     careerLog,
-    gamesPlayed,
-    goals,
-    behinds: Math.round(goals * (0.2 + rng() * 0.4)),
-    disposals,
-    marks,
-    tackles,
+    careerGames,
+    lastSeasonStats: {
+      games: lastSeason?.games ?? 0,
+      goals,
+      behinds: Math.round(goals * (0.2 + rng() * 0.4)),
+      disposals,
+      marks,
+      tackles,
+    },
+    gamesPlayed: 0,
+    goals: 0,
+    behinds: 0,
+    disposals: 0,
+    marks: 0,
+    tackles: 0,
   };
 }
 
