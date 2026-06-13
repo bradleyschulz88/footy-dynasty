@@ -19,7 +19,12 @@ export function finalsMagicNumber(career, finalsSpots = 8) {
   const myPts = me.pts ?? 0;
   const cutPts = cutoff.pts ?? 0;
   const myPlayed = me.played ?? 0;
-  const roundsLeft = Math.max(0, (career.totalRounds ?? 23) - myPlayed);
+  // Derive the home-and-away length from the actual fixture/calendar so the
+  // magic number stays right for any competition size (it doubled when the
+  // season became a true home-and-away).
+  const scheduledRounds = (career.eventQueue || []).filter((e) => e.type === 'round').length;
+  const totalRounds = career.totalRounds ?? (scheduledRounds || 23);
+  const roundsLeft = Math.max(0, totalRounds - myPlayed);
 
   if (myPos <= finalsSpots && myPts > cutPts + roundsLeft * 4) {
     return { clinched: true, label: 'Finals secured', myPos, roundsLeft };

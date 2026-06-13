@@ -109,27 +109,36 @@ export function competitionClubsForCareer(c) {
   return getCompetitionClubs(c.leagueKey, region, div, c.season);
 }
 
-export function generateFixtures(leagueClubs) {
+// Full home-and-away season: a double round-robin. The base single round-robin
+// (circle method) is generated with the venue alternated per round/game so no
+// club gets a long home or away run; then a mirror set of rounds replays every
+// pairing with the venue reversed. Net result: every club hosts AND visits every
+// other club exactly once, so each team plays an equal number of home and away
+// games. Pass { homeAndAway: false } for a single round-robin.
+export function generateFixtures(leagueClubs, { homeAndAway = true } = {}) {
   const ids = leagueClubs.map(c => c.id);
-  const rounds = [];
-  const n = ids.length;
   const arr = [...ids];
-  if (n % 2 !== 0) arr.push(null);
+  if (arr.length % 2 !== 0) arr.push(null);
   const teams = arr.length;
   const half = teams / 2;
   let rotation = arr.slice(1);
+  const baseRounds = [];
   for (let r = 0; r < teams - 1; r++) {
     const round = [];
     const left  = [arr[0], ...rotation.slice(0, half - 1)];
     const right = rotation.slice(half - 1).reverse();
     for (let i = 0; i < half; i++) {
       const h = left[i], a = right[i];
-      if (h && a) round.push({ home: h, away: a });
+      if (!h || !a) continue;
+      // Alternate which side hosts so venues don't streak across the season.
+      round.push((r + i) % 2 === 0 ? { home: h, away: a } : { home: a, away: h });
     }
-    rounds.push(round);
+    baseRounds.push(round);
     rotation = [rotation[rotation.length - 1], ...rotation.slice(0, -1)];
   }
-  return rounds;
+  if (!homeAndAway) return baseRounds;
+  const returnRounds = baseRounds.map(round => round.map(m => ({ home: m.away, away: m.home })));
+  return [...baseRounds, ...returnRounds];
 }
 
 export function blankLadder(leagueClubs) {

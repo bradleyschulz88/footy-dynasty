@@ -131,19 +131,39 @@ describe('sortedLadder', () => {
 // generateFixtures
 // ---------------------------------------------------------------------------
 describe('generateFixtures', () => {
-  it('produces n-1 rounds for n teams (round-robin)', () => {
+  it('produces a full home-and-away season: 2(n-1) rounds for n teams', () => {
     const fixtures = generateFixtures(CLUBS);
-    expect(fixtures).toHaveLength(CLUBS.length - 1);
+    expect(fixtures).toHaveLength(2 * (CLUBS.length - 1));
   });
 
-  it('every pair of clubs meets exactly once', () => {
+  it('a single round-robin is available via { homeAndAway: false }', () => {
+    expect(generateFixtures(CLUBS, { homeAndAway: false })).toHaveLength(CLUBS.length - 1);
+  });
+
+  it('every pair meets exactly twice — once at each venue', () => {
     const fixtures = generateFixtures(CLUBS);
-    const matchups = new Set();
+    const venues = new Map(); // "A-B" (sorted) -> Set of home club ids
     fixtures.forEach(round =>
-      round.forEach(m => matchups.add([m.home, m.away].sort().join('-')))
+      round.forEach(m => {
+        const key = [m.home, m.away].sort().join('-');
+        if (!venues.has(key)) venues.set(key, new Set());
+        venues.get(key).add(m.home);
+      })
     );
-    const expected = (CLUBS.length * (CLUBS.length - 1)) / 2;
-    expect(matchups.size).toBe(expected);
+    const pairs = (CLUBS.length * (CLUBS.length - 1)) / 2;
+    expect(venues.size).toBe(pairs);
+    // Each pair hosted by both clubs exactly once.
+    for (const homeSet of venues.values()) expect(homeSet.size).toBe(2);
+  });
+
+  it('every club plays an equal number of home and away games', () => {
+    const fixtures = generateFixtures(CLUBS);
+    const home = {}; const away = {};
+    fixtures.forEach(round => round.forEach(m => {
+      home[m.home] = (home[m.home] || 0) + 1;
+      away[m.away] = (away[m.away] || 0) + 1;
+    }));
+    CLUBS.forEach(c => expect(home[c.id]).toBe(away[c.id]));
   });
 
   it('no club plays itself', () => {
@@ -155,7 +175,6 @@ describe('generateFixtures', () => {
   it('works for an odd number of clubs (bye handling)', () => {
     const oddClubs = CLUBS.slice(0, 3); // 3 clubs
     const fixtures = generateFixtures(oddClubs);
-    // With a bye, each round has floor(n/2) games and there are n rounds
     fixtures.forEach(round => {
       round.forEach(m => {
         expect(m.home).not.toBe(m.away);
