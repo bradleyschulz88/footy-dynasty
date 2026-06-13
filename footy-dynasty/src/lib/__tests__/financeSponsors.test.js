@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   tickSponsorYears, proposalForRenewal, generateSponsorOffers,
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
-  buildInitialSponsorOffers,
+  buildInitialSponsorOffers, buildStartingSponsors,
 } from '../finance/sponsors.js';
 import { seedRng } from '../rng.js';
 
@@ -77,6 +77,24 @@ describe('buildInitialSponsorOffers', () => {
     });
     expect(offers.length).toBeGreaterThanOrEqual(3);
     expect(offers.every(o => o.offerKind === 'new')).toBe(true);
+  });
+});
+
+describe('buildStartingSponsors', () => {
+  it('a tier-3 club starts with a single signed sponsor', () => {
+    expect(buildStartingSponsors(3)).toHaveLength(1);
+  });
+  it('tier 2 starts with two, tier 1 with three', () => {
+    expect(buildStartingSponsors(2)).toHaveLength(2);
+    expect(buildStartingSponsors(1)).toHaveLength(3);
+  });
+  it('the first sponsor is up for renewal (yearsLeft === 1)', () => {
+    expect(buildStartingSponsors(3)[0].yearsLeft).toBe(1);
+  });
+  it('every starting sponsor has a positive annual value', () => {
+    for (const tier of [1, 2, 3]) {
+      for (const s of buildStartingSponsors(tier)) expect(s.annualValue).toBeGreaterThan(0);
+    }
   });
 });
 

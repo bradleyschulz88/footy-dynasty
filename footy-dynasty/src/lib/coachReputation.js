@@ -189,6 +189,27 @@ export function generateJobMarket(career, options = {}) {
   return offers;
 }
 
+/**
+ * Unsolicited approach gating. A rival club only comes knocking after a truly
+ * dominant season — an undefeated home-and-away campaign. Returns the best
+ * higher-tier listing the coach could step up to, or null when no approach is
+ * warranted. Browsing/applying is always available via {@link generateJobMarket};
+ * this is specifically the "the phone rings on its own" path.
+ */
+export function buildDominantSeasonApproach(career, { losses = 0, games = 0, currentTier = 3 } = {}) {
+  if (games < 10) return null;        // needs a full home-and-away season
+  if (losses > 0) return null;        // must be undefeated
+  if (currentTier <= 1) return null;  // already at the summit
+  const higher = generateJobMarket(career)
+    .filter((o) => o.leagueTier < currentTier)
+    .sort((a, b) => {
+      if (a.leagueTier !== b.leagueTier) return a.leagueTier - b.leagueTier;
+      const rank = (o) => (o.interestLabel === 'Preferred candidate' ? 2 : o.interestLabel === 'Shortlisted' ? 1 : 0);
+      return rank(b) - rank(a);
+    })[0];
+  return higher || null;
+}
+
 // Take-a-season-off recovery: reputation +5, no offers this round.
 export function takeSeasonOff(career) {
   return {

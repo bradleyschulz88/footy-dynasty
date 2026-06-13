@@ -89,7 +89,7 @@ import {
 } from './lib/coachReputation.js';
 // --- Finance system rebuild ---
 import { makeStartingFinance, scaledSquadToFitCap } from './lib/finance/engine.js';
-import { buildInitialSponsorOffers } from './lib/finance/sponsors.js';
+import { buildStartingSponsors } from './lib/finance/sponsors.js';
 import {
   ensureCareerBoard,
   resetExecutiveBoard,
@@ -539,13 +539,7 @@ function AFLManagerInner() {
       squad: newSquad,
     });
     const newLineup = squadForCap.slice().sort((a,b)=>b.overall-a.overall).slice(0, LINEUP_CAP).map(p => p.id);
-    const initialOffers = buildInitialSponsorOffers({
-      leagueTier: newLeague.tier,
-      difficulty: career.difficulty,
-      clubId: newClub.id,
-      ladder: newLadder,
-      coachReputation: career.coachReputation ?? 30,
-    });
+    const initialSponsors = buildStartingSponsors(newLeague.tier);
     const newFacilities = DEFAULT_FACILITIES();
     const newClubGround = getClubGround(newClub, newFacilities.stadium.level, newLeague.tier);
 
@@ -586,7 +580,7 @@ function AFLManagerInner() {
       ladder:    newLadder,
       fixtures:  newFixtures,
       finance:   newFinance,
-      sponsors:  [],
+      sponsors:  initialSponsors,
       staff:     generateStaff(newLeague.tier),
       staffTasks: DEFAULT_STAFF_TASKS(),
       facilities: newFacilities,
@@ -597,6 +591,8 @@ function AFLManagerInner() {
       sackingStep: null,
       gameOver:  null,
       jobOffers: [],
+      tier3Div1Titles: 0,
+      lastPromotionPlayoff: null,
       boardWarning: 0,
       boardVotePrepBonus: 0,
       jobMarketRerolls: 0,
@@ -629,7 +625,7 @@ function AFLManagerInner() {
       cashCrisisLevel:            0,
       bankLoan:                   null,
       sponsorRenewalProposals:    [],
-      sponsorOffers:              initialOffers,
+      sponsorOffers:              [],
       expiredSponsorsLastSeason:  [],
       pendingRenewals:            [],
       renewalsClosed:             false,

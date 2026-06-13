@@ -86,6 +86,23 @@ export function buildInitialSponsorOffers(args) {
   return generateSponsorOffers(stub, leagueTier, 4);
 }
 
+// Sponsors a club already has on the books at career start.
+// A new club isn't flooded with lucrative offers — it starts with a modest base
+// of signed deals (one of which is up for renewal so it surfaces immediately),
+// and earns further interest as the club's reputation and results grow.
+export function buildStartingSponsors(leagueTier) {
+  const t = leagueTier === 1 ? 1 : leagueTier === 2 ? 2 : 3;
+  const count = t === 1 ? 3 : t === 2 ? 2 : 1;
+  const signed = generateSponsors(t).slice(0, count);
+  if (signed.length === 0) return signed;
+  // The first deal is expiring — it "wants to renew" on the first end-of-season tick.
+  return signed.map((s, i) => ({
+    ...s,
+    yearsLeft: i === 0 ? 1 : Math.max(2, s.yearsLeft ?? 2),
+    type: s.type || 'Community',
+  }));
+}
+
 // Auto-accept a renewal proposal — applies the new annualValue + years.
 export function applyRenewalAcceptance(career, proposal) {
   return {
