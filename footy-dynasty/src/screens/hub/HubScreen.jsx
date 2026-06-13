@@ -13,7 +13,6 @@ import {
   Dumbbell,
   Repeat,
   ChevronRight,
-  Medal,
 } from "lucide-react";
 import { TaskList } from "../../components/TaskList.jsx";
 import { findClub } from "../../data/pyramid.js";
@@ -35,7 +34,7 @@ import {
 import { ladderNeighbourClubs } from "../../lib/hubRivals.js";
 import { boardObjectiveUiStatus, youthSeniorGameCount } from "../../lib/board.js";
 import { themedRoundForNumber } from "../../lib/themedRounds.js";
-import { css, Pill, Stat, Jersey } from "../../components/primitives.jsx";
+import { css, Pill, Stat, Jersey, CollapsibleSection } from "../../components/primitives.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 import { finalsMagicNumber } from "../../lib/magicNumber.js";
 
@@ -451,14 +450,12 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       })()}
 
       {career.dynasty?.quests?.length > 0 && (
-        <motion.div variants={hubItem} className={`${css.panel} p-4`}>
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <Medal className="w-4 h-4 text-aaccent-2" aria-hidden />
-            <h3 className="font-display text-lg text-atext tracking-wide">DYNASTY GOALS</h3>
-            <span className="text-[10px] font-mono text-atext-mute uppercase tracking-wider">
-              {(career.dynasty?.lifetimeGoals ?? 0)} lifetime completes
-            </span>
-          </div>
+        <motion.div variants={hubItem}>
+        <CollapsibleSection
+          id="dynasty_goals"
+          title="Dynasty goals"
+          right={<span className="text-[10px] font-mono text-atext-mute uppercase tracking-wider shrink-0">{(career.dynasty?.lifetimeGoals ?? 0)} done</span>}
+        >
           <ul className="space-y-2">
             {(career.dynasty.quests || []).map((q) => (
               <li
@@ -483,18 +480,17 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               </li>
             ))}
           </ul>
+        </CollapsibleSection>
         </motion.div>
       )}
 
       {career.dynasty?.milestones?.length > 0 && (
-        <motion.div variants={hubItem} className={`${css.panel} p-4`}>
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <Trophy className="w-4 h-4 text-aaccent-2" aria-hidden />
-            <h3 className="font-display text-lg text-atext tracking-wide">LEGACY MILESTONES</h3>
-            <span className="text-[10px] font-mono text-atext-mute uppercase tracking-wider">
-              career-long goals
-            </span>
-          </div>
+        <motion.div variants={hubItem}>
+        <CollapsibleSection
+          id="legacy_milestones"
+          title="Legacy milestones"
+          right={<span className="text-[10px] font-mono text-atext-mute uppercase tracking-wider shrink-0">career-long</span>}
+        >
           <ul className="space-y-2">
             {(career.dynasty.milestones || []).map((m) => {
               const hasCount = m.kind === "career_wins" || m.kind === "premierships" || m.kind === "seasons_managed";
@@ -516,6 +512,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               );
             })}
           </ul>
+        </CollapsibleSection>
         </motion.div>
       )}
 
@@ -666,13 +663,14 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       )}
 
       {/* Upcoming Events Strip */}
-      <motion.div variants={hubItem} className={css.panel}>
-        <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-          <h3 className="font-display text-lg text-atext tracking-wide">UPCOMING</h3>
-          <button type="button" onClick={() => setScreen('schedule')} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-aaccent-2">Full calendar →</button>
-        </div>
+      <motion.div variants={hubItem}>
+      <CollapsibleSection
+        id="upcoming_strip"
+        title="Upcoming"
+        right={<button type="button" onClick={() => setScreen('schedule')} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-aaccent-2 shrink-0">Full calendar →</button>}
+      >
         {upcoming7.length === 0 ? (
-          <div className="px-4 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-[11px] text-atext-dim leading-relaxed flex-1">
               No events on this strip yet — advance time or open the calendar to line up training, fixtures, and off-field weeks.
             </p>
@@ -687,7 +685,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
             </button>
           </div>
         ) : (
-          <div className="flex gap-2 px-4 pb-4 overflow-x-auto">
+          <div className="flex gap-2 overflow-x-auto">
             {upcoming7.map((ev) => {
               const isMatch = ev.type === 'round' || ev.type === 'preseason_match';
               const isTraining = ev.type === 'training';
@@ -732,6 +730,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
             </div>
           </div>
         )}
+      </CollapsibleSection>
       </motion.div>
 
       {/* Finals Banner */}
@@ -925,18 +924,19 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         const formWatch = [...hotPlayers.map(p=>({...p,hot:true})), ...coldPlayers.map(p=>({...p,hot:false}))];
         if (formWatch.length === 0) return null;
         return (
-          <motion.div variants={hubItem} className={`${css.panel} p-4`}>
-            <div className={`${css.label} mb-2`}>Form Watch</div>
-            <div className="space-y-1.5">
-              {formWatch.map((p, i) => {
-                const name = p.firstName ? `${p.firstName[0]}. ${p.lastName}` : (p.name || 'Player');
-                return (
-                  <div key={p.id || i} className="text-sm text-atext leading-snug">
-                    {p.hot ? '🔥' : '❄️'} <span className="font-semibold">{name}</span> <span className="text-atext-dim">(form {p.form || 50})</span> — {p.hot ? 'on fire' : 'struggling'}
-                  </div>
-                );
-              })}
-            </div>
+          <motion.div variants={hubItem}>
+            <CollapsibleSection id="form_watch" title="Form Watch">
+              <div className="space-y-1.5">
+                {formWatch.map((p, i) => {
+                  const name = p.firstName ? `${p.firstName[0]}. ${p.lastName}` : (p.name || 'Player');
+                  return (
+                    <div key={p.id || i} className="text-sm text-atext leading-snug">
+                      {p.hot ? '🔥' : '❄️'} <span className="font-semibold">{name}</span> <span className="text-atext-dim">(form {p.form || 50})</span> — {p.hot ? 'on fire' : 'struggling'}
+                    </div>
+                  );
+                })}
+              </div>
+            </CollapsibleSection>
           </motion.div>
         );
       })()}
@@ -990,8 +990,8 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       </motion.div>
 
       {career.coachStats && (
-        <motion.div variants={hubItem} className={`${css.panel} p-4`}>
-          <h3 className="font-display text-lg text-atext tracking-wide mb-3">COACHING RECORD</h3>
+        <motion.div variants={hubItem}>
+        <CollapsibleSection id="coaching_record" title="Coaching record">
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
             <div><div className="font-display text-2xl text-apos">{career.coachStats.totalWins ?? 0}</div><div className={css.label}>Wins</div></div>
             <div><div className="font-display text-2xl text-aneg">{career.coachStats.totalLosses ?? 0}</div><div className={css.label}>Losses</div></div>
@@ -1011,6 +1011,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               ))}
             </div>
           )}
+        </CollapsibleSection>
         </motion.div>
       )}
 

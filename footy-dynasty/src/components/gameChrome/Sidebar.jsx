@@ -6,6 +6,7 @@ import {
   Building2,
   Repeat,
   Trophy,
+  Briefcase,
   ChevronRight,
   Settings,
 } from "lucide-react";
@@ -28,6 +29,7 @@ export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos 
     { key: "club",     label: "Club",        icon: Building2, desc: "Contracts, finances & board" },
     { key: "recruit",  label: "Recruit",     icon: Repeat,    desc: "Trade period & draft" },
     { key: "compete",  label: "Competition", icon: Trophy,    desc: "Ladder, fixtures & pyramid" },
+    { key: "careers",  label: "Careers",     icon: Briefcase, desc: "Coach jobs & reputation" },
     { key: "settings", label: "Settings",    icon: Settings,   desc: "Save slots & preferences" },
   ];
   return (

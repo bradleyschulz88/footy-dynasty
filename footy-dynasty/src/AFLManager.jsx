@@ -77,6 +77,7 @@ const ClubScreenLazy = lazy(() => import('./screens/club/ClubScreen.jsx'));
 const RecruitScreenLazy = lazy(() => import('./screens/recruit/RecruitScreen.jsx'));
 const DraftRoomScreenLazy = lazy(() => import('./screens/DraftRoomScreen.jsx'));
 const SettingsScreenLazy = lazy(() => import('./screens/SettingsScreen.jsx'));
+const CareersScreenLazy = lazy(() => import('./screens/careers/CareersScreen.jsx'));
 
 // --- Gameplay systems spec (Sections 1-3) ---
 import { getDifficultyConfig } from "./lib/difficulty.js";
@@ -1249,6 +1250,11 @@ function AFLManagerInner() {
               {screen === "compete" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading competition…" reducedMotion={motionReduced} />}>
                   <CompetitionScreenLazy career={career} club={club} league={league} tab={tab} setTab={setTab} onOpenCalendar={() => onNavScreen("schedule")} />
+                </Suspense>
+              )}
+              {screen === "careers" && (
+                <Suspense fallback={<LazyRouteFallback label="Loading careers…" reducedMotion={motionReduced} />}>
+                  <CareersScreenLazy career={career} club={club} league={league} updateCareer={updateCareer} onAcceptJob={acceptNewJob} />
                 </Suspense>
               )}
               {screen === "settings" && (

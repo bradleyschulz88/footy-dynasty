@@ -429,6 +429,14 @@ export function migrate(save) {
     if (!Array.isArray(s.inbox)) s.inbox = [];
   }
 
+  if (v < 31) {
+    s.saveVersion = 31;
+    // Browse-and-apply Job Centre: cached listings + per-season application ledger.
+    if (s.jobMarketBrowse === undefined) s.jobMarketBrowse = null;
+    if (s.jobMarketBrowseSeason === undefined) s.jobMarketBrowseSeason = null;
+    if (s.jobApplications === undefined) s.jobApplications = null;
+  }
+
   return s;
 }
 

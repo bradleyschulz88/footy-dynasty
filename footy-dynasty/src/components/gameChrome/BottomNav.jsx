@@ -7,7 +7,7 @@
 // ---------------------------------------------------------------------------
 import React, { useState } from "react";
 import {
-  Home, Users, Building2, Trophy, Repeat, Calendar, Settings, Play, MoreHorizontal, X, Bell,
+  Home, Users, Building2, Trophy, Repeat, Calendar, Settings, Play, MoreHorizontal, X, Bell, Briefcase,
 } from "lucide-react";
 import { getAdvanceContext, advanceTimeFingerprint } from "../../lib/advanceContext.js";
 import { tutorialAllowsNavigation } from "../TutorialOverlay.jsx";
@@ -28,6 +28,7 @@ const PRIMARY = [
 const MORE = [
   { key: "schedule", label: "Schedule",    icon: Calendar,  desc: "Calendar & upcoming events" },
   { key: "compete",  label: "Competition", icon: Trophy,    desc: "Ladder, fixtures & pyramid" },
+  { key: "careers",  label: "Careers",     icon: Briefcase, desc: "Coach jobs & reputation" },
   { key: "settings", label: "Settings",    icon: Settings,  desc: "Save slots & preferences" },
 ];
 
