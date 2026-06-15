@@ -718,6 +718,59 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
         </div>
       </div>
 
+      {/* Career Arc */}
+      {(() => {
+        const age = player.age;
+        let stage, badgeColor, desc, delta;
+        if (age <= 22) {
+          stage = "DEVELOPING"; badgeColor = "#60A5FA";
+          desc = "Expected to improve each season";
+          delta = "+2 to +6 OVR";
+        } else if (age <= 26) {
+          stage = "PRIME"; badgeColor = "var(--A-accent)";
+          desc = "Peak years — compete for selection";
+          delta = "±1 OVR";
+        } else if (age <= 29) {
+          stage = "EXPERIENCED"; badgeColor = "#F59E0B";
+          desc = "Natural decline starting — plan succession";
+          delta = "−1 to −3 OVR";
+        } else {
+          stage = "VETERAN"; badgeColor = "#E84A6F";
+          desc = "Significant decline likely each off-season";
+          delta = "−2 to −6 OVR";
+        }
+        const MIN_AGE = 18, MAX_AGE = 37, SPAN = MAX_AGE - MIN_AGE;
+        const zones = [
+          { from: 18, to: 23, color: "#60A5FA" },
+          { from: 23, to: 27, color: "var(--A-accent)" },
+          { from: 27, to: 30, color: "#F59E0B" },
+          { from: 30, to: 37, color: "#E84A6F" },
+        ];
+        const pct = (a) => `${Math.min(100, Math.max(0, ((a - MIN_AGE) / SPAN) * 100))}%`;
+        const dotPct = Math.min(100, Math.max(0, ((age - MIN_AGE) / SPAN) * 100));
+        return (
+          <div className="px-4 pb-4" style={{borderTop:"1px solid var(--A-line)", paddingTop:"1rem"}}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute">Career Arc</div>
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full" style={{background:`color-mix(in srgb, ${badgeColor} 16%, transparent)`, color:badgeColor, border:`1px solid color-mix(in srgb, ${badgeColor} 30%, transparent)`}}>{stage}</span>
+            </div>
+            <div className="relative h-3 rounded-full overflow-visible mb-1" style={{background:"var(--A-line)"}}>
+              <div className="absolute inset-0 rounded-full overflow-hidden">
+                {zones.map((z, zi) => (
+                  <div key={zi} className="absolute top-0 h-full opacity-70" style={{left:pct(z.from), width:`calc(${pct(z.to)} - ${pct(z.from)})`, background:z.color}} />
+                ))}
+              </div>
+              <div className="absolute top-1/2 w-3 h-3 rounded-full border-2 z-10" style={{left:`${dotPct}%`, transform:"translate(-50%, -50%)", background:badgeColor, borderColor:"var(--A-bg)", boxShadow:`0 0 0 2px ${badgeColor}`}} />
+            </div>
+            <div className="flex justify-between text-[8px] text-atext-mute mb-2 mt-1.5">
+              <span>18</span><span>26</span><span>30</span><span>37</span>
+            </div>
+            <div className="text-[10px] text-atext-dim leading-snug">{desc}</div>
+            <div className="mt-1 text-[10px] font-bold" style={{color:badgeColor}}>Next season: {delta}</div>
+          </div>
+        );
+      })()}
+
       {/* Season Stats */}
       <div className="px-4 pb-4" style={{borderTop:"1px solid var(--A-line)", paddingTop:"1rem"}}>
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute mb-3">Season Stats</div>

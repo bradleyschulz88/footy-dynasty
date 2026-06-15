@@ -3,9 +3,27 @@ import { formatDate } from "../lib/calendar.js";
 import { COACHING_CALLS } from "../lib/coachingCalls.js";
 import { playCrowdCheer, playSiren, playWhistle, soundEnabled } from "../lib/sound.js";
 
+// Plain-English tactical effect descriptions for each coaching call
+const CALL_TACTICAL_EFFECTS = {
+  attack_surge:    "Opens up the game — your forwards get more looks but so do theirs. Best when you need to close a gap fast.",
+  defensive_lock:  "Clamps their attack and protects your lead, but you'll score less too. Holds a margin, risks leaving points on the board.",
+  midfield_grind:  "Your runners win the contested ball and generate clean possessions. Steady, reliable edge with no real downside.",
+  spray:           "High risk, high reward. If the rooms respond (60% chance) you'll come out flying — if it falls flat, heads drop.",
+  steady:          "No changes. Trust the structure, stay composed, and let the plan do its job.",
+};
+
+// Which call to highlight based on margin (positive = you're winning)
+function getRecommendedCall(margin) {
+  if (margin >= 5) return "defensive_lock";
+  if (margin <= -10) return "attack_surge";
+  if (Math.abs(margin) <= 12) return "midfield_grind";
+  return "steady";
+}
+
 export default function MatchDayScreen({ result, league, career, club, onContinue, onCoachCall }) {
   const [revealed, setRevealed] = useState(0);
   const [showEvents, setShowEvents] = useState(true);
+  const [show3qtNote, setShow3qtNote] = useState(true);
   // Live match: only the first half exists — the coach's call sims the rest.
   const isLive = !!result.live;
   const sound = soundEnabled(career);
@@ -19,6 +37,8 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
         if (!isLive && next >= (result.quarters || []).length) playSiren();
         else playCrowdCheer(Math.min(1, 0.35 + goals * 0.08));
       }
+      // When revealing Q4, dismiss the 3QT note
+      if (next === 4) setShow3qtNote(false);
       return next;
     });
   };
@@ -131,6 +151,72 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
     if (c === 'stormy') return '⛈️';
     return '🌤️';
   }
+
+  // ── Half-time score margin from my perspective ──────────────────────────────
+  const htScoreIdx = 1; // Q2 cumulative
+  const htHomeScore = cumHome[htScoreIdx]?.total ?? null;
+  const htAwayScore = cumAway[htScoreIdx]?.total ?? null;
+  const htMargin =
+    htHomeScore != null && htAwayScore != null
+      ? result.isHome
+        ? htHomeScore - htAwayScore
+        : htAwayScore - htHomeScore
+      : null;
+
+  const recommendedCallId = htMargin != null ? getRecommendedCall(htMargin) : "steady";
+
+  function htMomentumBlurb(margin) {
+    if (margin == null) return "";
+    if (margin > 0) return `You're up by ${margin} at the main break.`;
+    if (margin < 0) return `You're down by ${Math.abs(margin)} at the main break.`;
+    return "Level at the main break — it's all to play for.";
+  }
+
+  // ── Three-quarter time note ─────────────────────────────────────────────────
+  // Only show when exactly 3 quarters have been revealed and Q4 hasn't started
+  const show3qtCard = !isLive && revealed === 3 && show3qtNote && quarters.length >= 3;
+
+  function build3qtNote() {
+    if (!cumHome[1] || !cumAway[1] || !cumHome[2] || !cumAway[2]) return null;
+    const myQ2 = result.isHome ? cumHome[1].total : cumAway[1].total;
+    const oppQ2 = result.isHome ? cumAway[1].total : cumHome[1].total;
+    const myQ3 = result.isHome ? cumHome[2].total : cumAway[2].total;
+    const marginAfterQ2 = myQ2 - oppQ2;
+    const marginAfterQ3 = myQ3 - (result.isHome ? cumAway[2].total : cumHome[2].total);
+    const swing = marginAfterQ3 - marginAfterQ2;
+
+    let headline = "";
+    let detail = "";
+
+    if (swing >= 12) {
+      headline = "Strong third quarter — you're building something here.";
+      detail = `You outscored them by ${swing} in the third. Keep the foot down.`;
+    } else if (swing >= 5) {
+      headline = "A handy third quarter — slight edge gained.";
+      detail = `You picked up ${swing} points on them. The momentum is with you.`;
+    } else if (swing <= -12) {
+      headline = "They dominated the third quarter — time to respond.";
+      detail = `You conceded ${Math.abs(swing)} points in the third. The last quarter is everything.`;
+    } else if (swing <= -5) {
+      headline = "They edged the third — don't let it slip further.";
+      detail = `They gained ${Math.abs(swing)} points on you. Fourth quarter is where seasons are won.`;
+    } else {
+      headline = "An even third quarter — it's all still in the balance.";
+      detail = "Neither side could break away. The fourth quarter decides it.";
+    }
+
+    if (marginAfterQ3 > 0) {
+      detail += ` You lead by ${marginAfterQ3} heading into the last.`;
+    } else if (marginAfterQ3 < 0) {
+      detail += ` You trail by ${Math.abs(marginAfterQ3)} — the game is still alive.`;
+    } else {
+      detail += " Scores are level.";
+    }
+
+    return { headline, detail };
+  }
+
+  const tqtNote = build3qtNote();
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
@@ -317,6 +403,12 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
               const hCum = cumHome[i] || { g: 0, b: 0, total: 0 };
               const aCum = cumAway[i] || { g: 0, b: 0, total: 0 };
               const qWinner = hCum.total > aCum.total ? "home" : aCum.total > hCum.total ? "away" : "draw";
+              // Quarter momentum direction arrow
+              const qMomentum = q.momentumEnd ?? 0;
+              const myMomentumUp = result.isHome ? qMomentum > 0.1 : qMomentum < -0.1;
+              const myMomentumDown = result.isHome ? qMomentum < -0.1 : qMomentum > 0.1;
+              const momentumArrow = myMomentumUp ? "↑" : myMomentumDown ? "↓" : "→";
+              const momentumArrowColor = myMomentumUp ? "var(--A-pos)" : myMomentumDown ? "var(--A-neg)" : "var(--A-text-mute)";
               return (
                 <div
                   key={i}
@@ -324,10 +416,21 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                   style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute">{qLabels[i]}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute">{qLabels[i]}</div>
+                      {isShowing && (
+                        <span
+                          className="text-[11px] font-bold"
+                          style={{ color: momentumArrowColor }}
+                          title={myMomentumUp ? "Momentum with you" : myMomentumDown ? "Momentum against you" : "Even momentum"}
+                        >
+                          {momentumArrow}
+                        </span>
+                      )}
+                    </div>
                     {isShowing && (
-                      <div className="text-[10px] text-atext-mute">
-                        {q.homeGoals}.{q.homeBehinds} — {q.awayGoals}.{q.awayBehinds} (this qtr)
+                      <div className="text-[10px] text-atext-mute font-mono">
+                        {q.homeGoals}.{String(q.homeBehinds).padStart(2, "0")} — {q.awayGoals}.{String(q.awayBehinds).padStart(2, "0")} <span className="opacity-60">qtr</span>
                       </div>
                     )}
                   </div>
@@ -340,8 +443,8 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                         >
                           {hCum.total}
                         </span>
-                        <div className="text-[10px] text-atext-mute">
-                          {hCum.g}.{hCum.b}
+                        <div className="text-[10px] text-atext-mute font-mono">
+                          {hCum.g}.{String(hCum.b).padStart(2, "0")}
                         </div>
                       </div>
                       <div
@@ -360,8 +463,8 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                         >
                           {aCum.total}
                         </span>
-                        <div className="text-[10px] text-atext-mute">
-                          {aCum.g}.{aCum.b}
+                        <div className="text-[10px] text-atext-mute font-mono">
+                          {aCum.g}.{String(aCum.b).padStart(2, "0")}
                         </div>
                       </div>
                     </div>
@@ -370,6 +473,37 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
               );
             })}
           </div>
+
+          {/* ── Three-quarter time tactical note ── */}
+          {show3qtCard && tqtNote && (
+            <div
+              className="mt-4 rounded-2xl p-4"
+              style={{
+                background: "color-mix(in srgb, #A78BFA 7%, var(--A-panel-2))",
+                border: "1px solid color-mix(in srgb, #A78BFA 30%, transparent)",
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div
+                    className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1"
+                    style={{ color: "#A78BFA" }}
+                  >
+                    Coach's Assessment · 3QT
+                  </div>
+                  <div className="text-sm font-bold text-atext mb-1">{tqtNote.headline}</div>
+                  <div className="text-[12px] text-atext-dim leading-snug">{tqtNote.detail}</div>
+                </div>
+                <button
+                  onClick={() => setShow3qtNote(false)}
+                  className="text-[11px] text-atext-mute hover:text-atext flex-shrink-0 mt-0.5"
+                  aria-label="Dismiss note"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
 
           {quarters.length > 0 && revealed < quarters.length && (
             <button
@@ -394,33 +528,89 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
                 border: "2px solid color-mix(in srgb, var(--A-accent) 35%, transparent)",
               }}
             >
-              <div className="font-display text-xl text-aaccent mb-0.5">HALF-TIME — COACH'S CALL</div>
-              <div className="text-xs text-atext-dim mb-3">
-                {headerHome != null && headerAway != null && (
-                  <>
-                    {(result.isHome ? headerHome - headerAway : headerAway - headerHome) > 0
-                      ? `You lead by ${Math.abs(headerHome - headerAway)}. `
-                      : (result.isHome ? headerHome - headerAway : headerAway - headerHome) < 0
-                        ? `You trail by ${Math.abs(headerHome - headerAway)}. `
-                        : "Scores level. "}
-                  </>
+              <div className="font-display text-xl text-aaccent mb-1">HALF-TIME — COACH'S CALL</div>
+
+              {/* Score summary + momentum assessment */}
+              <div
+                className="rounded-xl px-3 py-2 mb-3"
+                style={{
+                  background: "color-mix(in srgb, var(--A-accent) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--A-accent) 20%, transparent)",
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-atext-mute">Half-time score</div>
+                  {htHomeScore != null && htAwayScore != null && (
+                    <div className="font-display text-lg" style={{ color: "var(--A-accent)" }}>
+                      {htHomeScore} – {htAwayScore}
+                    </div>
+                  )}
+                </div>
+                {htHomeScore != null && htAwayScore != null && cumHome[0] && cumAway[0] && (
+                  <div className="text-[11px] text-atext-mute mt-0.5 font-mono">
+                    Q1: {result.isHome ? cumHome[0].g : cumAway[0].g}.{String(result.isHome ? cumHome[0].b : cumAway[0].b).padStart(2,"0")} ({result.isHome ? cumHome[0].total : cumAway[0].total})
+                    {"  "}Q2: {result.isHome ? cumHome[1].g : cumAway[1].g}.{String(result.isHome ? cumHome[1].b : cumAway[1].b).padStart(2,"0")} ({result.isHome ? cumHome[1].total : cumAway[1].total})
+                  </div>
                 )}
+                <div
+                  className="text-[12px] font-bold mt-1"
+                  style={{
+                    color: htMargin != null && htMargin > 0
+                      ? "var(--A-pos)"
+                      : htMargin != null && htMargin < 0
+                        ? "var(--A-neg)"
+                        : "var(--A-accent)",
+                  }}
+                >
+                  {htMomentumBlurb(htMargin)}
+                </div>
+              </div>
+
+              <div className="text-xs text-atext-dim mb-3">
                 One call shapes the second half — choose how the rooms respond.
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {COACHING_CALLS.map((call) => (
-                  <button
-                    key={call.id}
-                    onClick={() => { if (sound) playWhistle(); onCoachCall?.(call.id); }}
-                    className="rounded-xl p-3 text-left transition-all hover:-translate-y-0.5 touch-manipulation"
-                    style={{ background: "var(--A-panel)", border: "1px solid var(--A-line)" }}
-                  >
-                    <div className="text-sm font-bold text-atext flex items-center gap-2">
-                      <span aria-hidden>{call.icon}</span> {call.label}
-                    </div>
-                    <div className="text-[11px] text-atext-dim mt-1 leading-snug">{call.desc}</div>
-                  </button>
-                ))}
+                {COACHING_CALLS.map((call) => {
+                  const isRecommended = call.id === recommendedCallId;
+                  return (
+                    <button
+                      key={call.id}
+                      onClick={() => { if (sound) playWhistle(); onCoachCall?.(call.id); }}
+                      className="rounded-xl p-3 text-left transition-all hover:-translate-y-0.5 touch-manipulation relative"
+                      style={{
+                        background: isRecommended
+                          ? "color-mix(in srgb, var(--A-accent) 14%, var(--A-panel))"
+                          : "var(--A-panel)",
+                        border: isRecommended
+                          ? "1px solid color-mix(in srgb, var(--A-accent) 55%, transparent)"
+                          : "1px solid var(--A-line)",
+                      }}
+                    >
+                      {isRecommended && (
+                        <div
+                          className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: "color-mix(in srgb, var(--A-accent) 20%, transparent)",
+                            color: "var(--A-accent)",
+                            border: "1px solid color-mix(in srgb, var(--A-accent) 40%, transparent)",
+                          }}
+                        >
+                          Recommended
+                        </div>
+                      )}
+                      <div className="text-sm font-bold text-atext flex items-center gap-2 pr-16">
+                        <span aria-hidden>{call.icon}</span> {call.label}
+                      </div>
+                      <div className="text-[11px] text-atext-dim mt-1 leading-snug">{call.desc}</div>
+                      <div
+                        className="text-[10px] mt-1.5 leading-snug"
+                        style={{ color: "var(--A-accent)", opacity: 0.8 }}
+                      >
+                        {CALL_TACTICAL_EFFECTS[call.id] || ""}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
