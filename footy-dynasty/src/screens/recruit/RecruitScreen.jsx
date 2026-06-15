@@ -1268,6 +1268,32 @@ function LocalTab({ career, club, updateCareer }) {
   const otherStates = useMemo(() => STATES.filter((s) => s !== homeState), [homeState]);
   const [interState, setInterState] = useState(() => otherStates[0] ?? 'VIC');
 
+  // ── Emergency trialists (tier 3, in-season, injury cover) ──────────────────
+  const localTierCheck = leagueTierOf(career);
+  const isInSeason = career.phase === 'season';
+  const injuredCount = (career.squad || []).filter((p) => (p.injured || 0) > 0).length;
+  const showEmergencyPool = localTierCheck === 3 && isInSeason;
+
+  const emergencyPool = useMemo(() => {
+    if (!showEmergencyPool) return [];
+    seedRng((career.season ?? 2026) * 1000 + (career.week ?? 1) * 7 + 3);
+    return Array.from({ length: 4 }, (_, i) => {
+      const p = generatePlayer(3, 99000 + i + (career.week ?? 1) * 13, { clubId: 'local', season: career.season });
+      return { ...p, id: `emerg_${career.season}_${career.week}_${i}`, fromLocal: club.state, fromClubId: null, emergencyFree: true };
+    });
+  }, [showEmergencyPool, career.season, career.week, club.state]);
+
+  const signEmergency = (p) => {
+    const wage = 18_000;
+    if ((career.squad || []).length >= 40) return;
+    if (!canAffordSigning(career, wage)) return;
+    const newPlayer = { ...p, id: `emerg_signed_${Date.now()}_${rand(1e6, 9e6)}`, wage, contract: 1 };
+    updateCareer({
+      squad: [...(career.squad || []), newPlayer],
+      news: [{ week: career.week, type: 'info', text: `🚨 Emergency signing: ${p.firstName} ${p.lastName} (${p.position}) — 1yr deal, ${(wage/1000).toFixed(0)}k/yr` }, ...(career.news || [])].slice(0, 15),
+    });
+  };
+
   useEffect(() => {
     const pool = STATES.filter((s) => s !== homeState);
     setInterState((prev) => (pool.includes(prev) ? prev : (pool[0] ?? 'VIC')));
@@ -1394,6 +1420,37 @@ function LocalTab({ career, club, updateCareer }) {
           <Stat label="Walk-on" value="$0" sub="same wages" accent="var(--A-pos)" />
         </div>
       </div>
+
+      {showEmergencyPool && emergencyPool.length > 0 && (
+        <div className="rounded-2xl p-4 border" style={{ background: 'color-mix(in srgb, var(--A-neg) 8%, var(--A-panel))', borderColor: 'color-mix(in srgb, var(--A-neg) 40%, transparent)' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--A-neg) 20%, transparent)', color: 'var(--A-neg)' }}>Emergency Pool</span>
+            {injuredCount > 0 && <span className="text-[10px] text-atext-mute">{injuredCount} player{injuredCount !== 1 ? 's' : ''} injured</span>}
+          </div>
+          <div className="text-xs text-atext-dim mb-3">Players who've fronted up to training — available for immediate 1-year walk-on deals mid-season. Pool refreshes each round.</div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {emergencyPool.map((p) => {
+              const canSign = (career.squad || []).length < 40 && canAffordSigning(career, 18_000);
+              return (
+                <div key={p.id} className={`${css.panel} p-3 flex items-center gap-3`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-atext truncate">{p.firstName} {p.lastName}</div>
+                    <div className="text-[10px] text-atext-mute">{formatPositionSlash(p)} · Age {p.age} · OVR {p.overall}</div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!canSign}
+                    onClick={() => signEmergency(p)}
+                    className={`text-[10px] font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition ${canSign ? 'bg-aaccent text-[var(--fd-on-accent,#0A0D0C)] hover:opacity-90' : 'opacity-40 bg-apanel-2 text-atext-mute cursor-not-allowed'}`}
+                  >
+                    Sign
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-1 space-y-4">

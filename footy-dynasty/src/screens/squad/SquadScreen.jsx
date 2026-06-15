@@ -27,6 +27,16 @@ import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
 import { RenewalsTab } from "../contracts/ContractRenewals.jsx";
 import PlayerCard3D from "../../components/PlayerCard3D.jsx";
 
+// ── Position line colour helper ─────────────────────────────────────────────
+const POS_LINE_COLOR = {
+  KF: "#E84A6F", HF: "#F59E0B",
+  C: "var(--A-accent)", R: "var(--A-accent)", WG: "var(--A-accent)",
+  HB: "#60A5FA", KB: "#3B82F6",
+  RU: "#A78BFA",
+  UT: "#9CA3AF",
+};
+function posColor(pos) { return POS_LINE_COLOR[pos] || "var(--A-accent)"; }
+
 // ============================================================================
 // SHARED TAB NAV
 // ============================================================================
@@ -308,7 +318,7 @@ function PlayersTab({ career, updateCareer }) {
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-atext truncate">{pName(p)}</div>
-                    <div className="text-[10px] text-atext-mute">{formatPositionSlash(p)} · age {p.age}</div>
+                    <div className="text-[10px] text-atext-mute"><span style={{ color: posColor(p.position) }}>{formatPositionSlash(p)}</span> · {POSITION_NAMES[p.position]} · age {p.age}</div>
                   </div>
                   <RatingDot value={p.overall} size="sm" />
                 </div>
@@ -355,7 +365,7 @@ function PlayersTab({ career, updateCareer }) {
                     <span className="truncate text-sm font-semibold text-atext">{pName(p)}</span>
                     {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"color-mix(in srgb, var(--A-accent) 13%, transparent)",color:"var(--A-accent)"}}>R</span>}
                   </div>
-                  <div className="text-center"><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>
+                  <div className="text-center" title={POSITION_NAMES[p.position] + (p.secondaryPosition ? ` / ${POSITION_NAMES[p.secondaryPosition]}` : '')}><Pill color={posColor(p.position)}>{formatPositionSlash(p)}</Pill></div>
                   <div className="text-center text-sm text-atext-dim">{p.age}</div>
                   <div className="text-center flex justify-center"><RatingDot value={p.overall} size="sm" /></div>
                   <div className="flex items-center gap-1">
