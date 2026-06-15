@@ -142,14 +142,14 @@ export default function SeasonSummaryScreen({
               <div className="font-display text-4xl leading-none" style={{ color }}>
                 {value}
               </div>
-              <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">{label}</div>
+              <div className="text-[9px] font-bold uppercase tracking-widest text-atext-mute mt-1">{label}</div>
             </div>
           ))}
         </div>
       </div>
 
       <div className="flex-1 px-6 py-8 max-w-2xl mx-auto w-full space-y-3">
-        <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 mb-4">Season Awards</div>
+        <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-atext-mute mb-4">Season Awards</div>
 
         {summary.champion && (
           <div
@@ -161,7 +161,7 @@ export default function SeasonSummaryScreen({
           >
             <div className="text-4xl mb-2">🏆</div>
             <div className="font-display text-3xl text-[#FFD700]">PREMIERS!</div>
-            <div className="text-sm text-slate-300 mt-1">
+            <div className="text-sm text-atext-dim mt-1">
               {club.name} are the {summary.season} {summary.leagueShort} Champions
             </div>
           </div>
@@ -217,8 +217,8 @@ export default function SeasonSummaryScreen({
             <div className="space-y-1.5">
               {retiredThisSeason.map((r, i) => (
                 <div key={r.id || i} className="flex items-center justify-between text-sm">
-                  <span className="text-slate-200 font-semibold">{r.name}</span>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-atext font-semibold">{r.name}</span>
+                  <span className="text-[11px] text-atext-mute">
                     {r.reason === "retired" ? `🏁 retired @ ${r.age}` : `📤 released`} · {r.career.gamesPlayed}{" "}
                     games · {r.career.goals} goals
                   </span>
@@ -238,10 +238,10 @@ export default function SeasonSummaryScreen({
           >
             <div className="text-4xl mb-2">🎉</div>
             <div className="font-display text-3xl text-[#4AE89A]">PROMOTED!</div>
-            <div className="text-sm text-slate-300 mt-1">
+            <div className="text-sm text-atext-dim mt-1">
               {club.name} are going up — the whole town will talk about this one for years.
             </div>
-            <div className="text-xs text-slate-400 mt-2">
+            <div className="text-xs text-atext-mute mt-2">
               A new challenge awaits in the division above. Bigger crowds, bigger budgets, bigger stage.
             </div>
           </div>
@@ -257,7 +257,7 @@ export default function SeasonSummaryScreen({
             <div className="font-bold text-base" style={{ color: "#E84A6F" }}>
               ⬇️ Relegated
             </div>
-            <div className="text-sm text-slate-400 mt-1">
+            <div className="text-sm text-atext-mute mt-1">
               Time to rebuild and fight back up.
             </div>
           </div>
