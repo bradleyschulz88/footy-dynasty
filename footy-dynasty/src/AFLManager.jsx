@@ -1304,7 +1304,7 @@ function AFLManagerInner() {
               )}
               {screen === "schedule" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading calendar…" reducedMotion={motionReduced} />}>
-                  <ScheduleScreenLazy career={career} club={club} league={league} onOpenCompetition={() => onNavScreen("compete")} />
+                  <ScheduleScreenLazy career={career} club={club} league={league} onOpenCompetition={() => onNavScreen("compete")} onNavigate={onNavScreen} />
                 </Suspense>
               )}
               {screen === "club" && (

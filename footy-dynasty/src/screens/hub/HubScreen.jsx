@@ -891,6 +891,55 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         </div>
       </motion.div>
 
+      {/* Media Panel */}
+      {(() => {
+        const pressItems = (career.news || []).filter(n => n.type === 'press').slice(0, 3);
+        const toneAccent = (tone) =>
+          tone === 'positive' ? 'var(--A-pos)'
+          : tone === 'critical' ? 'var(--A-neg)'
+          : tone === 'negative' ? 'var(--A-accent-2)'
+          : 'var(--A-accent)';
+        const satPct = career.journalist ? Math.round(career.journalist.satisfaction ?? 50) : null;
+        const satColor = satPct == null ? 'var(--A-text-mute)' : satPct >= 65 ? 'var(--A-pos)' : satPct <= 35 ? 'var(--A-neg)' : 'var(--A-accent-2)';
+        return (
+          <motion.div variants={hubItem}>
+            <CollapsibleSection
+              id="media_panel"
+              title="Media"
+              right={
+                satPct != null ? (
+                  <span className="text-[10px] font-mono uppercase tracking-wider shrink-0" style={{ color: satColor }}>
+                    Press mood {satPct}
+                  </span>
+                ) : null
+              }
+            >
+              {pressItems.length === 0 ? (
+                <div className="text-sm text-atext-dim py-2 text-center leading-relaxed">
+                  No press coverage yet — results will generate headlines
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pressItems.map((n, i) => {
+                    const accent = toneAccent(n.tone);
+                    return (
+                      <div key={i} className="rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)', borderLeft: `3px solid ${accent}` }}>
+                        <div className="font-display text-base leading-tight tracking-wide mb-1" style={{ color: accent }}>{n.text}</div>
+                        {n.subtext && <div className="text-[11px] text-atext-dim leading-snug">{n.subtext}</div>}
+                        <div className="text-[9px] text-atext-mute uppercase tracking-widest mt-1.5 font-bold">
+                          {n.week === 0 ? 'Pre-Season' : `Round ${n.week}`}
+                          {n.tone && <span className="ml-2 opacity-70">{n.tone}</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CollapsibleSection>
+          </motion.div>
+        );
+      })()}
+
       {/* Form Watch */}
       {(() => {
         const hotPlayers = [...career.squad].sort((a,b) => (b.form||50) - (a.form||50)).slice(0,1).filter(p => (p.form||50) >= 78);

@@ -44,7 +44,7 @@ import { getDifficultyConfig } from './difficulty.js';
 import {
   committeeMessage, bumpCommitteeMood, postMatchFundraiser,
   ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
-  groundConditionBand, journalistMatchLine,
+  groundConditionBand, journalistMatchLine, generatePostMatchHeadline,
   updateFanbase,
 } from './community.js';
 import {
@@ -1870,6 +1870,10 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
 
   if (c.journalist) {
     c.journalist = { ...c.journalist, satisfaction: clamp((c.journalist.satisfaction ?? 50) + (won ? 2 : drew ? 0 : -3), 0, 100) };
+    // Generate and push a structured press headline to news
+    const pressResult = { won, drew, myTotal: myResult.myTotal, oppTotal: myResult.oppTotal, trailedAtHalf: myResult.trailedAtHalf };
+    const pressHeadline = generatePostMatchHeadline(pressResult, findClub(c.clubId), myResult.opp, c.journalist);
+    c.news = [{ week: meta.round, type: 'press', text: pressHeadline.headline, subtext: pressHeadline.byline, tone: pressHeadline.tone }, ...(c.news || [])].slice(0, 20);
   }
 
   c.committee = bumpCommitteeMood(c.committee, 'President', won ? 3 : drew ? 0 : -2);
