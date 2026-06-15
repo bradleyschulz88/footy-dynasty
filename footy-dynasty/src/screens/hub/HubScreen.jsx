@@ -964,6 +964,33 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         );
       })()}
 
+      {/* Development Watch — Tier 4 (junior/grassroots) only */}
+      {league.tier === 4 && (() => {
+        const youngest = [...career.squad]
+          .sort((a, b) => (a.age || 99) - (b.age || 99))
+          .slice(0, 3);
+        if (youngest.length === 0) return null;
+        return (
+          <motion.div variants={hubItem}>
+            <CollapsibleSection id="dev_watch" title="Development Watch">
+              <div className="space-y-1.5">
+                {youngest.map((p, i) => {
+                  const name = p.firstName ? `${p.firstName[0]}. ${p.lastName}` : (p.name || 'Player');
+                  const pos = p.position || (p.positions && p.positions[0]) || '—';
+                  return (
+                    <div key={p.id || i} className="flex flex-wrap items-center gap-2 text-sm text-atext leading-snug">
+                      <span className="font-semibold">{name}</span>
+                      <span className="text-atext-dim">age {p.age} · {pos} · OVR {p.overall}</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--A-accent) 14%, transparent)', color: 'var(--A-accent)' }}>developing</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CollapsibleSection>
+          </motion.div>
+        );
+      })()}
+
       {/* Board Pressure */}
       <motion.div variants={hubItem} className="space-y-3">
       {career.finance.boardConfidence < 35 && (

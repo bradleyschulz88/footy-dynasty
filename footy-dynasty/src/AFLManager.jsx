@@ -1123,6 +1123,7 @@ function AFLManagerInner() {
         {showPostMatch && career.lastMatchSummary && (
           <PostMatchSummary
             summary={career.lastMatchSummary}
+            leagueTier={league?.tier}
             onContinue={() => {
               setShowPostMatch(false);
               const isFinals = career.currentMatchResult?.isFinals;

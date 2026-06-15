@@ -111,7 +111,7 @@ export default function ClubScreen({ career, club, updateCareer, tab, setTab, tu
     subTabs = [
       { key: "finances", label: "Finances", icon: DollarSign },
       { key: "contracts", label: "Contracts", icon: FileText },
-      { key: "board", label: "Board", icon: Landmark },
+      { key: "board", label: leagueTier === 4 ? "Committee" : "Board", icon: leagueTier === 4 ? Users : Landmark },
       { key: "sponsors", label: "Sponsors", icon: Handshake },
     ];
   } else if (activePrimary === "operations") {
@@ -214,6 +214,8 @@ export default function ClubScreen({ career, club, updateCareer, tab, setTab, tu
 function BoardTab({ career, club, updateCareer }) {
   const [directorChatRole, setDirectorChatRole] = useState(null);
   const league = findLeagueOf(career.clubId);
+  const isTier4 = league?.tier === 4;
+  const committee = Array.isArray(career.committee) ? career.committee : [];
   const members = career.board?.members ?? [];
   const objectives = career.board?.objectives ?? [];
   const inbox = career.board?.inbox ?? [];
@@ -261,9 +263,11 @@ function BoardTab({ career, club, updateCareer }) {
   return (
     <div className="space-y-4">
       <div>
-        <div className={`${css.h1} text-3xl`}>EXECUTIVE BOARD</div>
+        <div className={`${css.h1} text-3xl`}>{isTier4 ? "PARENT COMMITTEE" : "EXECUTIVE BOARD"}</div>
         <div className="text-xs text-atext-dim max-w-2xl leading-snug">
-          Club directors and weighted confidence — separate from the volunteer committee at lower tiers. Overall score feeds into finances and match-day systems.
+          {isTier4
+            ? "Volunteer-run by the parent committee — no director board at junior level. Their confidence reflects how the locals feel about your development focus."
+            : "Club directors and weighted confidence — separate from the volunteer committee at lower tiers. Overall score feeds into finances and match-day systems."}
         </div>
       </div>
 
@@ -296,7 +300,7 @@ function BoardTab({ career, club, updateCareer }) {
 
       <div className={`${css.panel} p-4`}>
         <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-          <span className={css.label}>Overall board confidence</span>
+          <span className={css.label}>{isTier4 ? "Overall committee confidence" : "Overall board confidence"}</span>
           <span className="font-display text-2xl text-aaccent">{overallPct}%</span>
         </div>
         <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
@@ -316,6 +320,28 @@ function BoardTab({ career, club, updateCareer }) {
           ))}
         </div>
       </div>
+
+      {isTier4 && members.length === 0 && committee.length > 0 && (
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {committee.map((m) => {
+            const mood = boardPct(m.mood);
+            const col = mood >= 70 ? 'var(--A-pos)' : mood >= 40 ? 'var(--A-accent-2)' : 'var(--A-neg)';
+            return (
+              <div key={m.role} className={`${css.panel} p-4`}>
+                <div className="text-[10px] text-atext-mute uppercase tracking-widest mb-0.5">{m.role}</div>
+                <div className="font-bold text-atext leading-tight mb-2">{m.name}</div>
+                <div className="h-1.5 rounded-full overflow-hidden mb-1" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+                  <div className="h-full transition-all" style={{ width: `${mood}%`, background: col }} />
+                </div>
+                <div className="flex justify-between text-[11px] text-atext-dim">
+                  <span>Mood</span>
+                  <span>{mood}%</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {(members.length ? members : []).map((m) => {
@@ -473,7 +499,7 @@ function BoardTab({ career, club, updateCareer }) {
 
       <p className="text-[11px] text-atext-mute leading-snug">
         Playing as <strong className="text-atext">{club?.short}</strong>
-        {league ? ` · ${league.short} (Tier ${league.tier})` : ''}. Directors may message you after games — respond here. Formal meetings and votes are still to come.
+        {league ? ` · ${league.short} (Tier ${league.tier})` : ''}. {isTier4 ? 'The parent committee may raise things after games — respond here. Working bees and committee meetings are still to come.' : 'Directors may message you after games — respond here. Formal meetings and votes are still to come.'}
         {' '}Inspired by games like Football Manager: pressure usually arrives through objectives and inbox notes; optional quick chats above add light FM-style relationship tuning without spamming you every week.
       </p>
     </div>

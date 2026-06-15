@@ -32,6 +32,7 @@ import {
 import { primeSeasonStoryState } from "../lib/careerAdvance.js";
 import { SETUP_SS_KEY, SLOT_IDS, getLatestSavedSlotMeta, SAVE_VERSION } from "../lib/setupConstants.js";
 import { LINEUP_CAP } from "../lib/lineupHelpers.js";
+import { startingAccreditationForTier } from "../lib/coachReputation.js";
 import { Pill } from "../components/primitives.jsx";
 
 // Per-state colour identity used on selection cards
@@ -298,6 +299,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
         homeWinStreak: 0,
         coachReputation: league.tier === 4 ? 5 : 30,
         coachTier: league.tier === 4 ? 'Grassroots' : 'Journeyman',
+        coachAccreditation: startingAccreditationForTier(league.tier),
         tier3Div1Titles: 0,
         lastPromotionPlayoff: null,
         coachStats: {

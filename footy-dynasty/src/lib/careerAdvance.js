@@ -50,6 +50,7 @@ import {
 import {
   coachTierFromScore, applyEndOfSeasonReputation,
   applySackingReputation, buildDominantSeasonApproach,
+  accreditationFromSeasons, accreditationLabel, startingAccreditationForTier,
 } from './coachReputation.js';
 import {
   isPromotionPlayoffEligible, clubBacksPromotion, runPromotionPlayoff,
@@ -974,6 +975,19 @@ function finishSeason(c, league) {
     });
   }
   c.coachTier = coachTierFromScore(c.coachReputation);
+
+  // Coaching accreditation advances one notch per completed season (capped at
+  // High Performance). Gates which tiers will interview you next off-season.
+  {
+    const prevAccredSeasons = c.coachAccreditation ?? startingAccreditationForTier(league.tier);
+    const prevLevel = accreditationFromSeasons(prevAccredSeasons);
+    c.coachAccreditation = prevAccredSeasons + 1;
+    const newLevel = accreditationFromSeasons(c.coachAccreditation);
+    if (newLevel > prevLevel) {
+      c.news = [{ week: 0, type: 'info', text: `📋 Coaching accreditation advanced to ${accreditationLabel(c.coachAccreditation)}. New levels of football are opening up.` }, ...(c.news || [])].slice(0, 25);
+    }
+  }
+
   c.coachStats = {
     ...c.coachStats,
     totalWins: (c.coachStats?.totalWins || 0) + (myRow.W || 0),

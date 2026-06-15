@@ -16,6 +16,38 @@ export function coachTierFromScore(score) {
   return 'Grassroots';
 }
 
+// ---------------------------------------------------------------------------
+// Coaching accreditation — a credential ladder earned by seasons coached.
+// Gates which tiers will even interview you, so you can't leap from a junior
+// club straight to AFL on reputation alone. Earned passively (one notch per
+// season) rather than as a separate mini-game.
+// ---------------------------------------------------------------------------
+export const ACCREDITATION_LEVELS = ['Foundation', 'Level 1', 'Level 2', 'High Performance'];
+
+/** Accreditation index (0-3) from seasons of accreditation accrued. */
+export function accreditationFromSeasons(seasons) {
+  return Math.max(0, Math.min(3, seasons ?? 0));
+}
+
+export function accreditationLabel(index) {
+  return ACCREDITATION_LEVELS[accreditationFromSeasons(index)] || ACCREDITATION_LEVELS[0];
+}
+
+/** Minimum accreditation index a tier requires to interview you. */
+export function minAccreditationForTier(tier) {
+  if (tier === 1) return 2;  // AFL needs Level 2+
+  if (tier === 2) return 1;  // State league needs Level 1+
+  return 0;                  // Community / junior: open to all
+}
+
+/** Starting accreditation index for a career begun at a given tier. */
+export function startingAccreditationForTier(tier) {
+  if (tier === 1) return 3;
+  if (tier === 2) return 2;
+  if (tier === 3) return 1;
+  return 0; // tier 4 grassroots starts at Foundation
+}
+
 // End-of-season reputation adjustment.
 // args: { premiership, finals, relegated, promoted, winRate }
 export function applyEndOfSeasonReputation(rep, args) {
@@ -94,6 +126,7 @@ function buildJobListing(club, league, career) {
     rosterTag: rosterTags[hash % rosterTags.length],
     mediaHeat,
     minReputation,
+    minAccreditation: minAccreditationForTier(league.tier),
     interestLabel,
     panelTone,
   };
@@ -156,14 +189,18 @@ function appendFallbackJobOffers(career, excludeIds, seenIds, offers, count) {
 // Generate available jobs filtered by the coach's tier + current club exclusion.
 export function generateJobMarket(career, options = {}) {
   const tier = coachTierFromScore(career.coachReputation ?? 30);
-  const wantTiers = {
+  // Accreditation gates the ceiling: you can't be offered a tier your
+  // credential doesn't reach yet, no matter how high your reputation.
+  const accred = accreditationFromSeasons(career.coachAccreditation ?? startingAccreditationForTier(findLeagueOf(career.clubId)?.tier ?? 3));
+  const tierAllowed = (t) => accred >= minAccreditationForTier(t);
+  const wantTiers = ({
     Grassroots:  [4, 4, 4, 4, 4, 3],
     Rookie:      [3, 3, 3, 3, 2, 2, 3],
     Journeyman:  [3, 3, 2, 2, 2, 1, 3, 2],
     Respected:   [2, 2, 2, 1, 1, 2],
     Elite:       [1, 1, 1, 1, 2, 2],
     Legend:      [1, 1, 1, 1, 1, 2, 3],
-  }[tier] || [3, 3];
+  }[tier] || [3, 3]).map((t) => (tierAllowed(t) ? t : (tierAllowed(t + 1) ? t + 1 : Math.max(t, 3))));
 
   const excludeIds = new Set([career.clubId, ...((career.previousClubs || []).slice(-2).map((p) => p.clubId))]);
   const offers = [];
