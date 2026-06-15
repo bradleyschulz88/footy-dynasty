@@ -21,7 +21,7 @@ export default function SackingSequence({ career, club, onAdvanceStep, onAcceptJ
   const step = Math.max(0, Math.min(STEPS.length - 1, career.sackingStep ?? 0));
   const stepKey = STEPS[step].key;
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(160deg, #07101F 0%, #1E293B 100%)' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'radial-gradient(ellipse 60% 35% at 50% 0%, color-mix(in srgb, var(--A-neg) 7%, transparent) 0%, transparent 55%), linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)' }}>
       {/* Step indicator */}
       <div className="px-6 py-4 flex items-center justify-center gap-2 flex-wrap">
         {STEPS.map((s, i) => (

@@ -95,7 +95,7 @@ export default function SeasonSummaryScreen({
   const AwardCard = ({ icon, label, name, stat, sub }) => (
     <div
       className="rounded-2xl p-4 flex items-center gap-4"
-      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+      style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}
     >
       <div
         className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
@@ -104,25 +104,25 @@ export default function SeasonSummaryScreen({
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">{label}</div>
-        <div className="font-bold text-white truncate">{name || "—"}</div>
+        <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-atext-mute">{label}</div>
+        <div className="font-bold text-atext truncate">{name || "—"}</div>
         <div className="text-sm font-display text-aaccent">{stat}</div>
       </div>
-      {sub && <div className="text-[10px] text-slate-500 text-right leading-tight">{sub}</div>}
+      {sub && <div className="text-[10px] text-atext-mute text-right leading-tight">{sub}</div>}
     </div>
   );
 
   const celebrate = summary.champion || summary.promoted;
 
   return (
-    <div className="min-h-screen flex flex-col relative" style={{ background: "linear-gradient(160deg,#0F172A 0%,#1E293B 100%)" }}>
+    <div className="min-h-screen flex flex-col relative" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
       {celebrate && <Confetti />}
-      <div className="text-center px-6 py-10 relative" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="text-center px-6 py-10 relative" style={{ borderBottom: "1px solid var(--A-line)" }}>
         <div className="text-5xl mb-4">{outcomeIcon}</div>
         <div className="text-[11px] font-bold uppercase tracking-[0.3em] mb-2" style={{ color: tierColor }}>
           {summary.leagueName} · Season {summary.season}
         </div>
-        <div className="font-display text-6xl leading-none text-white mb-2">
+        <div className="font-display text-6xl leading-none text-atext mb-2">
           {summary.leagueShort} {summary.season}
         </div>
         <div className="font-bold text-xl" style={{ color: posColor }}>
@@ -305,14 +305,15 @@ export default function SeasonSummaryScreen({
         )}
       </div>
 
-      <div className="px-6 py-6" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+      <div className="px-6 py-6" style={{ borderTop: "1px solid var(--A-line)" }}>
         <div className="max-w-2xl mx-auto">
           <button
             onClick={onContinue}
-            className="w-full py-4 rounded-2xl font-display text-xl tracking-widest text-white transition-all"
+            className="w-full py-4 rounded-2xl font-display text-xl tracking-widest transition-all"
             style={{
-              background: "linear-gradient(135deg,var(--A-accent),#D07A2A)",
-              boxShadow: "0 4px 20px rgba(232,154,74,0.4)",
+              background: "var(--A-accent)",
+              color: "var(--fd-on-accent, #0A0D0C)",
+              boxShadow: "0 4px 24px color-mix(in srgb, var(--A-accent) 35%, transparent)",
             }}
           >
             START SEASON {summary.season + 1} →
