@@ -4,3 +4,9 @@
 .mcp.json
 CLAUDE.md
 node_modules/
+
+# Local secrets (API keys)
+.env
+.env.local
+mockups/stitch/_*.json
+mockups/stitch/manifest.json
