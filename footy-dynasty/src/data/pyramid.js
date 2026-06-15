@@ -1130,6 +1130,7 @@ export const PYRAMID = {
       { id: "perthfootballleague_trinity_aqui", name: "Trinity Aquinas", short: "TA", state: "WA", colors: ["#000000", "#FFD200", "#003366"] , division: 1},
       { id: "perthfootballleague_university", name: "University", short: "UNI", state: "WA", colors: ["#1A6B3C", "#FFD200", "#FFFFFF"] , division: 1},
       { id: "perthfootballleague_whitford", name: "Whitford", short: "WHI", state: "WA", colors: ["#003366", "#FFD200", "#000000"] , division: 2},
+      { id: "perthfootballleague_warnbro_swans", name: "Warnbro Swans", short: "WSW", state: "WA", colors: ["#ED1B2F", "#FFFFFF", "#ED1B2F"] , division: 3},
       { id: "perthfootballleague_winnacott", name: "Winnacott", short: "WIN", state: "WA", colors: ["#6B4423", "#FFD200", "#FFFFFF"] , division: 4},
       { id: "perthfootballleague_yanchep", name: "Yanchep", short: "YAN", state: "WA", colors: ["#1A6B3C", "#FFD200", "#FFFFFF"] , division: 4},
     ],
@@ -2101,6 +2102,127 @@ export const PYRAMID = {
       { id: "wimmerafl_southern_mallee_gian", name: "Southern Mallee Giants", short: "SMG", state: "VIC", colors: ["#1A6B3C", "#FFD200", "#FFFFFF"] },
       { id: "wimmerafl_stawell", name: "Stawell", short: "STA", state: "VIC", colors: ["#E21937", "#FFFFFF", "#FFD200"] },
       { id: "wimmerafl_warracknabeal", name: "Warracknabeal", short: "WAR", state: "VIC", colors: ["#FFD200", "#000000", "#CC2031"] },
+    ],
+  },
+
+  // ─── TIER 4: JUNIOR / COMMUNITY FOOTBALL ────────────────────────────────────
+  // Grassroots entry point. Volunteer/unpaid coaching roles. Parent committee
+  // instead of a director board. Success here earns a Tier 3 offer.
+
+  WAJuniorFootball: {
+    tier: 4,
+    name: "WA Junior Football",
+    short: "WAJF",
+    state: "WA",
+    clubs: [
+      { id: "wajf_safety_bay_swans",   name: "Safety Bay Swans",    short: "SBS", state: "WA", colors: ["#ED1B2F", "#FFFFFF", "#ED1B2F"] },
+      { id: "wajf_kwinana",            name: "Kwinana",             short: "KWI", state: "WA", colors: ["#003087", "#FFD200", "#FFFFFF"] },
+      { id: "wajf_east_wanneroo",      name: "East Wanneroo",       short: "EWA", state: "WA", colors: ["#006633", "#FFFFFF", "#FFD200"] },
+      { id: "wajf_willetton",          name: "Willetton",           short: "WIL", state: "WA", colors: ["#0033A0", "#FFFFFF", "#CC2031"] },
+      { id: "wajf_mindarie",           name: "Mindarie",            short: "MIN", state: "WA", colors: ["#CC2031", "#000000", "#FFFFFF"] },
+      { id: "wajf_southern_river",     name: "Southern River",      short: "SRI", state: "WA", colors: ["#006633", "#FFD200", "#000000"] },
+    ],
+  },
+
+  VJuniorFootball: {
+    tier: 4,
+    name: "Victorian Junior Football",
+    short: "VJF",
+    state: "VIC",
+    clubs: [
+      { id: "vjf_eltham_wildcats",     name: "Eltham Wildcats",     short: "ELW", state: "VIC", colors: ["#CC2031", "#FFD200", "#000000"] },
+      { id: "vjf_doncaster",           name: "Doncaster",           short: "DON", state: "VIC", colors: ["#003366", "#FFFFFF", "#FFD200"] },
+      { id: "vjf_greythorn",           name: "Greythorn",           short: "GRE", state: "VIC", colors: ["#006633", "#FFFFFF", "#000000"] },
+      { id: "vjf_watsonia",            name: "Watsonia",            short: "WAT", state: "VIC", colors: ["#660066", "#FFD200", "#FFFFFF"] },
+      { id: "vjf_montmorency",         name: "Montmorency",         short: "MNT", state: "VIC", colors: ["#E21937", "#FFFFFF", "#FFD200"] },
+      { id: "vjf_templestowe",         name: "Templestowe",         short: "TEM", state: "VIC", colors: ["#800020", "#FFD200", "#FFFFFF"] },
+    ],
+  },
+
+  NSWJuniorFootball: {
+    tier: 4,
+    name: "NSW Junior Football",
+    short: "NSWJF",
+    state: "NSW",
+    clubs: [
+      { id: "nswjf_pennant_hills",     name: "Pennant Hills",       short: "PHI", state: "NSW", colors: ["#002B5C", "#FFD200", "#FFFFFF"] },
+      { id: "nswjf_asquith",           name: "Asquith",             short: "ASQ", state: "NSW", colors: ["#CC2031", "#000000", "#FFFFFF"] },
+      { id: "nswjf_hills_hawks",       name: "Hills Hawks",         short: "HHK", state: "NSW", colors: ["#4D2004", "#FBBF15", "#FFFFFF"] },
+      { id: "nswjf_manly",             name: "Manly",               short: "MNL", state: "NSW", colors: ["#E21937", "#FFFFFF", "#E21937"] },
+      { id: "nswjf_parramatta",        name: "Parramatta",          short: "PAR", state: "NSW", colors: ["#003087", "#FFFFFF", "#FFD200"] },
+      { id: "nswjf_sutherland",        name: "Sutherland Seahawks", short: "SSH", state: "NSW", colors: ["#006633", "#FFD200", "#FFFFFF"] },
+    ],
+  },
+
+  QLDJuniorFootball: {
+    tier: 4,
+    name: "Queensland Junior Football",
+    short: "QLDJF",
+    state: "QLD",
+    clubs: [
+      { id: "qldjf_aspley",            name: "Aspley",              short: "ASP", state: "QLD", colors: ["#CC2031", "#003366", "#FFFFFF"] },
+      { id: "qldjf_arana_hills",       name: "Arana Hills",         short: "AHI", state: "QLD", colors: ["#006633", "#FFD200", "#000000"] },
+      { id: "qldjf_kenmore",           name: "Kenmore",             short: "KEN", state: "QLD", colors: ["#0033A0", "#FFFFFF", "#CC2031"] },
+      { id: "qldjf_mt_gravatt",        name: "Mt Gravatt",          short: "MGR", state: "QLD", colors: ["#4D2004", "#FFD200", "#FFFFFF"] },
+      { id: "qldjf_sandgate",          name: "Sandgate",            short: "SAN", state: "QLD", colors: ["#E21937", "#000000", "#FFFFFF"] },
+      { id: "qldjf_jindalee",          name: "Jindalee",            short: "JIN", state: "QLD", colors: ["#660066", "#FFFFFF", "#FFD200"] },
+    ],
+  },
+
+  SAJuniorFootball: {
+    tier: 4,
+    name: "SA Junior Football",
+    short: "SAJF",
+    state: "SA",
+    clubs: [
+      { id: "sajf_brighton_bombers",   name: "Brighton Bombers",    short: "BBM", state: "SA", colors: ["#CC2031", "#000000", "#FFFFFF"] },
+      { id: "sajf_norwood_redlegs",    name: "Norwood Redlegs",     short: "NRL", state: "SA", colors: ["#CC2031", "#003366", "#FFFFFF"] },
+      { id: "sajf_sturt_lions",        name: "Sturt Lions",         short: "STL", state: "SA", colors: ["#003087", "#FFFFFF", "#FFD200"] },
+      { id: "sajf_west_torrens",       name: "West Torrens",        short: "WTO", state: "SA", colors: ["#E21937", "#FFD200", "#000000"] },
+      { id: "sajf_glenelg",            name: "Glenelg",             short: "GLE", state: "SA", colors: ["#003087", "#FFD200", "#FFFFFF"] },
+      { id: "sajf_woodville_west",     name: "Woodville West",      short: "WWJ", state: "SA", colors: ["#003087", "#CC2031", "#FFFFFF"] },
+    ],
+  },
+
+  TASJuniorFootball: {
+    tier: 4,
+    name: "Tasmanian Junior Football",
+    short: "TASJF",
+    state: "TAS",
+    clubs: [
+      { id: "tasjf_sandy_bay",         name: "Sandy Bay",           short: "SBA", state: "TAS", colors: ["#003087", "#FFFFFF", "#FFD200"] },
+      { id: "tasjf_new_norfolk",       name: "New Norfolk",         short: "NNF", state: "TAS", colors: ["#006633", "#FFFFFF", "#FFD200"] },
+      { id: "tasjf_launceston",        name: "Launceston",          short: "LCN", state: "TAS", colors: ["#8B0000", "#FFD200", "#FFFFFF"] },
+      { id: "tasjf_devonport",         name: "Devonport",           short: "DEV", state: "TAS", colors: ["#660066", "#FFD200", "#FFFFFF"] },
+      { id: "tasjf_burnie",            name: "Burnie",              short: "BUR", state: "TAS", colors: ["#CC2031", "#000000", "#FFFFFF"] },
+    ],
+  },
+
+  ACTJuniorFootball: {
+    tier: 4,
+    name: "ACT Junior Football",
+    short: "ACTJF",
+    state: "ACT",
+    clubs: [
+      { id: "actjf_belconnen",         name: "Belconnen",           short: "BLC", state: "ACT", colors: ["#003087", "#FFD200", "#FFFFFF"] },
+      { id: "actjf_eastlake",          name: "Eastlake",            short: "ELK", state: "ACT", colors: ["#E21937", "#003087", "#FFFFFF"] },
+      { id: "actjf_tuggeranong",       name: "Tuggeranong",         short: "TUG", state: "ACT", colors: ["#000080", "#FFFFFF", "#CC2031"] },
+      { id: "actjf_queanbeyan",        name: "Queanbeyan",          short: "QBN", state: "ACT", colors: ["#006633", "#FFD200", "#FFFFFF"] },
+      { id: "actjf_woden_weston",      name: "Woden Weston",        short: "WWC", state: "ACT", colors: ["#CC2031", "#000000", "#FFD200"] },
+    ],
+  },
+
+  NTJuniorFootball: {
+    tier: 4,
+    name: "NT Junior Football",
+    short: "NTJF",
+    state: "NT",
+    clubs: [
+      { id: "ntjf_nightcliff",         name: "Nightcliff",          short: "NGT", state: "NT", colors: ["#003087", "#FFD200", "#FFFFFF"] },
+      { id: "ntjf_darwin_buffaloes",   name: "Darwin Buffaloes",    short: "DBF", state: "NT", colors: ["#660066", "#FFD200", "#FFFFFF"] },
+      { id: "ntjf_waratah",            name: "Waratah",             short: "WAH", state: "NT", colors: ["#E21937", "#FFFFFF", "#003366"] },
+      { id: "ntjf_southern_districts", name: "Southern Districts",  short: "SDJ", state: "NT", colors: ["#006633", "#FFFFFF", "#FFD200"] },
+      { id: "ntjf_pint",               name: "Pint",                short: "PNT", state: "NT", colors: ["#CC2031", "#000000", "#FFFFFF"] },
     ],
   },
 };

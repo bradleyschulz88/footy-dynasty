@@ -157,7 +157,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
   const effectiveTier3Div  = tier === 3 && tier3K ? Math.min(localDivision, tier3K) : localDivision;
   const availableClubs     = leagueKey ? getCompetitionClubs(leagueKey, state, tier === 3 ? effectiveTier3Div : null) : [];
   const availableLeagues   = state ? LEAGUES_BY_STATE(state).filter(l => !l.isAcademy && (tier ? l.tier === tier : true)) : [];
-  const tiersForState      = state ? [1, 2, 3].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t && !l.isAcademy)) : [1, 2, 3];
+  const tiersForState      = state ? [1, 2, 3, 4].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t && !l.isAcademy)) : [1, 2, 3, 4];
 
   function start(e) {
     if (e) e.preventDefault();
@@ -296,8 +296,8 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
         weeklyWeather: {},
         winStreak: 0,
         homeWinStreak: 0,
-        coachReputation: 30,
-        coachTier: 'Journeyman',
+        coachReputation: league.tier === 4 ? 5 : 30,
+        coachTier: league.tier === 4 ? 'Grassroots' : 'Journeyman',
         tier3Div1Titles: 0,
         lastPromotionPlayoff: null,
         coachStats: {
@@ -697,7 +697,20 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
               <p className="text-atext-dim text-sm mb-8">
                 Start at the top, the middle, or the bottom. Tiers available in <strong className="text-atext">{state}</strong>.
               </p>
-              <div className={`grid gap-4 ${tiersForState.length === 1 ? 'md:grid-cols-1 max-w-sm' : tiersForState.length === 2 ? 'md:grid-cols-2 max-w-2xl' : 'md:grid-cols-3'}`}>
+              <div className={`grid gap-4 ${tiersForState.length <= 1 ? 'md:grid-cols-1 max-w-sm' : tiersForState.length === 2 ? 'md:grid-cols-2 max-w-2xl' : tiersForState.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
+                {tiersForState.includes(4) && (
+                  <motion.button type="button" whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => { setTier(4); setLeagueKey(null); setClubId(null); setStep(3); }}
+                    className="panel rounded-xl p-6 text-left">
+                    <Pill color="#60A5FA">Volunteer</Pill>
+                    <div className="font-display text-5xl mt-3 text-atext">TIER 4</div>
+                    <div className="text-sm text-atext font-semibold mt-1">Junior / Grassroots</div>
+                    <div className="text-[12px] text-atext-dim mt-3 leading-relaxed">
+                      Unpaid. Parent committee. Kids who love the game. The most honest start you can make.
+                    </div>
+                    <div className="text-xs mt-4 font-bold uppercase tracking-widest" style={{ color: '#60A5FA' }}>$0 salary · Grassroots coach</div>
+                  </motion.button>
+                )}
                 {tiersForState.includes(3) && (
                   <motion.button type="button" whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}
                     onClick={() => { setTier(3); setLeagueKey(null); setClubId(null); setStep(3); }}

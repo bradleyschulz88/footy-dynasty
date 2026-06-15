@@ -18,5 +18,6 @@ export function pyramidNoteForLeague(leagueKey, tier) {
   if (LEAGUE_PYRAMID_NOTE[leagueKey]) return LEAGUE_PYRAMID_NOTE[leagueKey];
   if (tier === 1) return "Premier national or top-flight competition.";
   if (tier === 2) return "State or regional senior league — one step from the summit.";
+  if (tier === 4) return "Junior grassroots football — volunteer role, parent committee, and kids who just want to play.";
   return "Community football — volunteers, rain, and a pie at three-quarter time.";
 }

@@ -26,6 +26,12 @@ export const TIER_FINANCE = {
     transferBudget: 20_000,
     wageBudget:     55_000,
   },
+  4: {
+    cash:             3_000,
+    annualIncome:    18_000,
+    transferBudget:       0,
+    wageBudget:           0,
+  },
 };
 
 // Annual facility upkeep per level. Single source of truth — referenced both
@@ -34,6 +40,7 @@ export const FACILITY_UPKEEP_PER_LEVEL_ANNUAL = {
   1: 130_000,   // Tier 1
   2: 30_000,
   3: 6_000,
+  4: 500,
 };
 
 // Income mix — fraction of the headline annual income that each line represents.
@@ -64,6 +71,7 @@ export const BROADCAST_PER_MATCH = {
   1: 1_900_000,
   2: 110_000,
   3: 0,
+  4: 0,
 };
 
 // Approximate matches per season (home + away) used to (a) project per-match
@@ -76,6 +84,7 @@ export const PRIZE_MONEY = {
   1: { premiership: 5_000_000, runnerUp: 2_500_000, finals: 1_250_000, woodenSpoonPenalty: 500_000 },
   2: { premiership:   400_000, runnerUp:   200_000, finals:    90_000, woodenSpoonPenalty:  40_000 },
   3: { premiership:    25_000, runnerUp:    12_500, finals:     5_000, woodenSpoonPenalty:   3_000 },
+  4: { premiership:       500, runnerUp:       250, finals:       100, woodenSpoonPenalty:       0 },
 };
 
 // Contract renewal demand curve. Player demands a multiplier on their current

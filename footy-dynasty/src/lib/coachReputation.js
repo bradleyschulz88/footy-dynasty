@@ -5,14 +5,15 @@ import { ALL_CLUBS, findLeagueOf } from '../data/pyramid.js';
 import { clamp } from './format.js';
 import { pick } from './rng.js';
 
-export const COACH_TIERS = ['Rookie', 'Journeyman', 'Respected', 'Elite', 'Legend'];
+export const COACH_TIERS = ['Grassroots', 'Rookie', 'Journeyman', 'Respected', 'Elite', 'Legend'];
 
 export function coachTierFromScore(score) {
   if (score >= 80) return 'Legend';
   if (score >= 60) return 'Elite';
   if (score >= 40) return 'Respected';
   if (score >= 20) return 'Journeyman';
-  return 'Rookie';
+  if (score >= 8)  return 'Rookie';
+  return 'Grassroots';
 }
 
 // End-of-season reputation adjustment.
@@ -48,10 +49,14 @@ function buildJobListing(club, league, career) {
     ? ['Premiership in 3 seasons', 'Finals every year', 'Full rebuild — patience guaranteed', 'Top-4 inside 2 seasons']
     : league.tier === 2
     ? ['Promotion to AFL within 4 seasons', 'Finals appearance this year', 'Stabilise the club after a turbulent decade', 'Develop home-grown stars']
+    : league.tier === 4
+    ? ['Keep the kids coming back each week', 'Build a winning junior culture', 'Develop players for senior football', 'Get the families involved']
     : ['Restore community pride', 'Win the local flag', 'Bring in young talent', 'Rebuild the senior list from scratch'];
-  const tierWageBase = league.tier === 1 ? 480000 : league.tier === 2 ? 180000 : 65000;
-  const wage = Math.round(tierWageBase * (0.85 + (hash % 30) / 100));
-  const chairmanLine = league.tier === 3
+  const tierWageBase = league.tier === 1 ? 480000 : league.tier === 2 ? 180000 : league.tier === 4 ? 0 : 65000;
+  const wage = league.tier === 4 ? 0 : Math.round(tierWageBase * (0.85 + (hash % 30) / 100));
+  const chairmanLine = league.tier === 4
+    ? `"We need good people who love the game. It's volunteer but we'll look after you."`
+    : league.tier === 3
     ? `"We're a small club with big heart. We'd love to have you on board."`
     : league.tier === 2
     ? `"This club's got history and ambition. We need a coach who can match it."`
@@ -65,7 +70,7 @@ function buildJobListing(club, league, career) {
   ];
   const rosterTags = ['aging', 'young', 'balanced'];
   const mediaHeat = league.tier === 1 ? ['high', 'med', 'high'][hash % 3] : ['low', 'med', 'med'][hash % 3];
-  const minReputation = league.tier === 1 ? 40 : league.tier === 2 ? 24 : 8;
+  const minReputation = league.tier === 1 ? 40 : league.tier === 2 ? 24 : league.tier === 4 ? 0 : 8;
   let interestLabel = 'Shortlisted';
   if (rep >= minReputation + 18) interestLabel = 'Preferred candidate';
   else if (rep < minReputation - 2) interestLabel = 'Long shot';
@@ -138,7 +143,7 @@ function appendFallbackJobOffers(career, excludeIds, seenIds, offers, count) {
     const candidates = ALL_CLUBS.filter((c) => {
       if (excludeIds.has(c.id) || seenIds.has(c.id)) return false;
       const lg = findLeagueOf(c.id);
-      return lg && lg.tier === 3;
+      return lg && (lg.tier === 3 || lg.tier === 4);
     });
     if (!candidates.length) break;
     const club = pick(candidates);
@@ -152,6 +157,7 @@ function appendFallbackJobOffers(career, excludeIds, seenIds, offers, count) {
 export function generateJobMarket(career, options = {}) {
   const tier = coachTierFromScore(career.coachReputation ?? 30);
   const wantTiers = {
+    Grassroots:  [4, 4, 4, 4, 4, 3],
     Rookie:      [3, 3, 3, 3, 2, 2, 3],
     Journeyman:  [3, 3, 2, 2, 2, 1, 3, 2],
     Respected:   [2, 2, 2, 1, 1, 2],
