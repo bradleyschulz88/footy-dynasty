@@ -38,7 +38,7 @@ export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos 
       <div className="px-5 py-4 border-b border-aline hidden md:block">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{background:"linear-gradient(135deg, var(--A-accent), var(--A-accent-2))", boxShadow:"0 4px 12px color-mix(in srgb, var(--A-accent) 20%, transparent)"}}>
-            <Trophy className="w-5 h-5 text-white" />
+            <Trophy className="w-5 h-5" style={{ color: "var(--fd-on-accent, #0A0D0C)" }} />
           </div>
           <div>
             <div className="font-display text-[26px] tracking-[0.1em] leading-none text-atext">DYNASTY</div>

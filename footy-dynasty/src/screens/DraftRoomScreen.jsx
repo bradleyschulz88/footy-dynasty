@@ -232,7 +232,7 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
                 key={pos}
                 type="button"
                 onClick={() => setPosFilter(pos)}
-                className={`px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold ${posFilter === pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim"}`}
+                className={`px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold ${posFilter === pos ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : "bg-apanel-2 text-atext-dim"}`}
               >
                 {pos}
               </button>

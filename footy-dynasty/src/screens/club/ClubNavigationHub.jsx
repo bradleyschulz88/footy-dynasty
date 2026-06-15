@@ -81,7 +81,7 @@ export function ClubOverviewTab({ career, club, setTab, showCommittee }) {
             "Finances",
             [`Cash ${fmtK(cash)}`, capPct != null ? `Player cap ${capPct}%` : "Cap off"],
             DollarSign,
-            "#4ADBE8",
+            "var(--A-accent)",
             () => setTab("finances"),
           )}
           {overviewTile(
@@ -233,7 +233,7 @@ export function CommercialKpiStrip({ career }) {
         <Pill color="#64748B">No cap</Pill>
       )}
       <Pill color={board >= 50 ? "#4AE89A" : "#E84A6F"}>Board {board}%</Pill>
-      <Pill color="#4ADBE8">{sponsorsN} sponsors</Pill>
+      <Pill color="var(--A-accent-2)">{sponsorsN} sponsors</Pill>
     </div>
   );
 }

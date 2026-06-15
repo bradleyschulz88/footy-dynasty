@@ -32,7 +32,7 @@ export default function ArrivalBriefingFlow({ career, club, league, onComplete }
 
   if (step === 0) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, #07101F 0%, #1E293B 100%)" }}>
+      <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
         <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
           <div className="max-w-xl w-full anim-in text-center">
             <Handshake className="w-10 h-10 mx-auto text-aaccent mb-4" />
@@ -55,7 +55,7 @@ export default function ArrivalBriefingFlow({ career, club, league, onComplete }
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, #07101F 0%, #1E293B 100%)" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
       <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
         <div className="max-w-xl w-full anim-in">
           <Mic className="w-10 h-10 mx-auto text-aaccent mb-4" />

@@ -21,7 +21,7 @@ export default function SackingSequence({ career, club, onAdvanceStep, onAcceptJ
   const step = Math.max(0, Math.min(STEPS.length - 1, career.sackingStep ?? 0));
   const stepKey = STEPS[step].key;
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(160deg, #07101F 0%, #1E293B 100%)' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'radial-gradient(ellipse 60% 35% at 50% 0%, color-mix(in srgb, var(--A-neg) 7%, transparent) 0%, transparent 55%), linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)' }}>
       {/* Step indicator */}
       <div className="px-6 py-4 flex items-center justify-center gap-2 flex-wrap">
         {STEPS.map((s, i) => (
@@ -29,7 +29,7 @@ export default function SackingSequence({ career, club, onAdvanceStep, onAcceptJ
             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold font-mono transition`}
               style={{
                 background: i === step ? 'var(--A-accent)' : i < step ? 'color-mix(in srgb, var(--A-accent) 15%, transparent)' : 'var(--A-panel-2)',
-                color:      i === step ? '#001520' : i < step ? 'var(--A-accent)' : 'var(--A-text-mute)',
+                color:      i === step ? 'var(--fd-on-accent, #0A0D0C)' : i < step ? 'var(--A-accent)' : 'var(--A-text-mute)',
                 border:     `1px solid ${i === step ? 'var(--A-accent)' : 'var(--A-line)'}`,
               }}>{i + 1}</div>
             {i < STEPS.length - 1 && <ChevronRight className="w-3 h-3 text-atext-mute" />}

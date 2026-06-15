@@ -84,6 +84,12 @@ export default function PostMatchSummary({ summary, onContinue }) {
         }}
         tabIndex={-1}
       >
+        {/* Result colour band */}
+        <div
+          className="h-1 rounded-t-2xl"
+          style={{ background: `linear-gradient(90deg, ${summary.resultColor}, color-mix(in srgb, ${summary.resultColor} 40%, transparent))` }}
+        />
+
         {/* Header */}
         <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: "1px solid var(--A-line)" }}>
           <div>
@@ -94,7 +100,13 @@ export default function PostMatchSummary({ summary, onContinue }) {
           </div>
           <div className="text-right">
             <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-atext-mute">Result</div>
-            <div className="font-display text-3xl leading-tight" style={{ color: summary.resultColor }}>
+            <div
+              className="font-display text-4xl leading-tight"
+              style={{
+                color: summary.resultColor,
+                filter: `drop-shadow(0 0 12px color-mix(in srgb, ${summary.resultColor} 45%, transparent))`,
+              }}
+            >
               {summary.result}
             </div>
           </div>

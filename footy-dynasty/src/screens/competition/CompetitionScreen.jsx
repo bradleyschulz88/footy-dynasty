@@ -316,7 +316,7 @@ function PyramidTab({ career, club, league }) {
               </div>
               <div className="flex flex-wrap gap-1 mt-2">
                 {l.clubs.map(c => (
-                  <div key={c.id} className={`px-2 py-1 rounded text-[10px] font-bold ${c.id === career.clubId ? "bg-aaccent text-[#001520]" : ""}`} style={c.id !== career.clubId ? {background: `${c.colors[0]}33`, color: c.colors[1] === "#FFFFFF" ? "var(--A-text)" : c.colors[1], border: `1px solid ${c.colors[0]}66`} : {}}>{c.short}</div>
+                  <div key={c.id} className={`px-2 py-1 rounded text-[10px] font-bold ${c.id === career.clubId ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : ""}`} style={c.id !== career.clubId ? {background: `${c.colors[0]}33`, color: c.colors[1] === "#FFFFFF" ? "var(--A-text)" : c.colors[1], border: `1px solid ${c.colors[0]}66`} : {}}>{c.short}</div>
                 ))}
               </div>
             </div>

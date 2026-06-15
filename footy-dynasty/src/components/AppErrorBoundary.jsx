@@ -31,7 +31,8 @@ export default class AppErrorBoundary extends React.Component {
               <button
                 type="button"
                 onClick={() => this.setState({ error: null })}
-                className="px-4 py-2 rounded-lg text-sm font-bold bg-aaccent text-white"
+                className="px-4 py-2 rounded-lg text-sm font-bold bg-aaccent"
+                style={{ color: "var(--fd-on-accent, #0A0D0C)" }}
               >
                 Try again
               </button>

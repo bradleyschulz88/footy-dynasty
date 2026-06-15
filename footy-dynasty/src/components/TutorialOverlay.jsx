@@ -85,7 +85,7 @@ export default function TutorialOverlay({ step, onNext, onSkip }) {
         {/* Header */}
         <div
           className="px-4 py-2.5 flex items-center justify-between"
-          style={{ background: "linear-gradient(90deg, var(--A-accent), color-mix(in srgb, var(--A-accent) 70%, var(--A-accent-2)))", color: "#001520" }}
+          style={{ background: "linear-gradient(90deg, var(--A-accent), color-mix(in srgb, var(--A-accent) 70%, var(--A-accent-2)))", color: "var(--fd-on-accent, #0A0D0C)" }}
         >
           <div className="flex items-center gap-2">
             {/* Step dots */}
@@ -97,7 +97,7 @@ export default function TutorialOverlay({ step, onNext, onSkip }) {
                   style={{
                     width: i === step ? 14 : 5,
                     height: 5,
-                    background: i <= step ? '#001520' : 'rgba(0,21,32,0.35)',
+                    background: i <= step ? 'var(--fd-on-accent, #0A0D0C)' : 'color-mix(in srgb, var(--fd-on-accent, #0A0D0C) 35%, transparent)',
                   }}
                 />
               ))}
@@ -162,9 +162,9 @@ export function TutorialCompleteCard({ onClose }) {
     >
       <div
         className="rounded-2xl shadow-2xl overflow-hidden"
-        style={{ background: "var(--A-panel)", border: "2px solid #4AE89A", boxShadow: "0 20px 60px rgba(74,232,154,0.25)" }}
+        style={{ background: "var(--A-panel)", border: "2px solid var(--A-accent)", boxShadow: "0 20px 60px color-mix(in srgb, var(--A-accent) 25%, transparent)" }}
       >
-        <div className="px-4 py-2" style={{ background: "linear-gradient(90deg, #4AE89A, #2EC97A)", color: "#001f10" }}>
+        <div className="px-4 py-2" style={{ background: "linear-gradient(90deg, var(--A-accent), var(--A-accent-2))", color: "var(--fd-on-accent, #0A0D0C)" }}>
           <span className="font-mono text-[10px] font-bold uppercase tracking-widest">Tutorial Complete</span>
         </div>
         <div className="px-4 py-4">

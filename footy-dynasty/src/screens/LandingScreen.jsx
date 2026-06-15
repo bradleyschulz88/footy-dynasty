@@ -75,7 +75,7 @@ export default function LandingScreen({ hasSaves, themeClass = 'dirB', onNewCare
                   boxShadow: '0 0 24px color-mix(in srgb, var(--A-accent) 45%, transparent)',
                 }}
               >
-                <Trophy className="w-4 h-4 text-[#080c10]" />
+                <Trophy className="w-4 h-4" style={{ color: "var(--fd-on-accent, #0A0D0C)" }} />
               </div>
               <span className="text-[10px] uppercase tracking-[0.45em] text-aaccent font-mono font-bold">
                 AFL Manager 2026
@@ -127,7 +127,7 @@ export default function LandingScreen({ hasSaves, themeClass = 'dirB', onNewCare
                 className="flex-1 py-4 px-6 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2"
                 style={{
                   background: 'linear-gradient(135deg, var(--A-accent), var(--A-accent-2))',
-                  color: '#080c10',
+                  color: 'var(--fd-on-accent, #0A0D0C)',
                   boxShadow:
                     '0 4px 20px color-mix(in srgb, var(--A-accent) 30%, transparent),' +
                     '0 1px 0 color-mix(in srgb, white 20%, transparent) inset',
