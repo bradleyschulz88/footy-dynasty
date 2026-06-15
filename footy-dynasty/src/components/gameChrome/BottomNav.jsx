@@ -1,28 +1,22 @@
 // ---------------------------------------------------------------------------
-// BottomNav — mobile-only fixed bottom navigation + prominent ADVANCE action.
-// Solves the mobile flow pain points: the core "what do I do next" loop lives
-// in the centre (the raised PLAY button shows the next event + label), the four
-// most-used destinations flank it, and everything else lives in a "More" sheet.
-// Hidden on md+ where the left Sidebar takes over.
+// BottomNav — mobile Stitch-direction 5-tab bar: Hub · Squad · [ADVANCE] · Recruit · Club
+// Active tab: thick lime top-border + lime icon. Glass background with backdrop-blur.
+// More sheet for Schedule, Competition, Careers, Settings.
+// Hidden on md+ where the Sidebar takes over.
 // ---------------------------------------------------------------------------
 import React, { useState } from "react";
 import {
-  Home, Users, Building2, Trophy, Calendar, Settings, Play, MoreHorizontal, X, Bell, Briefcase,
+  Home, Users, Building2, Trophy, Calendar, Settings, Play, MoreHorizontal, X, Bell, Briefcase, Search,
 } from "lucide-react";
 import { getAdvanceContext, advanceTimeFingerprint } from "../../lib/advanceContext.js";
 import { tutorialAllowsNavigation } from "../TutorialOverlay.jsx";
-import { useStatTrend, trendGlyph, trendColor } from "./useStatTrend.js";
-
-function repPct(raw) {
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(100, Math.round(n)));
-}
 
 const PRIMARY = [
-  { key: "hub",   label: "Hub",   icon: Home },
-  { key: "squad", label: "Squad", icon: Users },
-  { key: "club",  label: "Club",  icon: Building2 },
+  { key: "hub",     label: "Hub",     icon: Home },
+  { key: "squad",   label: "Squad",   icon: Users },
+  null, // centre ADVANCE slot
+  { key: "recruit", label: "Recruit", icon: Search },
+  { key: "club",    label: "Club",    icon: Building2 },
 ];
 
 const MORE = [
@@ -31,6 +25,9 @@ const MORE = [
   { key: "careers",  label: "Careers",     icon: Briefcase, desc: "Coach jobs & reputation" },
   { key: "settings", label: "Settings",    icon: Settings,  desc: "Save slots & preferences" },
 ];
+
+const LIME = "#C8FF3D";
+const LIME_ON = "#0A0D0C";
 
 export function BottomNav({
   screen,
@@ -45,12 +42,6 @@ export function BottomNav({
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const ctx = getAdvanceContext(career, league);
-  const tick = advanceTimeFingerprint(career);
-  const board = repPct(career?.finance?.boardConfidence);
-  const fans = repPct(career?.finance?.fanHappiness);
-  const boardTrend = useStatTrend(board, tick);
-  const fansTrend = useStatTrend(fans, tick);
-  // A gated advance can route to the bell instead of dead-ending.
   const blockedToBell = advanceDisabled && !!onShowNotifications;
   const tutorialOn = career && !career.tutorialComplete;
   const tutStep = career?.tutorialStep ?? 0;
@@ -64,42 +55,31 @@ export function BottomNav({
 
   const moreActive = MORE.some((m) => m.key === screen);
 
-  const Cell = ({ item, active }) => {
-    const Icon = item.icon;
-    const locked = navLocked(item.key);
-    return (
-      <button
-        type="button"
-        onClick={() => go(item.key)}
-        disabled={locked}
-        aria-current={active ? "page" : undefined}
-        className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
-          locked ? "opacity-35" : active ? "text-aaccent" : "text-atext-mute"
-        }`}
-      >
-        <Icon className="w-[22px] h-[22px]" />
-        <span className="text-[10px] font-bold tracking-wide leading-none">{item.label}</span>
-      </button>
-    );
-  };
-
   return (
     <>
       {/* More sheet */}
       {sheetOpen && (
         <div className="md:hidden fixed inset-0 z-40" role="dialog" aria-modal="true">
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             onClick={() => setSheetOpen(false)}
           />
           <div
-            className="absolute inset-x-0 bottom-0 bg-apanel border-t border-aline rounded-t-2xl p-3 anim-in"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
+            className="absolute inset-x-0 bottom-0 rounded-t-2xl p-4"
+            style={{
+              background: "rgba(17, 21, 20, 0.97)",
+              backdropFilter: "blur(24px)",
+              WebkitBackdropFilter: "blur(24px)",
+              borderTop: `1px solid rgba(200,255,61,0.2)`,
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
+            }}
           >
-            <div className="flex items-center justify-between px-2 py-2 mb-1">
-              <span className="text-[11px] font-mono font-bold uppercase tracking-[0.2em] text-atext-mute">More</span>
-              <button type="button" onClick={() => setSheetOpen(false)} aria-label="Close" className="text-atext-mute p-1">
-                <X className="w-5 h-5" />
+            <div className="flex items-center justify-between px-1 py-1 mb-3">
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.24em", color: "#5C6962", textTransform: "uppercase", fontWeight: 700 }}>
+                More
+              </span>
+              <button type="button" onClick={() => setSheetOpen(false)} aria-label="Close" style={{ color: "#5C6962", padding: 4 }}>
+                <X size={18} />
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -113,17 +93,22 @@ export function BottomNav({
                     type="button"
                     onClick={() => go(item.key)}
                     disabled={locked}
-                    className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
-                      locked ? "opacity-35 border-transparent"
-                        : active ? "bg-aaccent/10 border-aaccent/40" : "border-aline bg-apanel-2/40"
-                    }`}
+                    className="flex items-center gap-3 p-3 rounded-xl text-left transition-all"
+                    style={{
+                      opacity: locked ? 0.35 : 1,
+                      background: active ? "rgba(200,255,61,0.08)" : "rgba(255,255,255,0.04)",
+                      border: active ? `1px solid rgba(200,255,61,0.4)` : "1px solid rgba(255,255,255,0.08)",
+                    }}
                   >
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${active ? "bg-aaccent/15 text-aaccent" : "text-atext-dim"}`}>
-                      <Icon className="w-5 h-5" />
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ background: active ? "rgba(200,255,61,0.12)" : "rgba(255,255,255,0.06)", color: active ? LIME : "#9CA89F" }}
+                    >
+                      <Icon size={18} />
                     </div>
                     <div className="min-w-0">
-                      <div className={`text-sm font-bold leading-tight ${active ? "text-aaccent" : "text-atext"}`}>{item.label}</div>
-                      <div className="text-[10px] text-atext-mute truncate">{item.desc}</div>
+                      <div className="text-sm font-bold leading-tight" style={{ color: active ? LIME : "#F7FAF8" }}>{item.label}</div>
+                      <div className="text-[10px] truncate" style={{ color: "#5C6962" }}>{item.desc}</div>
                     </div>
                   </button>
                 );
@@ -134,88 +119,159 @@ export function BottomNav({
       )}
 
       <nav
-        className="md:hidden fixed inset-x-0 bottom-0 z-30 bg-apanel/95 backdrop-blur-md border-t border-aline"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        className="md:hidden fixed inset-x-0 bottom-0 z-30"
+        style={{
+          background: "rgba(13, 17, 16, 0.96)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          borderTop: "1px solid rgba(200,255,61,0.15)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
       >
-        {/* Next-step hint (or block reason) + reputation — always tells you what
-            ADVANCE does and how the club's standing is trending. */}
-        {advanceDisabled && advanceDisabledReason ? (
-          <div className="flex items-center justify-center gap-1.5 h-5 text-[10px] border-b border-aline/60" style={{ color: "#E84A6F" }}>
-            <span className="font-mono uppercase tracking-widest">Hold</span>
-            <span className="font-semibold truncate max-w-[72vw]">{advanceDisabledReason}</span>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center gap-1.5 h-5 text-[10px] text-atext-mute border-b border-aline/60">
-            <span className="font-mono uppercase tracking-widest">Next</span>
-            <span className="font-semibold text-atext-dim truncate max-w-[60vw]">{ctx.nextEventShort}{ctx.mode === "finals" ? " 🏆" : ""}</span>
-          </div>
-        )}
-        <div className="flex items-center justify-center gap-4 h-5 text-[10px] border-b border-aline/60">
-          <span className="flex items-center gap-1">
-            <span className="font-mono uppercase tracking-widest text-atext-mute">Board</span>
-            <span className="font-display" style={{ color: "var(--A-accent-2)" }}>{board}</span>
-            {boardTrend ? <span style={{ color: trendColor(boardTrend) }}>{trendGlyph(boardTrend)}</span> : null}
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="font-mono uppercase tracking-widest text-atext-mute">Fans</span>
-            <span className="font-display" style={{ color: "#A78BFA" }}>{fans}</span>
-            {fansTrend ? <span style={{ color: trendColor(fansTrend) }}>{trendGlyph(fansTrend)}</span> : null}
-          </span>
+        {/* Next-event hint strip */}
+        <div
+          className="flex items-center justify-center gap-1.5 h-[22px] border-b"
+          style={{ borderColor: "rgba(200,255,61,0.08)", overflow: "hidden" }}
+        >
+          {advanceDisabled && advanceDisabledReason ? (
+            <>
+              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.22em", color: "#FF5A7C", textTransform: "uppercase", fontWeight: 700 }}>Hold</span>
+              <span style={{ fontSize: 10, color: "#FF5A7C", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "72vw" }}>{advanceDisabledReason}</span>
+            </>
+          ) : (
+            <>
+              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.22em", color: "#5C6962", textTransform: "uppercase", fontWeight: 700 }}>Next</span>
+              <span style={{ fontSize: 10, color: "#9CA89F", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "60vw" }}>
+                {ctx.nextEventShort}{ctx.mode === "finals" ? " 🏆" : ""}
+              </span>
+            </>
+          )}
         </div>
 
-        <div className="flex items-stretch h-14 px-1">
-          <Cell item={PRIMARY[0]} active={screen === "hub"} />
-          <Cell item={PRIMARY[1]} active={screen === "squad"} />
-
-          {/* Centre ADVANCE action — raised */}
-          <div className="flex-1 flex justify-center">
-            <button
-              type="button"
-              onClick={blockedToBell ? onShowNotifications : onAdvance}
-              disabled={advanceDisabled && !blockedToBell}
-              aria-label={blockedToBell ? "A decision is waiting — open notifications" : `Advance: ${ctx.buttonLabel}`}
-              className={`relative -mt-5 flex flex-col items-center justify-center w-16 h-16 rounded-full shadow-lg transition-transform active:scale-95 ${
-                blockedToBell ? "animate-pulse text-white" : advanceDisabled ? "opacity-45 text-white" : "advance-breathe"
-              }`}
-              style={{
-                background: blockedToBell
-                  ? "linear-gradient(135deg,#E84A6F,#a32a47)"
-                  : advanceDisabled
-                  ? "linear-gradient(135deg,#3a3a3a,#242424)"
-                  : "linear-gradient(135deg, var(--A-accent), var(--A-accent-2))",
-                color: advanceDisabled && !blockedToBell ? undefined : blockedToBell ? "#fff" : "var(--fd-on-accent)",
-                boxShadow: blockedToBell
-                  ? "0 6px 20px rgba(232,74,111,0.4)"
-                  : advanceDisabled ? "none" : "0 6px 20px color-mix(in srgb, var(--A-accent) 35%, transparent)",
-              }}
-            >
-              {blockedToBell ? <Bell className="w-6 h-6" /> : <Play className="w-6 h-6" fill="currentColor" />}
-              {!advanceDisabled && advanceAgendaCount > 0 && (
-                <span
-                  className="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full text-[9px] font-mono font-bold flex items-center justify-center"
-                  style={{ background: "#E84A6F", color: "#fff", border: "2px solid var(--A-panel)" }}
-                >
-                  {advanceAgendaCount}
-                </span>
-              )}
-            </button>
-          </div>
-
-          <Cell item={PRIMARY[2]} active={screen === "club"} />
-          <button
-            type="button"
-            onClick={() => setSheetOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={sheetOpen}
-            className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
-              moreActive || sheetOpen ? "text-aaccent" : "text-atext-mute"
-            }`}
-          >
-            <MoreHorizontal className="w-[22px] h-[22px]" />
-            <span className="text-[10px] font-bold tracking-wide leading-none">More</span>
-          </button>
+        {/* Tab row */}
+        <div className="flex items-stretch" style={{ height: 58, paddingLeft: 4, paddingRight: 4 }}>
+          {PRIMARY.map((item, i) => {
+            if (!item) {
+              // Centre ADVANCE button
+              return (
+                <div key="advance" className="flex-1 flex justify-center items-center">
+                  <button
+                    type="button"
+                    onClick={blockedToBell ? onShowNotifications : onAdvance}
+                    disabled={advanceDisabled && !blockedToBell}
+                    aria-label={blockedToBell ? "Decision waiting — open notifications" : `Advance: ${ctx.buttonLabel}`}
+                    className="relative flex flex-col items-center justify-center transition-transform active:scale-95"
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: "50%",
+                      marginTop: -14,
+                      background: blockedToBell
+                        ? "linear-gradient(135deg,#FF5A7C,#a32a47)"
+                        : advanceDisabled
+                        ? "rgba(60,60,60,0.6)"
+                        : LIME,
+                      color: advanceDisabled && !blockedToBell ? "#5C6962" : blockedToBell ? "#fff" : LIME_ON,
+                      boxShadow: blockedToBell
+                        ? "0 6px 20px rgba(255,90,124,0.45)"
+                        : advanceDisabled
+                        ? "none"
+                        : `0 6px 24px rgba(200,255,61,0.5), 0 0 0 2px rgba(200,255,61,0.2)`,
+                      border: advanceDisabled && !blockedToBell ? "1px solid rgba(255,255,255,0.1)" : "none",
+                    }}
+                  >
+                    {blockedToBell ? <Bell size={22} /> : <Play size={22} fill="currentColor" />}
+                    {!advanceDisabled && advanceAgendaCount > 0 && (
+                      <span
+                        className="absolute flex items-center justify-center"
+                        style={{
+                          top: -2, right: -2,
+                          minWidth: 18, height: 18,
+                          paddingLeft: 4, paddingRight: 4,
+                          borderRadius: 9999,
+                          background: "#FF5A7C",
+                          color: "#fff",
+                          fontSize: 9,
+                          fontFamily: "'JetBrains Mono',monospace",
+                          fontWeight: 700,
+                          border: "2px solid #0D1110",
+                        }}
+                      >
+                        {advanceAgendaCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              );
+            }
+            if (item.key === "club") {
+              // Rightmost: Club + More
+              const active = screen === item.key;
+              const locked = navLocked(item.key);
+              const Icon = item.icon;
+              return (
+                <React.Fragment key={item.key}>
+                  <TabCell
+                    item={item}
+                    active={active}
+                    locked={locked}
+                    onPress={() => go(item.key)}
+                  />
+                  {/* More button — rightmost */}
+                  <button
+                    type="button"
+                    onClick={() => setSheetOpen(true)}
+                    aria-haspopup="dialog"
+                    aria-expanded={sheetOpen}
+                    className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative"
+                    style={{ color: moreActive || sheetOpen ? LIME : "#5C6962" }}
+                  >
+                    {(moreActive || sheetOpen) && (
+                      <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[3px] rounded-full" style={{ background: LIME }} />
+                    )}
+                    <MoreHorizontal size={22} />
+                    <span style={{ fontSize: 10, fontWeight: 700, lineHeight: 1, letterSpacing: "0.02em" }}>More</span>
+                  </button>
+                </React.Fragment>
+              );
+            }
+            const active = screen === item.key;
+            const locked = navLocked(item.key);
+            return (
+              <TabCell
+                key={item.key}
+                item={item}
+                active={active}
+                locked={locked}
+                onPress={() => go(item.key)}
+              />
+            );
+          })}
         </div>
       </nav>
     </>
+  );
+}
+
+function TabCell({ item, active, locked, onPress }) {
+  const Icon = item.icon;
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      disabled={locked}
+      aria-current={active ? "page" : undefined}
+      className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative"
+      style={{ opacity: locked ? 0.35 : 1, color: active ? LIME : "#5C6962" }}
+    >
+      {active && (
+        <span
+          className="absolute top-0 left-1/2 -translate-x-1/2 rounded-full"
+          style={{ width: 24, height: 3, background: LIME, boxShadow: `0 0 8px ${LIME}` }}
+        />
+      )}
+      <Icon size={22} />
+      <span style={{ fontSize: 10, fontWeight: 700, lineHeight: 1, letterSpacing: "0.02em" }}>{item.label}</span>
+    </button>
   );
 }
