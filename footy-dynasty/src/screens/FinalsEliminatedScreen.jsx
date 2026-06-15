@@ -10,7 +10,7 @@ export default function FinalsEliminatedScreen({ career, league, onSimRemainder,
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-6 py-10"
-      style={{ background: "linear-gradient(160deg, #1a0f14 0%, var(--A-bg) 60%, var(--A-bg-2) 100%)" }}
+      style={{ background: "radial-gradient(ellipse 60% 35% at 50% 5%, color-mix(in srgb, var(--A-neg) 8%, transparent) 0%, transparent 55%), linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}
     >
       <div className="max-w-lg w-full text-center anim-in">
         <div className="text-5xl mb-4">💔</div>

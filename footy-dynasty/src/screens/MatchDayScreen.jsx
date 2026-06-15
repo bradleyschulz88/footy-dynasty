@@ -164,10 +164,19 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
           </div>
 
           <div className="text-center px-6">
-            <div className="font-display text-6xl leading-none" style={{ color: headerColor }}>
+            <div
+              className="font-display text-6xl leading-none"
+              style={{
+                color: headerColor,
+                filter: fullTime ? `drop-shadow(0 0 18px color-mix(in srgb, ${headerColor} 50%, transparent))` : "none",
+              }}
+            >
               {headerScore}
             </div>
-            <div className="text-[11px] font-bold uppercase tracking-widest mt-1" style={{ color: headerColor }}>
+            <div
+              className="text-[11px] font-bold uppercase tracking-widest mt-1"
+              style={{ color: headerColor }}
+            >
               {headerStatus}
             </div>
           </div>
