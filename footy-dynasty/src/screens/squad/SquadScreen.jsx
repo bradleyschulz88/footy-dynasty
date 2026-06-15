@@ -230,7 +230,7 @@ function PlayersTab({ career, updateCareer }) {
                     className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(active)}`}
                     style={active ? {
                       background: "var(--A-accent)",
-                      color: "var(--fd-on-accent, #001520)",
+                      color: "var(--fd-on-accent, #0A0D0C)",
                       boxShadow: "0 1px 6px color-mix(in srgb, var(--A-accent) 30%, transparent)",
                     } : {}}
                   >
@@ -258,7 +258,7 @@ function PlayersTab({ career, updateCareer }) {
                     className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(active)}`}
                     style={active ? {
                       background: "var(--A-accent)",
-                      color: "var(--fd-on-accent, #001520)",
+                      color: "var(--fd-on-accent, #0A0D0C)",
                       boxShadow: "0 1px 6px color-mix(in srgb, var(--A-accent) 30%, transparent)",
                     } : {}}
                   >
@@ -522,7 +522,7 @@ function AllPlayersTab({ career, updateCareer }) {
                   ? "border-transparent"
                   : "bg-apanel border-aline text-atext-dim hover:border-aaccent/35"
               }`}
-              style={view === v.key ? { background: "var(--A-accent)", color: "var(--fd-on-accent, #001520)" } : {}}
+              style={view === v.key ? { background: "var(--A-accent)", color: "var(--fd-on-accent, #0A0D0C)" } : {}}
             >
               {v.label}
             </button>

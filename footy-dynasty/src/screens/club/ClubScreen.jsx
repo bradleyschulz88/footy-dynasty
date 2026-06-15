@@ -165,7 +165,7 @@ export default function ClubScreen({ career, club, updateCareer, tab, setTab, tu
                 isAct
                   ? {
                       background: "linear-gradient(135deg, var(--A-accent), var(--A-accent-2))",
-                      color: "#001520",
+                      color: "var(--fd-on-accent, #0A0D0C)",
                       boxShadow: "0 2px 8px color-mix(in srgb, var(--A-accent) 20%, transparent)",
                     }
                   : { color: locked ? "var(--A-text-mute)" : "var(--A-text-dim)" }
@@ -1208,7 +1208,7 @@ function KitsTab({ career, club, updateCareer }) {
         </div>
         <div className="flex gap-2">
           {["home","away","clash"].map(k => (
-            <button key={k} onClick={()=>setEditing(k)} className={`px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider ${editing===k ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{k}</button>
+            <button key={k} onClick={()=>setEditing(k)} className={`px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider ${editing===k ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{k}</button>
           ))}
         </div>
       </div>
@@ -1235,7 +1235,7 @@ function KitsTab({ career, club, updateCareer }) {
             <div className={css.label}>Pattern</div>
             <div className="flex flex-wrap gap-2 mt-2">
               {PATTERNS.map(p => (
-                <button key={p.key} onClick={()=>updateKit("pattern", p.key)} className={`px-4 py-2 rounded-lg text-sm font-semibold ${kit.pattern===p.key ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{p.label}</button>
+                <button key={p.key} onClick={()=>updateKit("pattern", p.key)} className={`px-4 py-2 rounded-lg text-sm font-semibold ${kit.pattern===p.key ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{p.label}</button>
               ))}
             </div>
           </div>

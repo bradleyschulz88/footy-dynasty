@@ -29,7 +29,7 @@ export default function SackingSequence({ career, club, onAdvanceStep, onAcceptJ
             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold font-mono transition`}
               style={{
                 background: i === step ? 'var(--A-accent)' : i < step ? 'color-mix(in srgb, var(--A-accent) 15%, transparent)' : 'var(--A-panel-2)',
-                color:      i === step ? '#001520' : i < step ? 'var(--A-accent)' : 'var(--A-text-mute)',
+                color:      i === step ? 'var(--fd-on-accent, #0A0D0C)' : i < step ? 'var(--A-accent)' : 'var(--A-text-mute)',
                 border:     `1px solid ${i === step ? 'var(--A-accent)' : 'var(--A-line)'}`,
               }}>{i + 1}</div>
             {i < STEPS.length - 1 && <ChevronRight className="w-3 h-3 text-atext-mute" />}

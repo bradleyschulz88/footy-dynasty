@@ -164,7 +164,7 @@ export default function SettingsScreen({
                   key={id}
                   type="button"
                   onClick={() => patchOpts({ advanceReminders: id })}
-                  className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${active ? 'bg-aaccent text-[#001520]' : 'bg-apanel-2 text-atext-dim'}`}
+                  className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${active ? 'bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]' : 'bg-apanel-2 text-atext-dim'}`}
                 >
                   {label}
                 </button>
@@ -194,7 +194,7 @@ export default function SettingsScreen({
                   key={id}
                   type="button"
                   onClick={() => patchOpts({ theme: id })}
-                  className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition ${active ? 'bg-aaccent text-[#001520]' : 'bg-apanel-2 text-atext-dim'}`}
+                  className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition ${active ? 'bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]' : 'bg-apanel-2 text-atext-dim'}`}
                 >
                   {label}
                 </button>
@@ -214,7 +214,7 @@ export default function SettingsScreen({
                 key={d}
                 type="button"
                 onClick={() => patchOpts({ uiDensity: d })}
-                className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${uiDensity === d ? 'bg-aaccent text-[#001520]' : 'bg-apanel-2 text-atext-dim'}`}
+                className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${uiDensity === d ? 'bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]' : 'bg-apanel-2 text-atext-dim'}`}
               >
                 {d}
               </button>

@@ -237,7 +237,7 @@ export default function SeasonSummaryScreen({
             }}
           >
             <div className="text-4xl mb-2">🎉</div>
-            <div className="font-display text-3xl text-[#4AE89A]">PROMOTED!</div>
+            <div className="font-display text-3xl text-aaccent">PROMOTED!</div>
             <div className="text-sm text-atext-dim mt-1">
               {club.name} are going up — the whole town will talk about this one for years.
             </div>
