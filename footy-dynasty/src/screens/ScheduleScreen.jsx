@@ -66,7 +66,7 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
         oppClub: null,
       };
     if (ev.type === "key_event")
-      return { color: "#4ADBE8", icon: "📅", label: ev.name, oppClub: null };
+      return { color: "var(--A-accent-2)", icon: "📅", label: ev.name, oppClub: null };
     if (ev.type === "preseason_match")
       return { color: "#E84A6F", icon: "⚽", label: ev.label, oppClub: null };
     if (ev.type === "round") {
