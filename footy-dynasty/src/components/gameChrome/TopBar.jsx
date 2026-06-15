@@ -89,7 +89,7 @@ export function TopBar({
 
   return (
     <header
-      className="sticky top-0 z-20 overflow-hidden"
+      className="sticky top-0 z-40"
       style={{
         background: "rgba(13, 17, 16, 0.95)",
         backdropFilter: "blur(24px)",

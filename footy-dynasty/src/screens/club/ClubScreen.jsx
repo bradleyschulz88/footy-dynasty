@@ -299,8 +299,21 @@ function BoardTab({ career, club, updateCareer }) {
           <span className={css.label}>Overall board confidence</span>
           <span className="font-display text-2xl text-aaccent">{overallPct}%</span>
         </div>
-        <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+        <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
           <div className="h-full" style={{ width: `${overallPct}%`, background: 'linear-gradient(90deg, var(--A-accent-2), var(--A-accent))' }} />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px]">
+          {[
+            { label: "Budget access", value: overallPct >= 70 ? "Full" : overallPct >= 50 ? "Standard" : "Restricted", color: overallPct >= 70 ? "var(--A-pos)" : overallPct >= 50 ? "var(--A-accent)" : "var(--A-neg)" },
+            { label: "Sack patience", value: overallPct >= 65 ? "High" : overallPct >= 40 ? "Moderate" : "Very low", color: overallPct >= 65 ? "var(--A-pos)" : overallPct >= 40 ? "var(--A-accent)" : "var(--A-neg)" },
+            { label: "Contract offers", value: overallPct >= 60 ? "Competitive" : overallPct >= 35 ? "Average" : "Weak", color: overallPct >= 60 ? "var(--A-pos)" : overallPct >= 35 ? "var(--A-accent)" : "var(--A-neg)" },
+            { label: "Fan relations", value: overallPct >= 75 ? "Positive" : overallPct >= 45 ? "Neutral" : "Negative", color: overallPct >= 75 ? "var(--A-pos)" : overallPct >= 45 ? "var(--A-accent)" : "var(--A-neg)" },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="rounded-lg p-2" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+              <div className="text-atext-mute uppercase tracking-wider font-bold mb-0.5">{label}</div>
+              <div className="font-bold" style={{ color }}>{value}</div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -341,10 +354,56 @@ function BoardTab({ career, club, updateCareer }) {
         const m = members.find((x) => x.role === directorChatRole);
         if (!m) return null;
         const first = m.name?.split(' ')[0] || 'Director';
+        const pct = Math.round(clamp(m.confidence ?? 0, 0, 100));
+        const moodLabel = pct >= 70 ? 'upbeat' : pct >= 40 ? 'measured' : 'tense';
+        const ROLE_SCRIPTS = {
+          "Chairman": {
+            context: (fn, mood) => `${fn} is ${mood}. He's watching the ladder closely and wants to know the club is heading in the right direction before next board meeting.`,
+            opts: [
+              { label: `Walk ${first} through your season plan and key milestones`, delta: 5, news: `📋 ${first} (Chairman) left the meeting nodding — clear plan goes a long way.` },
+              { label: `Acknowledge recent results and your pathway to lift`, delta: 3, news: `🤝 ${first} appreciated the honesty. He'll give you a bit more rope.` },
+              { label: `Challenge his expectations — push for more realistic targets`, delta: -4, news: `⚠️ Pushback on targets didn't land well with ${first} — he wants results, not rhetoric.` },
+            ],
+          },
+          "Football Director": {
+            context: (fn, mood) => `${fn} is ${mood}. He's analytical — he wants to see list balance data and a clear game-plan rationale, not spin.`,
+            opts: [
+              { label: `Share player development data and list projections`, delta: 5, news: `📊 ${first} (Football Director) was impressed with the data — feels like you have a plan.` },
+              { label: `Discuss recent game highlights and what you're building toward`, delta: 3, news: `🏉 ${first} liked the football-first thinking. Confidence ticked up.` },
+              { label: `Push back on his player selection views`, delta: -4, news: `⚠️ ${first} didn't appreciate the pushback — he's the football expert, he thinks.` },
+            ],
+          },
+          "Finance Director": {
+            context: (fn, mood) => `${fn} is ${mood}. Conservative by nature — any budget uncertainty makes her nervous. She wants to know wage commitments are under control.`,
+            opts: [
+              { label: `Walk through cash runway and next-quarter commitments`, delta: 5, news: `💰 ${first} (Finance) left reassured — she just needs to see the numbers.` },
+              { label: `Reassure on wage discipline and transfer spend`, delta: 3, news: `🤝 ${first} settled down after the budget rundown.` },
+              { label: `Argue for a capital exception — invest now, pay later`, delta: -4, news: `⚠️ ${first} hated the "invest now" pitch — she's not signing off on that.` },
+            ],
+          },
+          "Community Director": {
+            context: (fn, mood) => `${fn} is ${mood}. He's a true believer in the club's grassroots role and cares deeply about culture and local engagement.`,
+            opts: [
+              { label: `Talk about youth programs and community partnerships you're building`, delta: 5, news: `🌱 ${first} (Community) lit up at the grassroots talk — exactly what he wants to hear.` },
+              { label: `Share good stories from training and fan engagement this week`, delta: 3, news: `🤝 ${first} appreciated the community-first framing.` },
+              { label: `Redirect — on-field results drive community pride, not programs`, delta: -4, news: `⚠️ ${first} bristled at having his portfolio dismissed. Confidence down.` },
+            ],
+          },
+          "Player Relations Director": {
+            context: (fn, mood) => `${fn} is ${mood}. Empathetic and player-focused — she notices morale before anyone else does and will fight for the locker room.`,
+            opts: [
+              { label: `Discuss workload, recovery, and your approach to player welfare`, delta: 5, news: `💚 ${first} (Player Relations) is on your side — she can see you care about the list.` },
+              { label: `Acknowledge specific players who've contributed positively`, delta: 3, news: `🤝 ${first} appreciated the individual recognition. Confidence up a little.` },
+              { label: `Make clear performance trumps welfare concerns right now`, delta: -4, news: `⚠️ ${first} felt blindsided by the hard line — that's her territory.` },
+            ],
+          },
+        };
+        const script = ROLE_SCRIPTS[m.role] || ROLE_SCRIPTS["Chairman"];
+        const opts = script.opts;
         return (
           <div
             className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.55)' }}
+            style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
             role="presentation"
             onClick={() => setDirectorChatRole(null)}
           >
@@ -352,59 +411,31 @@ function BoardTab({ career, club, updateCareer }) {
               role="dialog"
               aria-modal="true"
               aria-labelledby="board-chat-title"
-              className={`${css.panel} max-w-md w-full p-5 space-y-3`}
+              className={`${css.panel} max-w-md w-full p-5 space-y-4`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <div id="board-chat-title" className={`${css.h1} text-lg`}>Check-in · {m.role}</div>
-                  <div className="text-xs text-atext-dim mt-1">{m.name}</div>
+                  <div id="board-chat-title" className={`${css.h1} text-lg`}>{m.role}</div>
+                  <div className="text-xs text-atext-dim mt-0.5">{m.name} · Confidence {pct}%</div>
                 </div>
                 <button type="button" className={`${css.btnGhost} text-[10px] px-2 py-1`} onClick={() => setDirectorChatRole(null)}>Close</button>
               </div>
-              <p className="text-[11px] text-atext-dim leading-snug">
-                Short conversation — mirrors how desktop sports sims keep board drama mostly in objectives and inbox mail, with occasional face-time when you need to steer tone.
+              <p className="text-sm text-atext-dim leading-snug italic border-l-2 border-aaccent/40 pl-3">
+                {script.context(first, moodLabel)}
               </p>
               <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  className={`${css.btnPrimary} text-xs py-2.5 text-left px-3`}
-                  onClick={() =>
-                    runDirectorChat(
-                      m.role,
-                      5,
-                      `📋 You aligned priorities with ${first} (${m.role}) — they sound steadier.`,
-                    )
-                  }
-                >
-                  Align on season priorities (+5 confidence)
-                </button>
-                <button
-                  type="button"
-                  className={`${css.btnGhost} text-xs py-2.5 text-left px-3 border border-aline`}
-                  onClick={() =>
-                    runDirectorChat(
-                      m.role,
-                      3,
-                      `🤝 You thanked ${first} for backing the football program.`,
-                    )
-                  }
-                >
-                  Thank them for patience (+3)
-                </button>
-                <button
-                  type="button"
-                  className="text-xs py-2.5 text-left px-3 rounded-lg border border-aneg/55 text-aneg hover:bg-aneg/10 font-bold"
-                  onClick={() =>
-                    runDirectorChat(
-                      m.role,
-                      -4,
-                      `⚠️ You challenged ${first} on spend — useful tension, but confidence dipped.`,
-                    )
-                  }
-                >
-                  Push back on budget (−4)
-                </button>
+                {opts.map((o, i) => (
+                  <button
+                    key={o.label}
+                    type="button"
+                    className={i === 0 ? `${css.btnPrimary} text-xs py-2.5 text-left px-3 flex items-center justify-between gap-2` : i === 2 ? "text-xs py-2.5 text-left px-3 rounded-lg border border-aneg/55 text-aneg hover:bg-aneg/10 font-bold flex items-center justify-between gap-2" : `${css.btnGhost} text-xs py-2.5 text-left px-3 border border-aline flex items-center justify-between gap-2`}
+                    onClick={() => runDirectorChat(m.role, o.delta, o.news)}
+                  >
+                    <span>{o.label}</span>
+                    <span className="text-[10px] font-mono flex-shrink-0 opacity-70">{o.delta > 0 ? `+${o.delta}` : o.delta}</span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>

@@ -100,7 +100,7 @@ export function NotificationBell({ career, onAction, open: controlledOpen, onOpe
 
       {open && (
         <div
-          className="absolute right-0 mt-2 w-[min(92vw,360px)] max-h-[70vh] overflow-y-auto rounded-2xl border border-aline shadow-2xl z-50"
+          className="absolute right-0 mt-2 w-[min(92vw,360px)] max-h-[70vh] overflow-y-auto rounded-2xl border border-aline shadow-2xl z-[9999]"
           style={{ background: "var(--A-panel)" }}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-aline sticky top-0" style={{ background: "var(--A-panel)" }}>
