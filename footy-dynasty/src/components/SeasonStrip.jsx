@@ -32,7 +32,7 @@ export default function SeasonStrip({ career, league, club, timeTick = "" }) {
     phaseColor = "#E84A6F";
   } else if (career.phase === "preseason") {
     phasePill = "Pre-season";
-    phaseColor = "#4ADBE8";
+    phaseColor = "var(--A-accent-2)";
   } else {
     phasePill = `Season · Rd ${career.week ?? "—"}`;
   }

@@ -245,7 +245,7 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
               { color: "#F97316", label: "Gym" },
               { color: "var(--A-accent)", label: "Match Day" },
               { color: "#E84A6F", label: "Pre-Season Match" },
-              { color: "#4ADBE8", label: "Key Event" },
+              { color: "var(--A-accent-2)", label: "Key Event" },
             ].map(({ color, label }) => (
               <div key={label} className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />
