@@ -10,7 +10,8 @@ import { css } from "../components/primitives.jsx";
 import { collectFocusables } from "../lib/hotkeysHelpers.js";
 import { fmtK } from "../lib/format.js";
 
-export default function PostMatchSummary({ summary, onContinue }) {
+export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
+  const isTier4 = leagueTier === 4;
   const panelRef = useRef(null);
   const primaryRef = useRef(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -173,7 +174,7 @@ export default function PostMatchSummary({ summary, onContinue }) {
             {summary.boardReaction.emoji || <Users className="w-4 h-4 text-atext-dim" />}
           </div>
           <div className="flex-1 text-sm leading-snug">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-atext-mute mr-2">Board</span>
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-atext-mute mr-2">{isTier4 ? "Committee" : "Board"}</span>
             <span className="text-atext">{summary.boardReaction.text}</span>
           </div>
         </div>

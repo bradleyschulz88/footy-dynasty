@@ -8,6 +8,7 @@
 import React from "react";
 import { Star } from "lucide-react";
 import { css } from "../../components/primitives.jsx";
+import { accreditationLabel } from "../../lib/coachReputation.js";
 
 export function JobOfferCard({
   offer,
@@ -67,9 +68,11 @@ export function JobOfferCard({
         <div className="text-atext-mute">Finances</div>
         <div className="text-atext text-right">{offer.finance}</div>
         <div className="text-atext-mute">Wage</div>
-        <div className="text-aaccent text-right font-mono font-bold">${offer.wage.toLocaleString()}</div>
+        <div className="text-aaccent text-right font-mono font-bold">{offer.wage > 0 ? `$${offer.wage.toLocaleString()}` : "Volunteer"}</div>
         <div className="text-atext-mute">Rep bar</div>
         <div className="text-atext text-right font-mono">{offer.minReputation ?? 0}+</div>
+        <div className="text-atext-mute">Accreditation</div>
+        <div className="text-atext text-right font-mono">{accreditationLabel(offer.minAccreditation ?? 0)}</div>
       </div>
       <div className="text-[11px] text-atext-dim italic mb-2 leading-snug">{offer.expectations}</div>
       <div className="text-[11px] text-atext leading-snug mb-3">{offer.chairmanLine}</div>

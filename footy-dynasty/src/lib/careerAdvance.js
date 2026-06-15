@@ -50,6 +50,7 @@ import {
 import {
   coachTierFromScore, applyEndOfSeasonReputation,
   applySackingReputation, buildDominantSeasonApproach,
+  accreditationFromSeasons, accreditationLabel, startingAccreditationForTier,
 } from './coachReputation.js';
 import {
   isPromotionPlayoffEligible, clubBacksPromotion, runPromotionPlayoff,
@@ -954,12 +955,39 @@ function finishSeason(c, league) {
     c.squad = c.squad.map((p) => ({ ...p, morale: clamp((p.morale ?? 70) + rand(2, 6), 0, 100) }));
   }
 
-  c.coachReputation = applyEndOfSeasonReputation(c.coachReputation, {
-    premiership: champion,
-    finals: madeFinals && !champion,
-    promoted, relegated, winRate,
-  });
+  if (league.tier === 4) {
+    // Grassroots: a deliberately-paced résumé climb. Completing a volunteer
+    // season always earns something; a junior flag is nice but not a senior
+    // achievement. From rep ~5 this reliably reaches Rookie (8) after one or
+    // two seasons, opening Tier 3 offers in the off-season job market.
+    let r = c.coachReputation ?? 5;
+    r += 3;                              // ran the program for a season
+    if (champion) r += 5;                // won the junior flag
+    else if (madeFinals) r += 2;
+    if (winRate > 0.5) r += 2;
+    else if (winRate < 0.3) r -= 1;
+    c.coachReputation = clamp(r, 0, 100);
+  } else {
+    c.coachReputation = applyEndOfSeasonReputation(c.coachReputation, {
+      premiership: champion,
+      finals: madeFinals && !champion,
+      promoted, relegated, winRate,
+    });
+  }
   c.coachTier = coachTierFromScore(c.coachReputation);
+
+  // Coaching accreditation advances one notch per completed season (capped at
+  // High Performance). Gates which tiers will interview you next off-season.
+  {
+    const prevAccredSeasons = c.coachAccreditation ?? startingAccreditationForTier(league.tier);
+    const prevLevel = accreditationFromSeasons(prevAccredSeasons);
+    c.coachAccreditation = prevAccredSeasons + 1;
+    const newLevel = accreditationFromSeasons(c.coachAccreditation);
+    if (newLevel > prevLevel) {
+      c.news = [{ week: 0, type: 'info', text: `📋 Coaching accreditation advanced to ${accreditationLabel(c.coachAccreditation)}. New levels of football are opening up.` }, ...(c.news || [])].slice(0, 25);
+    }
+  }
+
   c.coachStats = {
     ...c.coachStats,
     totalWins: (c.coachStats?.totalWins || 0) + (myRow.W || 0),
@@ -1953,7 +1981,10 @@ function applyPostRoundBoardAndCalendar(c, league, club, meta, myResult) {
   const cfg = getDifficultyConfig(c.difficulty);
   const inBoardCrisis = c.boardCrisis?.phase === 'active';
   const sackPatience = cfg.boardPatienceSeasons === 1 ? 1 : 2;
-  const sandbox = c.gameMode === 'sandbox';
+  // Tier 4 (junior/grassroots) is a volunteer role with a parent committee —
+  // there is no director board to sack you over results. You stay until you
+  // choose to leave or get headhunted to a senior club.
+  const sandbox = c.gameMode === 'sandbox' || league.tier === 4;
   if (sandbox) {
     c.boardWarning = 0;
   } else {
