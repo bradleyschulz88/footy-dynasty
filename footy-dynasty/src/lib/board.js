@@ -502,6 +502,33 @@ export function generateSeasonObjectives(career, league) {
   const seasonsManaged = career.coachStats?.seasonsManaged || 1;
   /** @type {object[]} */
   const raw = [];
+  // Tier 4 (junior/grassroots): the parent committee cares about kids playing,
+  // developing, and coming back — not the ladder or the balance sheet.
+  if (league.tier === 4) {
+    raw.push({
+      setBy: "Club President",
+      type: "ladder_position",
+      description: `Finish in the top half (position ${Math.ceil(n / 2)} or better).`,
+      target: Math.ceil(n / 2),
+      confidenceReward: 8,
+      confidencePenalty: -2,
+    });
+    raw.push({
+      setBy: "Welfare Officer",
+      type: "youth_promoted",
+      description: "Develop at least three kids into regular contributors (5+ games each).",
+      target: 3,
+      confidenceReward: 12,
+      confidencePenalty: -3,
+    });
+    career.board.objectives = raw.map((o, i) => ({
+      id: `obj_${season}_${i}`,
+      met: null,
+      current: null,
+      ...o,
+    }));
+    return;
+  }
   if (seasonsManaged >= 3 && league.tier === 1) {
     raw.push({
       setBy: "Chairman",
