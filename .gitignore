@@ -4,3 +4,7 @@
 .mcp.json
 CLAUDE.md
 node_modules/
+
+# Local secrets (API keys)
+.env
+.env.local
