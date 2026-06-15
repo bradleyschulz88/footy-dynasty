@@ -148,7 +148,7 @@ export function NotificationBell({ career, onAction, open: controlledOpen, onOpe
                                 onClick={() => onAction?.(item, a.id)}
                                 className={`text-[11px] px-2.5 py-1 rounded-lg border transition whitespace-nowrap ${
                                   i === 0
-                                    ? "border-[var(--A-accent)] text-aaccent hover:bg-[rgba(0,224,255,0.08)]"
+                                    ? "border-[var(--A-accent)] text-aaccent hover:bg-[color-mix(in srgb, var(--A-accent) 8%, transparent)]"
                                     : "border-aline text-atext-dim hover:text-atext hover:border-[var(--A-accent)]"
                                 }`}
                               >

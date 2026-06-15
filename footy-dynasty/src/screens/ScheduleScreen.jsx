@@ -66,7 +66,7 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
         oppClub: null,
       };
     if (ev.type === "key_event")
-      return { color: "#4ADBE8", icon: "📅", label: ev.name, oppClub: null };
+      return { color: "var(--A-accent-2)", icon: "📅", label: ev.name, oppClub: null };
     if (ev.type === "preseason_match")
       return { color: "#E84A6F", icon: "⚽", label: ev.label, oppClub: null };
     if (ev.type === "round") {
@@ -134,7 +134,7 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
                   isToday ? "ring-2 ring-[var(--A-accent)] border-transparent" : iso === selectedDate ? "ring-2 ring-[var(--A-accent-2)] border-transparent" : "border-[var(--A-line)]"
                 }`}
                 style={{
-                  background: isToday ? "rgba(0,224,255,0.12)" : "var(--A-panel-2)",
+                  background: isToday ? "color-mix(in srgb, var(--A-accent) 12%, transparent)" : "var(--A-panel-2)",
                 }}
               >
                 <div className={`text-lg font-bold leading-none ${isToday ? "text-aaccent" : "text-atext"}`}>
@@ -195,7 +195,7 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
                     }`}
                     style={{
                       background: isTodayCell
-                        ? "rgba(0,224,255,0.10)"
+                        ? "color-mix(in srgb, var(--A-accent) 10%, transparent)"
                         : isPast && dayEvs.length
                           ? "var(--A-panel)"
                           : "var(--A-panel-2)",
@@ -245,7 +245,7 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
               { color: "#F97316", label: "Gym" },
               { color: "var(--A-accent)", label: "Match Day" },
               { color: "#E84A6F", label: "Pre-Season Match" },
-              { color: "#4ADBE8", label: "Key Event" },
+              { color: "var(--A-accent-2)", label: "Key Event" },
             ].map(({ color, label }) => (
               <div key={label} className="flex items-center gap-1.5">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />

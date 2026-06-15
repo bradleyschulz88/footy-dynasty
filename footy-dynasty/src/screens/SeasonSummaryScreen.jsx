@@ -3,7 +3,7 @@ import { DollarSign, AlertCircle } from "lucide-react";
 import { fmtK } from "../lib/format.js";
 import { css } from "../components/primitives.jsx";
 
-const CONFETTI_COLORS = ["#FFD700", "#4AE89A", "#4ADBE8", "#E84A6F", "#A78BFA", "#FF9A3C"];
+const CONFETTI_COLORS = ["#FFD700", "#4AE89A", "#C8FF3D", "#E84A6F", "#A78BFA", "#FF9A3C"];
 
 /** Pure-CSS celebration confetti — used for premierships and promotions. */
 function Confetti({ count = 28 }) {
@@ -71,7 +71,7 @@ export default function SeasonSummaryScreen({
         : summary.position <= summary.totalTeams / 2
           ? "var(--A-accent)"
           : "#E84A6F";
-  const tierColors = { 1: "#E84A6F", 2: "var(--A-accent)", 3: "#4ADBE8" };
+  const tierColors = { 1: "#E84A6F", 2: "var(--A-accent)", 3: "var(--A-accent-2)" };
   const tierColor = tierColors[summary.leagueTier] || "var(--A-accent)";
 
   const outcomeText = `Finished ${summary.position}${summary.position === 1 ? "st" : summary.position === 2 ? "nd" : summary.position === 3 ? "rd" : "th"} of ${summary.totalTeams}`;
@@ -136,7 +136,7 @@ export default function SeasonSummaryScreen({
             { label: "Losses", value: summary.L, color: "#E84A6F" },
             { label: "Draws", value: summary.D, color: "var(--A-accent)" },
             { label: "Points", value: summary.pts, color: "#A78BFA" },
-            { label: "Pct", value: `${summary.pct}%`, color: "#4ADBE8" },
+            { label: "Pct", value: `${summary.pct}%`, color: "var(--A-accent-2)" },
           ].map(({ label, value, color }) => (
             <div key={label} className="text-center">
               <div className="font-display text-4xl leading-none" style={{ color }}>
@@ -279,7 +279,7 @@ export default function SeasonSummaryScreen({
               <EosFinTile
                 label="Transfer refill"
                 value={`+${fmtK(eosFinance.transferBudgetRefill)}`}
-                accent="#4ADBE8"
+                accent="var(--A-accent-2)"
               />
               <EosFinTile
                 label="Sponsors lost"

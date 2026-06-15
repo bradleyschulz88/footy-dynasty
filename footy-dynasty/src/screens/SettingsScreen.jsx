@@ -81,7 +81,7 @@ export default function SettingsScreen({
                             {meta.slotLabel ? `${meta.slotLabel} · ` : ''}S{meta.season}{meta.week ? ` R${meta.week}` : ''} · {findClub(meta.clubId)?.short || meta.clubId}
                           </span>
                           {!isActive && (
-                            <button type="button" onClick={() => onSwitchSlot?.(s)} className="text-aaccent hover:text-[#4ADBE8] font-bold shrink-0">
+                            <button type="button" onClick={() => onSwitchSlot?.(s)} className="text-aaccent hover:text-aaccent font-bold shrink-0">
                               Load
                             </button>
                           )}
@@ -93,7 +93,7 @@ export default function SettingsScreen({
                         <>
                           <span className="flex-1 text-atext-mute italic">Empty</span>
                           {career && !isActive && (
-                            <button type="button" onClick={() => onSwitchSlot?.(s)} className="text-aaccent hover:text-[#4ADBE8] font-bold shrink-0">
+                            <button type="button" onClick={() => onSwitchSlot?.(s)} className="text-aaccent hover:text-aaccent font-bold shrink-0">
                               Use
                             </button>
                           )}

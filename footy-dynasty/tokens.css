@@ -323,6 +323,8 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   --A-club-2:    var(--S-club-2);
 }
 .dirS {
+  --fd-oval-opacity: 0.10;
+  --fd-on-accent: #0A0D0C;
   background: var(--S-bg);
   color: var(--S-text);
   font-family: "Inter", system-ui, sans-serif;
@@ -331,25 +333,40 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   position: relative;
   overflow: hidden;
 }
+/* Bebas Neue replaces Sora/display in the Stitch theme */
+.dirS .font-display,
+.dirS .display,
+.dirS [class*="font-display"] {
+  font-family: "Bebas Neue", Oswald, "Arial Narrow", sans-serif !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.03em !important;
+}
+/* Stadium atmosphere glow — lime top-left, blue bottom-right */
 .dirS::before {
   content: "";
-  position: absolute; inset: 0;
+  position: fixed; inset: 0;
   background:
-    radial-gradient(ellipse 50% 40% at 50% 0%, rgba(200, 255, 61, 0.06), transparent 55%),
-    radial-gradient(ellipse 70% 45% at 100% 100%, rgba(94, 255, 168, 0.04), transparent 60%);
+    radial-gradient(ellipse 60% 45% at 15% 8%, rgba(200, 255, 61, 0.05), transparent 55%),
+    radial-gradient(ellipse 55% 40% at 88% 92%, rgba(134, 206, 255, 0.04), transparent 60%),
+    radial-gradient(ellipse 40% 35% at 50% 50%, rgba(200, 255, 61, 0.02), transparent 70%);
   pointer-events: none;
+  z-index: 0;
 }
 .dirS .panel {
-  background: linear-gradient(180deg, var(--S-panel), var(--S-panel-2));
+  background: linear-gradient(180deg, rgba(22, 28, 26, 0.85), rgba(15, 20, 18, 0.80));
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--S-line);
   border-radius: var(--radius-xl);
-  box-shadow: 0 0 28px rgba(200, 255, 61, 0.07);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(200, 255, 61, 0.08) inset;
 }
 .dirS .panel-flat {
-  background: var(--S-panel);
+  background: rgba(22, 28, 26, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--S-line);
   border-radius: var(--radius-md);
-  box-shadow: 0 0 16px rgba(200, 255, 61, 0.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 .dirS .label {
   font-family: "JetBrains Mono", ui-monospace, monospace;

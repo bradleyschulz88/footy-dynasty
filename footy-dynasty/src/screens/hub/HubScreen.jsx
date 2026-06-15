@@ -252,34 +252,56 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
     <motion.div className="space-y-5" variants={hubContainer} initial="hidden" animate="show">
       {/* Hero — club identity + advance CTA */}
       <motion.div variants={hubItem} className="panel rounded-2xl overflow-hidden border border-aline">
-        <div className="h-1.5" style={{background:`linear-gradient(90deg, ${club.colors[0]}, ${club.colors[1]})`}} />
+        {/* Club color stripe — thicker, more dramatic */}
+        <div className="h-1" style={{background:`linear-gradient(90deg, ${club.colors[0]}, ${club.colors[1]}, ${club.colors[0]}88)`}} />
         <div className="p-4 md:p-5">
-          {/* Club row */}
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center font-display text-xl flex-shrink-0 shadow-lg"
-                style={{background:`linear-gradient(135deg,${club.colors[0]},${club.colors[1]})`, color:club.colors[2], boxShadow:`0 4px 12px ${club.colors[0]}44`}}>
-                {club.short}
-              </div>
-              <div className="min-w-0">
-                <h1 className="display text-3xl md:text-4xl tracking-wide text-atext leading-none truncate">{club.name.toUpperCase()}</h1>
-                <div className="text-[11px] text-atext-dim mt-0.5 truncate">
-                  {league.name} · Season {career.season}
-                  {hubRoundTheme?.short && <> · <span style={{color:'var(--A-accent-2)'}}>{hubRoundTheme.short}</span></>}
-                </div>
+          {/* Club identity row */}
+          <div className="flex items-center gap-3 mb-4">
+            {/* Club badge */}
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center font-display text-2xl flex-shrink-0"
+              style={{
+                background:`linear-gradient(145deg,${club.colors[0]},${club.colors[1]})`,
+                color:club.colors[2],
+                boxShadow:`0 6px 20px ${club.colors[0]}55, 0 0 0 1px ${club.colors[0]}33`,
+              }}>
+              {club.short}
+            </div>
+            {/* Club name + meta */}
+            <div className="min-w-0 flex-1">
+              <h1 className="display text-[clamp(1.6rem,6vw,2.5rem)] tracking-wide text-atext leading-none truncate">{club.name.toUpperCase()}</h1>
+              <div className="text-[11px] text-atext-dim mt-0.5 truncate font-mono">
+                {league.name} · Season {career.season}
+                {hubRoundTheme?.short && <> · <span style={{color:'var(--A-accent-2)'}}>{hubRoundTheme.short}</span></>}
               </div>
             </div>
-            <div className="flex items-center gap-4 flex-shrink-0">
-              <div className="text-center">
-                <div className="font-display text-4xl md:text-5xl leading-none" style={{color: posColor}}>{myLadderPos || '—'}</div>
-                <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono">Pos</div>
+            {/* Position number — dramatic */}
+            <div className="text-center flex-shrink-0">
+              <div
+                className="font-display leading-none"
+                style={{
+                  fontSize: 'clamp(3rem,10vw,4rem)',
+                  color: posColor,
+                  textShadow: myLadderPos <= 4 ? `0 0 32px ${posColor}66, 0 0 64px ${posColor}33` : 'none',
+                }}>
+                {myLadderPos || '—'}
               </div>
-              {myRow && (
-                <div className="text-center hidden sm:block">
-                  <div className="font-display text-3xl leading-none text-atext">{myRow.pts || 0}</div>
-                  <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono">Pts</div>
-                </div>
-              )}
+              <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono">Pos</div>
+            </div>
+          </div>
+          {/* Stats strip */}
+          <div className="grid grid-cols-3 gap-2 mb-4 rounded-xl p-3" style={{background:'color-mix(in srgb, var(--A-accent) 4%, var(--A-panel-2))', border:'1px solid var(--A-line)'}}>
+            <div className="text-center">
+              <div className="font-display text-2xl leading-none text-atext">{hubTotals.squadAvg || '—'}</div>
+              <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">OVR</div>
+            </div>
+            <div className="text-center border-x border-aline">
+              <div className="font-display text-2xl leading-none text-atext">{myRow ? `${myRow.W}W ${myRow.L}L` : '—'}</div>
+              <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">Record</div>
+            </div>
+            <div className="text-center">
+              <div className="font-display text-2xl leading-none" style={{color:'var(--A-accent)'}}>{myRow?.pts ?? '—'}</div>
+              <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">Pts</div>
             </div>
           </div>
           {/* Pills */}
@@ -294,7 +316,6 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
               const mn = finalsMagicNumber(career);
               return mn ? <Pill color={mn.clinched ? 'var(--A-pos)' : 'var(--A-accent-2)'}>{mn.label}</Pill> : null;
             })()}
-            {myRow && <Pill color="var(--A-text-mute)">{myRow.W}W {myRow.L}L {myRow.D}D</Pill>}
             {career.clubCulture && (() => {
               const cultureColor = career.clubCulture.tier === 'Elite' ? 'var(--A-accent-2)' : career.clubCulture.tier === 'Strong' ? 'var(--A-pos)' : career.clubCulture.tier === 'Developing' ? 'var(--A-accent)' : 'var(--A-text-mute)';
               return <Pill color={cultureColor}>Culture: {career.clubCulture.tier}</Pill>;
@@ -304,10 +325,11 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
           <button
             type="button"
             onClick={onAdvance}
-            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-display text-lg uppercase tracking-[0.14em] transition-all active:scale-[0.98] advance-breathe btn-sheen"
+            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-display text-lg uppercase tracking-[0.14em] transition-all active:scale-[0.98] advance-breathe"
             style={{
-              background: 'linear-gradient(120deg, var(--A-accent), var(--A-accent-2))',
-              color: 'var(--fd-on-accent)',
+              background: 'var(--A-accent)',
+              color: 'var(--fd-on-accent, #0A0D0C)',
+              boxShadow: '0 4px 24px color-mix(in srgb, var(--A-accent) 35%, transparent), 0 0 0 1px color-mix(in srgb, var(--A-accent) 40%, transparent)',
             }}
           >
             <Play className="w-5 h-5" fill="currentColor" />

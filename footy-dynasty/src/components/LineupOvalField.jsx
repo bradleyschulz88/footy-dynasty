@@ -31,7 +31,7 @@ function zoneTintBg(zone) {
   switch (zone) {
     case "B":    return "rgba(74,232,154,0.08)";
     case "HB":   return "rgba(74,232,154,0.04)";
-    case "C":    return "rgba(0,224,255,0.06)";
+    case "C":    return "color-mix(in srgb, var(--A-accent) 6%, transparent)";
     case "HF":   return "rgba(232,212,74,0.04)";
     case "F":    return "rgba(232,74,111,0.08)";
     case "RUCK": return "rgba(167,139,250,0.07)";

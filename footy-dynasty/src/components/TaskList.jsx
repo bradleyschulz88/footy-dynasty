@@ -378,7 +378,7 @@ export function buildTasks(career, navigate, myLadderPos, league) {
 const PRIORITY_META = {
   urgent:     { label: "Urgent",      color: "#E84A6F", border: "rgba(232,74,111,0.3)"  },
   warning:    { label: "Action",      color: "#E8D44A", border: "rgba(232,212,74,0.3)"  },
-  suggestion: { label: "Suggestions", color: "#4ADBE8", border: "rgba(0,224,255,0.25)"  },
+  suggestion: { label: "Suggestions", color: "var(--A-accent-2)", border: "color-mix(in srgb, var(--A-accent-2) 25%, transparent)"  },
 };
 
 function TaskRow({ task }) {

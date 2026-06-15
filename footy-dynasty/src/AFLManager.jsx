@@ -114,15 +114,17 @@ const THEME_STORAGE_KEY = 'fd-theme';
 
 function resolveThemeClass(career) {
   try {
-    const pref = career?.options?.theme ?? localStorage.getItem(THEME_STORAGE_KEY) ?? 'light';
-    return pref === 'light' ? 'dirA' : 'dirB';
+    const pref = career?.options?.theme ?? localStorage.getItem(THEME_STORAGE_KEY) ?? 'stitch';
+    if (pref === 'light') return 'dirA';
+    if (pref === 'dark') return 'dirB';
+    return 'dirS';
   } catch {
-    return 'dirA';
+    return 'dirS';
   }
 }
 
 function persistTheme(theme) {
-  try { localStorage.setItem(THEME_STORAGE_KEY, theme ?? 'dark'); } catch { /* ignore */ }
+  try { localStorage.setItem(THEME_STORAGE_KEY, theme ?? 'stitch'); } catch { /* ignore */ }
 }
 
 function AppMotionConfig({ reducedMotion, children }) {
