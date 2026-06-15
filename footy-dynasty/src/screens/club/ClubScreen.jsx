@@ -164,9 +164,9 @@ export default function ClubScreen({ career, club, updateCareer, tab, setTab, tu
               style={
                 isAct
                   ? {
-                      background: "linear-gradient(135deg, var(--A-accent), #0099b0)",
+                      background: "linear-gradient(135deg, var(--A-accent), var(--A-accent-2))",
                       color: "#001520",
-                      boxShadow: "0 2px 8px rgba(0, 224, 255, 0.2)",
+                      boxShadow: "0 2px 8px color-mix(in srgb, var(--A-accent) 20%, transparent)",
                     }
                   : { color: locked ? "var(--A-text-mute)" : "var(--A-text-dim)" }
               }
@@ -1737,7 +1737,7 @@ function StaffTab({ career, updateCareer }) {
           <div className="col-span-3 text-right">Wage</div>
         </div>
         {career.staff.map((s, idx) => (
-          <div key={`${s.id}-${idx}`} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+          <div key={`${s.id}-${idx}`} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="color-mix(in srgb, var(--A-accent) 5%, transparent)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
             <div className="col-span-4 min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-sm truncate">{s.name}</span>

@@ -25,7 +25,7 @@ export function JobOfferCard({
   return (
     <div
       className={`${css.panel} p-4 flex flex-col transition`}
-      style={{ boxShadow: isStarred ? "0 0 0 2px rgba(0, 224, 255, 0.35)" : undefined }}
+      style={{ boxShadow: isStarred ? "0 0 0 2px color-mix(in srgb, var(--A-accent) 35%, transparent)" : undefined }}
     >
       <div className="h-1 -mx-4 -mt-4 mb-3" style={{ background: offer.color }} />
       <div className="flex items-start justify-between mb-2 flex-wrap gap-2">

@@ -29,7 +29,7 @@ export default function GameOverScreen({ career, club, onRestart, onTakeNewJob }
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
             <button onClick={onTakeNewJob}
               className="px-6 py-3 rounded-xl font-display text-lg tracking-widest text-[#001520] transition-all"
-              style={{ background: 'linear-gradient(135deg,var(--A-accent),#0099b0)', boxShadow: '0 4px 20px rgba(0,224,255,0.35)' }}>
+              style={{ background: 'linear-gradient(135deg, var(--A-accent), var(--A-accent-2))', boxShadow: '0 4px 20px color-mix(in srgb, var(--A-accent) 35%, transparent)' }}>
               TAKE A LOWER JOB →
             </button>
             <button onClick={onRestart}

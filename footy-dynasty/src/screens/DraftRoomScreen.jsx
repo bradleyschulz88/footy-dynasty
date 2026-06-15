@@ -171,7 +171,7 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
       </div>
 
       {scoutingPhase && (
-        <div className="rounded-2xl p-4 border border-aaccent/40" style={{ background: "rgba(0,224,255,0.06)" }}>
+        <div className="rounded-2xl p-4 border border-aaccent/40" style={{ background: "color-mix(in srgb, var(--A-accent) 6%, transparent)" }}>
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-aaccent mb-1">Scouting window</div>
           <div className="text-sm text-atext">Picks are locked until <span className="font-semibold">{draftDayLabel}</span>. Run combine scouting to reveal ratings, then advance to National Draft Day.</div>
         </div>
@@ -181,7 +181,7 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
       {draftLive && !draftComplete && onClock && (
         <div
           className={`rounded-2xl p-4 border-2 flex flex-wrap items-center justify-between gap-4 ${isMyTurn ? "border-aaccent" : "border-aline"}`}
-          style={{ background: isMyTurn ? "rgba(0,224,255,0.08)" : "var(--A-panel-2)" }}
+          style={{ background: isMyTurn ? "color-mix(in srgb, var(--A-accent) 8%, transparent)" : "var(--A-panel-2)" }}
         >
           <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isMyTurn ? "bg-aaccent/20" : "bg-apanel"}`}>
@@ -318,7 +318,7 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
                     key={d.pick}
                     className="flex-shrink-0 px-2 py-2 rounded-lg text-xs"
                     style={{
-                      background: d.clubId === career.clubId ? "rgba(0,224,255,0.12)" : "var(--A-panel-2)",
+                      background: d.clubId === career.clubId ? "color-mix(in srgb, var(--A-accent) 12%, transparent)" : "var(--A-panel-2)",
                       border: `1px solid ${clock ? "var(--A-accent)" : "var(--A-line)"}`,
                       minWidth: 88,
                     }}

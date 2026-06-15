@@ -35,7 +35,7 @@ export default function TabNav({
             }}
             className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all whitespace-nowrap snap-start ${growCls} ${spotlight ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-[var(--A-panel-2)] animate-pulse" : ""} ${locked ? "opacity-35 cursor-not-allowed" : ""}`}
             style={isActive
-              ? { background: "linear-gradient(135deg, var(--A-accent), #0099b0)", color: "#001520", boxShadow: "0 2px 8px rgba(0, 224, 255, 0.25)" }
+              ? { background: "linear-gradient(135deg, var(--A-accent), var(--A-accent-2))", color: "#001520", boxShadow: "0 2px 8px color-mix(in srgb, var(--A-accent) 25%, transparent)" }
               : { color: locked ? "var(--A-text-mute)" : "var(--A-text-dim)" }}
             title={locked ? "Complete the tutorial step to use this tab (or skip tutorial)" : undefined}
           >

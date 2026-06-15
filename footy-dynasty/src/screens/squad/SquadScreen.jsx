@@ -142,8 +142,8 @@ function PlayersTab({ career, updateCareer }) {
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selected, setSelected] = useState(null);
   const isLg = useIsLg();
-  const rowHoverBg = 'rgba(13, 148, 136, 0.06)';
-  const rowSelectBg = 'rgba(13, 148, 136, 0.1)';
+  const rowHoverBg = 'color-mix(in srgb, var(--A-accent) 6%, transparent)';
+  const rowSelectBg = 'color-mix(in srgb, var(--A-accent) 10%, transparent)';
   const name = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || ""));
 
   const sortedFullSquad = useMemo(() => {
@@ -180,7 +180,7 @@ function PlayersTab({ career, updateCareer }) {
 
   const filterChip = (active) =>
     active
-      ? "bg-[linear-gradient(135deg,var(--A-accent),#0099b0)] text-[#001520] border-transparent shadow-[0_1px_6px_rgba(0,224,255,0.2)]"
+      ? "border-transparent"
       : "bg-apanel border border-aline text-atext-dim hover:border-aaccent/35";
 
   return (
@@ -220,16 +220,23 @@ function PlayersTab({ career, updateCareer }) {
             <div>
               <div className={`${css.label} mb-1.5`}>Position</div>
               <div className="flex flex-wrap gap-1.5">
-                {["ALL", ...POSITIONS].map((pos) => (
+                {["ALL", ...POSITIONS].map((pos) => {
+                  const active = filterPos === pos;
+                  return (
                   <button
                     key={pos}
                     type="button"
                     onClick={() => setFilterPos(pos)}
-                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(filterPos === pos)}`}
+                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(active)}`}
+                    style={active ? {
+                      background: "var(--A-accent)",
+                      color: "var(--fd-on-accent, #001520)",
+                      boxShadow: "0 1px 6px color-mix(in srgb, var(--A-accent) 30%, transparent)",
+                    } : {}}
                   >
                     {pos}
                   </button>
-                ))}
+                );})}
               </div>
             </div>
             <div>
@@ -241,16 +248,23 @@ function PlayersTab({ career, updateCareer }) {
                   { key: "bench", label: "Not in 23" },
                   { key: "injured", label: "Out" },
                   { key: "rookies", label: "Rookies" },
-                ].map(({ key, label }) => (
+                ].map(({ key, label }) => {
+                  const active = filterStatus === key;
+                  return (
                   <button
                     key={key}
                     type="button"
                     onClick={() => setFilterStatus(key)}
-                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(filterStatus === key)}`}
+                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(active)}`}
+                    style={active ? {
+                      background: "var(--A-accent)",
+                      color: "var(--fd-on-accent, #001520)",
+                      boxShadow: "0 1px 6px color-mix(in srgb, var(--A-accent) 30%, transparent)",
+                    } : {}}
                   >
                     {label}
                   </button>
-                ))}
+                );})}
               </div>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1 border-t border-aline/70">
@@ -505,9 +519,10 @@ function AllPlayersTab({ career, updateCareer }) {
               onClick={() => setView(v.key)}
               className={`text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${
                 view === v.key
-                  ? "bg-[linear-gradient(135deg,var(--A-accent),#0099b0)] text-[#001520] border-transparent"
+                  ? "border-transparent"
                   : "bg-apanel border-aline text-atext-dim hover:border-aaccent/35"
               }`}
+              style={view === v.key ? { background: "var(--A-accent)", color: "var(--fd-on-accent, #001520)" } : {}}
             >
               {v.label}
             </button>

@@ -69,16 +69,13 @@ function LadderTab({ career, club: _club, league }) {
       </div>
 
       <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
-        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
-          <div className="col-span-1">#</div>
-          <div className="col-span-4">Club</div>
-          <div className="col-span-1 text-center">P</div>
-          <div className="col-span-1 text-center">W</div>
-          <div className="col-span-1 text-center">L</div>
-          <div className="col-span-1 text-center">D</div>
-          <div className="col-span-1 text-right">F</div>
-          <div className="col-span-1 text-right">A</div>
-          <div className="col-span-1 text-right">%</div>
+        <div className="grid gap-2 px-3 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{gridTemplateColumns:"1.5rem 1fr 1.8rem 1.8rem 1.8rem 2.5rem",borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
+          <div>#</div>
+          <div>Club</div>
+          <div className="text-center">W</div>
+          <div className="text-center">L</div>
+          <div className="text-center">%</div>
+          <div className="text-right">Pts</div>
         </div>
         {sorted.map((row, i) => {
           const c = findClub(row.id);
@@ -89,29 +86,35 @@ function LadderTab({ career, club: _club, league }) {
           const showFinalsLine = league.tier === 1 && pos === 8;
           const showPromoLine = league.tier > 1 && pos === promoCutoff;
           const showRelegLine = league.tier > 1 && pos === relegCutoff - 1;
+          const pct = row.A > 0 ? ((row.F/row.A)*100).toFixed(1) : "—";
           return (
             <React.Fragment key={row.id}>
-              <div className={`grid grid-cols-12 gap-2 px-4 py-2.5 items-center border-b border-aline ${isMe ? "bg-aaccent/10" : "hover:bg-aaccent/5"} transition`}>
-                <div className="col-span-1 flex items-center gap-1">
-                  <span className={`font-bold ${inPromo ? "text-apos" : inReleg ? "text-aneg" : "text-atext-dim"}`}>{pos}</span>
-                  {inPromo && <ArrowUp className="w-3 h-3 text-apos" />}
-                  {inReleg && <ArrowDown className="w-3 h-3 text-aneg" />}
+              <div
+                className="grid gap-2 px-3 py-2.5 items-center border-b border-aline transition"
+                style={{
+                  gridTemplateColumns:"1.5rem 1fr 1.8rem 1.8rem 2.5rem 2.5rem",
+                  background: isMe ? "color-mix(in srgb, var(--A-accent) 10%, transparent)" : undefined,
+                  borderLeft: isMe ? "3px solid var(--A-accent)" : "3px solid transparent",
+                }}
+              >
+                <div className="flex items-center gap-0.5">
+                  <span className={`font-bold text-xs ${inPromo ? "text-apos" : inReleg ? "text-aneg" : "text-atext-mute"}`}>{pos}</span>
                 </div>
-                <div className="col-span-4 flex items-center gap-2">
-                  <div className="w-2 h-6 rounded-sm" style={{background: c?.colors[0] || "var(--A-line)"}} />
-                  <span className={isMe ? "font-bold text-aaccent" : "font-semibold"}>{c?.name || row.id}</span>
-                  {isMe && <Crown className="w-3 h-3 text-aaccent" />}
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-3 h-5 rounded-sm flex-shrink-0" style={{background: c ? `linear-gradient(180deg,${c.colors[0]},${c.colors[1]})` : "var(--A-line)"}} />
+                  <span className={`text-sm truncate ${isMe ? "font-bold text-aaccent" : "font-medium text-atext"}`}>{c?.short || row.id}</span>
+                  {isMe && <Crown className="w-3 h-3 text-aaccent flex-shrink-0" />}
+                  {!isMe && c?.name && <span className="text-xs text-atext-dim truncate hidden sm:inline">{c.name}</span>}
+                  {inPromo && <ArrowUp className="w-3 h-3 text-apos flex-shrink-0" />}
+                  {inReleg && <ArrowDown className="w-3 h-3 text-aneg flex-shrink-0" />}
                 </div>
-                <div className="col-span-1 text-center text-sm">{row.P}</div>
-                <div className="col-span-1 text-center text-sm font-bold text-apos">{row.W}</div>
-                <div className="col-span-1 text-center text-sm text-aneg">{row.L}</div>
-                <div className="col-span-1 text-center text-sm text-atext-dim">{row.D}</div>
-                <div className="col-span-1 text-right text-sm font-mono">{row.F}</div>
-                <div className="col-span-1 text-right text-sm font-mono text-atext-dim">{row.A}</div>
-                <div className="col-span-1 text-right text-sm font-mono font-bold">{row.A > 0 ? ((row.F/row.A)*100).toFixed(1) : "—"}</div>
+                <div className="text-center text-sm font-bold text-apos">{row.W}</div>
+                <div className="text-center text-sm text-aneg">{row.L}</div>
+                <div className="text-center text-xs font-mono text-atext-dim">{pct}</div>
+                <div className="text-right text-sm font-bold font-mono" style={{color: isMe ? 'var(--A-accent)' : 'var(--A-text)'}}>{row.pts ?? row.W * 4}</div>
               </div>
               {showFinalsLine && (
-                <div className="flex items-center gap-2 px-4 py-1" style={{background:"rgba(0,224,255,0.03)"}}>
+                <div className="flex items-center gap-2 px-4 py-1" style={{background:"color-mix(in srgb, var(--A-accent) 3%, transparent)"}}>
                   <div className="flex-1 border-t border-dashed border-aaccent/50" />
                   <span className="text-[9px] text-aaccent font-mono uppercase tracking-wider">Finals cutoff</span>
                   <div className="flex-1 border-t border-dashed border-aaccent/50" />

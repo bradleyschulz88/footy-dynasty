@@ -625,7 +625,7 @@ function TradeTab({ career, updateCareer }) {
             else capPill = <Pill color="var(--A-neg)" title={`Listed ${fmtK(lw)} · upper ask ~${fmtK(maxAsk)}/yr`}>No</Pill>;
             return (
               <div key={p.id}>
-                <div className={`gap-2 px-4 py-3 items-center transition-colors grid min-w-[720px] cursor-pointer ${selectedPlayer?.id === p.id ? 'bg-aaccent/10' : ''}`} style={{borderBottom: isNeg ? "none" : "1px solid var(--A-line)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}} onClick={() => setSelectedPlayer(p)} onMouseEnter={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="rgba(0,224,255,0.05)"; }} onMouseLeave={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="transparent"; }}>
+                <div className={`gap-2 px-4 py-3 items-center transition-colors grid min-w-[720px] cursor-pointer ${selectedPlayer?.id === p.id ? 'bg-aaccent/10' : ''}`} style={{borderBottom: isNeg ? "none" : "1px solid var(--A-line)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}} onClick={() => setSelectedPlayer(p)} onMouseEnter={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="color-mix(in srgb, var(--A-accent) 5%, transparent)"; }} onMouseLeave={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="transparent"; }}>
                   <div>
                     <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
                     <div className="text-[10px] text-atext-dim">{p.gamesPlayed ?? 0} gp · Ask {fmtK(p.wage)}/yr</div>
@@ -891,7 +891,7 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
   return (
     <div className="space-y-4">
 
-      <div className={`${css.panel} p-4 flex flex-wrap items-center justify-between gap-3`} style={{ background: 'rgba(0,224,255,0.06)' }}>
+      <div className={`${css.panel} p-4 flex flex-wrap items-center justify-between gap-3`} style={{ background: 'color-mix(in srgb, var(--A-accent) 6%, transparent)' }}>
         <div>
           <div className="font-display text-xl text-aaccent">Draft room</div>
           <p className="text-xs text-atext-dim mt-1">{scoutingPhase ? 'Scout the list before draft night.' : 'One pick at a time — on-the-clock banner in the draft room.'}</p>
@@ -922,7 +922,7 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
               return (
                 <div key={d.pick} className={`flex-shrink-0 px-2 py-2 rounded-lg text-xs touch-manipulation ${d.used ? 'opacity-40' : ''}`}
                   style={{
-                    background: isMe ? 'rgba(0,224,255,0.12)' : 'var(--A-panel-2)',
+                    background: isMe ? 'color-mix(in srgb, var(--A-accent) 12%, transparent)' : 'var(--A-panel-2)',
                     border: `1px solid ${onClock ? 'var(--A-accent)' : 'var(--A-line)'}`,
                     minWidth: 112,
                     minHeight: 76,
@@ -991,7 +991,7 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
             const wageDisp = displayDraftWageEstimate(rw, st);
             const wageAccurate = st >= 2;
             return (
-              <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="color-mix(in srgb, var(--A-accent) 5%, transparent)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                 <div className="col-span-1 font-bold text-aaccent">#{i+1}</div>
                 <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">(draft age ~17–19)</span></div>
                 <div className="col-span-1"><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>

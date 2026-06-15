@@ -134,7 +134,7 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
                   isToday ? "ring-2 ring-[var(--A-accent)] border-transparent" : iso === selectedDate ? "ring-2 ring-[var(--A-accent-2)] border-transparent" : "border-[var(--A-line)]"
                 }`}
                 style={{
-                  background: isToday ? "rgba(0,224,255,0.12)" : "var(--A-panel-2)",
+                  background: isToday ? "color-mix(in srgb, var(--A-accent) 12%, transparent)" : "var(--A-panel-2)",
                 }}
               >
                 <div className={`text-lg font-bold leading-none ${isToday ? "text-aaccent" : "text-atext"}`}>
@@ -195,7 +195,7 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
                     }`}
                     style={{
                       background: isTodayCell
-                        ? "rgba(0,224,255,0.10)"
+                        ? "color-mix(in srgb, var(--A-accent) 10%, transparent)"
                         : isPast && dayEvs.length
                           ? "var(--A-panel)"
                           : "var(--A-panel-2)",
