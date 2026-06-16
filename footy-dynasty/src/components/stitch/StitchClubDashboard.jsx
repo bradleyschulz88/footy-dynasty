@@ -167,8 +167,8 @@ export default function StitchClubDashboard({
               <div
                 className="w-12 h-12 rounded-lg flex items-center justify-center font-display text-sm border border-[rgba(200,255,61,0.35)]"
                 style={{
-                  background: `linear-gradient(135deg,${next.opp.colors[0]},${next.opp.colors[1]})`,
-                  color: next.opp.colors[2],
+                  background: `linear-gradient(135deg,${next.opp?.colors?.[0] ?? '#334155'},${next.opp?.colors?.[1] ?? '#0f172a'})`,
+                  color: next.opp?.colors?.[2] ?? next.opp?.colors?.[0] ?? '#fff',
                 }}
               >
                 {next.opp.short}

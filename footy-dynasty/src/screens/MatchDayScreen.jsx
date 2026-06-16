@@ -82,7 +82,7 @@ export default function MatchDayScreen({ result, league, career, club, onContinu
 
   const homeClub = result.isHome ? club : result.opp;
   const awayClub = result.isHome ? result.opp : club;
-  const myColor = club.colors[0] || "var(--A-accent)";
+  const myColor = club?.colors?.[0] || "var(--A-accent)";
   const oppColor = result.opp?.colors?.[0] || "#64748B";
 
   const won = result.won;

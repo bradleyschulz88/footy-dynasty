@@ -175,6 +175,9 @@ function DifficultyMiniSummary({ career, cfg }) {
 }
 
 export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance, onQuickAdvance, updateCareer }) {
+  const cc1 = club?.colors?.[0] ?? '#334155';
+  const cc2 = club?.colors?.[1] ?? '#0f172a';
+  const cc3 = club?.colors?.[2] ?? cc1;
   const advanceCtx = getAdvanceContext(career, league);
   const hubRoundTheme =
     career.phase === "season" && !career.inFinals && career.week
@@ -253,7 +256,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       {/* Hero — club identity + advance CTA */}
       <motion.div variants={hubItem} className="panel rounded-2xl overflow-hidden border border-aline">
         {/* Club color stripe — thicker, more dramatic */}
-        <div className="h-1" style={{background:`linear-gradient(90deg, ${club.colors[0]}, ${club.colors[1]}, ${club.colors[0]}88)`}} />
+        <div className="h-1" style={{background:`linear-gradient(90deg, ${cc1}, ${cc2}, ${cc1}88)`}} />
         <div className="p-4 md:p-5">
           {/* Club identity row */}
           <div className="flex items-center gap-3 mb-4">
@@ -261,9 +264,9 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center font-display text-2xl flex-shrink-0"
               style={{
-                background:`linear-gradient(145deg,${club.colors[0]},${club.colors[1]})`,
-                color:club.colors[2],
-                boxShadow:`0 6px 20px ${club.colors[0]}55, 0 0 0 1px ${club.colors[0]}33`,
+                background:`linear-gradient(145deg,${cc1},${cc2})`,
+                color:cc3,
+                boxShadow:`0 6px 20px ${cc1}55, 0 0 0 1px ${cc1}33`,
               }}>
               {club.short}
             </div>
@@ -820,7 +823,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                     style={isMe ? {background:"linear-gradient(90deg, color-mix(in srgb, var(--A-accent) 8%, transparent), transparent)", borderLeft:"3px solid var(--A-accent)"} : {borderLeft:"3px solid transparent"}}>
                     <div className="font-display text-2xl w-6 text-center flex-shrink-0" style={{color: rankColor}}>{i+1}</div>
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm flex-shrink-0"
-                      style={{background:`linear-gradient(135deg,${c.colors[0]},${c.colors[1]})`, color:c.colors[2]}}>
+                      style={{background:`linear-gradient(135deg,${c.colors?.[0] ?? '#334155'},${c.colors?.[1] ?? '#0f172a'})`, color:c.colors?.[2] ?? c.colors?.[0] ?? '#fff'}}>
                       {c.short}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -849,11 +852,11 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                   style={{background:"linear-gradient(90deg, color-mix(in srgb, var(--A-accent) 8%, transparent), transparent)", borderLeft:"3px solid var(--A-accent)"}}>
                   <div className="font-display text-2xl w-6 text-center text-aaccent">{myLadderPos}</div>
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm"
-                    style={{background:`linear-gradient(135deg,${club.colors[0]},${club.colors[1]})`, color:club.colors[2]}}>
-                    {club.short}
+                    style={{background:`linear-gradient(135deg,${cc1},${cc2})`, color:cc3}}>
+                    {club?.short}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-aaccent">{club.name}</div>
+                    <div className="font-bold text-sm text-aaccent">{club?.name}</div>
                     <div className="text-[10px] text-atext-dim">{myRow.W}W {myRow.L}L {myRow.D}D</div>
                   </div>
                   <div className="text-right">
