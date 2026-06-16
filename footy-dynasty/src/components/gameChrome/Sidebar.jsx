@@ -19,6 +19,9 @@ export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos 
   const season = career.season;
   const week   = career.week;
   const phase  = career.phase || 'preseason';
+  const c1 = club?.colors?.[0] ?? '#334155';
+  const c2 = club?.colors?.[1] ?? '#0f172a';
+  const c3 = club?.colors?.[2] ?? c1;
   const tutorialOn = career && !career.tutorialComplete;
   const tutStep = career?.tutorialStep ?? 0;
   const highlightNav = tutorialOn ? tutorialHighlightScreen(tutStep) : null;
@@ -50,16 +53,16 @@ export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos 
       {/* Club identity card */}
       <div className="px-4 py-3 border-b border-aline hidden md:block">
         <div className="panel rounded-xl overflow-hidden">
-          <div className="h-1.5 w-full" style={{background:`linear-gradient(90deg, ${club.colors[0]}, ${club.colors[1]})`}} />
+          <div className="h-1.5 w-full" style={{background:`linear-gradient(90deg, ${c1}, ${c2})`}} />
           <div className="p-3">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-11 h-11 rounded-xl flex items-center justify-center font-display text-xl flex-shrink-0"
-                style={{background:`linear-gradient(135deg,${club.colors[0]},${club.colors[1]})`, color:club.colors[2], boxShadow:`0 4px 12px ${club.colors[0]}44`}}>
-                {club.short}
+                style={{background:`linear-gradient(135deg,${c1},${c2})`, color:c3, boxShadow:`0 4px 12px ${c1}44`}}>
+                {club?.short}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="font-bold text-sm truncate text-atext leading-tight">{club.name}</div>
-                <div className={`text-[10px] mt-0.5 font-mono ${club.colors[0] === '#FFFFFF' ? 'text-aaccent' : ''}`} style={club.colors[0] === '#FFFFFF' ? undefined : { color: club.colors[0] }}>{league.short}</div>
+                <div className="font-bold text-sm truncate text-atext leading-tight">{club?.name}</div>
+                <div className={`text-[10px] mt-0.5 font-mono ${c1 === '#FFFFFF' ? 'text-aaccent' : ''}`} style={c1 === '#FFFFFF' ? undefined : { color: c1 }}>{league?.short}</div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-1 text-center">

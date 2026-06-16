@@ -101,7 +101,7 @@ function LadderTab({ career, club: _club, league }) {
                   <span className={`font-bold text-xs ${inPromo ? "text-apos" : inReleg ? "text-aneg" : "text-atext-mute"}`}>{pos}</span>
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-3 h-5 rounded-sm flex-shrink-0" style={{background: c ? `linear-gradient(180deg,${c.colors[0]},${c.colors[1]})` : "var(--A-line)"}} />
+                  <div className="w-3 h-5 rounded-sm flex-shrink-0" style={{background: c?.colors ? `linear-gradient(180deg,${c.colors[0]},${c.colors[1]})` : "var(--A-line)"}} />
                   <span className={`text-sm truncate ${isMe ? "font-bold text-aaccent" : "font-medium text-atext"}`}>{c?.short || row.id}</span>
                   {isMe && <Crown className="w-3 h-3 text-aaccent flex-shrink-0" />}
                   {!isMe && c?.name && <span className="text-xs text-atext-dim truncate hidden sm:inline">{c.name}</span>}
@@ -188,7 +188,7 @@ function FixturesTab({ career, club: _club, league: _league }) {
                   return (
                     <div key={mi} className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${myMatch ? "bg-aaccent/10 border border-aaccent/30" : "bg-apanel"}`}>
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: home?.colors[0] || "var(--A-line)"}} />
+                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: home?.colors?.[0] || "var(--A-line)"}} />
                         <span className={`truncate ${myMatch && m.home === career.clubId ? "font-bold" : ""}`}>{home?.short || m.home}</span>
                       </div>
                       <div className="flex flex-col items-center gap-0.5 px-1 flex-shrink-0">
@@ -206,7 +206,7 @@ function FixturesTab({ career, club: _club, league: _league }) {
                       </div>
                       <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
                         <span className={`truncate ${myMatch && m.away === career.clubId ? "font-bold" : ""}`}>{away?.short || m.away}</span>
-                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: away?.colors[0] || "var(--A-line)"}} />
+                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: away?.colors?.[0] || "var(--A-line)"}} />
                       </div>
                     </div>
                   );
@@ -316,7 +316,7 @@ function PyramidTab({ career, club, league }) {
               </div>
               <div className="flex flex-wrap gap-1 mt-2">
                 {l.clubs.map(c => (
-                  <div key={c.id} className={`px-2 py-1 rounded text-[10px] font-bold ${c.id === career.clubId ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : ""}`} style={c.id !== career.clubId ? {background: `${c.colors[0]}33`, color: c.colors[1] === "#FFFFFF" ? "var(--A-text)" : c.colors[1], border: `1px solid ${c.colors[0]}66`} : {}}>{c.short}</div>
+                  <div key={c.id} className={`px-2 py-1 rounded text-[10px] font-bold ${c.id === career.clubId ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : ""}`} style={c.id !== career.clubId ? {background: `${c.colors?.[0] ?? '#334155'}33`, color: (c.colors?.[1] ?? '') === "#FFFFFF" ? "var(--A-text)" : (c.colors?.[1] ?? 'var(--A-text)'), border: `1px solid ${c.colors?.[0] ?? '#334155'}66`} : {}}>{c.short}</div>
                 ))}
               </div>
             </div>
