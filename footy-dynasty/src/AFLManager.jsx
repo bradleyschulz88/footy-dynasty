@@ -2,6 +2,7 @@
 import { AnimatePresence, motion, MotionConfig, useReducedMotion } from "motion/react";
 import { seedRng, rng } from "./lib/rng.js";
 import { PYRAMID, findClub } from "./data/pyramid.js";
+import { careerStore } from "./lib/careerStore.js";
 import { generateSquad } from "./lib/playerGen.js";
 import {
   generateFixtures,
@@ -162,12 +163,28 @@ export default function AFLManager() {
 
 function AFLManagerInner() {
   const bootRef = useMemo(() => computeInitialCareerBoot(), []);
+
+  // ── Zustand store (phase 1: AFLManager owns init; components can subscribe directly) ──
+  // All three hook calls must be at the very top — before any early returns.
+  const career = careerStore((s) => s.career);
+  const setCareer = careerStore((s) => s.setCareer);
+  const updateCareer = careerStore((s) => s.updateCareer);
+
+  // Seed the store synchronously on first mount from boot data so the first
+  // render already has the saved career (no null→career flicker).
+  const bootInitRef = useRef(false);
+  if (!bootInitRef.current) {
+    bootInitRef.current = true;
+    if (bootRef.career !== careerStore.getState().career) {
+      careerStore.setState({ career: bootRef.career });
+    }
+  }
+
   const [activeSlot, setActiveSlotState] = useState(() => bootRef.activeSlot);
   const [showLanding, setShowLanding] = useState(() => !bootRef.career);
   const [showSlotPicker, setShowSlotPicker] = useState(false);
   const [slotMetaTick, setSlotMetaTick] = useState(0);
   const [showPostMatch, setShowPostMatch] = useState(false);
-  const [career, setCareer] = useState(() => bootRef.career);
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -817,7 +834,7 @@ function AFLManagerInner() {
   const league = PYRAMID[career.leagueKey];
 
   // ============== UPDATER ==============
-  const updateCareer = (patchOrFn) => setCareer((c) => applyCareerPatch(c, patchOrFn));
+  // updateCareer is hoisted to the top of AFLManagerInner (Zustand hook).
 
   // Dispatch an action from the notification bell (staff/player/club approaches).
   function handleNotificationAction(item, actionId) {
@@ -1224,7 +1241,7 @@ function AFLManagerInner() {
     <div className={`${themeClass} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
       {globalStyle}
       <OvalBackdrop />
-      <Sidebar screen={screen} onNavigate={onNavScreen} club={club} league={league} career={career} myLadderPos={myLadderPos} />
+      <Sidebar screen={screen} onNavigate={onNavScreen} club={club} league={league} myLadderPos={myLadderPos} />
       <main className="relative flex-1 overflow-y-auto min-w-0">
         <TopBar
           career={career}
