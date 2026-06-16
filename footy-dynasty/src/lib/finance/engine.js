@@ -188,12 +188,14 @@ export function tickWeeklyCashflow(c) {
   c.lastFinanceTickWeek = isoKey;
 
   const hist = c.weeklyHistory || [];
+  const boardConf = Math.round(c.finance?.boardConfidence ?? 0);
   const last = hist[hist.length - 1];
   if (last && last.isoKey === isoKey) {
     last.profit = (last.profit ?? 0) + delta;
     last.cash = c.finance.cash;
     last.income = (last.income ?? 0) + dayIncome;
     last.expenses = (last.expenses ?? 0) + dayExpenses;
+    last.boardConfidence = boardConf;
   } else {
     hist.push({
       isoKey,
@@ -202,6 +204,7 @@ export function tickWeeklyCashflow(c) {
       cash: c.finance.cash,
       income: dayIncome,
       expenses: dayExpenses,
+      boardConfidence: boardConf,
     });
   }
   c.weeklyHistory = hist.slice(-52);

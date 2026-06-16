@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
 import {
+  AreaChart, Area, LineChart, Line, BarChart, Bar as ReBar,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+} from "recharts";
+import {
   Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
   UserCog,   Sprout, Calendar,
   Heart, Activity, Sparkles,
@@ -1038,26 +1042,245 @@ function FinancesTab({ career }) {
         </div>
       )}
 
-      {/* Weekly cashflow chart */}
-      <div className={`${css.panel} p-5`}>
-        <h3 className={`${css.h1} text-2xl mb-3`}>CASH FLOW (BY CALENDAR WEEK)</h3>
-        {(career.weeklyHistory || []).length === 0 ? (
-          <div className="text-sm text-atext-dim py-8 text-center">No ledger entries yet — advance the schedule (each new day accrues operating cash).</div>
-        ) : (
-          <div className="flex items-end gap-1 h-40">
-            {career.weeklyHistory.map((w, i) => {
-              const max = Math.max(...career.weeklyHistory.map(x => Math.abs(x.profit ?? 0)));
-              const h = max === 0 ? 0 : (Math.abs(w.profit ?? 0) / max) * 100;
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1" title={`Week ${w.week}: ${fmtK(w.profit)}`}>
-                  <div className="w-full rounded-t" style={{ height: `${h}%`, background: (w.profit ?? 0) >= 0 ? "var(--A-pos)" : "var(--A-neg)", opacity: 0.85 }} />
-                  <div className="text-[9px] text-atext-dim">R{w.week}</div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+      {/* Cash flow chart */}
+      <CashflowChart career={career} />
+
+      {/* Board confidence chart */}
+      <BoardConfidenceChart career={career} />
+    </div>
+  );
+}
+
+// ============================================================================
+// FINANCE CHARTS — Recharts-based visualisations
+// ============================================================================
+
+/** Custom tooltip for the cashflow AreaChart. */
+function CashflowTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const income   = payload.find(p => p.dataKey === 'income')?.value ?? 0;
+  const expenses = payload.find(p => p.dataKey === 'expenses')?.value ?? 0;
+  const cash     = payload.find(p => p.dataKey === 'cash')?.value ?? 0;
+  return (
+    <div
+      className="text-[11px] rounded-xl p-3 space-y-1 shadow-lg"
+      style={{ background: 'var(--A-panel)', border: '1px solid var(--A-line)', minWidth: 140 }}
+    >
+      <div className="font-bold text-atext mb-1">{label}</div>
+      <div style={{ color: 'var(--A-pos)' }}>Income: {fmtK(income)}</div>
+      <div style={{ color: 'var(--A-neg)' }}>Expenses: {fmtK(expenses)}</div>
+      <div className="pt-1 border-t font-bold" style={{ borderColor: 'var(--A-line)', color: 'var(--A-accent)' }}>
+        Balance: {fmtK(cash)}
       </div>
+    </div>
+  );
+}
+
+/** Recharts-powered cash flow area chart using career.weeklyHistory. */
+function CashflowChart({ career }) {
+  const history = career.weeklyHistory || [];
+  const chartData = history.map((w, i) => ({
+    label: `Wk ${w.week || i + 1}`,
+    income:   Math.round((w.income ?? 0) / 1000),
+    expenses: Math.round((w.expenses ?? 0) / 1000),
+    cash:     Math.round((w.cash ?? 0) / 1000),
+    net:      Math.round((w.profit ?? 0) / 1000),
+  }));
+
+  return (
+    <div className={`${css.panel} p-5`}>
+      <h3 className={`${css.h1} text-2xl mb-1`}>CASH FLOW (BY CALENDAR WEEK)</h3>
+      <p className="text-[11px] text-atext-dim mb-4">Weekly operating income vs expenses (thousands). Balance line tracks your cash at end of each week.</p>
+      {chartData.length === 0 ? (
+        <div className="text-sm text-atext-dim py-8 text-center">
+          No ledger entries yet — advance the schedule (each new day accrues operating cash).
+        </div>
+      ) : (
+        <>
+          {/* Balance area chart */}
+          <div className="mb-2">
+            <div className="text-[10px] uppercase tracking-widest text-atext-mute mb-2 font-bold">Cash balance ($k)</div>
+            <ResponsiveContainer width="100%" height={160}>
+              <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="cashGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="var(--A-accent)" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="var(--A-accent)" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="cashNegGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="var(--A-neg)" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="var(--A-neg)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--A-line)" strokeOpacity={0.5} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 9, fill: 'var(--A-text-mute)' }}
+                  tickLine={false}
+                  axisLine={{ stroke: 'var(--A-line)' }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 9, fill: 'var(--A-text-mute)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={v => `$${v}k`}
+                  width={45}
+                />
+                <Tooltip content={<CashflowTooltip />} />
+                <Area
+                  type="monotone"
+                  dataKey="cash"
+                  name="Balance"
+                  stroke="var(--A-accent)"
+                  strokeWidth={2}
+                  fill="url(#cashGrad)"
+                  dot={false}
+                  activeDot={{ r: 4, fill: 'var(--A-accent)' }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Weekly net income/expense bar chart */}
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-atext-mute mb-2 font-bold">Weekly income vs expenses ($k)</div>
+            <ResponsiveContainer width="100%" height={120}>
+              <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }} barCategoryGap="20%">
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--A-line)" strokeOpacity={0.4} vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 9, fill: 'var(--A-text-mute)' }}
+                  tickLine={false}
+                  axisLine={{ stroke: 'var(--A-line)' }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 9, fill: 'var(--A-text-mute)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={v => `$${v}k`}
+                  width={45}
+                />
+                <Tooltip content={<CashflowTooltip />} />
+                <ReBar dataKey="income"   name="Income"   fill="var(--A-pos)" fillOpacity={0.75} radius={[2,2,0,0]} />
+                <ReBar dataKey="expenses" name="Expenses" fill="var(--A-neg)" fillOpacity={0.75} radius={[2,2,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="flex gap-4 mt-2 text-[10px] text-atext-mute">
+            <span className="flex items-center gap-1"><span style={{ background: 'var(--A-pos)', borderRadius: 2, display: 'inline-block', width: 10, height: 10 }} /> Income</span>
+            <span className="flex items-center gap-1"><span style={{ background: 'var(--A-neg)', borderRadius: 2, display: 'inline-block', width: 10, height: 10 }} /> Expenses</span>
+            <span className="flex items-center gap-1"><span style={{ background: 'var(--A-accent)', borderRadius: 2, display: 'inline-block', width: 10, height: 10 }} /> Balance</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Custom tooltip for the board confidence LineChart. */
+function ConfidenceTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const conf = payload[0]?.value ?? 0;
+  const color = conf >= 70 ? 'var(--A-pos)' : conf >= 40 ? 'var(--A-accent-2)' : 'var(--A-neg)';
+  return (
+    <div
+      className="text-[11px] rounded-xl p-3 shadow-lg"
+      style={{ background: 'var(--A-panel)', border: '1px solid var(--A-line)', minWidth: 130 }}
+    >
+      <div className="font-bold text-atext mb-1">{label}</div>
+      <div style={{ color }}>Confidence: {conf}%</div>
+    </div>
+  );
+}
+
+/** Recharts-powered board confidence trend line. */
+function BoardConfidenceChart({ career }) {
+  const history = career.weeklyHistory || [];
+  // Only include entries that have boardConfidence recorded
+  const withConf = history.filter(w => w.boardConfidence != null);
+
+  // Always show current confidence as the last data point even if no history exists
+  const currentConf = Math.round(career.finance?.boardConfidence ?? 0);
+
+  if (withConf.length < 2 && currentConf === 0) return null;
+
+  // Build chart data — if only current data available, show a single-point
+  // stub so the chart still renders meaningfully.
+  const chartData = withConf.length > 0
+    ? withConf.map((w, i) => ({
+        label: `Wk ${w.week || i + 1}`,
+        confidence: w.boardConfidence,
+      }))
+    : [{ label: 'Now', confidence: currentConf }];
+
+  const confColor = (v) => v >= 70 ? 'var(--A-pos)' : v >= 40 ? 'var(--A-accent-2)' : 'var(--A-neg)';
+  const latestConf = chartData[chartData.length - 1]?.confidence ?? currentConf;
+  const lineColor = confColor(latestConf);
+
+  return (
+    <div className={`${css.panel} p-5`}>
+      <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+        <h3 className={`${css.h1} text-2xl`}>BOARD CONFIDENCE</h3>
+        <span className="font-display text-2xl" style={{ color: lineColor }}>{currentConf}%</span>
+      </div>
+      <p className="text-[11px] text-atext-dim mb-4">
+        {currentConf >= 70 ? 'Board is firmly behind you — full budgets and competitive offers unlocked.'
+          : currentConf >= 40 ? 'Board is watching carefully. Maintain results to avoid contract pressure.'
+          : 'Board confidence is low. Sacking risk is elevated — results urgently needed.'}
+      </p>
+      {chartData.length < 2 ? (
+        <div className="text-sm text-atext-dim py-4 text-center">
+          Trend line builds as you advance weeks. Current confidence: <strong style={{ color: lineColor }}>{currentConf}%</strong>
+        </div>
+      ) : (
+        <>
+          <ResponsiveContainer width="100%" height={140}>
+            <LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="confZone" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%"  stopColor={lineColor} stopOpacity={0.12} />
+                  <stop offset="100%" stopColor={lineColor} stopOpacity={0.01} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--A-line)" strokeOpacity={0.5} />
+              {/* Danger zone reference line at 30% */}
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 9, fill: 'var(--A-text-mute)' }}
+                tickLine={false}
+                axisLine={{ stroke: 'var(--A-line)' }}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                domain={[0, 100]}
+                tick={{ fontSize: 9, fill: 'var(--A-text-mute)' }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={v => `${v}%`}
+                width={38}
+              />
+              <Tooltip content={<ConfidenceTooltip />} />
+              <Line
+                type="monotone"
+                dataKey="confidence"
+                name="Confidence"
+                stroke={lineColor}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 4, fill: lineColor }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+          <div className="flex gap-4 mt-2 text-[10px] text-atext-mute">
+            <span style={{ color: 'var(--A-pos)' }}>70%+ Secure</span>
+            <span style={{ color: 'var(--A-accent-2)' }}>40–69% Watched</span>
+            <span style={{ color: 'var(--A-neg)' }}>&lt;40% At risk</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
