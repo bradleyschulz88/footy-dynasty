@@ -2,6 +2,7 @@
 import { AnimatePresence, motion, MotionConfig, useReducedMotion } from "motion/react";
 import { seedRng, rng } from "./lib/rng.js";
 import { PYRAMID, findClub } from "./data/pyramid.js";
+import { careerStore } from "./lib/careerStore.js";
 import { generateSquad } from "./lib/playerGen.js";
 import {
   generateFixtures,
@@ -162,12 +163,28 @@ export default function AFLManager() {
 
 function AFLManagerInner() {
   const bootRef = useMemo(() => computeInitialCareerBoot(), []);
+
+  // ── Zustand store (phase 1: AFLManager owns init; components can subscribe directly) ──
+  // All three hook calls must be at the very top — before any early returns.
+  const career = careerStore((s) => s.career);
+  const setCareer = careerStore((s) => s.setCareer);
+  const updateCareer = careerStore((s) => s.updateCareer);
+
+  // Seed the store synchronously on first mount from boot data so the first
+  // render already has the saved career (no null→career flicker).
+  const bootInitRef = useRef(false);
+  if (!bootInitRef.current) {
+    bootInitRef.current = true;
+    if (bootRef.career !== careerStore.getState().career) {
+      careerStore.setState({ career: bootRef.career });
+    }
+  }
+
   const [activeSlot, setActiveSlotState] = useState(() => bootRef.activeSlot);
   const [showLanding, setShowLanding] = useState(() => !bootRef.career);
   const [showSlotPicker, setShowSlotPicker] = useState(false);
   const [slotMetaTick, setSlotMetaTick] = useState(0);
   const [showPostMatch, setShowPostMatch] = useState(false);
-  const [career, setCareer] = useState(() => bootRef.career);
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -817,7 +834,7 @@ function AFLManagerInner() {
   const league = PYRAMID[career.leagueKey];
 
   // ============== UPDATER ==============
-  const updateCareer = (patchOrFn) => setCareer((c) => applyCareerPatch(c, patchOrFn));
+  // updateCareer is hoisted to the top of AFLManagerInner (Zustand hook).
 
   // Dispatch an action from the notification bell (staff/player/club approaches).
   function handleNotificationAction(item, actionId) {
@@ -959,7 +976,6 @@ function AFLManagerInner() {
         <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <SackingSequence
-          career={career}
           club={club}
           onAdvanceStep={(nextStep) => {
             const update = { sackingStep: nextStep };
@@ -1000,7 +1016,6 @@ function AFLManagerInner() {
         <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <GameOverScreen
-          career={career}
           club={club}
           onRestart={() => {
             setActiveSlot(null);
@@ -1061,7 +1076,6 @@ function AFLManagerInner() {
         <motion.div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <FinalsEliminatedScreen
-            career={career}
             league={league}
             onSimRemainder={() => {
               const next = fastForwardFinals(career, league);
@@ -1099,7 +1113,6 @@ function AFLManagerInner() {
           <MatchDayScreen
           result={career.currentMatchResult}
           league={league}
-          career={career}
           club={club}
           onCoachCall={(callId) => {
             const { career: c, setCareer: sc } = advanceShellRef.current;
@@ -1123,6 +1136,7 @@ function AFLManagerInner() {
         {showPostMatch && career.lastMatchSummary && (
           <PostMatchSummary
             summary={career.lastMatchSummary}
+            leagueTier={league?.tier}
             onContinue={() => {
               setShowPostMatch(false);
               const isFinals = career.currentMatchResult?.isFinals;
@@ -1141,7 +1155,6 @@ function AFLManagerInner() {
         <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <VoteOfConfidenceFlow
-          career={career}
           club={club}
           league={league}
           onComplete={({ survived, pitchBonus }) => {
@@ -1178,7 +1191,6 @@ function AFLManagerInner() {
         <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <BoardMeetingScreen
-          career={career}
           blocking={career.boardMeetingBlocking}
           onChoose={(choiceId) => {
             const draft = cloneSerializable(career);
@@ -1202,7 +1214,6 @@ function AFLManagerInner() {
         <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <ArrivalBriefingFlow
-          career={career}
           club={club}
           league={league}
           onComplete={(patch) => {
@@ -1223,7 +1234,7 @@ function AFLManagerInner() {
     <div className={`${themeClass} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
       {globalStyle}
       <OvalBackdrop />
-      <Sidebar screen={screen} onNavigate={onNavScreen} club={club} league={league} career={career} myLadderPos={myLadderPos} />
+      <Sidebar screen={screen} onNavigate={onNavScreen} club={club} league={league} myLadderPos={myLadderPos} />
       <main className="relative flex-1 overflow-y-auto min-w-0">
         <TopBar
           career={career}
@@ -1249,8 +1260,6 @@ function AFLManagerInner() {
           onBlockedAdvance={hasBlockingNotification(career) ? () => setNotifOpen(true) : undefined}
         />
         <InboxBanner
-          career={career}
-          updateCareer={updateCareer}
           onGoRecruit={() => {
             setScreen("recruit");
             setTab("trade");
@@ -1273,7 +1282,6 @@ function AFLManagerInner() {
             >
               {screen === "hub" && (
                 <HubScreen
-                  career={career}
                   club={club}
                   league={league}
                   myLadderPos={myLadderPos}
@@ -1282,15 +1290,12 @@ function AFLManagerInner() {
                   setTab={setTab}
                   onAdvance={advanceToNextEvent}
                   onQuickAdvance={quickAdvance}
-                  updateCareer={updateCareer}
                 />
               )}
               {screen === "squad" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading squad…" reducedMotion={motionReduced} />}>
                   <SquadScreenLazy
-                    career={career}
                     club={club}
-                    updateCareer={updateCareer}
                     tab={tab}
                     setTab={setTab}
                     tutorialActive={tutorialActive}
@@ -1304,15 +1309,13 @@ function AFLManagerInner() {
               )}
               {screen === "schedule" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading calendar…" reducedMotion={motionReduced} />}>
-                  <ScheduleScreenLazy career={career} club={club} league={league} onOpenCompetition={() => onNavScreen("compete")} />
+                  <ScheduleScreenLazy club={club} league={league} onOpenCompetition={() => onNavScreen("compete")} onNavigate={onNavScreen} />
                 </Suspense>
               )}
               {screen === "club" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading club…" reducedMotion={motionReduced} />}>
                   <ClubScreenLazy
-                    career={career}
                     club={club}
-                    updateCareer={updateCareer}
                     tab={tab}
                     setTab={setTab}
                     tutorialActive={tutorialActive}
@@ -1322,9 +1325,7 @@ function AFLManagerInner() {
               {screen === "recruit" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading recruit…" reducedMotion={motionReduced} />}>
                   <RecruitScreenLazy
-                    career={career}
                     club={club}
-                    updateCareer={updateCareer}
                     tab={tab}
                     setTab={setTab}
                     league={league}
@@ -1335,22 +1336,20 @@ function AFLManagerInner() {
               {screen === "draft" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading draft room…" reducedMotion={motionReduced} />}>
                   <DraftRoomScreenLazy
-                    career={career}
                     club={club}
                     league={league}
-                    updateCareer={updateCareer}
                     onExit={() => { setScreen("recruit"); setTab("draft"); }}
                   />
                 </Suspense>
               )}
               {screen === "compete" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading competition…" reducedMotion={motionReduced} />}>
-                  <CompetitionScreenLazy career={career} club={club} league={league} tab={tab} setTab={setTab} onOpenCalendar={() => onNavScreen("schedule")} />
+                  <CompetitionScreenLazy club={club} league={league} tab={tab} setTab={setTab} onOpenCalendar={() => onNavScreen("schedule")} />
                 </Suspense>
               )}
               {screen === "careers" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading careers…" reducedMotion={motionReduced} />}>
-                  <CareersScreenLazy career={career} club={club} league={league} updateCareer={updateCareer} onAcceptJob={handleAcceptJobFromCentre} />
+                  <CareersScreenLazy club={club} league={league} onAcceptJob={handleAcceptJobFromCentre} />
                 </Suspense>
               )}
               {screen === "settings" && (

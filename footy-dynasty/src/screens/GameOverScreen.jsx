@@ -2,8 +2,10 @@
 // GameOverScreen — sacking / career-end screen. Pure leaf, no inner state.
 // ---------------------------------------------------------------------------
 import React from "react";
+import { useCareer } from "../lib/careerStore.js";
 
-export default function GameOverScreen({ career, club, onRestart, onTakeNewJob }) {
+export default function GameOverScreen({ club, onRestart, onTakeNewJob }) {
+  const career = useCareer();
   const reason = career.gameOver?.reason || 'sacked';
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'radial-gradient(ellipse 60% 35% at 50% 0%, color-mix(in srgb, var(--A-neg) 9%, transparent) 0%, transparent 55%), linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)' }}>

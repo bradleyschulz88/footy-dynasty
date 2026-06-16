@@ -38,6 +38,7 @@ import { css, Pill, Stat, CollapsibleSection } from "../../components/primitives
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 import { finalsMagicNumber } from "../../lib/magicNumber.js";
 import { seasonNarrative } from "../../lib/seasonNarrative.js";
+import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
 
 const hubContainer = {
   hidden: { opacity: 1 },
@@ -75,7 +76,8 @@ function weatherEmoji(condition) {
 // Hub strip showing ground conditions + footy trip prompt + committee mood.
 // Spec Sections 3A, 3B, 3D.
 // ---------------------------------------------------------------------------
-function HubGroundStrip({ career, club, league, setScreen, setTab }) {
+function HubGroundStrip({ club, league, setScreen, setTab }) {
+  const career = useCareer();
   const cfg = getDifficultyConfig(career.difficulty);
   const showCommunity = league.tier <= 3 && Array.isArray(career.committee) && career.committee.length > 0;
   const band = groundConditionBand(career.groundCondition ?? 85);
@@ -104,18 +106,19 @@ function HubGroundStrip({ career, club, league, setScreen, setTab }) {
       {/* Footy trip prompt or committee summary */}
       <div className={`${css.panel} p-4`}>
         {career.footyTripAvailable && !career.footyTripUsed ? (
-          <FootyTripPromoCard career={career} setScreen={setScreen} setTab={setTab} />
+          <FootyTripPromoCard setScreen={setScreen} setTab={setTab} />
         ) : showCommunity ? (
-          <CommitteeMiniSummary career={career} setScreen={setScreen} setTab={setTab} />
+          <CommitteeMiniSummary setScreen={setScreen} setTab={setTab} />
         ) : (
-          <DifficultyMiniSummary career={career} cfg={cfg} />
+          <DifficultyMiniSummary cfg={cfg} />
         )}
       </div>
     </div>
   );
 }
 
-function FootyTripPromoCard({ career, setScreen, setTab }) {
+function FootyTripPromoCard({ setScreen, setTab }) {
+  const career = useCareer();
   const social = (career.committee || []).find(m => m.role === 'Social Coordinator');
   return (
     <div>
@@ -135,7 +138,8 @@ function FootyTripPromoCard({ career, setScreen, setTab }) {
   );
 }
 
-function CommitteeMiniSummary({ career, setScreen, setTab }) {
+function CommitteeMiniSummary({ setScreen, setTab }) {
+  const career = useCareer();
   const avg = committeeMoodAverage(career.committee);
   const accent = avg >= 70 ? 'var(--A-pos)' : avg >= 40 ? 'var(--A-accent-2)' : 'var(--A-neg)';
   return (
@@ -160,7 +164,8 @@ function CommitteeMiniSummary({ career, setScreen, setTab }) {
   );
 }
 
-function DifficultyMiniSummary({ career, cfg }) {
+function DifficultyMiniSummary({ cfg }) {
+  const career = useCareer();
   const profile = getDifficultyProfile(career.difficulty);
   return (
     <div>
@@ -174,7 +179,12 @@ function DifficultyMiniSummary({ career, cfg }) {
   );
 }
 
-export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance, onQuickAdvance, updateCareer }) {
+export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance, onQuickAdvance }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
+  const cc1 = club?.colors?.[0] ?? '#334155';
+  const cc2 = club?.colors?.[1] ?? '#0f172a';
+  const cc3 = club?.colors?.[2] ?? cc1;
   const advanceCtx = getAdvanceContext(career, league);
   const hubRoundTheme =
     career.phase === "season" && !career.inFinals && career.week
@@ -253,7 +263,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
       {/* Hero — club identity + advance CTA */}
       <motion.div variants={hubItem} className="panel rounded-2xl overflow-hidden border border-aline">
         {/* Club color stripe — thicker, more dramatic */}
-        <div className="h-1" style={{background:`linear-gradient(90deg, ${club.colors[0]}, ${club.colors[1]}, ${club.colors[0]}88)`}} />
+        <div className="h-1" style={{background:`linear-gradient(90deg, ${cc1}, ${cc2}, ${cc1}88)`}} />
         <div className="p-4 md:p-5">
           {/* Club identity row */}
           <div className="flex items-center gap-3 mb-4">
@@ -261,9 +271,9 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center font-display text-2xl flex-shrink-0"
               style={{
-                background:`linear-gradient(145deg,${club.colors[0]},${club.colors[1]})`,
-                color:club.colors[2],
-                boxShadow:`0 6px 20px ${club.colors[0]}55, 0 0 0 1px ${club.colors[0]}33`,
+                background:`linear-gradient(145deg,${cc1},${cc2})`,
+                color:cc3,
+                boxShadow:`0 6px 20px ${cc1}55, 0 0 0 1px ${cc1}33`,
               }}>
               {club.short}
             </div>
@@ -396,16 +406,16 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
 
       {/* Match preview — moved up so it's the first thing after the hero */}
       <motion.div variants={hubItem}>
-        <MatchPreviewPanel career={career} league={league} onUpdateCareer={updateCareer} />
+        <MatchPreviewPanel league={league} />
       </motion.div>
 
       {/* Action board + coaching suggestions */}
       <motion.div variants={hubItem}>
-        <TaskList career={career} onNavigate={handleTaskNavigate} myLadderPos={myLadderPos} league={league} />
+        <TaskList onNavigate={handleTaskNavigate} myLadderPos={myLadderPos} league={league} />
       </motion.div>
 
       <motion.div variants={hubItem}>
-        <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} setTab={setTab} />
+        <HubGroundStrip club={club} league={league} setScreen={setScreen} setTab={setTab} />
       </motion.div>
 
       {(() => {
@@ -820,7 +830,7 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                     style={isMe ? {background:"linear-gradient(90deg, color-mix(in srgb, var(--A-accent) 8%, transparent), transparent)", borderLeft:"3px solid var(--A-accent)"} : {borderLeft:"3px solid transparent"}}>
                     <div className="font-display text-2xl w-6 text-center flex-shrink-0" style={{color: rankColor}}>{i+1}</div>
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm flex-shrink-0"
-                      style={{background:`linear-gradient(135deg,${c.colors[0]},${c.colors[1]})`, color:c.colors[2]}}>
+                      style={{background:`linear-gradient(135deg,${c.colors?.[0] ?? '#334155'},${c.colors?.[1] ?? '#0f172a'})`, color:c.colors?.[2] ?? c.colors?.[0] ?? '#fff'}}>
                       {c.short}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -849,11 +859,11 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                   style={{background:"linear-gradient(90deg, color-mix(in srgb, var(--A-accent) 8%, transparent), transparent)", borderLeft:"3px solid var(--A-accent)"}}>
                   <div className="font-display text-2xl w-6 text-center text-aaccent">{myLadderPos}</div>
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm"
-                    style={{background:`linear-gradient(135deg,${club.colors[0]},${club.colors[1]})`, color:club.colors[2]}}>
-                    {club.short}
+                    style={{background:`linear-gradient(135deg,${cc1},${cc2})`, color:cc3}}>
+                    {club?.short}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm text-aaccent">{club.name}</div>
+                    <div className="font-bold text-sm text-aaccent">{club?.name}</div>
                     <div className="text-[10px] text-atext-dim">{myRow.W}W {myRow.L}L {myRow.D}D</div>
                   </div>
                   <div className="text-right">
@@ -891,6 +901,55 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
         </div>
       </motion.div>
 
+      {/* Media Panel */}
+      {(() => {
+        const pressItems = (career.news || []).filter(n => n.type === 'press').slice(0, 3);
+        const toneAccent = (tone) =>
+          tone === 'positive' ? 'var(--A-pos)'
+          : tone === 'critical' ? 'var(--A-neg)'
+          : tone === 'negative' ? 'var(--A-accent-2)'
+          : 'var(--A-accent)';
+        const satPct = career.journalist ? Math.round(career.journalist.satisfaction ?? 50) : null;
+        const satColor = satPct == null ? 'var(--A-text-mute)' : satPct >= 65 ? 'var(--A-pos)' : satPct <= 35 ? 'var(--A-neg)' : 'var(--A-accent-2)';
+        return (
+          <motion.div variants={hubItem}>
+            <CollapsibleSection
+              id="media_panel"
+              title="Media"
+              right={
+                satPct != null ? (
+                  <span className="text-[10px] font-mono uppercase tracking-wider shrink-0" style={{ color: satColor }}>
+                    Press mood {satPct}
+                  </span>
+                ) : null
+              }
+            >
+              {pressItems.length === 0 ? (
+                <div className="text-sm text-atext-dim py-2 text-center leading-relaxed">
+                  No press coverage yet — results will generate headlines
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pressItems.map((n, i) => {
+                    const accent = toneAccent(n.tone);
+                    return (
+                      <div key={i} className="rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)', borderLeft: `3px solid ${accent}` }}>
+                        <div className="font-display text-base leading-tight tracking-wide mb-1" style={{ color: accent }}>{n.text}</div>
+                        {n.subtext && <div className="text-[11px] text-atext-dim leading-snug">{n.subtext}</div>}
+                        <div className="text-[9px] text-atext-mute uppercase tracking-widest mt-1.5 font-bold">
+                          {n.week === 0 ? 'Pre-Season' : `Round ${n.week}`}
+                          {n.tone && <span className="ml-2 opacity-70">{n.tone}</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CollapsibleSection>
+          </motion.div>
+        );
+      })()}
+
       {/* Form Watch */}
       {(() => {
         const hotPlayers = [...career.squad].sort((a,b) => (b.form||50) - (a.form||50)).slice(0,1).filter(p => (p.form||50) >= 78);
@@ -906,6 +965,33 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
                   return (
                     <div key={p.id || i} className="text-sm text-atext leading-snug">
                       {p.hot ? '🔥' : '❄️'} <span className="font-semibold">{name}</span> <span className="text-atext-dim">(form {p.form || 50})</span> — {p.hot ? 'on fire' : 'struggling'}
+                    </div>
+                  );
+                })}
+              </div>
+            </CollapsibleSection>
+          </motion.div>
+        );
+      })()}
+
+      {/* Development Watch — Tier 4 (junior/grassroots) only */}
+      {league.tier === 4 && (() => {
+        const youngest = [...career.squad]
+          .sort((a, b) => (a.age || 99) - (b.age || 99))
+          .slice(0, 3);
+        if (youngest.length === 0) return null;
+        return (
+          <motion.div variants={hubItem}>
+            <CollapsibleSection id="dev_watch" title="Development Watch">
+              <div className="space-y-1.5">
+                {youngest.map((p, i) => {
+                  const name = p.firstName ? `${p.firstName[0]}. ${p.lastName}` : (p.name || 'Player');
+                  const pos = p.position || (p.positions && p.positions[0]) || '—';
+                  return (
+                    <div key={p.id || i} className="flex flex-wrap items-center gap-2 text-sm text-atext leading-snug">
+                      <span className="font-semibold">{name}</span>
+                      <span className="text-atext-dim">age {p.age} · {pos} · OVR {p.overall}</span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--A-accent) 14%, transparent)', color: 'var(--A-accent)' }}>developing</span>
                     </div>
                   );
                 })}

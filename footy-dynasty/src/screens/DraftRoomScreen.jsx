@@ -33,8 +33,11 @@ import {
   draftProspectOnClock,
   startDraftSessionPatch,
 } from "../lib/draftEngine.js";
+import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 
-export default function DraftRoomScreen({ career, club, league, updateCareer, onExit }) {
+export default function DraftRoomScreen({ club, league, onExit }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [posFilter, setPosFilter] = useState("ALL");
   const [poolSort, setPoolSort] = useState("overall");
   const dTier = leagueTierOf(career);

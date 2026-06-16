@@ -26,6 +26,7 @@ import {
   evaluateApplication,
   recordApplication,
 } from "../../lib/jobSearch.js";
+import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
 
 function hashStr(s) {
   let h = 0;
@@ -33,7 +34,9 @@ function hashStr(s) {
   return h;
 }
 
-export default function CareersScreen({ career, club, league, updateCareer, onAcceptJob }) {
+export default function CareersScreen({ club, league, onAcceptJob }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const rep = career.coachReputation ?? 30;
   const coachTier = career.coachTier || "Journeyman";
   const remaining = applicationsRemaining(career);

@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 import { findClub } from "../data/pyramid.js";
 import { teamRating, aiClubRating } from "../lib/matchEngine.js";
 import { selectAiLineup, ensureSquadsForLeague } from "../lib/aiSquads.js";
@@ -27,7 +28,9 @@ function nextMatchEvent(career) {
   return (career.eventQueue || []).find((e) => !e.completed && (e.type === "round" || e.type === "preseason_match"));
 }
 
-export default function MatchPreviewPanel({ career, league, onUpdateCareer }) {
+export default function MatchPreviewPanel({ league }) {
+  const career = useCareer();
+  const onUpdateCareer = useUpdateCareer();
   const preview = useMemo(() => {
     const ev = nextMatchEvent(career);
     if (!ev) return null;
@@ -192,7 +195,7 @@ export default function MatchPreviewPanel({ career, league, onUpdateCareer }) {
         </div>
       </div>
       <DataTable bare columns={columns} rows={preview.factorRows} rowKey={(r) => r.factor} />
-      {onUpdateCareer && (
+      {(
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           <span className="text-[11px] text-atext-mute">
             Scout intel tier {preview.scoutTier ?? 0}/2

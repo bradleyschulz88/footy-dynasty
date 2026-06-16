@@ -1,5 +1,6 @@
 import React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useCareer } from "../lib/careerStore.js";
+import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { findClub } from "../data/pyramid.js";
 import {
   TRAINING_INFO,
@@ -15,7 +16,31 @@ import {
 import { css } from "../components/primitives.jsx";
 import { ClubBadge } from "../components/ClubBadge.jsx";
 
-export default function ScheduleScreen({ career, club: _club, league: _league, onOpenCompetition }) {
+// Compute ladder position map: clubId -> position (1-based)
+function ladderPositionMap(ladder) {
+  if (!ladder || !ladder.length) return {};
+  const sorted = [...ladder].sort((a, b) => (b.pts ?? 0) - (a.pts ?? 0) || (b.pct ?? 0) - (a.pct ?? 0) || (b.F ?? 0) - (a.F ?? 0));
+  const map = {};
+  sorted.forEach((row, i) => { map[row.id] = i + 1; });
+  return map;
+}
+
+function difficultyPill(pos) {
+  if (!pos) return null;
+  if (pos <= 4) return { label: "TOUGH", color: "#E84A6F" };
+  if (pos <= 8) return { label: "HARD", color: "#FFB347" };
+  return { label: "OK", color: "#4ADE80" };
+}
+
+// Days until a date string from today
+function daysUntil(dateStr, today) {
+  const d1 = new Date(today);
+  const d2 = new Date(dateStr);
+  return Math.round((d2 - d1) / 86400000);
+}
+
+export default function ScheduleScreen({ club: _club, league: _league, onOpenCompetition, onNavigate }) {
+  const career = useCareer();
   const startDate = career.currentDate || `${career.season - 1}-12-01`;
   const [viewDate, setViewDate] = React.useState(startOfMonth(startDate));
   const [selectedDate, setSelectedDate] = React.useState(startDate);
@@ -57,30 +82,72 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
 
   const weekStrip = React.useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(today, i)), [today]);
 
+  // Ladder position map for difficulty ratings
+  const ladderPos = React.useMemo(() => ladderPositionMap(career.ladder), [career.ladder]);
+
+  // Find next round event for hero card
+  const nextRound = React.useMemo(() => {
+    return allEvents.find((e) => !e.completed && e.date >= today && e.type === "round" &&
+      (e.matches || []).some((m) => m.home === career.clubId || m.away === career.clubId));
+  }, [allEvents, today, career.clubId]);
+
+  function getMatchInfo(ev) {
+    if (!ev || ev.type !== "round") return null;
+    const m = (ev.matches || []).find((m2) => m2.home === career.clubId || m2.away === career.clubId);
+    if (!m) return null;
+    const oppId = m.home === career.clubId ? m.away : m.home;
+    const opp = findClub(oppId);
+    const isHome = m.home === career.clubId;
+    return { opp, oppId, isHome, match: m };
+  }
+
   function evDot(ev) {
-    if (ev.type === "training")
+    if (ev.type === "training") {
+      const info = TRAINING_INFO[ev.subtype];
+      const attrStr = info?.attrs?.length ? ` · ${info.attrs.join(", ")}` : "";
       return {
-        color: TRAINING_INFO[ev.subtype]?.color || "#94A3B8",
-        icon: TRAINING_INFO[ev.subtype]?.icon || "🏋️",
-        label: TRAINING_INFO[ev.subtype]?.name || ev.subtype,
+        color: info?.color || "#94A3B8",
+        icon: info?.icon || "🏋️",
+        label: (info?.name || ev.subtype) + attrStr,
         oppClub: null,
+        trainingInfo: info || null,
       };
+    }
     if (ev.type === "key_event")
-      return { color: "var(--A-accent-2)", icon: "📅", label: ev.name, oppClub: null };
+      return { color: "var(--A-accent-2)", icon: "📅", label: ev.name, oppClub: null, trainingInfo: null };
     if (ev.type === "preseason_match")
-      return { color: "#E84A6F", icon: "⚽", label: ev.label, oppClub: null };
+      return { color: "#E84A6F", icon: "🏉", label: ev.label, oppClub: null, trainingInfo: null };
     if (ev.type === "round") {
-      const m = (ev.matches || []).find((m2) => m2.home === career.clubId || m2.away === career.clubId);
-      const opp = m ? findClub(m.home === career.clubId ? m.away : m.home) : null;
+      const mi = getMatchInfo(ev);
+      const opp = mi?.opp || null;
+      const isHome = mi?.isHome ?? true;
       return {
         color: "var(--A-accent)",
         icon: "🏉",
-        label: opp ? `Rd ${ev.round} · ${m?.home === career.clubId ? "Home" : "Away"}` : `Rd ${ev.round}`,
+        label: opp ? `Rd ${ev.round} · ${isHome ? "Home" : "Away"}` : `Rd ${ev.round}`,
         oppClub: opp || null,
+        trainingInfo: null,
       };
     }
-    return { color: "#94A3B8", icon: "●", label: "Event", oppClub: null };
+    return { color: "#94A3B8", icon: "●", label: "Event", oppClub: null, trainingInfo: null };
   }
+
+  // Result badge for completed rounds
+  function resultBadge(ev) {
+    if (!ev.completed || ev.type !== "round") return null;
+    const result = ev.result; // expect "W", "L", "D" or similar
+    if (!result) return null;
+    const r = String(result).toUpperCase();
+    if (r === "W") return { text: "W", color: "#4ADE80" };
+    if (r === "L") return { text: "L", color: "#E84A6F" };
+    return { text: "D", color: "#FFB347" };
+  }
+
+  // Next round hero card
+  const nextRoundInfo = nextRound ? getMatchInfo(nextRound) : null;
+  const nextRoundOppPos = nextRoundInfo?.oppId ? ladderPos[nextRoundInfo.oppId] : null;
+  const nextRoundDiff = difficultyPill(nextRoundOppPos);
+  const nextRoundDays = nextRound ? daysUntil(nextRound.date, today) : null;
 
   return (
     <div className="anim-in space-y-5 touch-manipulation">
@@ -118,6 +185,59 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
         </div>
         </div>
       </div>
+
+      {/* Next Match Hero Card */}
+      {nextRound && nextRoundInfo && (
+        <div className="rounded-2xl p-4 md:p-5" style={{ background: "linear-gradient(135deg, var(--A-panel) 0%, var(--A-panel-2) 100%)", border: "1px solid var(--A-line)" }}>
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4 min-w-0">
+              {nextRoundInfo.opp && (
+                <div className="flex-shrink-0">
+                  <ClubBadge club={nextRoundInfo.opp} size="lg" />
+                </div>
+              )}
+              <div className="min-w-0">
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute mb-1">
+                  Next Match · Round {nextRound.round}
+                </div>
+                <div className="font-display text-2xl md:text-3xl text-atext leading-tight truncate">
+                  {nextRoundInfo.opp?.name || "Opponent"}
+                </div>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="text-[11px] font-semibold text-atext-dim">
+                    {nextRoundInfo.isHome ? "Home" : "Away"} · {formatDate(nextRound.date)}
+                  </span>
+                  {nextRoundDiff && (
+                    <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: `${nextRoundDiff.color}22`, color: nextRoundDiff.color, border: `1px solid ${nextRoundDiff.color}40` }}>
+                      {nextRoundDiff.label}
+                    </span>
+                  )}
+                  {nextRoundOppPos && (
+                    <span className="text-[10px] font-mono text-atext-mute">#{nextRoundOppPos} on ladder</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              <div className="text-right">
+                <div className="font-display text-3xl leading-none" style={{ color: "var(--A-accent)" }}>
+                  {nextRoundDays === 0 ? "TODAY" : nextRoundDays === 1 ? "1" : String(nextRoundDays)}
+                </div>
+                {nextRoundDays > 1 && <div className="text-[10px] text-atext-mute font-mono uppercase tracking-wider">days away</div>}
+              </div>
+              {typeof onNavigate === "function" ? (
+                <button type="button" onClick={() => onNavigate("squad")} className={`${css.btnGhost} text-[11px] px-3 py-2 flex items-center gap-1.5 whitespace-nowrap`}>
+                  <Users className="w-3.5 h-3.5" /> View Squad →
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-atext-mute px-3 py-2 rounded-xl border" style={{ borderColor: "var(--A-line)" }}>
+                  <Users className="w-3.5 h-3.5" /> View Squad →
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className={`${css.panel} p-3 md:p-4`}>
         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute mb-2">This week</div>
@@ -224,7 +344,9 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
                             }}
                           >
                             {dot.oppClub ? <ClubBadge club={dot.oppClub} size="xs" /> : <span>{dot.icon}</span>}
-                            <span className="truncate min-w-0">{dot.label}</span>
+                            <span className="truncate min-w-0">
+                              {ev.type === "training" ? (dot.trainingInfo?.name || ev.subtype) : dot.label}
+                            </span>
                           </div>
                         );
                       })}
@@ -258,7 +380,7 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
         <div className="space-y-5">
         <div className={`${css.panel} p-4`}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-display text-lg text-atext tracking-wide" style={{ color: "var(--A-accent-2)" }}>SELECTED DAY</h3>
+            <h3 className="font-display text-lg tracking-wide" style={{ color: "var(--A-accent-2)" }}>SELECTED DAY</h3>
             <span className="text-[11px] font-mono text-atext-mute">{formatDate(selectedDate)}</span>
           </div>
           {(eventsByDate[selectedDate] || []).length === 0 ? (
@@ -267,8 +389,9 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
             <div className="space-y-2">
               {(eventsByDate[selectedDate] || []).map((ev, i) => {
                 const dot = evDot(ev);
+                const rb = resultBadge(ev);
                 return (
-                  <div key={ev.id ? `${ev.id}-${i}` : `${selectedDate}-${i}`} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line)", opacity: ev.completed ? 0.55 : 1 }}>
+                  <div key={ev.id ? `${ev.id}-${i}` : `${selectedDate}-${i}`} className="flex items-center gap-3 p-2.5 rounded-xl" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line)", opacity: ev.completed ? 0.7 : 1 }}>
                     {dot.oppClub ? (
                       <ClubBadge club={dot.oppClub} size="sm" className="flex-shrink-0" />
                     ) : (
@@ -276,8 +399,14 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-semibold text-atext leading-tight truncate">{dot.label}</div>
-                      {ev.completed && <div className="text-[10px] text-atext-mute uppercase tracking-wider">Completed</div>}
+                      {ev.type === "training" && dot.trainingInfo?.attrs && (
+                        <div className="text-[10px] text-atext-mute mt-0.5">Focus: {dot.trainingInfo.attrs.join(", ")}</div>
+                      )}
+                      {ev.completed && !rb && <div className="text-[10px] text-atext-mute uppercase tracking-wider">Completed</div>}
                     </div>
+                    {rb && (
+                      <span className="text-[11px] font-black px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: `${rb.color}22`, color: rb.color, border: `1px solid ${rb.color}40` }}>{rb.text}</span>
+                    )}
                   </div>
                 );
               })}
@@ -286,7 +415,7 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
         </div>
 
         <div className={`${css.panel} p-4`}>
-          <h3 className="font-display text-lg text-atext tracking-wide mb-3">UPCOMING EVENTS</h3>
+          <h3 className="font-display text-lg tracking-wide mb-3" style={{ color: "var(--A-accent)" }}>UPCOMING EVENTS</h3>
           <div className="space-y-2">
             {upcoming.length === 0 && (
               <div className="text-sm text-atext-dim py-4 text-center">No more events this season.</div>
@@ -294,6 +423,19 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
             {upcoming.map((ev) => {
               const dot = evDot(ev);
               const evKey = ev.id || `${ev.date}-${ev.type}-${ev.round ?? ev.name ?? ""}`;
+              const rb = resultBadge(ev);
+
+              // For round events: find opp ladder pos and difficulty
+              let diffPill = null;
+              let oppPos = null;
+              if (ev.type === "round") {
+                const mi = getMatchInfo(ev);
+                if (mi?.oppId) {
+                  oppPos = ladderPos[mi.oppId];
+                  diffPill = difficultyPill(oppPos);
+                }
+              }
+
               return (
                 <div
                   key={evKey}
@@ -315,7 +457,25 @@ export default function ScheduleScreen({ career, club: _club, league: _league, o
                       {formatDate(ev.date)}
                     </div>
                     <div className="text-sm font-semibold text-atext leading-tight">{dot.label}</div>
+                    {ev.type === "training" && dot.trainingInfo?.attrs && (
+                      <div className="text-[10px] text-atext-mute mt-0.5">
+                        {dot.trainingInfo.icon} {dot.trainingInfo.attrs.join(", ")}
+                      </div>
+                    )}
+                    {ev.type === "round" && (oppPos || diffPill) && (
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        {oppPos && <span className="text-[10px] font-mono text-atext-mute">#{oppPos}</span>}
+                        {diffPill && (
+                          <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full" style={{ background: `${diffPill.color}22`, color: diffPill.color, border: `1px solid ${diffPill.color}40` }}>
+                            {diffPill.label}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
+                  {rb && (
+                    <span className="text-[11px] font-black px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5" style={{ background: `${rb.color}22`, color: rb.color, border: `1px solid ${rb.color}40` }}>{rb.text}</span>
+                  )}
                 </div>
               );
             })}

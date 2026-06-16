@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useCareer } from "../../lib/careerStore.js";
 import { Bell, X } from "lucide-react";
 import {
   notificationItems,
@@ -31,7 +32,8 @@ function ratingChipColor(value) {
  *
  * `onAction(item, actionId)` is dispatched by the app shell.
  */
-export function NotificationBell({ career, onAction, open: controlledOpen, onOpenChange }) {
+export function NotificationBell({ onAction, open: controlledOpen, onOpenChange }) {
+  const career = useCareer();
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const setOpen = (next) => {

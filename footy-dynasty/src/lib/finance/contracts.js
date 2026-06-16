@@ -72,6 +72,8 @@ export function proposeRenewal(player, options = {}) {
 // tier 3: top 6 by overall rating get formal offers; rest auto-renew.
 export function buildRenewalQueue(career, opts = {}) {
   const tier = opts.tier ?? 1;
+  // Tier 4 junior clubs have no player contracts — kids play on registration, not agreements.
+  if (tier === 4) return [];
   const expiring = (career.squad || []).filter(p => (p.contract ?? 0) <= 1);
   if (tier === 1) return expiring.map(p => proposeRenewal(p)).filter(Boolean);
   const sorted = [...expiring].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
@@ -80,10 +82,10 @@ export function buildRenewalQueue(career, opts = {}) {
 }
 
 // Players who bypass the formal renewal queue at tier 2/3 and auto-renew at current terms.
-// Returns raw player objects (not proposals). Empty array for tier 1.
+// Returns raw player objects (not proposals). Empty array for tier 1 and tier 4.
 export function buildAutoRenewList(career, opts = {}) {
   const tier = opts.tier ?? 1;
-  if (tier === 1) return [];
+  if (tier === 1 || tier === 4) return [];
   const expiring = (career.squad || []).filter(p => (p.contract ?? 0) <= 1);
   const sorted = [...expiring].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
   const formalCap = tier === 2 ? 12 : 6;

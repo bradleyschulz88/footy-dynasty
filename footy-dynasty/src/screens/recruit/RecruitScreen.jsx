@@ -54,11 +54,13 @@ import {
   getPlayerNextPick,
   startDraftSessionPatch,
 } from '../../lib/draftEngine.js';
+import { useCareer, useUpdateCareer } from '../../lib/careerStore.js';
 
 // ============================================================================
 // RECRUIT SCREEN — Trade / Draft / Youth / Local
 // ============================================================================
-function RecruitOffSeasonStrip({ career }) {
+function RecruitOffSeasonStrip() {
+  const career = useCareer();
   const tradeLive = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
   const draftPoolReady = isDraftScoutingPhase(career) || isDraftLive(career);
   if (!tradeLive && !draftPoolReady) return null;
@@ -96,7 +98,9 @@ function RecruitOffSeasonStrip({ career }) {
   );
 }
 
-export default function RecruitScreen({ career, club, updateCareer, tab, setTab, league, onOpenDraftRoom }) {
+export default function RecruitScreen({ club, tab, setTab, league, onOpenDraftRoom }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const offerCount = (career.pendingTradeOffers || []).filter(o => o.status === 'pending').length;
   const inTradePeriod = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
   // National draft + youth academy are AFL (tier 1) institutions; local football scouting is for everyone.
@@ -131,28 +135,29 @@ export default function RecruitScreen({ career, club, updateCareer, tab, setTab,
   ];
   return (
     <div className="anim-in touch-manipulation">
-      <RecruitOffSeasonStrip career={career} />
+      <RecruitOffSeasonStrip />
       <TabNav tabs={tabs} active={t} onChange={setTab} />
-      {t === "offers" && <OffersTab career={career} club={club} updateCareer={updateCareer} />}
-      {t === "freeagents" && (inTradePeriod ? <FreeAgentsTab career={career} club={club} updateCareer={updateCareer} /> : (
+      {t === "offers" && <OffersTab />}
+      {t === "freeagents" && (inTradePeriod ? <FreeAgentsTab /> : (
         <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Free agency runs during the post-season Trade Period (after the grand final).</div>
       ))}
-      {t === "picks" && (showPicks ? <DraftPickBankTab career={career} /> : (
+      {t === "picks" && (showPicks ? <DraftPickBankTab /> : (
         <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Draft capital is prepared when the Trade Period opens.</div>
       ))}
-      {t === "trade" && <TradeTab career={career} updateCareer={updateCareer} />}
-      {t === "draft" && (isTopTier ? <DraftTab career={career} club={club} league={league} updateCareer={updateCareer} onOpenDraftRoom={onOpenDraftRoom} /> : (
+      {t === "trade" && <TradeTab />}
+      {t === "draft" && (isTopTier ? <DraftTab club={club} league={league} onOpenDraftRoom={onOpenDraftRoom} /> : (
         <div className={`${css.panel} p-8 text-sm text-atext-dim`}>The National Draft is for AFL clubs only. Recruit through Local Football and trades at this level.</div>
       ))}
-      {t === "youth" && (isTopTier ? <YouthTab career={career} club={club} updateCareer={updateCareer} /> : (
+      {t === "youth" && (isTopTier ? <YouthTab club={club} /> : (
         <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Youth academies are run by AFL clubs. Develop talent through Local Football scouting at this level.</div>
       ))}
-      {t === "local" && <LocalTab career={career} club={club} updateCareer={updateCareer} />}
+      {t === "local" && <LocalTab club={club} />}
     </div>
   );
 }
 
-function DraftPickBankTab({ career }) {
+function DraftPickBankTab() {
+  const career = useCareer();
   const bank = career.draftPickBank || {};
   const years = Object.keys(bank).sort();
   return (
@@ -182,7 +187,9 @@ function DraftPickBankTab({ career }) {
   );
 }
 
-function FreeAgentsTab({ career, updateCareer }) {
+function FreeAgentsTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const pool = career.offSeasonFreeAgents || [];
   const wageCap = effectiveWageCap(career);
   const sign = (fa) => {
@@ -283,7 +290,9 @@ function FreeAgentsTab({ career, updateCareer }) {
   );
 }
 
-function OffersTab({ career, club: _club, updateCareer }) {
+function OffersTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const offers = (career.pendingTradeOffers || []).filter(o => o.status === 'pending');
   const finance = career.finance;
   const [inspectOffer, setInspectOffer] = useState(null);
@@ -461,7 +470,9 @@ function OffersTab({ career, club: _club, updateCareer }) {
   );
 }
 
-function TradeTab({ career, updateCareer }) {
+function TradeTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [filter, setFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("overall");
   /** off | listed | maxDemand — maxDemand uses upper-bound opening ask vs cap */
@@ -812,7 +823,9 @@ function TradeTab({ career, updateCareer }) {
   );
 }
 
-function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
+function DraftTab({ club, league, onOpenDraftRoom }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [posFilter, setPosFilter] = useState("ALL");
   const [poolSort, setPoolSort] = useState("overall");
 
@@ -1090,7 +1103,9 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
   );
 }
 
-function YouthTab({ career, club, updateCareer }) {
+function YouthTab({ club }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const youth = career.youth;
   const [generated, setGenerated] = useState(youth.recruits || []);
 
@@ -1261,7 +1276,9 @@ function YouthTab({ career, club, updateCareer }) {
   );
 }
 
-function LocalTab({ career, club, updateCareer }) {
+function LocalTab({ club }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [scoutedPlayers, setScoutedPlayers] = useState([]);
   const [scoutingLeague, setScoutingLeague] = useState(null);
   const homeState = club.state;

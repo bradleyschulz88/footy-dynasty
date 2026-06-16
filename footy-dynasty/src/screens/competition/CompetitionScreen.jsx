@@ -15,11 +15,13 @@ import { finalsRoundLabel } from "../../lib/finalsBracket.js";
 import { turningPointRibbon } from "../../lib/gameDepth.js";
 import TabNav from "../../components/TabNav.jsx";
 import { css, Pill } from "../../components/primitives.jsx";
+import { useCareer } from "../../lib/careerStore.js";
 
 // ============================================================================
 // COMPETITION SCREEN — Ladder / Fixtures / Pyramid
 // ============================================================================
-export default function CompetitionScreen({ career, club, league, tab, setTab, onOpenCalendar }) {
+export default function CompetitionScreen({ club, league, tab, setTab, onOpenCalendar }) {
+  const career = useCareer();
   const t = tab || "ladder";
   const tabs = [
     { key: "ladder", label: "Ladder", icon: BarChart3 },
@@ -43,15 +45,16 @@ export default function CompetitionScreen({ career, club, league, tab, setTab, o
         )}
       </div>
       <TabNav tabs={tabs} active={t} onChange={setTab} />
-      {t === "ladder"   && <LadderTab career={career} club={club} league={league} />}
-      {t === "fixtures" && <FixturesTab career={career} club={club} league={league} />}
-      {t === "finals" && <FinalsTab career={career} league={league} />}
-      {t === "pyramid"  && <PyramidTab career={career} club={club} league={league} />}
+      {t === "ladder"   && <LadderTab club={club} league={league} />}
+      {t === "fixtures" && <FixturesTab club={club} league={league} />}
+      {t === "finals" && <FinalsTab league={league} />}
+      {t === "pyramid"  && <PyramidTab club={club} league={league} />}
     </div>
   );
 }
 
-function LadderTab({ career, club: _club, league }) {
+function LadderTab({ club: _club, league }) {
+  const career = useCareer();
   const sorted = sortedLadder(career.ladder);
   const promoCutoff = league.tier > 1 ? 1 : 8; // top 1 promoted; top 8 finals at tier 1
   const relegCutoff = league.tier === 1 ? 999 : sorted.length; // bottom 1 relegated except tier 1
@@ -101,7 +104,7 @@ function LadderTab({ career, club: _club, league }) {
                   <span className={`font-bold text-xs ${inPromo ? "text-apos" : inReleg ? "text-aneg" : "text-atext-mute"}`}>{pos}</span>
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-3 h-5 rounded-sm flex-shrink-0" style={{background: c ? `linear-gradient(180deg,${c.colors[0]},${c.colors[1]})` : "var(--A-line)"}} />
+                  <div className="w-3 h-5 rounded-sm flex-shrink-0" style={{background: c?.colors ? `linear-gradient(180deg,${c.colors[0]},${c.colors[1]})` : "var(--A-line)"}} />
                   <span className={`text-sm truncate ${isMe ? "font-bold text-aaccent" : "font-medium text-atext"}`}>{c?.short || row.id}</span>
                   {isMe && <Crown className="w-3 h-3 text-aaccent flex-shrink-0" />}
                   {!isMe && c?.name && <span className="text-xs text-atext-dim truncate hidden sm:inline">{c.name}</span>}
@@ -142,7 +145,8 @@ function LadderTab({ career, club: _club, league }) {
   );
 }
 
-function FixturesTab({ career, club: _club, league: _league }) {
+function FixturesTab({ club: _club, league: _league }) {
+  const career = useCareer();
   const { lastPlayedRoundIdx, nextRoundIdx } = useMemo(() => {
     let last = -1;
     for (const e of career.eventQueue || []) {
@@ -188,7 +192,7 @@ function FixturesTab({ career, club: _club, league: _league }) {
                   return (
                     <div key={mi} className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${myMatch ? "bg-aaccent/10 border border-aaccent/30" : "bg-apanel"}`}>
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: home?.colors[0] || "var(--A-line)"}} />
+                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: home?.colors?.[0] || "var(--A-line)"}} />
                         <span className={`truncate ${myMatch && m.home === career.clubId ? "font-bold" : ""}`}>{home?.short || m.home}</span>
                       </div>
                       <div className="flex flex-col items-center gap-0.5 px-1 flex-shrink-0">
@@ -206,7 +210,7 @@ function FixturesTab({ career, club: _club, league: _league }) {
                       </div>
                       <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
                         <span className={`truncate ${myMatch && m.away === career.clubId ? "font-bold" : ""}`}>{away?.short || m.away}</span>
-                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: away?.colors[0] || "var(--A-line)"}} />
+                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: away?.colors?.[0] || "var(--A-line)"}} />
                       </div>
                     </div>
                   );
@@ -220,7 +224,8 @@ function FixturesTab({ career, club: _club, league: _league }) {
   );
 }
 
-function FinalsTab({ career, league }) {
+function FinalsTab({ league }) {
+  const career = useCareer();
   const results = career.finalsResults || [];
   const alive = new Set(career.finalsAlive || []);
   const seeds = career.finalsBracket?.seeds || career.finalsFinalists || [];
@@ -281,7 +286,8 @@ function FinalsTab({ career, league }) {
   );
 }
 
-function PyramidTab({ career, club, league }) {
+function PyramidTab({ club, league }) {
+  const career = useCareer();
   const myState = club.state;
   // Group leagues by tier
   const byTier = { 1: [], 2: [], 3: [] };
@@ -316,7 +322,7 @@ function PyramidTab({ career, club, league }) {
               </div>
               <div className="flex flex-wrap gap-1 mt-2">
                 {l.clubs.map(c => (
-                  <div key={c.id} className={`px-2 py-1 rounded text-[10px] font-bold ${c.id === career.clubId ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : ""}`} style={c.id !== career.clubId ? {background: `${c.colors[0]}33`, color: c.colors[1] === "#FFFFFF" ? "var(--A-text)" : c.colors[1], border: `1px solid ${c.colors[0]}66`} : {}}>{c.short}</div>
+                  <div key={c.id} className={`px-2 py-1 rounded text-[10px] font-bold ${c.id === career.clubId ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : ""}`} style={c.id !== career.clubId ? {background: `${c.colors?.[0] ?? '#334155'}33`, color: (c.colors?.[1] ?? '') === "#FFFFFF" ? "var(--A-text)" : (c.colors?.[1] ?? 'var(--A-text)'), border: `1px solid ${c.colors?.[0] ?? '#334155'}66`} : {}}>{c.short}</div>
                 ))}
               </div>
             </div>
