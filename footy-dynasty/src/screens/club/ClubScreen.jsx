@@ -27,7 +27,11 @@ import {
   canAffordSigning,
   incomeBreakdown, expenseBreakdown,
   annualWageBill, matchDayRevenue, expectedAttendance,
+  grassrootsIncomeBreakdown, grassrootsExpenseBreakdown,
+  gamingVenueAnnualRevenue, investInGamingVenue,
+  leagueTierOf,
 } from '../../lib/finance/engine.js';
+import { BOARD_FINANCIAL_OBJECTIVES, GAMING_VENUE } from '../../lib/finance/constants.js';
 import {
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
 } from '../../lib/finance/sponsors.js';
@@ -878,7 +882,103 @@ function RookieListTab({ career, updateCareer }) {
   );
 }
 
-function FinancesTab({ career }) {
+function FinancesTab({ career, updateCareer }) {
+  const [finTab, setFinTab] = useState('overview');
+  const tier = leagueTierOf(career);
+  const isT4 = tier === 4;
+  const crisis = career.cashCrisisLevel ?? 0;
+
+  // ── Tier 4 community budget view ─────────────────────────────────────────
+  if (isT4) {
+    const inc = grassrootsIncomeBreakdown(career);
+    const exp = grassrootsExpenseBreakdown(career);
+    const net = inc.grandTotal - exp.grandTotal;
+    const isShort = (career.finance?.cash ?? 0) < 0;
+    return (
+      <div className="space-y-4">
+        <div className="text-xs text-atext-dim -mt-1">
+          Junior clubs run on <span className="text-atext font-medium">registration fees, canteen takings, local sponsorship and grants</span> — no wages, no broadcast money. Keep the books balanced and the committee will keep turning up.
+        </div>
+
+        {/* Cash shortage banner */}
+        {isShort && (
+          <div className={`${css.panel} p-4 flex items-start gap-3`} style={{ borderColor: 'var(--A-neg)', background: 'color-mix(in srgb, var(--A-neg) 6%, transparent)' }}>
+            <AlertCircle className="w-5 h-5 text-aneg flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <div className="font-bold text-aneg text-sm">COMMITTEE EMERGENCY</div>
+              <div className="text-xs text-atext-dim mt-1">
+                {career.t4GrantApplicationPending
+                  ? 'Grant application lodged — waiting on the council. Check back in a few weeks.'
+                  : career.t4SponsorHuntActive
+                  ? 'The committee needs a local sponsor to cover costs. Check the Sponsors tab and sign a deal.'
+                  : 'The tin is empty. Find a sponsor or run a fundraiser before the committee panic.'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Top-line stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Stat label="Club Funds" value={`$${(career.finance?.cash ?? 0).toLocaleString()}`} accent={(career.finance?.cash ?? 0) >= 0 ? "var(--A-pos)" : "var(--A-neg)"} icon={DollarSign} />
+          <Stat label="Season Net (proj)" value={`${net >= 0 ? '+' : ''}$${net.toLocaleString()}`} accent={net >= 0 ? "var(--A-pos)" : "var(--A-neg)"} />
+          <Stat label="Players on List" value={(career.squad || []).length} sub="× $200 rego" accent="var(--A-accent)" />
+          <Stat label="Grants This Season" value={`$${(career.t4GrantsThisSeason ?? 0).toLocaleString()}`} accent="#A78BFA" />
+        </div>
+
+        {/* Income */}
+        <div className={`${css.panel} p-5`}>
+          <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (PROJECTED SEASON)</h3>
+          {[
+            { label: "Registration Fees",       value: inc.regFees,   color: "var(--A-accent)", sub: `${(career.squad||[]).length} players × $200` },
+            { label: "Canteen / BBQ",            value: inc.canteen,   color: "var(--A-pos)",    sub: "home games avg" },
+            { label: "Local Sponsorship",        value: inc.sponsors,  color: "#A78BFA",          sub: "signed deals" },
+            { label: "Grants (received so far)", value: inc.grants,    color: "#4ADE80",          sub: "council / federation" },
+          ].map(r => (
+            <div key={r.label} className="mb-3">
+              <div className="flex justify-between text-sm mb-0.5">
+                <span className="text-atext">{r.label}</span>
+                <span className="font-display text-lg" style={{ color: r.color }}>${r.value.toLocaleString()}</span>
+              </div>
+              {r.sub && <div className="text-[10px] text-atext-mute mb-1">{r.sub}</div>}
+              <Bar value={inc.grandTotal > 0 ? (r.value / inc.grandTotal) * 100 : 0} color={r.color} />
+            </div>
+          ))}
+          <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
+            <span>Total income</span><span className="text-apos">${inc.grandTotal.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {/* Expenses */}
+        <div className={`${css.panel} p-5`}>
+          <h3 className={`${css.h1} text-2xl mb-3`}>EXPENSES (PROJECTED SEASON)</h3>
+          {[
+            { label: "Ground Hire",        value: exp.groundHire,  color: "var(--A-neg)",     sub: "home games" },
+            { label: "Umpire Fees",        value: exp.umpires,     color: "var(--A-accent)",  sub: "all games" },
+            { label: "Affiliation / Ins.", value: exp.affiliation + exp.insurance, color: "var(--A-accent)", sub: "annual fixed" },
+            { label: "Equipment / Kit",    value: exp.equipment,   color: "var(--A-accent-2)", sub: "est." },
+            { label: "Facility Upkeep",    value: exp.facilities,  color: "var(--A-accent)",  sub: "annual" },
+          ].map(r => (
+            <div key={r.label} className="mb-3">
+              <div className="flex justify-between text-sm mb-0.5">
+                <span className="text-atext">{r.label}</span>
+                <span className="font-display text-lg" style={{ color: r.color }}>${r.value.toLocaleString()}</span>
+              </div>
+              {r.sub && <div className="text-[10px] text-atext-mute mb-1">{r.sub}</div>}
+              <Bar value={exp.grandTotal > 0 ? (r.value / exp.grandTotal) * 100 : 0} color={r.color} />
+            </div>
+          ))}
+          <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
+            <span>Total expenses</span><span className="text-aneg">${exp.grandTotal.toLocaleString()}</span>
+          </div>
+        </div>
+
+        {/* Cashflow chart */}
+        <CashflowChart career={career} />
+      </div>
+    );
+  }
+
+  // ── Tiers 1–3 professional finance hub ───────────────────────────────────
   const inc = incomeBreakdown(career);
   const exp = expenseBreakdown(career);
   const net = inc.grandTotal - exp.grandTotal;
@@ -888,13 +988,20 @@ function FinancesTab({ career }) {
   const wageCapColor = wagePct >= 100 ? "var(--A-neg)" : wagePct >= 90 ? "var(--A-accent-2)" : wagePct >= 80 ? "var(--A-accent)" : "var(--A-pos)";
   const cfg = getDifficultyConfig(career.difficulty);
   const overflowPct = Math.round((cfg.capOverflow ?? 0) * 100);
-  const crisis = career.cashCrisisLevel ?? 0;
+  const objKey = career.boardFinancialObjective;
+  const objDef = BOARD_FINANCIAL_OBJECTIVES[objKey];
+  const wagePctOfIncome = inc.grandTotal > 0 ? Math.round(((playerWages + exp.staffWages) / inc.grandTotal) * 100) : 0;
+  const wageRatioColor = wagePctOfIncome >= 80 ? "var(--A-neg)" : wagePctOfIncome >= 70 ? "var(--A-accent-2)" : "var(--A-pos)";
+
+  const FIN_TABS = [
+    { id: 'overview',   label: 'Overview' },
+    { id: 'income',     label: 'Income & Expenses' },
+    { id: 'cashflow',   label: 'Cash Flow' },
+    { id: 'debt',       label: 'Debt & Venues' },
+  ];
 
   return (
     <div className="space-y-4">
-      <div className="text-xs text-atext-dim -mt-1">
-        Gate, TV rights and sponsor money are banked <span className="text-atext font-medium">every match</span> — home games add gate takings on top. Memberships &amp; merch tick over each calendar day. Win, fill the ground and climb the ladder to grow all of them.
-      </div>
       {/* Cash crisis banner */}
       {crisis > 0 && (
         <div className={`${css.panel} p-4 flex items-start gap-3`} style={{ borderColor: 'var(--A-neg)', background: 'color-mix(in srgb, var(--A-neg) 6%, transparent)' }}>
@@ -911,179 +1018,338 @@ function FinancesTab({ career }) {
         </div>
       )}
 
-      {/* Top-line stats */}
-      <div className="grid md:grid-cols-4 gap-3">
-        <Stat label="Cash" value={fmtK(career.finance.cash)} accent={career.finance.cash >= 0 ? "var(--A-pos)" : "var(--A-neg)"} icon={DollarSign} />
-        <Stat label="Annual Net (proj)" value={fmtK(net)} accent={net > 0 ? "var(--A-pos)" : "var(--A-neg)"} />
-        <Stat label="Wage Bill" value={fmtK(playerWages + exp.staffWages)} sub="players + staff" accent="var(--A-accent)" />
-        <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="var(--A-accent)" />
+      <div className="flex gap-2 flex-wrap">
+        {FIN_TABS.map(t => (
+          <button key={t.id} type="button"
+            onClick={() => setFinTab(t.id)}
+            className={`text-xs px-3 py-1.5 rounded-lg font-bold uppercase tracking-widest transition ${finTab === t.id ? 'bg-aaccent text-black' : 'bg-apanel-2 text-atext-dim hover:text-atext'}`}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* Match-day income model */}
-      <div className={`${css.panel} p-5`}>
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <h3 className={`${css.h1} text-2xl`}>MATCH-DAY INCOME</h3>
-          {career.lastMatchRevenue && (
-            <Pill color="var(--A-pos)">
-              Last match +{fmtK(career.lastMatchRevenue.total)}
-            </Pill>
-          )}
-        </div>
-        {(() => {
-          const home = matchDayRevenue(career, { isHome: true });
-          const away = matchDayRevenue(career, { isHome: false });
-          const att = expectedAttendance(career);
-          return (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <div className={`${css.inset} p-3`}>
-                  <div className="text-[10px] uppercase tracking-widest text-atext-mute font-bold mb-1">Home game</div>
-                  <div className="font-display text-2xl text-apos">{fmtK(home.total)}</div>
-                  <div className="text-[11px] text-atext-dim mt-1 leading-relaxed">
-                    Gate {fmtK(home.gate)} · TV {fmtK(home.broadcast)} · Sponsor {fmtK(home.sponsor)}
+      {/* ── OVERVIEW ── */}
+      {finTab === 'overview' && (
+        <div className="space-y-4">
+          <div className="grid md:grid-cols-4 gap-3">
+            <Stat label="Cash" value={fmtK(career.finance.cash)} accent={career.finance.cash >= 0 ? "var(--A-pos)" : "var(--A-neg)"} icon={DollarSign} />
+            <Stat label="Annual Net (proj)" value={fmtK(net)} accent={net > 0 ? "var(--A-pos)" : "var(--A-neg)"} />
+            <Stat label="Wage Bill" value={fmtK(playerWages + exp.staffWages)} sub="players + staff" accent="var(--A-accent)" />
+            <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="var(--A-accent)" />
+          </div>
+
+          {/* Board financial objective */}
+          {objDef && (
+            <div className={`${css.panel} p-4`}>
+              <div className="flex items-start gap-3">
+                <Briefcase className="w-4 h-4 text-aaccent mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="text-[10px] uppercase tracking-widest text-atext-mute font-bold mb-0.5">Board Financial Objective</div>
+                  <div className="font-bold text-atext text-sm">{objDef.label}</div>
+                  <div className="text-xs text-atext-dim mt-1">{objDef.description}</div>
+                  <div className="mt-2 flex gap-4 text-xs">
+                    <span className="text-apos">✓ +{objDef.confidenceReward} board confidence</span>
+                    <span className="text-aneg">✗ {objDef.confidencePenalty} if missed</span>
                   </div>
-                  <div className="text-[10px] text-atext-mute mt-1">~{att.toLocaleString('en-AU')} crowd</div>
-                </div>
-                <div className={`${css.inset} p-3`}>
-                  <div className="text-[10px] uppercase tracking-widest text-atext-mute font-bold mb-1">Away game</div>
-                  <div className="font-display text-2xl text-aaccent">{fmtK(away.total)}</div>
-                  <div className="text-[11px] text-atext-dim mt-1 leading-relaxed">
-                    TV {fmtK(away.broadcast)} · Sponsor {fmtK(away.sponsor)}
-                  </div>
-                  <div className="text-[10px] text-atext-mute mt-1">No gate share away</div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Wage-to-revenue health */}
+          <div className={`${css.panel} p-5`}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className={`${css.h1} text-2xl`}>FINANCIAL HEALTH</h3>
+              <span className="text-xs font-bold" style={{ color: wageRatioColor }}>Wages {wagePctOfIncome}% of income</span>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-4 text-sm">
+              <div>
+                <div className={css.label}>Annual income</div>
+                <div className="font-display text-2xl text-apos">{fmtK(inc.grandTotal)}</div>
+              </div>
+              <div>
+                <div className={css.label}>Annual expenses</div>
+                <div className="font-display text-2xl text-aneg">{fmtK(exp.grandTotal)}</div>
+              </div>
+              <div>
+                <div className={css.label}>Net projection</div>
+                <div className={`font-display text-2xl ${net >= 0 ? 'text-apos' : 'text-aneg'}`}>{fmtK(net)}</div>
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="flex justify-between text-xs text-atext-dim mb-1">
+                <span>Wage-to-revenue ratio</span>
+                <span style={{ color: wageRatioColor }}>
+                  {wagePctOfIncome < 60 ? 'Healthy' : wagePctOfIncome < 70 ? 'Acceptable' : wagePctOfIncome < 80 ? 'Stretched' : 'Danger zone'}
+                </span>
+              </div>
+              <div className="h-3 rounded-full overflow-hidden" style={{ background: 'var(--A-panel-2)' }}>
+                <div className="h-full rounded-full" style={{ width: `${Math.min(100, wagePctOfIncome)}%`, background: wageRatioColor }} />
+              </div>
+              <div className="text-[10px] text-atext-mute mt-1">FM / UEFA guidance: keep wages under 70% of turnover. Above 80% risks board pressure.</div>
+            </div>
+          </div>
+
+          {/* Match-day income model */}
+          <div className={`${css.panel} p-5`}>
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h3 className={`${css.h1} text-2xl`}>MATCH-DAY INCOME</h3>
               {career.lastMatchRevenue && (
-                <div className="text-[11px] text-atext-dim mt-3">
-                  Last match (Rd {career.lastMatchRevenue.round}{career.lastMatchRevenue.opp ? ` vs ${career.lastMatchRevenue.opp}` : ''}): banked{' '}
-                  <span className="text-apos font-bold">{fmtK(career.lastMatchRevenue.total)}</span>
-                  {career.lastMatchRevenue.isHome
-                    ? ` from ${career.lastMatchRevenue.attendance?.toLocaleString('en-AU')} fans + TV + sponsors.`
-                    : ` from TV + sponsors (away).`}
-                </div>
+                <Pill color="var(--A-pos)">Last match +{fmtK(career.lastMatchRevenue.total)}</Pill>
               )}
-            </>
-          );
-        })()}
-      </div>
-
-      {/* Salary cap with overflow indicator */}
-      {wageCap > 0 && (
-        <div className={`${css.panel} p-5`}>
-          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <h3 className={`${css.h1} text-2xl`}>SALARY CAP</h3>
-            <div className="flex items-center gap-3">
-              {overflowPct !== 0 && (
-                <Pill color={overflowPct > 0 ? 'var(--A-pos)' : 'var(--A-neg)'}>
-                  {overflowPct > 0 ? `+${overflowPct}% headroom` : `${overflowPct}% tighter`}
-                </Pill>
-              )}
-              <span className="text-xs font-bold" style={{ color: wageCapColor }}>{wagePct}% used</span>
             </div>
+            {(() => {
+              const home = matchDayRevenue(career, { isHome: true });
+              const away = matchDayRevenue(career, { isHome: false });
+              const att = expectedAttendance(career);
+              return (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`${css.inset} p-3`}>
+                    <div className="text-[10px] uppercase tracking-widest text-atext-mute font-bold mb-1">Home game</div>
+                    <div className="font-display text-2xl text-apos">{fmtK(home.total)}</div>
+                    <div className="text-[11px] text-atext-dim mt-1 leading-relaxed">
+                      Gate {fmtK(home.gate)} · TV {fmtK(home.broadcast)} · Sponsor {fmtK(home.sponsor)}
+                    </div>
+                    <div className="text-[10px] text-atext-mute mt-1">~{att.toLocaleString('en-AU')} crowd</div>
+                  </div>
+                  <div className={`${css.inset} p-3`}>
+                    <div className="text-[10px] uppercase tracking-widest text-atext-mute font-bold mb-1">Away game</div>
+                    <div className="font-display text-2xl text-aaccent">{fmtK(away.total)}</div>
+                    <div className="text-[11px] text-atext-dim mt-1 leading-relaxed">
+                      TV {fmtK(away.broadcast)} · Sponsor {fmtK(away.sponsor)}
+                    </div>
+                    <div className="text-[10px] text-atext-mute mt-1">No gate share away</div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
-          <div className="flex justify-between text-xs text-atext-dim mb-2">
-            <span>Player wages: <span className="font-bold text-atext">{fmtK(playerWages)}</span></span>
-            <span>Effective cap: <span className="font-bold text-atext">{fmtK(wageCap)}</span></span>
-          </div>
-          <div className="h-4 rounded-full overflow-hidden" style={{ background: "var(--A-panel-2)" }}>
-            <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, wagePct)}%`, background: wageCapColor }} />
-          </div>
-          <div className="text-xs text-atext-dim mt-2">
-            {wagePct >= 100 ? '⚠️ Over the effective cap — board pressure rising' :
-             wagePct >= 90  ? 'Cap stretched — careful with new signings' :
-             wagePct >= 80  ? 'Cap tightening — plan ahead' :
-                              `${fmtK(wageCap - playerWages)} of cap headroom available`}
-          </div>
-          {wagePct >= 88 && wagePct < 100 && (
-            <div className="mt-3 p-3 rounded-xl text-[11px] leading-relaxed border border-[#FFB347]/40 bg-[#FFB347]/08 text-atext-dim">
-              <span className="font-semibold text-atext">Tip:</span> Renewals and player-card extensions share this cap. Use <span className="text-atext font-medium">Club → Contracts</span> in pre-season so the queue does not surprise you when Round 1 starts.
+
+          {/* Salary cap */}
+          {wageCap > 0 && (
+            <div className={`${css.panel} p-5`}>
+              <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 className={`${css.h1} text-2xl`}>SALARY CAP</h3>
+                <div className="flex items-center gap-3">
+                  {overflowPct !== 0 && (
+                    <Pill color={overflowPct > 0 ? 'var(--A-pos)' : 'var(--A-neg)'}>
+                      {overflowPct > 0 ? `+${overflowPct}% headroom` : `${overflowPct}% tighter`}
+                    </Pill>
+                  )}
+                  <span className="text-xs font-bold" style={{ color: wageCapColor }}>{wagePct}% used</span>
+                </div>
+              </div>
+              <div className="flex justify-between text-xs text-atext-dim mb-2">
+                <span>Player wages: <span className="font-bold text-atext">{fmtK(playerWages)}</span></span>
+                <span>Effective cap: <span className="font-bold text-atext">{fmtK(wageCap)}</span></span>
+              </div>
+              <div className="h-4 rounded-full overflow-hidden" style={{ background: "var(--A-panel-2)" }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, wagePct)}%`, background: wageCapColor }} />
+              </div>
+              <div className="text-xs text-atext-dim mt-2">
+                {wagePct >= 100 ? '⚠️ Over cap — board pressure rising' :
+                 wagePct >= 90  ? 'Cap stretched — careful with new signings' :
+                 wagePct >= 80  ? 'Cap tightening — plan ahead' :
+                                  `${fmtK(wageCap - playerWages)} of cap headroom available`}
+              </div>
+            </div>
+          )}
+
+          {/* Membership health */}
+          {(career.membershipBase ?? 1.0) !== 1.0 && (
+            <div className={`${css.inset} p-4 text-xs`}>
+              <span className="text-aaccent font-bold">Membership base: </span>
+              <span className="text-atext">{Math.round((career.membershipBase ?? 1.0) * 100)}% of tier baseline</span>
+              <span className="text-atext-mute ml-2">— grows with finals appearances &amp; flags, shrinks on relegation.</span>
             </div>
           )}
         </div>
       )}
-      {wageCap > 0 && (
-        <div className={`${css.inset} p-4 text-xs text-atext-dim leading-relaxed`}>
-          <span className="text-aaccent font-bold">Cap vs expenses:</span> The salary-cap bar counts{' '}
-          <strong className="text-atext">player wages only</strong>. Staff wages (~{fmtK(exp.staffWages)}/yr) sit in operating expenses and drain cash over time — they do not fill the cap meter. Signing and renewal checks against the cap still look at the playing list.
-        </div>
-      )}
 
-      {/* Income / Expenses split */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className={`${css.panel} p-5`}>
-          <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (ANNUAL)</h3>
-          {[
-            { label: "Broadcast / TV Rights", value: inc.broadcast,   color: "var(--A-accent)" },
-            { label: "Gate Revenue",          value: inc.gate,        color: "var(--A-accent)" },
-            { label: "Membership",            value: inc.membership,  color: "var(--A-pos)" },
-            { label: "Merchandise",           value: inc.merchandise, color: "var(--A-accent-2)" },
-            { label: "Sponsorship",           value: inc.sponsors,    color: "#A78BFA" },
-          ].map(r => (
-            <div key={r.label} className="mb-3">
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-atext">{r.label}</span>
-                <span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span>
+      {/* ── INCOME & EXPENSES ── */}
+      {finTab === 'income' && (
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className={`${css.panel} p-5`}>
+            <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (ANNUAL)</h3>
+            {[
+              { label: "Broadcast / TV Rights", value: inc.broadcast,   color: "var(--A-accent)" },
+              { label: "Gate Revenue",          value: inc.gate,        color: "var(--A-accent)" },
+              { label: "Membership",            value: inc.membership,  color: "var(--A-pos)" },
+              { label: "Merchandise",           value: inc.merchandise, color: "var(--A-accent-2)" },
+              { label: "Sponsorship",           value: inc.sponsors,    color: "#A78BFA" },
+              ...(inc.gaming > 0 ? [{ label: "Gaming / Social Venue", value: inc.gaming, color: "#F59E0B" }] : []),
+            ].map(r => (
+              <div key={r.label} className="mb-3">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-atext">{r.label}</span>
+                  <span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span>
+                </div>
+                <Bar value={inc.grandTotal > 0 ? (r.value / inc.grandTotal) * 100 : 0} color={r.color} />
               </div>
-              <Bar value={inc.grandTotal > 0 ? (r.value / inc.grandTotal) * 100 : 0} color={r.color} />
+            ))}
+            <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
+              <span>Total income</span><span className="text-apos">{fmtK(inc.grandTotal)}</span>
             </div>
-          ))}
-          <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
-            <span>Total income</span><span className="text-apos">{fmtK(inc.grandTotal)}</span>
           </div>
-        </div>
-        <div className={`${css.panel} p-5`}>
-          <h3 className={`${css.h1} text-2xl mb-3`}>EXPENSES (ANNUAL)</h3>
-          {[
-            { label: "Player Wages",      value: exp.playerWages, color: "var(--A-neg)" },
-            { label: "Staff Wages",       value: exp.staffWages,  color: "var(--A-accent)" },
-            { label: "Facilities Upkeep", value: exp.facilities,  color: "var(--A-accent)" },
-          ].map(r => (
-            <div key={r.label} className="mb-3">
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-atext">{r.label}</span>
-                <span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span>
+          <div className={`${css.panel} p-5`}>
+            <h3 className={`${css.h1} text-2xl mb-3`}>EXPENSES (ANNUAL)</h3>
+            {[
+              { label: "Player Wages",      value: exp.playerWages, color: "var(--A-neg)" },
+              { label: "Staff Wages",       value: exp.staffWages,  color: "var(--A-accent)" },
+              { label: "Facilities Upkeep", value: exp.facilities,  color: "var(--A-accent)" },
+            ].map(r => (
+              <div key={r.label} className="mb-3">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-atext">{r.label}</span>
+                  <span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span>
+                </div>
+                <Bar value={exp.grandTotal > 0 ? (r.value / exp.grandTotal) * 100 : 0} color={r.color} />
               </div>
-              <Bar value={exp.grandTotal > 0 ? (r.value / exp.grandTotal) * 100 : 0} color={r.color} />
+            ))}
+            <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
+              <span>Total expenses</span><span className="text-aneg">{fmtK(exp.grandTotal)}</span>
             </div>
-          ))}
-          <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
-            <span>Total expenses</span><span className="text-aneg">{fmtK(exp.grandTotal)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Bank loan card */}
-      {career.bankLoan && (
-        <div className={`${css.panel} p-5`}>
-          <h3 className={`${css.h1} text-2xl mb-2`}>BANK LOAN</h3>
-          <div className="grid sm:grid-cols-3 gap-3 text-sm">
-            <div><div className={css.label}>Principal</div><div className="font-display text-2xl">{fmtK(career.bankLoan.principal)}</div></div>
-            <div><div className={css.label}>Weeks left</div><div className="font-display text-2xl">{career.bankLoan.weeksRemaining}</div></div>
-            <div><div className={css.label}>Interest / wk</div><div className="font-display text-2xl text-aneg">{fmtK(career.bankLoan.interestPerWeek)}</div></div>
+            <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
+              <span className={net >= 0 ? 'text-apos' : 'text-aneg'}>Net projection</span>
+              <span className={`font-display ${net >= 0 ? 'text-apos' : 'text-aneg'}`}>{fmtK(net)}</span>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Weekly cashflow chart */}
-      <div className={`${css.panel} p-5`}>
-        <h3 className={`${css.h1} text-2xl mb-3`}>CASH FLOW (BY CALENDAR WEEK)</h3>
-        {(career.weeklyHistory || []).length === 0 ? (
-          <div className="text-sm text-atext-dim py-8 text-center">No ledger entries yet — advance the schedule (each new day accrues operating cash).</div>
-        ) : (
-          <div className="flex items-end gap-1 h-40">
-            {career.weeklyHistory.map((w, i) => {
-              const max = Math.max(...career.weeklyHistory.map(x => Math.abs(x.profit ?? 0)));
-              const h = max === 0 ? 0 : (Math.abs(w.profit ?? 0) / max) * 100;
+      {/* ── CASH FLOW ── */}
+      {finTab === 'cashflow' && <CashflowChart career={career} />}
+
+      {/* ── DEBT & VENUES ── */}
+      {finTab === 'debt' && (
+        <div className="space-y-4">
+          {career.bankLoan ? (
+            <div className={`${css.panel} p-5`}>
+              <h3 className={`${css.h1} text-2xl mb-3`}>BANK LOAN</h3>
+              <div className="grid sm:grid-cols-3 gap-3">
+                <div><div className={css.label}>Principal</div><div className="font-display text-2xl">{fmtK(career.bankLoan.principal)}</div></div>
+                <div><div className={css.label}>Weeks left</div><div className="font-display text-2xl">{career.bankLoan.weeksRemaining}</div></div>
+                <div><div className={css.label}>Interest / wk</div><div className="font-display text-2xl text-aneg">{fmtK(career.bankLoan.interestPerWeek)}</div></div>
+              </div>
+            </div>
+          ) : (
+            <div className={`${css.inset} p-4 text-sm text-atext-dim`}>No outstanding loans.</div>
+          )}
+
+          {/* Gaming / social venue */}
+          {(tier === 1 || tier === 2) && (
+            <div className={`${css.panel} p-5`}>
+              <div className="flex items-start gap-2 mb-3">
+                <Landmark className="w-4 h-4 text-aaccent mt-0.5 flex-shrink-0" />
+                <h3 className={`${css.h1} text-2xl`}>GAMING / SOCIAL VENUE</h3>
+              </div>
+              {career.gamingVenue ? (
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div>
+                      <div className={css.label}>Current venue</div>
+                      <div className="font-bold text-atext">{GAMING_VENUE.types[career.gamingVenue.type]?.label} · Level {career.gamingVenue.level}</div>
+                    </div>
+                    <div className="ml-auto text-right">
+                      <div className={css.label}>Annual revenue</div>
+                      <div className="font-display text-2xl text-[#F59E0B]">{fmtK(gamingVenueAnnualRevenue(career))}</div>
+                    </div>
+                  </div>
+                  <div className="text-xs text-atext-mute mb-3">Community rating impact: <span className="text-aneg">{GAMING_VENUE.types[career.gamingVenue.type]?.communityRatingHit} per level</span></div>
+                  {career.gamingVenue.level < GAMING_VENUE.maxLevel && (
+                    <button type="button"
+                      onClick={() => { const patch = investInGamingVenue(career, career.gamingVenue.type); if (patch && updateCareer) updateCareer(patch); }}
+                      className={`${css.btnPrimary} text-xs px-4 py-2`}>
+                      Expand to Level {career.gamingVenue.level + 1} (${Math.round(GAMING_VENUE.types[career.gamingVenue.type]?.investmentCost * GAMING_VENUE.upgradeCostMultiplier).toLocaleString()})
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <p className="text-xs text-atext-dim mb-4">Invest in a venue for large recurring annual revenue. A strategic — and somewhat controversial — choice. Pokies earn the most but take a significant community-reputation hit.</p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    {Object.entries(GAMING_VENUE.types).map(([type, def]) => (
+                      <div key={type} className={`${css.inset} p-4`}>
+                        <div className="font-bold text-atext mb-1">{def.label}</div>
+                        <div className="text-xs text-atext-dim mb-2">{def.description}</div>
+                        <div className="text-xs mb-1">Revenue: <span className="text-[#F59E0B] font-bold">{fmtK(def.annualRevenueBase)}/yr</span></div>
+                        <div className="text-xs mb-3">Community hit: <span className="text-aneg font-bold">{def.communityRatingHit}</span></div>
+                        <button type="button"
+                          disabled={(career.finance?.cash ?? 0) < def.investmentCost}
+                          onClick={() => { const patch = investInGamingVenue(career, type); if (patch && updateCareer) updateCareer(patch); }}
+                          className={(career.finance?.cash ?? 0) >= def.investmentCost ? `${css.btnPrimary} w-full text-xs py-2` : 'w-full text-xs py-2 rounded-lg bg-apanel-2 text-atext-mute cursor-not-allowed'}>
+                          Invest {fmtK(def.investmentCost)}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CashflowChart({ career }) {
+  const history = career.weeklyHistory || [];
+  return (
+    <div className={`${css.panel} p-5`}>
+      <h3 className={`${css.h1} text-2xl mb-3`}>CASH FLOW (BY CALENDAR WEEK)</h3>
+      {history.length === 0 ? (
+        <div className="text-sm text-atext-dim py-8 text-center">No ledger entries yet — advance the schedule to start tracking.</div>
+      ) : (
+        <>
+          {/* Balance line chart */}
+          <div className="relative h-36 mb-2">
+            {(() => {
+              const vals = history.map(w => w.cash ?? 0);
+              const minV = Math.min(0, ...vals);
+              const maxV = Math.max(0, ...vals);
+              const range = Math.max(1, maxV - minV);
+              const pct = (v) => ((v - minV) / range) * 100;
+              const zeroY = pct(0);
               return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1" title={`Week ${w.week}: ${fmtK(w.profit)}`}>
-                  <div className="w-full rounded-t" style={{ height: `${h}%`, background: (w.profit ?? 0) >= 0 ? "var(--A-pos)" : "var(--A-neg)", opacity: 0.85 }} />
-                  <div className="text-[9px] text-atext-dim">R{w.week}</div>
+                <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${history.length} 100`} preserveAspectRatio="none">
+                  {/* Zero line */}
+                  <line x1="0" y1={100 - zeroY} x2={history.length} y2={100 - zeroY} stroke="var(--A-line)" strokeWidth="0.5" />
+                  {/* Balance area */}
+                  <polyline
+                    points={history.map((w, i) => `${i + 0.5},${100 - pct(w.cash ?? 0)}`).join(' ')}
+                    fill="none" stroke="var(--A-accent)" strokeWidth="1.5" vectorEffect="non-scaling-stroke"
+                  />
+                  {/* Fill below/above zero */}
+                  <polygon
+                    points={[
+                      ...history.map((w, i) => `${i + 0.5},${100 - pct(w.cash ?? 0)}`),
+                      `${history.length - 0.5},${100 - zeroY}`,
+                      `0.5,${100 - zeroY}`,
+                    ].join(' ')}
+                    fill="var(--A-accent)" fillOpacity="0.08"
+                  />
+                </svg>
+              );
+            })()}
+          </div>
+          {/* Weekly bars (profit/loss per week) */}
+          <div className="flex items-end gap-0.5 h-16">
+            {history.map((w, i) => {
+              const max = Math.max(1, ...history.map(x => Math.abs(x.profit ?? 0)));
+              const h = (Math.abs(w.profit ?? 0) / max) * 100;
+              return (
+                <div key={i} className="flex-1" title={`Week ${w.week}: ${(w.profit ?? 0) >= 0 ? '+' : ''}${fmtK(w.profit)}`}>
+                  <div className="w-full rounded-t" style={{ height: `${h}%`, background: (w.profit ?? 0) >= 0 ? "var(--A-pos)" : "var(--A-neg)", opacity: 0.7 }} />
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
+          <div className="flex justify-between text-[9px] text-atext-mute mt-1">
+            <span>Week 1</span><span>↑ balance line &nbsp; ↓ weekly P&L</span><span>Now</span>
+          </div>
+        </>
+      )}
     </div>
   );
 }
