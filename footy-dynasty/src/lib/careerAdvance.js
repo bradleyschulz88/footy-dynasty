@@ -57,12 +57,15 @@ import {
   TIER3_PROMOTION_TITLE_REQ,
 } from './promotionPlayoff.js';
 import {
-  recomputeAnnualIncome, tickWeeklyCashflow,
+  recomputeAnnualIncome, tickWeeklyCashflow, tickGrassrootsFinance,
   cashCrisisLevel, applyPrizeMoney, applyPromotionRipple,
   effectiveInjuryRate, annualNetProjection,
   refillTransferBudget,
   effectiveWageCap, currentPlayerWageBill,
-  matchDayRevenue,
+  matchDayRevenue, grassrootsCanteenIncome, grassrootsPerGameExpenses,
+  collectRegistrationFees, applyMembershipMilestone,
+  pickBoardFinancialObjective, evaluateBoardFinancialObjective,
+  leagueTierOf,
 } from './finance/engine.js';
 import {
   tickSponsorYears, proposalForRenewal, generateSponsorOffers,
@@ -70,7 +73,7 @@ import {
 import { buildRenewalQueue, buildAutoRenewList } from './finance/contracts.js';
 import { buildStaffRenewalQueue, flushUnhandledStaffRenewals } from './staffRenewals.js';
 import {
-  INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT,
+  INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, T4_COMMUNITY,
 } from './finance/constants.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
@@ -1091,8 +1094,57 @@ function finishSeason(c, league) {
     c.sponsorOffers = backfill;
   }
 
+  // ── Membership milestone adjustments (persistent base multiplier) ──────────
+  c.membershipBase = applyMembershipMilestone(c, {
+    premiership: champion,
+    finalsAppearance: madeFinalsRound && !champion,
+    promoted,
+    relegated,
+    woodenSpoon: myPos === sorted.length,
+  });
+
+  // ── Board financial objective evaluation ─────────────────────────────────
+  if (league.tier < 4) {
+    const seasonNet = c.finance.cash - (c._seasonStartCash ?? c.finance.cash);
+    const totalBudget = c.finance.transferBudget ?? 0;
+    const spentBudget = Math.max(0, (c._seasonStartTransferBudget ?? totalBudget) - totalBudget);
+    const spentFraction = (c._seasonStartTransferBudget ?? 0) > 0
+      ? spentBudget / c._seasonStartTransferBudget
+      : 0;
+    const debtReduced = !c.bankLoan && !!c._seasonHadLoan;
+    const objResult = evaluateBoardFinancialObjective(c, {
+      seasonNet, transferSpentFraction: spentFraction, debtReduced,
+    });
+    if (objResult.met !== null) {
+      ensureCareerBoard(c, findClub(c.clubId), PYRAMID[c.leagueKey] || league);
+      applyBoardConfidenceDelta(c, objResult.delta);
+      c.news = [{
+        week: 0, type: objResult.met ? 'win' : 'loss',
+        text: objResult.met
+          ? `💼 Financial objective met — "${objResult.label}". Board confidence up.`
+          : `💼 Financial objective missed — "${objResult.label}". Board expects better.`,
+      }, ...(c.news || [])].slice(0, 25);
+    }
+  }
+  // Snapshot carry-forwards for next season's evaluation
+  c._seasonStartCash = c.finance.cash;
+  c._seasonStartTransferBudget = refillTransferBudget(c);
+  c._seasonHadLoan = !!c.bankLoan;
+
+  // ── Set next season's board financial objective ──────────────────────────
+  if (league.tier < 4) {
+    c.boardFinancialObjective = pickBoardFinancialObjective(c);
+  } else {
+    c.boardFinancialObjective = null;
+    // Reset T4 season-scoped state
+    c.t4GrantsThisSeason = 0;
+    c.t4SponsorHuntActive = false;
+    c.t4GrantApplicationPending = false;
+    c.t4GrantResultWeek = null;
+  }
+
   const beforeBudget = c.finance.transferBudget ?? 0;
-  c.finance.transferBudget = refillTransferBudget(c);
+  c.finance.transferBudget = c._seasonStartTransferBudget;
   const budgetChange = c.finance.transferBudget - beforeBudget;
 
   c.finance.annualIncome = recomputeAnnualIncome(c);
@@ -1125,6 +1177,26 @@ function finishSeason(c, league) {
   c.cashCrisisLevel = c.finance.cash < 0 ? 1 : 0;
   c.fundraisersUsed = {};
   c.communityGrantUsed = false;
+
+  // T4 season-start: collect registration fees + deduct annual fixed costs.
+  if (league.tier === 4) {
+    const regFees = collectRegistrationFees(c);
+    const annualFixed = T4_COMMUNITY.affiliationFeeAnnual + T4_COMMUNITY.insuranceAnnual;
+    const equip = rand(T4_COMMUNITY.equipmentAnnual.min, T4_COMMUNITY.equipmentAnnual.max);
+    c.finance.cash += regFees - annualFixed - equip;
+    c.news = [{
+      week: 0, type: 'info',
+      text: `📝 Season started: registration fees +$${regFees.toLocaleString()} · affiliation/insurance/equipment −$${(annualFixed + equip).toLocaleString()}`,
+    }, ...(c.news || [])].slice(0, 25);
+  }
+
+  // T4 fundraisers also available (same as Tier 3, with committee tone)
+  if (league.tier === 4) {
+    c.t4GrantsThisSeason = 0;
+    c.t4SponsorHuntActive = false;
+    c.t4GrantApplicationPending = false;
+    c.t4GrantResultWeek = null;
+  }
 
   c.lastEosFinance = {
     prizeMoney: prize.events.reduce((a, e) => a + e.amount, 0),
@@ -1278,13 +1350,58 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
   c.phase = ev.phase || 'preseason';
   c.eventQueue[evIdx] = { ...ev, completed: true };
 
-  // Operating cashflow: one accrual per distinct calendar day (`tickWeeklyCashflow` uses `lastFinanceTickDay`).
-  const financePulse = tickWeeklyCashflow(c);
-  if (financePulse !== 0) {
+  // Operating cashflow: one accrual per distinct calendar day.
+  // Tier 4 uses a stripped grassroots tick (no wages, no broadcast, sponsor only).
+  const isGrassroots = (league?.tier ?? 3) === 4;
+  const financePulse = isGrassroots ? tickGrassrootsFinance(c) : tickWeeklyCashflow(c);
+  if (financePulse !== 0 && !isGrassroots) {
     weeklyClubOperationsPulse(c, league?.tier ?? 3);
   }
+
+  // T4 cash-shortage escalation: no sacking — instead push the coach to find
+  // a sponsor or lodge a grant application to cover the shortfall.
+  if (isGrassroots && (c.finance?.cash ?? 0) < 0) {
+    const weeksNeg = (c.week ?? 0) - (c.cashCrisisStartWeek ?? c.week ?? 0);
+    if (weeksNeg >= T4_COMMUNITY.cashShortageGrantWeeks && !c.t4GrantApplicationPending) {
+      c.t4GrantApplicationPending = true;
+      c.t4GrantResultWeek = (c.week ?? 0) + 3;
+      c.news = [{ week: c.week, type: 'loss',
+        text: `🏛️ The committee has lodged an emergency council grant application. A decision is expected in 2–3 weeks.` },
+      ...(c.news || [])].slice(0, 25);
+    } else if (weeksNeg >= T4_COMMUNITY.cashShortageHuntWeeks && !c.t4SponsorHuntActive && !c.t4GrantApplicationPending) {
+      c.t4SponsorHuntActive = true;
+      c.sponsorOffers = generateSponsorOffers(c, 4, 3);
+      c.news = [{ week: c.week, type: 'loss',
+        text: `💸 The club is running out of money. The committee needs a local sponsor deal — check the Sponsors tab.` },
+      ...(c.news || [])].slice(0, 25);
+    }
+  }
+  // Resolve pending T4 grant application
+  if (isGrassroots && c.t4GrantApplicationPending && c.t4GrantResultWeek != null && (c.week ?? 0) >= c.t4GrantResultWeek) {
+    const won = rng() < 0.55; // 55% success rate
+    if (won) {
+      const grant = rand(COMMUNITY_GRANT.min, COMMUNITY_GRANT.max);
+      c.finance.cash += grant;
+      c.t4GrantsThisSeason = (c.t4GrantsThisSeason ?? 0) + grant;
+      c.news = [{ week: c.week, type: 'win',
+        text: `🤝 Council grant approved: +$${grant.toLocaleString()}! The money comes just in time.` },
+      ...(c.news || [])].slice(0, 25);
+    } else {
+      c.news = [{ week: c.week, type: 'loss',
+        text: `🏛️ Grant application unsuccessful. The council funded other priorities this round — time to find a sponsor.` },
+      ...(c.news || [])].slice(0, 25);
+      // Fall through to sponsor hunt if still short
+      if ((c.finance?.cash ?? 0) < 0 && !c.t4SponsorHuntActive) {
+        c.t4SponsorHuntActive = true;
+        c.sponsorOffers = generateSponsorOffers(c, 4, 3);
+      }
+    }
+    c.t4GrantApplicationPending = false;
+    c.t4GrantResultWeek = null;
+  }
+
   const prevCrisis = c.cashCrisisLevel ?? 0;
-  c.cashCrisisLevel = cashCrisisLevel(c);
+  c.cashCrisisLevel = isGrassroots ? 0 : cashCrisisLevel(c);
   if (c.cashCrisisLevel >= 1 && (c.cashCrisisStartWeek == null || c.cashCrisisStartWeek > c.week)) {
     c.cashCrisisStartWeek = c.week;
   }
@@ -1375,7 +1492,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 
     applyCaptainWeeklyEffect(c, c.difficulty);
 
-    if (league.tier === 3 && rng() < 0.18) {
+    if ((league.tier === 3 || league.tier === 4) && rng() < 0.18) {
       const keys = Object.keys(FUNDRAISERS);
       const eligible = keys.filter((k) => !((c.fundraisersUsed?.[k]) >= 2));
       if (eligible.length > 0) {
@@ -1387,10 +1504,11 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         c.news = [{ week: c.week, type: 'info', text: `🎟️ ${def.labelEvent} raised $${income} for the club. Volunteers, you legends.` }, ...(c.news || [])].slice(0, 25);
       }
     }
-    if (league.tier === 3 && !c.communityGrantUsed && (c.finance?.boardConfidence ?? 0) >= COMMUNITY_GRANT.boardConfidenceFloor && rng() < 0.06) {
+    if ((league.tier === 3 || league.tier === 4) && !c.communityGrantUsed && rng() < 0.06) {
       const grant = rand(COMMUNITY_GRANT.min, COMMUNITY_GRANT.max);
       c.finance.cash += grant;
       c.communityGrantUsed = true;
+      if (league.tier === 4) c.t4GrantsThisSeason = (c.t4GrantsThisSeason ?? 0) + grant;
       c.news = [{ week: c.week, type: 'win', text: `🤝 Community grant approved: +$${grant.toLocaleString()}. The council came through.` }, ...(c.news || [])].slice(0, 25);
     }
 
@@ -1843,7 +1961,21 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   // Per-match revenue: gate (home only) + broadcast/TV (every match) +
   // sponsor activation (every match). This is the club's live, event-driven
   // income — earned each time it plays, not smoothed across the calendar.
-  const rev = matchDayRevenue(c, { isHome, leagueTier: league.tier });
+  // T4 junior clubs get canteen/BBQ income on home days instead of gate + TV.
+  const isT4 = league.tier === 4;
+  if (isT4) {
+    const canteen = isHome ? grassrootsCanteenIncome() : 0;
+    const gameExpenses = grassrootsPerGameExpenses();
+    const netGameDay = canteen - (isHome ? gameExpenses : Math.round(gameExpenses * 0.4));
+    c.finance.cash += netGameDay;
+    c.lastMatchRevenue = { total: netGameDay, canteen, gameExpenses, isHome, round: meta.round, opp: myResult.opp?.short || null };
+    if (isHome) {
+      c.news = [{ week: meta.round, type: netGameDay >= 0 ? 'info' : 'loss',
+        text: `🍖 Home game day: canteen ${canteen >= 0 ? '+' : ''}$${canteen} · ground/umpires −$${gameExpenses} · net ${netGameDay >= 0 ? '+' : ''}$${netGameDay}` },
+      ...(c.news || [])].slice(0, 14);
+    }
+  }
+  const rev = isT4 ? { total: 0, gate: 0, broadcast: 0, sponsor: 0, attendance: 0, isHome } : matchDayRevenue(c, { isHome, leagueTier: league.tier });
   const isDerby = !!(c.rivalClubId && myResult.opp?.id === c.rivalClubId);
   const derbyGateBonus = isDerby && isHome ? Math.round(rev.gate * 0.5) : 0;
   c.finance.cash += rev.total + derbyGateBonus;

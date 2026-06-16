@@ -9,6 +9,7 @@ import {
   TRANSFER_BUDGET_ROLLOVER_FRACTION,
   CONTINUOUS_INCOME_FRACTION, BROADCAST_PER_MATCH, SEASON_MATCHES_EST,
   TICKET_PRICE, BASE_ATTENDANCE,
+  T4_COMMUNITY, GAMING_VENUE, MEMBERSHIP_MILESTONES, BOARD_FINANCIAL_OBJECTIVES,
 } from './constants.js';
 import { getDifficultyConfig } from '../difficulty.js';
 import { findLeagueOf, PYRAMID } from '../../data/pyramid.js';
@@ -40,20 +41,53 @@ function fromTier(table, career, fallback = 0) {
 // Income / expenses (annualised)
 // =============================================================================
 
-// Recompute annualIncome dynamically based on tier base + ladder + fans + stadium
+// Annual revenue from a gaming / social venue (Tier 1–2 optional investment).
+export function gamingVenueAnnualRevenue(career) {
+  const venue = career.gamingVenue;
+  if (!venue) return 0;
+  const def = GAMING_VENUE.types[venue.type];
+  if (!def) return 0;
+  return def.annualRevenueBase + def.annualRevenuePerLevel * ((venue.level ?? 1) - 1);
+}
+
+// Invest in / upgrade a gaming or social venue. Returns a career patch.
+export function investInGamingVenue(career, type) {
+  const def = GAMING_VENUE.types[type];
+  if (!def) return null;
+  const existing = career.gamingVenue;
+  const isNew = !existing || existing.type !== type;
+  const currentLevel = isNew ? 0 : (existing.level ?? 1);
+  if (currentLevel >= GAMING_VENUE.maxLevel) return null;
+  const cost = isNew ? def.investmentCost
+    : Math.round(def.investmentCost * GAMING_VENUE.upgradeCostMultiplier);
+  if ((career.finance?.cash ?? 0) < cost) return null;
+  return {
+    finance: { ...career.finance, cash: (career.finance?.cash ?? 0) - cost },
+    gamingVenue: { type, level: isNew ? 1 : currentLevel + 1 },
+    // Community rating hit accumulates per level.
+    communityRating: clamp((career.communityRating ?? 70) + def.communityRatingHit, 0, 100),
+  };
+}
+
+// Recompute annualIncome dynamically based on tier base + ladder + fans + stadium.
+// Uses career.membershipBase (default 1.0) as a persistent membership health multiplier
+// that grows with finals appearances / premierships and shrinks on relegation.
 export function recomputeAnnualIncome(career) {
+  const tier = leagueTierOf(career);
+  if (tier === 4) return 0; // T4 uses the grassroots model, not this
   const tierBase = fromTier(TIER_FINANCE, career, { annualIncome: 200_000 }).annualIncome;
+  const membershipBase = clamp(career.membershipBase ?? 1.0, 0.5, 2.5);
   const stadiumLevel = career.facilities?.stadium?.level ?? 1;
   const fanHappiness = career.finance?.fanHappiness ?? 60;
-  // Ladder bonus: top of table earns more, bottom earns less
   const ladderRow = (career.ladder || []).slice().sort((a, b) => (b.pts ?? 0) - (a.pts ?? 0));
   const myIdx = ladderRow.findIndex(r => r.id === career.clubId);
   const ladderMult = ladderRow.length > 0 && myIdx >= 0
-    ? 1 + (0.30 - (myIdx / Math.max(1, ladderRow.length - 1)) * 0.45)  // 1st = 1.30, last ≈ 0.85
+    ? 1 + (0.30 - (myIdx / Math.max(1, ladderRow.length - 1)) * 0.45)
     : 1.0;
-  const fanMult = 0.75 + (fanHappiness / 100) * 0.5;                    // 0.75–1.25
-  const stadiumMult = 0.85 + ((stadiumLevel - 1) / 4) * 0.40;           // L1=0.85, L5=1.25
-  return Math.round(tierBase * ladderMult * fanMult * stadiumMult);
+  const fanMult = 0.75 + (fanHappiness / 100) * 0.5;
+  const stadiumMult = 0.85 + ((stadiumLevel - 1) / 4) * 0.40;
+  const gaming = gamingVenueAnnualRevenue(career);
+  return Math.round(tierBase * membershipBase * ladderMult * fanMult * stadiumMult) + gaming;
 }
 
 // Annual upkeep for all facilities at the current tier.
@@ -124,9 +158,10 @@ export function incomeBreakdown(career) {
   const merchandise = Math.round(total * INCOME_MIX.merchandise);
   const sponsors    = annualSponsorIncome(career);
 
+  const gaming = gamingVenueAnnualRevenue(career);
   return {
-    broadcast, gate, membership, merchandise, sponsors,
-    grandTotal: broadcast + gate + membership + merchandise + sponsors,
+    broadcast, gate, membership, merchandise, sponsors, gaming,
+    grandTotal: broadcast + gate + membership + merchandise + sponsors + gaming,
   };
 }
 
@@ -219,6 +254,159 @@ export function tickWeeklyCashflow(c) {
   }
 
   return delta;
+}
+
+// =============================================================================
+// Tier 4 / Grassroots community finance
+// =============================================================================
+
+// Annual grassroots income for UI projection (not the live event-driven amounts).
+export function grassrootsIncomeBreakdown(career) {
+  const sponsors  = annualSponsorIncome(career);
+  const listSize  = (career.squad || []).length;
+  const regFees   = listSize * T4_COMMUNITY.registrationFeePerPlayer;
+  const homeGames = Math.round(SEASON_MATCHES_EST / 2);
+  const canteen   = homeGames * ((T4_COMMUNITY.canteenPerHomeGame.min + T4_COMMUNITY.canteenPerHomeGame.max) / 2);
+  const grants    = career.t4GrantsThisSeason ?? 0;
+  return {
+    sponsors, regFees, canteen, grants,
+    grandTotal: sponsors + regFees + canteen + grants,
+  };
+}
+
+// Annual grassroots expenses for UI projection.
+export function grassrootsExpenseBreakdown(career) {
+  const fixed      = T4_COMMUNITY.affiliationFeeAnnual + T4_COMMUNITY.insuranceAnnual;
+  const equip      = (T4_COMMUNITY.equipmentAnnual.min + T4_COMMUNITY.equipmentAnnual.max) / 2;
+  const homeGames  = Math.round(SEASON_MATCHES_EST / 2);
+  const groundHire = homeGames * T4_COMMUNITY.groundHirePerGame;
+  const umpires    = SEASON_MATCHES_EST * T4_COMMUNITY.umpireFeePerGame;
+  const facilities = annualFacilityUpkeep(career);
+  return {
+    affiliation: T4_COMMUNITY.affiliationFeeAnnual,
+    insurance: T4_COMMUNITY.insuranceAnnual,
+    equipment: equip,
+    groundHire,
+    umpires,
+    facilities,
+    grandTotal: fixed + equip + groundHire + umpires + facilities,
+  };
+}
+
+// Canteen/BBQ income for a single home game (random within range).
+export function grassrootsCanteenIncome() {
+  const { min, max } = T4_COMMUNITY.canteenPerHomeGame;
+  return Math.round(min + rng() * (max - min));
+}
+
+// Per-game operating expenses for a junior club.
+export function grassrootsPerGameExpenses() {
+  return T4_COMMUNITY.groundHirePerGame + T4_COMMUNITY.umpireFeePerGame;
+}
+
+// Season-start registration fee collection for a T4 club.
+export function collectRegistrationFees(career) {
+  const listSize = (career.squad || []).length;
+  return listSize * T4_COMMUNITY.registrationFeePerPlayer;
+}
+
+// Daily cashflow tick for a junior (Tier 4) club — replaces tickWeeklyCashflow.
+// No wages, no broadcast, no gate income. Only local sponsorship accrues daily;
+// registration fees, canteen and grants are event-driven (see careerAdvance.js).
+export function tickGrassrootsFinance(c) {
+  if (!c?.currentDate) return 0;
+  const day = c.currentDate;
+  if (c.lastFinanceTickDay === day) return 0;
+
+  const dayIncome   = Math.round(annualSponsorIncome(c) / 365);
+  const dayExpenses = Math.round(annualFacilityUpkeep(c) / 365);
+  const delta = dayIncome - dayExpenses;
+
+  c.finance.cash += delta;
+  c.lastFinanceTickDay = day;
+
+  const isoKey = `${day.slice(0, 4)}-W${isoWeekOf(day)}`;
+  c.lastFinanceTickWeek = isoKey;
+
+  const hist = c.weeklyHistory || [];
+  const last = hist[hist.length - 1];
+  if (last && last.isoKey === isoKey) {
+    last.profit   = (last.profit ?? 0) + delta;
+    last.cash     = c.finance.cash;
+    last.income   = (last.income ?? 0) + dayIncome;
+    last.expenses = (last.expenses ?? 0) + dayExpenses;
+  } else {
+    hist.push({ isoKey, week: c.week ?? 0, profit: delta, cash: c.finance.cash, income: dayIncome, expenses: dayExpenses });
+  }
+  c.weeklyHistory = hist.slice(-52);
+
+  // Shortage tracking (no sacking path at T4 — handled as sponsor-hunt / grant events).
+  if (c.finance.cash < 0) {
+    c.cashCrisisStartWeek = c.cashCrisisStartWeek ?? c.week ?? 0;
+  } else {
+    c.cashCrisisStartWeek = null;
+    c.cashCrisisLevel = 0;
+  }
+
+  return delta;
+}
+
+// =============================================================================
+// Membership milestone adjustments (call at season end)
+// =============================================================================
+
+export function applyMembershipMilestone(career, args) {
+  let base = career.membershipBase ?? 1.0;
+  if (args.premiership)      base += MEMBERSHIP_MILESTONES.premiership;
+  if (args.finalsAppearance) base += MEMBERSHIP_MILESTONES.finalsAppearance;
+  if (args.promoted)         base += MEMBERSHIP_MILESTONES.promoted;
+  if (args.relegated)        base += MEMBERSHIP_MILESTONES.relegated;
+  if (args.woodenSpoon)      base += MEMBERSHIP_MILESTONES.woodenSpoon;
+  return clamp(base, 0.5, 2.5);
+}
+
+// =============================================================================
+// Board financial objective — set each season, evaluated at season end
+// =============================================================================
+
+// Pick which financial objective the board sets for this season.
+// Rich, healthy clubs in Tier 1 favour "invest to win"; struggling clubs favour
+// "break even"; clubs with loans get "reduce liabilities".
+export function pickBoardFinancialObjective(career) {
+  const tier = leagueTierOf(career);
+  const net = annualNetProjection(career);
+  const hasLoan = !!career.bankLoan;
+  const transferBudget = career.finance?.transferBudget ?? 0;
+
+  if (hasLoan) return 'reduceLiabilities';
+  if (net < 0)  return 'breakEven';
+  if (tier === 1 && transferBudget > 500_000) return 'investToWin';
+  if (net > 0 && net > recomputeAnnualIncome(career) * 0.05) return 'profitTarget';
+  return 'breakEven';
+}
+
+// Evaluate whether the current season met the board's financial objective.
+// Returns { met: bool, delta: number } — caller applies delta to boardConfidence.
+export function evaluateBoardFinancialObjective(career, args) {
+  const objKey = career.boardFinancialObjective;
+  const def = BOARD_FINANCIAL_OBJECTIVES[objKey];
+  if (!def || !objKey) return { met: null, delta: 0 };
+
+  const seasonNet = args.seasonNet ?? 0;
+  const transferSpentFraction = args.transferSpentFraction ?? 0;
+  const debtReduced = args.debtReduced ?? false;
+
+  let met = false;
+  if (objKey === 'breakEven')         met = seasonNet >= 0;
+  if (objKey === 'profitTarget')      met = seasonNet >= (recomputeAnnualIncome(career) * 0.08);
+  if (objKey === 'investToWin')       met = transferSpentFraction >= 0.70;
+  if (objKey === 'reduceLiabilities') met = debtReduced || (seasonNet > 0 && !career.bankLoan);
+
+  return {
+    met,
+    delta: met ? def.confidenceReward : def.confidencePenalty,
+    label: def.label,
+  };
 }
 
 // =============================================================================

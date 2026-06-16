@@ -153,3 +153,103 @@ export const BASE_ATTENDANCE = { 1: 35_000, 2: 4_000, 3: 350 };
 
 // Transfer budget — how much unused budget rolls over season-to-season.
 export const TRANSFER_BUDGET_ROLLOVER_FRACTION = 0.30;
+
+// ---------------------------------------------------------------------------
+// Tier 4 / Grassroots community club budget constants.
+// No wages, no broadcast, no gate — the loop is cash-flow survival, fundraising
+// and keeping the local sponsor happy.
+// ---------------------------------------------------------------------------
+export const T4_COMMUNITY = {
+  // Net registration income per listed player at the start of each season
+  // (after the federation levy is deducted).
+  registrationFeePerPlayer: 200,
+
+  // Canteen / BBQ takings per home game. The randomised swing represents weather,
+  // crowd size, volunteers showing up, and how well the pie warmer is stocked.
+  canteenPerHomeGame: { min: 200, max: 600 },
+
+  // Per-game operating costs (home games only — away travel is on the other club).
+  groundHirePerGame: 300,
+  umpireFeePerGame: 120,
+
+  // Annual fixed costs regardless of season outcome.
+  affiliationFeeAnnual: 800,
+  insuranceAnnual: 1_200,
+  equipmentAnnual: { min: 600, max: 1_500 }, // balls, training aids, first-aid kit
+
+  // Cash-shortage escalation thresholds (weeks negative before each event fires).
+  cashShortageHuntWeeks:  2, // → generate local sponsor offers, push player to Sponsors tab
+  cashShortageGrantWeeks: 4, // → lodge an emergency grant application (result in 2–3 weeks)
+};
+
+// ---------------------------------------------------------------------------
+// Board financial objectives — set each season, evaluated at season end.
+// The board picks one based on the club's financial health.
+// ---------------------------------------------------------------------------
+export const BOARD_FINANCIAL_OBJECTIVES = {
+  breakEven: {
+    label: 'Break Even',
+    description: 'End the season without running a loss.',
+    confidenceReward: 8,
+    confidencePenalty: -6,
+  },
+  profitTarget: {
+    label: 'Return a Profit',
+    description: 'Generate a meaningful surplus to strengthen reserves.',
+    // threshold set dynamically at 8% of annual income projection
+    confidenceReward: 10,
+    confidencePenalty: -8,
+  },
+  investToWin: {
+    label: 'Invest in the List',
+    description: 'Spend at least 70% of the transfer budget — the board wants results, not savings.',
+    confidenceReward: 8,
+    confidencePenalty: -5,
+  },
+  reduceLiabilities: {
+    label: 'Reduce Financial Exposure',
+    description: 'Repay debt or grow cash reserves — financial discipline is the priority.',
+    confidenceReward: 12,
+    confidencePenalty: -8,
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Gaming / social venue investment — Tier 1–2 optional strategic decision.
+// A real AFL mechanic: clubs own pokies and social venues for large recurring
+// revenue, at a cost to community reputation.
+// ---------------------------------------------------------------------------
+export const GAMING_VENUE = {
+  types: {
+    socialClub: {
+      label: 'Social Club',
+      description: 'Bar, bistro and function rooms. Good revenue, minimal controversy.',
+      investmentCost: 500_000,
+      annualRevenueBase: 350_000,
+      annualRevenuePerLevel: 150_000,
+      communityRatingHit: -3,
+    },
+    pokies: {
+      label: 'Gaming Lounge (Pokies)',
+      description: 'Maximum revenue — but a significant community reputation hit that grows with each expansion.',
+      investmentCost: 1_500_000,
+      annualRevenueBase: 900_000,
+      annualRevenuePerLevel: 420_000,
+      communityRatingHit: -12,
+    },
+  },
+  maxLevel: 3,
+  upgradeCostMultiplier: 0.6, // subsequent levels cost 60% of initial investment
+};
+
+// ---------------------------------------------------------------------------
+// Membership milestone multipliers — permanently adjust career.membershipBase
+// (starts at 1.0) after key season outcomes.
+// ---------------------------------------------------------------------------
+export const MEMBERSHIP_MILESTONES = {
+  premiership:      +0.15,
+  finalsAppearance: +0.04, // stacks; capped in engine at 3 consecutive
+  promoted:         +0.08,
+  relegated:        -0.12,
+  woodenSpoon:      -0.06,
+};
