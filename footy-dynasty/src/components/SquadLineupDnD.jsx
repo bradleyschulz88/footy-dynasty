@@ -35,6 +35,7 @@ import {
 } from "../lib/lineupHelpers.js";
 import { RatingDot, css } from "./primitives.jsx";
 import { LineupOvalField } from "./LineupOvalField.jsx";
+import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 
 const BENCH_TRAY_ID = "bench-tray";
 
@@ -248,7 +249,9 @@ function MobileBenchChip({ player, stitch, onSelect }) {
 /**
  * Bench ↔ match squad (18 + 5) builder for Squad → Players tab.
  */
-export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitch, onSelectPlayer }) {
+export function SquadLineupBuilder({ benchPlayerIds, stitch, onSelectPlayer }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const lineup = useMemo(() => career.lineup || [], [career.lineup]);
   const squad = useMemo(() => career.squad || [], [career.squad]);
   const benchPlayers = useMemo(
@@ -502,7 +505,9 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
 /**
  * Reorder-only sortable list for Tactics tab (same lineup order as career).
  */
-export function LineupSortablePanel({ career, updateCareer, stitch }) {
+export function LineupSortablePanel({ stitch }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const full = useMemo(() => career.lineup || [], [career.lineup]);
   const squad = useMemo(() => career.squad || [], [career.squad]);
   const lineupIds = useMemo(() => full.filter((id) => id != null && id !== ""), [full]);

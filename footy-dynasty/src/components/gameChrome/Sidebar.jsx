@@ -1,4 +1,5 @@
 import React from "react";
+import { useCareer } from "../../lib/careerStore.js";
 import {
   Home,
   Users,
@@ -15,10 +16,11 @@ import {
   tutorialHighlightScreen,
 } from "../TutorialOverlay.jsx";
 
-export function Sidebar({ screen, onNavigate, club, league, career, myLadderPos }) {
-  const season = career.season;
-  const week   = career.week;
-  const phase  = career.phase || 'preseason';
+export function Sidebar({ screen, onNavigate, club, league, myLadderPos }) {
+  const career = useCareer();
+  const season = career?.season;
+  const week   = career?.week;
+  const phase  = career?.phase || 'preseason';
   const c1 = club?.colors?.[0] ?? '#334155';
   const c2 = club?.colors?.[1] ?? '#0f172a';
   const c3 = club?.colors?.[2] ?? c1;

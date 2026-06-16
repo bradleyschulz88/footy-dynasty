@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { Landmark, Scale } from "lucide-react";
 import { css } from "../components/primitives.jsx";
 import { rollVoteOfConfidenceSurvival, voteOfConfidenceSurvivalChance } from "../lib/board.js";
+import { useCareer } from "../lib/careerStore.js";
 
 const PITCHES = [
   { id: "humble", label: "Own the slide and present a clear, week-by-week fix.", bonus: 10 },
@@ -12,7 +13,8 @@ const PITCHES = [
   { id: "fight", label: "Push back: the board must back the long-term plan in public.", bonus: -7 },
 ];
 
-export default function VoteOfConfidenceFlow({ career, club, league, onComplete }) {
+export default function VoteOfConfidenceFlow({ club, league, onComplete }) {
+  const career = useCareer();
   const [phase, setPhase] = useState(0);
   const [pitchBonus, setPitchBonus] = useState(PITCHES[0].bonus);
   const [survived, setSurvived] = useState(null);

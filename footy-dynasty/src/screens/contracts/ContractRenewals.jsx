@@ -18,8 +18,11 @@ import {
   recalcBoardConfidence,
 } from "../../lib/board.js";
 import { css, RatingDot, Stat } from "../../components/primitives.jsx";
+import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
 
-export function StaffRenewalsPanel({ career, updateCareer, leagueTier, showHeading = true }) {
+export function StaffRenewalsPanel({ leagueTier, showHeading = true }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const queue = (career.pendingStaffRenewals || []).filter((r) => !r._handled);
   const closed = career.renewalsClosed;
   const accept = (proposal) => {
@@ -91,7 +94,8 @@ export function StaffRenewalsPanel({ career, updateCareer, leagueTier, showHeadi
   );
 }
 
-export function ContractsTab({ career, updateCareer }) {
+export function ContractsTab() {
+  const career = useCareer();
   const leagueTier = PYRAMID[career.leagueKey]?.tier ?? 1;
   return (
     <div className="space-y-8">
@@ -102,9 +106,9 @@ export function ContractsTab({ career, updateCareer }) {
           In pre-season, resolve these before the first home-and-away round — the window locks when the season starts.
         </div>
       </div>
-      <ExpiringContractsList career={career} />
-      <RenewalsTab career={career} updateCareer={updateCareer} />
-      <StaffRenewalsPanel career={career} updateCareer={updateCareer} leagueTier={leagueTier} />
+      <ExpiringContractsList />
+      <RenewalsTab />
+      <StaffRenewalsPanel leagueTier={leagueTier} />
     </div>
   );
 }
@@ -115,7 +119,8 @@ export function ContractsTab({ career, updateCareer }) {
  * renewal queue (pre-season only), this is shown year-round so an expiring deal
  * is never a surprise.
  */
-export function ExpiringContractsList({ career }) {
+export function ExpiringContractsList() {
+  const career = useCareer();
   const expiring = (career.squad || [])
     .filter((p) => (p.contract ?? 99) <= 1)
     .sort((a, b) => (a.contract ?? 0) - (b.contract ?? 0));
@@ -166,7 +171,9 @@ export function ExpiringContractsList({ career }) {
   );
 }
 
-export function RenewalsTab({ career, updateCareer }) {
+export function RenewalsTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const queue = (career.pendingRenewals || []).filter(r => !r._handled);
   const renewalsLeague = PYRAMID[career.leagueKey];
   const capLimit = effectiveWageCap(career);

@@ -8,6 +8,7 @@ import { ChevronRight, Trophy, AlertCircle, Newspaper, Briefcase } from "lucide-
 import { css } from "../components/primitives.jsx";
 import { getJobInterviewQuestion, getJobFollowUpInterview } from "../lib/coachReputation.js";
 import { JobOfferCard } from "./careers/JobOfferCard.jsx";
+import { useCareer } from "../lib/careerStore.js";
 
 const STEPS = [
   { key: 'call',      title: 'THE CALL' },
@@ -17,7 +18,8 @@ const STEPS = [
   { key: 'market',    title: 'JOB MARKET' },
 ];
 
-export default function SackingSequence({ career, club, onAdvanceStep, onAcceptJob, onTakeSeasonOff, onRerollJobMarket }) {
+export default function SackingSequence({ club, onAdvanceStep, onAcceptJob, onTakeSeasonOff, onRerollJobMarket }) {
+  const career = useCareer();
   const step = Math.max(0, Math.min(STEPS.length - 1, career.sackingStep ?? 0));
   const stepKey = STEPS[step].key;
   return (
@@ -38,11 +40,11 @@ export default function SackingSequence({ career, club, onAdvanceStep, onAcceptJ
       </div>
 
       <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
-        {stepKey === 'call'     && <CallStep     career={career} club={club} onNext={() => onAdvanceStep(1)} />}
-        {stepKey === 'captain'  && <CaptainStep  career={career} club={club} onNext={() => onAdvanceStep(2)} />}
-        {stepKey === 'headline' && <HeadlineStep career={career} club={club} onNext={() => onAdvanceStep(3)} />}
-        {stepKey === 'legacy'   && <LegacyStep   career={career} club={club} onNext={() => onAdvanceStep(4)} />}
-        {stepKey === 'market'   && <JobMarketStep career={career} onAcceptJob={onAcceptJob} onTakeSeasonOff={onTakeSeasonOff} onRerollJobMarket={onRerollJobMarket} />}
+        {stepKey === 'call'     && <CallStep     club={club} onNext={() => onAdvanceStep(1)} />}
+        {stepKey === 'captain'  && <CaptainStep  club={club} onNext={() => onAdvanceStep(2)} />}
+        {stepKey === 'headline' && <HeadlineStep club={club} onNext={() => onAdvanceStep(3)} />}
+        {stepKey === 'legacy'   && <LegacyStep   club={club} onNext={() => onAdvanceStep(4)} />}
+        {stepKey === 'market'   && <JobMarketStep onAcceptJob={onAcceptJob} onTakeSeasonOff={onTakeSeasonOff} onRerollJobMarket={onRerollJobMarket} />}
       </div>
     </div>
   );
@@ -51,7 +53,8 @@ export default function SackingSequence({ career, club, onAdvanceStep, onAcceptJ
 // =============================================================================
 // Step 1 — The Call
 // =============================================================================
-function CallStep({ career, club, onNext }) {
+function CallStep({ club, onNext }) {
+  const career = useCareer();
   const chairmanName = career.gameOver?.chairmanName || `${club.short} Board`;
   const stats = career.coachStats || {};
   return (
@@ -77,7 +80,8 @@ function CallStep({ career, club, onNext }) {
 // =============================================================================
 // Step 2 — Captain's Message
 // =============================================================================
-function CaptainStep({ career, club, onNext }) {
+function CaptainStep({ club, onNext }) {
+  const career = useCareer();
   const captain = (career.squad || [])[0];
   const captainName = captain ? `${captain.firstName} ${captain.lastName}` : 'Your captain';
   const tenureBoard = career.finance?.boardConfidence ?? 30;
@@ -105,7 +109,8 @@ function CaptainStep({ career, club, onNext }) {
 // =============================================================================
 // Step 3 — The Headline
 // =============================================================================
-function HeadlineStep({ career, club, onNext }) {
+function HeadlineStep({ club, onNext }) {
+  const career = useCareer();
   const j = career.journalist || { name: 'The Press', satisfaction: 50 };
   const sat = j.satisfaction ?? 50;
   const seasons = career.coachStats?.seasonsManaged || 1;
@@ -144,7 +149,8 @@ function HeadlineStep({ career, club, onNext }) {
 // =============================================================================
 // Step 4 — Your Legacy
 // =============================================================================
-function LegacyStep({ career, club, onNext }) {
+function LegacyStep({ club, onNext }) {
+  const career = useCareer();
   const stats = career.coachStats || {};
   const games = (stats.totalWins || 0) + (stats.totalLosses || 0) + (stats.totalDraws || 0);
   const winPct = games > 0 ? Math.round((stats.totalWins || 0) / games * 100) : 0;
@@ -201,7 +207,8 @@ function LegacyTile({ label, value, accent = 'var(--A-accent)', icon: Icon }) {
 // =============================================================================
 // Step 5 — Job Market
 // =============================================================================
-function JobMarketStep({ career, onAcceptJob, onTakeSeasonOff, onRerollJobMarket }) {
+function JobMarketStep({ onAcceptJob, onTakeSeasonOff, onRerollJobMarket }) {
+  const career = useCareer();
   const offers = useMemo(() => career.jobOffers || [], [career.jobOffers]);
   const coachRep = career.coachReputation ?? 30;
   const [starredIds, setStarredIds] = useState([]);

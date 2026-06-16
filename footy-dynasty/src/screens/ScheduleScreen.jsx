@@ -1,4 +1,5 @@
 import React from "react";
+import { useCareer } from "../lib/careerStore.js";
 import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { findClub } from "../data/pyramid.js";
 import {
@@ -38,7 +39,8 @@ function daysUntil(dateStr, today) {
   return Math.round((d2 - d1) / 86400000);
 }
 
-export default function ScheduleScreen({ career, club: _club, league: _league, onOpenCompetition, onNavigate }) {
+export default function ScheduleScreen({ club: _club, league: _league, onOpenCompetition, onNavigate }) {
+  const career = useCareer();
   const startDate = career.currentDate || `${career.season - 1}-12-01`;
   const [viewDate, setViewDate] = React.useState(startOfMonth(startDate));
   const [selectedDate, setSelectedDate] = React.useState(startDate);

@@ -38,6 +38,7 @@ import { css, Pill, Stat, CollapsibleSection } from "../../components/primitives
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 import { finalsMagicNumber } from "../../lib/magicNumber.js";
 import { seasonNarrative } from "../../lib/seasonNarrative.js";
+import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
 
 const hubContainer = {
   hidden: { opacity: 1 },
@@ -75,7 +76,8 @@ function weatherEmoji(condition) {
 // Hub strip showing ground conditions + footy trip prompt + committee mood.
 // Spec Sections 3A, 3B, 3D.
 // ---------------------------------------------------------------------------
-function HubGroundStrip({ career, club, league, setScreen, setTab }) {
+function HubGroundStrip({ club, league, setScreen, setTab }) {
+  const career = useCareer();
   const cfg = getDifficultyConfig(career.difficulty);
   const showCommunity = league.tier <= 3 && Array.isArray(career.committee) && career.committee.length > 0;
   const band = groundConditionBand(career.groundCondition ?? 85);
@@ -104,18 +106,19 @@ function HubGroundStrip({ career, club, league, setScreen, setTab }) {
       {/* Footy trip prompt or committee summary */}
       <div className={`${css.panel} p-4`}>
         {career.footyTripAvailable && !career.footyTripUsed ? (
-          <FootyTripPromoCard career={career} setScreen={setScreen} setTab={setTab} />
+          <FootyTripPromoCard setScreen={setScreen} setTab={setTab} />
         ) : showCommunity ? (
-          <CommitteeMiniSummary career={career} setScreen={setScreen} setTab={setTab} />
+          <CommitteeMiniSummary setScreen={setScreen} setTab={setTab} />
         ) : (
-          <DifficultyMiniSummary career={career} cfg={cfg} />
+          <DifficultyMiniSummary cfg={cfg} />
         )}
       </div>
     </div>
   );
 }
 
-function FootyTripPromoCard({ career, setScreen, setTab }) {
+function FootyTripPromoCard({ setScreen, setTab }) {
+  const career = useCareer();
   const social = (career.committee || []).find(m => m.role === 'Social Coordinator');
   return (
     <div>
@@ -135,7 +138,8 @@ function FootyTripPromoCard({ career, setScreen, setTab }) {
   );
 }
 
-function CommitteeMiniSummary({ career, setScreen, setTab }) {
+function CommitteeMiniSummary({ setScreen, setTab }) {
+  const career = useCareer();
   const avg = committeeMoodAverage(career.committee);
   const accent = avg >= 70 ? 'var(--A-pos)' : avg >= 40 ? 'var(--A-accent-2)' : 'var(--A-neg)';
   return (
@@ -160,7 +164,8 @@ function CommitteeMiniSummary({ career, setScreen, setTab }) {
   );
 }
 
-function DifficultyMiniSummary({ career, cfg }) {
+function DifficultyMiniSummary({ cfg }) {
+  const career = useCareer();
   const profile = getDifficultyProfile(career.difficulty);
   return (
     <div>
@@ -174,7 +179,9 @@ function DifficultyMiniSummary({ career, cfg }) {
   );
 }
 
-export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance, onQuickAdvance, updateCareer }) {
+export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance, onQuickAdvance }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const cc1 = club?.colors?.[0] ?? '#334155';
   const cc2 = club?.colors?.[1] ?? '#0f172a';
   const cc3 = club?.colors?.[2] ?? cc1;
@@ -399,16 +406,16 @@ export function HubScreen({ career, club, league, myLadderPos, sortedLadderRows,
 
       {/* Match preview — moved up so it's the first thing after the hero */}
       <motion.div variants={hubItem}>
-        <MatchPreviewPanel career={career} league={league} onUpdateCareer={updateCareer} />
+        <MatchPreviewPanel league={league} />
       </motion.div>
 
       {/* Action board + coaching suggestions */}
       <motion.div variants={hubItem}>
-        <TaskList career={career} onNavigate={handleTaskNavigate} myLadderPos={myLadderPos} league={league} />
+        <TaskList onNavigate={handleTaskNavigate} myLadderPos={myLadderPos} league={league} />
       </motion.div>
 
       <motion.div variants={hubItem}>
-        <HubGroundStrip career={career} club={club} league={league} setScreen={setScreen} setTab={setTab} />
+        <HubGroundStrip club={club} league={league} setScreen={setScreen} setTab={setTab} />
       </motion.div>
 
       {(() => {

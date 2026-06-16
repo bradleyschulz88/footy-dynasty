@@ -232,7 +232,7 @@ export function TopBar({
 
           {/* Right: notifications + next event label + advance button */}
           <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-            <NotificationBell career={career} onAction={onNotificationAction} open={notifOpen} onOpenChange={onNotifOpenChange} />
+            <NotificationBell onAction={onNotificationAction} open={notifOpen} onOpenChange={onNotifOpenChange} />
 
             <div className="text-right hidden lg:block max-w-[min(280px,40vw)] overflow-hidden">
               <div
@@ -327,7 +327,7 @@ export function TopBar({
           </div>
         </div>
       </div>
-      <SeasonStrip career={career} league={league} club={club} timeTick={timeTick} />
+      <SeasonStrip league={league} club={club} timeTick={timeTick} />
     </header>
   );
 }

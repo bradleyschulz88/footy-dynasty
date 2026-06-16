@@ -2,8 +2,10 @@ import React from "react";
 import { findClub } from "../data/pyramid.js";
 import { css } from "../components/primitives.jsx";
 import { finalsRoundLabel } from "../lib/finalsBracket.js";
+import { useCareer } from "../lib/careerStore.js";
 
-export default function FinalsEliminatedScreen({ career, league, onSimRemainder, onContinue }) {
+export default function FinalsEliminatedScreen({ league, onSimRemainder, onContinue }) {
+  const career = useCareer();
   const alive = career.finalsAlive || [];
   const results = career.finalsResults || [];
 

@@ -57,6 +57,7 @@ import {
   tutorialHighlightTab,
 } from "../../components/TutorialOverlay.jsx";
 import { ClubOverviewTab, CommercialKpiStrip, ClubBreadcrumb } from "./ClubNavigationHub.jsx";
+import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
 
 function clubLeafSection(leaf, showCommittee) {
   if (leaf === "overview") return "overview";
@@ -71,7 +72,9 @@ function clubLeafSection(leaf, showCommittee) {
 // ============================================================================
 // CLUB SCREEN — grouped navigation + overview hub
 // ============================================================================
-export default function ClubScreen({ career, club, updateCareer, tab, setTab, tutorialActive }) {
+export default function ClubScreen({ club, tab, setTab, tutorialActive }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const t = clubEffectiveTab(tab);
   const tutStep = career.tutorialStep ?? 0;
   const clubTutorialTab = tutorialActive && (tutStep === 3 || tutStep === 4) ? tutorialHighlightTab(tutStep) : null;
@@ -195,27 +198,29 @@ export default function ClubScreen({ career, club, updateCareer, tab, setTab, tu
 
       <ClubBreadcrumb activePrimary={activePrimary} activeTab={t} />
       {activePrimary === "commercial" && t !== "overview" && (
-        <CommercialKpiStrip career={career} />
+        <CommercialKpiStrip />
       )}
 
       {t === "overview" && (
-        <ClubOverviewTab career={career} club={club} setTab={setTab} showCommittee={showCommittee} />
+        <ClubOverviewTab club={club} setTab={setTab} showCommittee={showCommittee} />
       )}
-      {t === "finances" && <FinancesTab career={career} />}
-      {t === "contracts" && <ContractsTab career={career} updateCareer={updateCareer} />}
-      {t === "board" && <BoardTab career={career} club={club} updateCareer={updateCareer} />}
-      {t === "sponsors" && <SponsorsTab career={career} updateCareer={updateCareer} />}
-      {t === "kits" && <KitsTab career={career} club={club} updateCareer={updateCareer} />}
-      {t === "facilities" && <FacilitiesTab career={career} updateCareer={updateCareer} />}
-      {t === "staff" && <StaffTab career={career} updateCareer={updateCareer} />}
-      {t === "committee" && showCommittee && <CommitteeTab career={career} club={club} updateCareer={updateCareer} />}
-      {t === "honours" && <HonoursTab career={career} club={club} />}
-      {t === "rookies" && <RookieListTab career={career} updateCareer={updateCareer} />}
+      {t === "finances" && <FinancesTab />}
+      {t === "contracts" && <ContractsTab />}
+      {t === "board" && <BoardTab club={club} />}
+      {t === "sponsors" && <SponsorsTab />}
+      {t === "kits" && <KitsTab club={club} />}
+      {t === "facilities" && <FacilitiesTab />}
+      {t === "staff" && <StaffTab />}
+      {t === "committee" && showCommittee && <CommitteeTab club={club} />}
+      {t === "honours" && <HonoursTab club={club} />}
+      {t === "rookies" && <RookieListTab />}
     </div>
   );
 }
 
-function BoardTab({ career, club, updateCareer }) {
+function BoardTab({ club }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [directorChatRole, setDirectorChatRole] = useState(null);
   const league = findLeagueOf(career.clubId);
   const isTier4 = league?.tier === 4;
@@ -510,7 +515,9 @@ function BoardTab({ career, club, updateCareer }) {
   );
 }
 
-function CommitteeTab({ career, club, updateCareer }) {
+function CommitteeTab({ club }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const committee = career.committee || [];
   if (committee.length === 0) {
     return (
@@ -560,7 +567,7 @@ function CommitteeTab({ career, club, updateCareer }) {
       </div>
 
       {tripAvailable && (
-        <FootyTripCard career={career} updateCareer={updateCareer} />
+        <FootyTripCard />
       )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -621,7 +628,9 @@ const COMMITTEE_TRAIT_INFO = {
   connected:  { loves: 'Local signings, youth development, community ties',        hates: 'Signing players from outside the zone, ignored tips' },
 };
 
-function FootyTripCard({ career, updateCareer }) {
+function FootyTripCard() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const social = (career.committee || []).find(m => m.role === 'Social Coordinator');
   const acceptTrip = (optionId) => {
     const result = applyFootyTrip(career, optionId);
@@ -678,7 +687,8 @@ function FootyTripCard({ career, updateCareer }) {
   );
 }
 
-function HonoursTab({ career, club: _club }) {
+function HonoursTab({ club: _club }) {
+  const career = useCareer();
   const history = career.history || [];
   const titles       = history.filter(h => h.champion).length;
   const promotions   = history.filter(h => h.promoted).length;
@@ -829,7 +839,9 @@ function HonoursTab({ career, club: _club }) {
   );
 }
 
-function RookieListTab({ career, updateCareer }) {
+function RookieListTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const rookies = career.squad.filter(p => p.rookie || p.age <= 19);
   const promote = (p) => {
     const newWage = Math.round((p.wage || 0) * 1.4);
@@ -882,7 +894,9 @@ function RookieListTab({ career, updateCareer }) {
   );
 }
 
-function FinancesTab({ career, updateCareer }) {
+function FinancesTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [finTab, setFinTab] = useState('overview');
   const tier = leagueTierOf(career);
   const isT4 = tier === 4;
@@ -973,7 +987,7 @@ function FinancesTab({ career, updateCareer }) {
         </div>
 
         {/* Cashflow chart */}
-        <CashflowChart career={career} />
+        <CashflowChart />
       </div>
     );
   }
@@ -1293,7 +1307,8 @@ function FinancesTab({ career, updateCareer }) {
   );
 }
 
-function CashflowChart({ career }) {
+function CashflowChart() {
+  const career = useCareer();
   const history = career.weeklyHistory || [];
   return (
     <div className={`${css.panel} p-5`}>
@@ -1354,7 +1369,9 @@ function CashflowChart({ career }) {
   );
 }
 
-function SponsorsTab({ career, updateCareer }) {
+function SponsorsTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const sponsorList = career.sponsors || [];
   const totalAnnual = sponsorList.reduce((a, s) => a + s.annualValue, 0);
   const proposals = career.sponsorRenewalProposals || [];
@@ -1506,7 +1523,9 @@ function SponsorsTab({ career, updateCareer }) {
 // ============================================================================
 // KITS TAB
 // ============================================================================
-function KitsTab({ career, club, updateCareer }) {
+function KitsTab({ club }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [editing, setEditing] = useState("home");
   const kit = career.kits[editing];
   const PATTERNS = [
@@ -1623,7 +1642,9 @@ function KitsTab({ career, club, updateCareer }) {
 // ============================================================================
 // FACILITIES TAB
 // ============================================================================
-function FacilitiesTab({ career, updateCareer }) {
+function FacilitiesTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const FAC_INFO = {
     trainingGround: { name: "Training Ground", icon: Activity, desc: "Improves training effectiveness and skill development", color: "var(--A-accent)" },
     gym: { name: "Strength & Conditioning", icon: Dumbbell, desc: "Boosts player strength, speed and endurance gains", color: "var(--A-accent)" },
@@ -1708,7 +1729,9 @@ function FacilitiesTab({ career, updateCareer }) {
   );
 }
 
-function StaffTab({ career, updateCareer }) {
+function StaffTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const leagueTier = PYRAMID[career.leagueKey]?.tier || 1;
   const replaceStaff = (idx) => {
     const old = career.staff[idx];
@@ -1806,7 +1829,7 @@ function StaffTab({ career, updateCareer }) {
 
   return (
     <div className="space-y-4">
-      <StaffRenewalsPanel career={career} updateCareer={updateCareer} leagueTier={leagueTier} />
+      <StaffRenewalsPanel leagueTier={leagueTier} />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>STAFF</div>
