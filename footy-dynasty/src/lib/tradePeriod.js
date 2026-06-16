@@ -70,6 +70,24 @@ export const FREE_AGENCY_END_DAY = 8;
 export const POST_TRADE_DRAFT_COUNTDOWN_DAYS = 7;
 
 /** AI trade offers use the same shape as pre-season pendingTradeOffers. */
+// AI REALISM: Helper — count positional gaps in an AI squad to guide which
+// positions they want to acquire in the trade market.
+function aiSquadPositionGaps(aiSq) {
+  const counts = {};
+  for (const p of aiSq || []) {
+    const pos = p.position || 'C';
+    counts[pos] = (counts[pos] || 0) + 1;
+  }
+  const gaps = new Set();
+  if ((counts.RU || 0) < 2) gaps.add('RU');
+  if ((counts.KF || 0) + (counts.HF || 0) < 5) { gaps.add('KF'); gaps.add('HF'); }
+  if ((counts.KB || 0) + (counts.HB || 0) < 4) { gaps.add('KB'); gaps.add('HB'); }
+  if ((counts.C || 0) + (counts.WG || 0) + (counts.R || 0) < 6) {
+    gaps.add('C'); gaps.add('WG'); gaps.add('R');
+  }
+  return gaps;
+}
+
 function seedAiTradeOffers(c, league) {
   // Tier 3 is local/community footy — there's no trade market. Players come and
   // go by word of mouth (see the tier-3 recruitment notifications), so no rival
@@ -93,12 +111,31 @@ function seedAiTradeOffers(c, league) {
   const offerClubs = (pool.length ? pool : (league.clubs || [])).filter((cl) => cl.id !== c.clubId);
   const offers = [];
   for (let i = 0; i < offerCount; i++) {
-    const targetPlayer = pick(tradableSquad);
     const offeringClub = pick(offerClubs);
-    if (!targetPlayer || !offeringClub || offers.find((o) => o.targetPlayerId === targetPlayer.id)) continue;
+    if (!offeringClub) continue;
+
+    // AI REALISM: The offering club should prioritise players who fill its own
+    // positional gaps rather than picking completely at random.
+    const aiSq = c.aiSquads?.[offeringClub.id] || [];
+    const gaps = aiSquadPositionGaps(aiSq);
+
+    // Split tradable players into those who fill a gap vs the rest.
+    const fillsGap = tradableSquad.filter((p) => gaps.has(p.position));
+    const others = tradableSquad.filter((p) => !gaps.has(p.position));
+    // 70% chance to target a gap-filling player when the club has clear needs.
+    const targetPool = gaps.size > 0 && fillsGap.length > 0 && rng() < 0.70
+      ? fillsGap
+      : (others.length ? others : tradableSquad);
+    const targetPlayer = pick(targetPool);
+
+    if (!targetPlayer || offers.find((o) => o.targetPlayerId === targetPlayer.id)) continue;
+
     const grudge = clubFinalsGrudgeTowardPlayer(c, offeringClub.id);
     if (grudge > 0 && rng() < 0.22 + Math.min(3, grudge) * 0.11) continue;
-    const aiSq = c.aiSquads?.[offeringClub.id] || [];
+
+    // AI REALISM: Swap candidates should ideally come from positions where the
+    // player club has surplus (player wants what we have too many of), not just
+    // any player within an overall range.
     const swapCandidates = aiSq.filter((ap) => Math.abs(ap.overall - targetPlayer.overall) <= 12).slice(0, 8);
     const swapPlayer = swapCandidates.length ? pick(swapCandidates) : null;
     let cashOffer = Math.round(targetPlayer.value * (0.35 + rng() * 0.65));

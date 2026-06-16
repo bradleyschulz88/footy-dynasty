@@ -99,29 +99,80 @@ function appendHistory(history, entry) {
   return [entry, ...(history || [])].slice(0, 40);
 }
 
+// AI REALISM: Expanded position-need detection with per-line thresholds.
+// Each AFL line needs a minimum quota from a 32-man squad; being thin at a
+// line gives a proportionally larger boost to prospects who fill that gap.
 function squadPositionNeeds(squad) {
   const counts = {};
   for (const p of squad || []) {
     const pos = p.position || 'C';
     counts[pos] = (counts[pos] || 0) + 1;
   }
-  const needs = [];
-  if ((counts.RU || 0) < 1) needs.push('RU');
-  if ((counts.KF || 0) + (counts.HF || 0) < 4) needs.push('KF', 'HF');
-  if ((counts.C || 0) < 3) needs.push('C');
+  // Returns { position: boostAmount } for every under-stocked line.
+  const needs = {};
+  // Ruck — only one specialist needed but a backup is ideal.
+  const ruckCount = counts.RU || 0;
+  if (ruckCount < 1) needs.RU = 10;     // desperate — no ruck at all
+  else if (ruckCount < 2) needs.RU = 4; // thin backup
+
+  // Key forward / half forward — want at least 5 combined.
+  const fwdCount = (counts.KF || 0) + (counts.HF || 0);
+  if (fwdCount < 3) { needs.KF = 8; needs.HF = 6; }
+  else if (fwdCount < 5) { needs.KF = 4; needs.HF = 3; }
+
+  // Key back / half back — want at least 4 combined.
+  const defCount = (counts.KB || 0) + (counts.HB || 0);
+  if (defCount < 3) { needs.KB = 8; needs.HB = 6; }
+  else if (defCount < 4) { needs.KB = 4; needs.HB = 3; }
+
+  // Centre / Wing / Rover — midfield engine, need depth.
+  const midCount = (counts.C || 0) + (counts.WG || 0) + (counts.R || 0);
+  if (midCount < 4) { needs.C = 7; needs.WG = 5; needs.R = 5; }
+  else if (midCount < 6) { needs.C = 3; needs.WG = 2; needs.R = 2; }
+
   return needs;
+}
+
+// AI REALISM: Classify squad mode (rebuild / develop / compete) to guide
+// which prospects get priority — young clubs draft high-potential youth;
+// contenders chase ready-now talent.
+function squadMode(squad) {
+  if (!squad || squad.length === 0) return 'develop';
+  const avgAge = squad.reduce((s, p) => s + (p.age ?? 24), 0) / squad.length;
+  const avgRating = squad.reduce((s, p) => s + (p.trueRating || p.overall || 70), 0) / squad.length;
+  if (avgAge >= 28 || avgRating >= 78) return 'compete';
+  if (avgAge <= 23 || avgRating <= 64) return 'rebuild';
+  return 'develop';
 }
 
 function aiPickFromPool(currentPool, clubId, aiSquad) {
   if (!currentPool.length) return null;
   const needs = squadPositionNeeds(aiSquad);
+  const mode = squadMode(aiSquad);
   const { preferredTactic } = aiPersonalityForClub(clubId);
   const h = hashClubId(clubId);
   const ranked = [...currentPool].sort((a, b) => {
     let sa = a.overall;
     let sb = b.overall;
-    if (needs.includes(a.position)) sa += 4;
-    if (needs.includes(b.position)) sb += 4;
+
+    // AI REALISM: Apply positional need boosts (variable size based on urgency).
+    sa += needs[a.position] ?? 0;
+    sb += needs[b.position] ?? 0;
+
+    // AI REALISM: In rebuild mode, bias toward high-potential youngsters;
+    // in compete mode, prefer ready-now (high overall) players.
+    if (mode === 'rebuild') {
+      const potA = a.potential ?? a.overall;
+      const potB = b.potential ?? b.overall;
+      sa += Math.max(0, potA - a.overall) * 0.4;
+      sb += Math.max(0, potB - b.overall) * 0.4;
+    } else if (mode === 'compete') {
+      // Compete teams value immediate-use rating slightly higher.
+      sa += (a.age ?? 18) >= 22 ? 2 : 0;
+      sb += (b.age ?? 18) >= 22 ? 2 : 0;
+    }
+
+    // Tactic-personality tilt (unchanged).
     if (preferredTactic === 'attack' && isForwardPreferred(a)) sa += 2;
     if (preferredTactic === 'attack' && isForwardPreferred(b)) sb += 2;
     if (preferredTactic === 'defensive' && (a.position === 'KB' || a.position === 'HB')) sa += 2;
