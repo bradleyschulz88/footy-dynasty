@@ -26,6 +26,7 @@ import { trainingStaffSupportLine } from '../../lib/staffModifiers.js';
 import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
 import { RenewalsTab } from "../contracts/ContractRenewals.jsx";
 import PlayerCard3D from "../../components/PlayerCard3D.jsx";
+import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
 
 // ── Position line colour helper ─────────────────────────────────────────────
 const POS_LINE_COLOR = {
@@ -58,7 +59,9 @@ function useIsLg() {
 }
 
 /** Phone/tablet bottom-sheet that pops the player card immediately on tap. */
-function PlayerCardModal({ player, career, updateCareer, onClose }) {
+function PlayerCardModal({ player, onClose }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -66,7 +69,7 @@ function PlayerCardModal({ player, career, updateCareer, onClose }) {
         className="relative w-full sm:max-w-md max-h-[88vh] overflow-y-auto bg-apanel rounded-t-2xl sm:rounded-2xl border border-aline anim-in"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <PlayerDetail player={player} career={career} updateCareer={updateCareer} onClose={onClose} />
+        <PlayerDetail player={player} onClose={onClose} />
       </div>
     </div>
   );
@@ -75,7 +78,9 @@ function PlayerCardModal({ player, career, updateCareer, onClose }) {
 // ============================================================================
 // SQUAD SCREEN — players, tactics, training
 // ============================================================================
-export default function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive, onOpenClubStaff, onNavigate }) {
+export default function SquadScreen({ club, tab, setTab, tutorialActive, onOpenClubStaff, onNavigate }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const playerRenewals = (career.pendingRenewals || []).filter(r => !r._handled).length;
   const staffRenewals = (career.pendingStaffRenewals || []).filter((r) => !r._handled).length;
   const renewalCount = playerRenewals + staffRenewals;
@@ -118,11 +123,11 @@ export default function SquadScreen({ career, club, updateCareer, tab, setTab, t
         tutorialHighlightKey={squadTutorialTab}
         growButtons={false}
       />
-      {t === "players"  && <PlayersTab career={career} updateCareer={updateCareer} />}
-      {t === "all"      && <AllPlayersTab career={career} updateCareer={updateCareer} />}
-      {t === "tactics"  && <TacticsTab career={career} updateCareer={updateCareer} onOpenClubStaff={onOpenClubStaff} />}
-      {t === "training" && <TrainingTab career={career} updateCareer={updateCareer} onOpenClubStaff={onOpenClubStaff} />}
-      {t === "renewals" && <RenewalsTab career={career} updateCareer={updateCareer} />}
+      {t === "players"  && <PlayersTab />}
+      {t === "all"      && <AllPlayersTab />}
+      {t === "tactics"  && <TacticsTab onOpenClubStaff={onOpenClubStaff} />}
+      {t === "training" && <TrainingTab onOpenClubStaff={onOpenClubStaff} />}
+      {t === "renewals" && <RenewalsTab />}
     </div>
   );
 }
@@ -146,7 +151,9 @@ function FormSparkline({ history, current }) {
   );
 }
 
-function PlayersTab({ career, updateCareer }) {
+function PlayersTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [sort, setSort] = useState("overall");
   const [filterPos, setFilterPos] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
@@ -205,8 +212,6 @@ function PlayersTab({ career, updateCareer }) {
           </p>
         </div>
         <SquadLineupBuilder
-          career={career}
-          updateCareer={updateCareer}
           benchPlayerIds={benchPlayerIds}
           stitch={false}
           onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
@@ -402,7 +407,7 @@ function PlayersTab({ career, updateCareer }) {
       {isLg && (
         <div className="w-80 xl:w-72 flex-shrink-0">
           {selected ? (
-            <PlayerDetail player={selected} career={career} updateCareer={updateCareer} onClose={()=>setSelected(null)} />
+            <PlayerDetail player={selected} onClose={()=>setSelected(null)} />
           ) : (
             <div className="rounded-2xl p-8 text-center border border-aline bg-apanel-2/50 lg:sticky lg:top-20">
               <Users className="w-10 h-10 mx-auto mb-3 text-aline-2 opacity-80" />
@@ -417,7 +422,7 @@ function PlayersTab({ career, updateCareer }) {
     </div>
       </section>
       {!isLg && selected && (
-        <PlayerCardModal player={selected} career={career} updateCareer={updateCareer} onClose={() => setSelected(null)} />
+        <PlayerCardModal player={selected} onClose={() => setSelected(null)} />
       )}
     </div>
   );
@@ -450,7 +455,9 @@ const contractBadge = (out) => (
  * group (Overview / Condition / Contracts / Season stats), sort any way, and
  * click any row to pop the full player card immediately.
  */
-function AllPlayersTab({ career, updateCareer }) {
+function AllPlayersTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [view, setView] = useState("overview");
   const [sort, setSort] = useState("overall");
   const [selected, setSelected] = useState(null);
@@ -592,13 +599,15 @@ function AllPlayersTab({ career, updateCareer }) {
       </div>
 
       {selected && (
-        <PlayerCardModal player={selected} career={career} updateCareer={updateCareer} onClose={() => setSelected(null)} />
+        <PlayerCardModal player={selected} onClose={() => setSelected(null)} />
       )}
     </div>
   );
 }
 
-function PlayerDetail({ player, career, updateCareer, onClose }) {
+function PlayerDetail({ player, onClose }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const inLineup = lineupHasPlayer(career.lineup, player.id);
   const pName = player.firstName ? player.firstName+" "+player.lastName : (player.name||"Player");
   const renewalsLeague = PYRAMID[career.leagueKey];
@@ -858,7 +867,9 @@ function ZoneTacticPicker({ label, zoneColor, currentKey, onSelect, players }) {
   );
 }
 
-function TacticsTab({ career, updateCareer, onOpenClubStaff }) {
+function TacticsTab({ onOpenClubStaff }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const squad = career.squad || [];
   const rawLineup = career.lineup || [];
   const lineup = lineupPlayersOrdered(squad, rawLineup);
@@ -935,7 +946,7 @@ function TacticsTab({ career, updateCareer, onOpenClubStaff }) {
         <div className="text-[11px] text-atext-dim mb-4">
           Drag the grip to reorder. Remove with ✕. Add or swap players from <span className="text-atext font-semibold">Squad → Players</span>.
         </div>
-        <LineupSortablePanel career={career} updateCareer={updateCareer} stitch={false} />
+        <LineupSortablePanel stitch={false} />
         <button
           type="button"
           className={`${css.btnGhost} mt-4 text-xs font-bold uppercase tracking-wider min-h-[44px]`}
@@ -951,7 +962,9 @@ function TacticsTab({ career, updateCareer, onOpenClubStaff }) {
   );
 }
 
-function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
+function TrainingTab({ onOpenClubStaff }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const t = career.training;
   const focusSum = useMemo(() => Object.values(t.focus || {}).reduce((a, b) => a + b, 0), [t.focus]);
 

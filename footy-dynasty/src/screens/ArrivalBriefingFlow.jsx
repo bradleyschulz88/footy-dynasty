@@ -5,8 +5,10 @@ import React, { useState } from "react";
 import { Handshake, Mic } from "lucide-react";
 import { css } from "../components/primitives.jsx";
 import { clamp } from "../lib/format.js";
+import { useCareer } from "../lib/careerStore.js";
 
-export default function ArrivalBriefingFlow({ career, club, league, onComplete }) {
+export default function ArrivalBriefingFlow({ club, league, onComplete }) {
+  const career = useCareer();
   const [step, setStep] = useState(0);
   const tierLabel = league?.tier === 1 ? "AFL" : league?.tier === 2 ? "state league" : "community league";
 

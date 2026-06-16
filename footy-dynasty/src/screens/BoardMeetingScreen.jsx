@@ -4,8 +4,10 @@
 import React from "react";
 import { Landmark } from "lucide-react";
 import { css } from "../components/primitives.jsx";
+import { useCareer } from "../lib/careerStore.js";
 
-export default function BoardMeetingScreen({ career, blocking, onChoose }) {
+export default function BoardMeetingScreen({ blocking, onChoose }) {
+  const career = useCareer();
   const title  = blocking?.title || "Board meeting";
   const intro  = blocking?.intro || "";
   const choices = blocking?.choices || [];

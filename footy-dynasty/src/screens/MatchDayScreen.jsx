@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useCareer } from "../lib/careerStore.js";
 import { formatDate } from "../lib/calendar.js";
 import { COACHING_CALLS } from "../lib/coachingCalls.js";
 import { playCrowdCheer, playSiren, playWhistle, soundEnabled } from "../lib/sound.js";
@@ -20,7 +21,8 @@ function getRecommendedCall(margin) {
   return "steady";
 }
 
-export default function MatchDayScreen({ result, league, career, club, onContinue, onCoachCall }) {
+export default function MatchDayScreen({ result, league, club, onContinue, onCoachCall }) {
+  const career = useCareer();
   const [revealed, setRevealed] = useState(0);
   const [showEvents, setShowEvents] = useState(true);
   const [show3qtNote, setShow3qtNote] = useState(true);

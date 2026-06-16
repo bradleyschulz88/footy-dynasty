@@ -15,11 +15,13 @@ import { finalsRoundLabel } from "../../lib/finalsBracket.js";
 import { turningPointRibbon } from "../../lib/gameDepth.js";
 import TabNav from "../../components/TabNav.jsx";
 import { css, Pill } from "../../components/primitives.jsx";
+import { useCareer } from "../../lib/careerStore.js";
 
 // ============================================================================
 // COMPETITION SCREEN — Ladder / Fixtures / Pyramid
 // ============================================================================
-export default function CompetitionScreen({ career, club, league, tab, setTab, onOpenCalendar }) {
+export default function CompetitionScreen({ club, league, tab, setTab, onOpenCalendar }) {
+  const career = useCareer();
   const t = tab || "ladder";
   const tabs = [
     { key: "ladder", label: "Ladder", icon: BarChart3 },
@@ -43,15 +45,16 @@ export default function CompetitionScreen({ career, club, league, tab, setTab, o
         )}
       </div>
       <TabNav tabs={tabs} active={t} onChange={setTab} />
-      {t === "ladder"   && <LadderTab career={career} club={club} league={league} />}
-      {t === "fixtures" && <FixturesTab career={career} club={club} league={league} />}
-      {t === "finals" && <FinalsTab career={career} league={league} />}
-      {t === "pyramid"  && <PyramidTab career={career} club={club} league={league} />}
+      {t === "ladder"   && <LadderTab club={club} league={league} />}
+      {t === "fixtures" && <FixturesTab club={club} league={league} />}
+      {t === "finals" && <FinalsTab league={league} />}
+      {t === "pyramid"  && <PyramidTab club={club} league={league} />}
     </div>
   );
 }
 
-function LadderTab({ career, club: _club, league }) {
+function LadderTab({ club: _club, league }) {
+  const career = useCareer();
   const sorted = sortedLadder(career.ladder);
   const promoCutoff = league.tier > 1 ? 1 : 8; // top 1 promoted; top 8 finals at tier 1
   const relegCutoff = league.tier === 1 ? 999 : sorted.length; // bottom 1 relegated except tier 1
@@ -142,7 +145,8 @@ function LadderTab({ career, club: _club, league }) {
   );
 }
 
-function FixturesTab({ career, club: _club, league: _league }) {
+function FixturesTab({ club: _club, league: _league }) {
+  const career = useCareer();
   const { lastPlayedRoundIdx, nextRoundIdx } = useMemo(() => {
     let last = -1;
     for (const e of career.eventQueue || []) {
@@ -220,7 +224,8 @@ function FixturesTab({ career, club: _club, league: _league }) {
   );
 }
 
-function FinalsTab({ career, league }) {
+function FinalsTab({ league }) {
+  const career = useCareer();
   const results = career.finalsResults || [];
   const alive = new Set(career.finalsAlive || []);
   const seeds = career.finalsBracket?.seeds || career.finalsFinalists || [];
@@ -281,7 +286,8 @@ function FinalsTab({ career, league }) {
   );
 }
 
-function PyramidTab({ career, club, league }) {
+function PyramidTab({ club, league }) {
+  const career = useCareer();
   const myState = club.state;
   // Group leagues by tier
   const byTier = { 1: [], 2: [], 3: [] };

@@ -12,6 +12,7 @@ import React, { useState } from "react";
 import { ChevronRight, ChevronDown, ChevronUp, AlertTriangle, Lightbulb, CheckCircle } from "lucide-react";
 import { css } from "./primitives.jsx";
 import { lineupPlayerCount, lineupHasPlayer, LINEUP_CAP } from "../lib/lineupHelpers.js";
+import { useCareer } from "../lib/careerStore.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -402,7 +403,8 @@ function TaskRow({ task }) {
   );
 }
 
-export function TaskList({ career, onNavigate, myLadderPos, league }) {
+export function TaskList({ onNavigate, myLadderPos, league }) {
+  const career = useCareer();
   const [open, setOpen]     = useState(true);
   const [expanded, setExpanded] = useState({ urgent: true, warning: true, suggestion: false });
 
