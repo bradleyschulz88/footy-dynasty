@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { getAdvanceContext, advanceTimeFingerprint } from "../../lib/advanceContext.js";
 import { tutorialAllowsNavigation } from "../TutorialOverlay.jsx";
+import { useCareer } from "../../lib/careerStore.js";
 
 const PRIMARY = [
   { key: "hub",     label: "Hub",     icon: Home },
@@ -32,7 +33,6 @@ const LIME_ON = "#0A0D0C";
 export function BottomNav({
   screen,
   onNavigate,
-  career,
   league,
   onAdvance,
   advanceDisabled,
@@ -40,6 +40,7 @@ export function BottomNav({
   onShowNotifications,
   advanceAgendaCount = 0,
 }) {
+  const career = useCareer();
   const [sheetOpen, setSheetOpen] = useState(false);
   const ctx = getAdvanceContext(career, league);
   const blockedToBell = advanceDisabled && !!onShowNotifications;

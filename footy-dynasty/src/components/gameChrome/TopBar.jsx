@@ -9,6 +9,7 @@ import { fmtK } from "../../lib/format.js";
 import SeasonStrip from "../SeasonStrip.jsx";
 import { NotificationBell } from "./NotificationBell.jsx";
 import { useStatTrend, trendGlyph, trendColor } from "./useStatTrend.js";
+import { useCareer } from "../../lib/careerStore.js";
 
 const tickEase = [0.22, 1, 0.36, 1];
 const LIME = "#C8FF3D";
@@ -21,7 +22,6 @@ function barStatPct(raw) {
 }
 
 export function TopBar({
-  career,
   club,
   league,
   myLadderPos: _myLadderPos,
@@ -35,6 +35,7 @@ export function TopBar({
   onNotifOpenChange,
   onBlockedAdvance,
 }) {
+  const career = useCareer();
   const ctx = getAdvanceContext(career, league);
   const timeTick = advanceTimeFingerprint(career);
   const boardTrend = useStatTrend(barStatPct(career.finance.boardConfidence), timeTick);
