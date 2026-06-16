@@ -69,11 +69,25 @@ export function tickAiSquads(aiSquads, season = 2026) {
   return out;
 }
 
+// AI REALISM: Classify an AI squad as 'rebuild', 'develop', or 'compete' to
+// guide end-of-season list decisions (youth emphasis vs veteran depth).
+function classifySquadMode(squad) {
+  if (!squad || squad.length === 0) return 'develop';
+  const avgAge = squad.reduce((s, p) => s + (p.age ?? 24), 0) / squad.length;
+  const avgRating = squad.reduce((s, p) => s + (p.trueRating || p.overall || 70), 0) / squad.length;
+  if (avgAge >= 28 || avgRating >= 78) return 'compete';
+  if (avgAge <= 23 || avgRating <= 64) return 'rebuild';
+  return 'develop';
+}
+
 // End-of-season ageing for AI clubs
 export function ageAiSquads(aiSquads, newLeagueTier, season = 2026) {
   const out = {};
   const tierScale = TIER_SCALE[newLeagueTier] || 1.0;
   for (const [id, squad] of Object.entries(aiSquads || {})) {
+    // AI REALISM: Classify the squad before ageing so mode-aware topup works.
+    const mode = classifySquadMode(squad);
+
     const aged = squad
       .map(p => {
         const newAge = (p.age ?? 24) + 1;
@@ -93,13 +107,30 @@ export function ageAiSquads(aiSquads, newLeagueTier, season = 2026) {
           goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0,
         };
       })
-      .filter(p => p.age <= 36 && p.contract > 0);
+      // Hard ceiling at age 37 (was 36, one extra year grace)
+      .filter(p => p.age <= 37 && p.contract > 0)
+      // AI REALISM: Probabilistic retirement for veterans 33+.
+      // Probability rises steeply with age so squads don't fill up with
+      // 36-year-olds after several seasons.  Threshold: ~20% at 33, ~50% at 35,
+      // ~80% at 37.  Compete-mode clubs hold on a little longer.
+      .filter(p => {
+        if (p.age < 33) return true;
+        const retireChance = Math.min(0.90, (p.age - 32) * 0.22 - (mode === 'compete' ? 0.10 : 0));
+        return rng() >= retireChance;
+      });
 
-    // Top up squad to SQUAD_SIZE with younger talent
+    // AI REALISM: Mode-aware topup ages — rebuild clubs sign 18-21-year-olds
+    // as priority; compete clubs add proven mid-20s players; develop is mixed.
+    const topupAgeRange =
+      mode === 'rebuild'  ? [18, 21] :
+      mode === 'compete'  ? [22, 27] :
+      /* develop */         [18, 25];
+
+    // Top up squad to SQUAD_SIZE with appropriately-aged talent
     while (aged.length < SQUAD_SIZE) {
       const slot = Math.floor(rng() * 1e6);
       const p = generatePlayer(newLeagueTier, slot, { clubId: id, season });
-      aged.push({ ...p, age: rand(18, 22) });
+      aged.push({ ...p, age: rand(topupAgeRange[0], topupAgeRange[1]) });
     }
     out[id] = aged;
   }
