@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Trophy, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { Trophy, ChevronRight, ChevronLeft, Check, Zap } from "lucide-react";
 import { STATES, PYRAMID, LEAGUES_BY_STATE, findClub } from "../data/pyramid.js";
 import { generateSquad } from "../lib/playerGen.js";
 import {
@@ -116,7 +116,246 @@ const slideIn = {
   transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
 };
 
-export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass = 'dirB' }) {
+// ---------------------------------------------------------------------------
+// Career construction — shared by the manual setup flow and Quick Start.
+// Builds (but does not commit) a brand-new career object. Throws on invalid
+// selections so callers can surface the error.
+// ---------------------------------------------------------------------------
+export function buildNewCareer({
+  clubId,
+  leagueKey,
+  state,
+  localDivision = 5,
+  managerName = "",
+  difficulty = "contender",
+  gameMode = "normal",
+  challengeId = null,
+  existingSlots = {},
+}) {
+  const club = findClub(clubId);
+  const league = PYRAMID[leagueKey];
+  if (!club) throw new Error(`Club not found: ${clubId}`);
+  if (!league) throw new Error(`League not found: ${leagueKey}`);
+  const SEASON = 2026;
+  const cfg = getDifficultyConfig(difficulty);
+  let tunedFinance = makeStartingFinance(league.tier, difficulty, 55);
+  if (gameMode === 'sandbox') {
+    tunedFinance = {
+      ...tunedFinance,
+      cash: Math.round(tunedFinance.cash * 2),
+      boardConfidence: Math.min(95, (tunedFinance.boardConfidence ?? 55) + 18),
+    };
+  } else if (gameMode === 'challenge') {
+    const ch = challengeId || 'under_the_pump';
+    if (ch === 'flag_or_sack') {
+      tunedFinance = {
+        ...tunedFinance,
+        boardConfidence: Math.max(42, (tunedFinance.boardConfidence ?? 55) - 6),
+      };
+    } else if (ch === 'rebuild') {
+      tunedFinance = {
+        ...tunedFinance,
+        cash: Math.round(tunedFinance.cash * 0.85),
+        boardConfidence: Math.min(88, (tunedFinance.boardConfidence ?? 55) + 12),
+      };
+    } else {
+      tunedFinance = {
+        ...tunedFinance,
+        cash: Math.round(tunedFinance.cash * 0.72),
+        boardConfidence: Math.max(38, (tunedFinance.boardConfidence ?? 55) - 14),
+      };
+    }
+  }
+  const tier3KStart = league.tier === 3 ? tier3DivisionCount(leagueKey, state) : 0;
+  const startDiv = league.tier === 3 ? Math.min(localDivision, tier3KStart) : null;
+  const compClubs = getCompetitionClubs(leagueKey, state, startDiv);
+  if (!compClubs.some((row) => row.id === clubId)) throw new Error('Selected club is not in this competition pool.');
+  const ladder0 = blankLadder(compClubs);
+  const squadRaw = generateSquad(clubId, league.tier, 32, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
+  const squad = scaledSquadToFitCap({ clubId, leagueKey, difficulty, finance: tunedFinance, squad: squadRaw });
+  const lineup = squad.slice().sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map(p => p.id);
+  const fixtures = generateFixtures(compClubs);
+  const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId, {
+    nationalDraft: league.tier === 1,
+  });
+  const facilities = DEFAULT_FACILITIES();
+  const clubGround = getClubGround(club, facilities.stadium.level, league.tier);
+  const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
+  const startingSponsors = buildStartingSponsors(league.tier);
+  const newCareer = {
+    managerName: managerName || "Coach",
+    clubId,
+    leagueKey,
+    regionState: state,
+    localDivision: startDiv,
+    season: SEASON,
+    week: 0,
+    currentDate: `${SEASON - 1}-11-01`,
+    phase: 'preseason',
+    eventQueue,
+    lastEvent: null,
+    inMatchDay: false,
+    currentMatchResult: null,
+    squad,
+    lineup,
+    training: DEFAULT_TRAINING(),
+    facilities,
+    finance: tunedFinance,
+    sponsors: startingSponsors,
+    staff: generateStaff(league.tier),
+    staffTasks: DEFAULT_STAFF_TASKS(),
+    kits: defaultKits(club.colors),
+    ladder: ladder0,
+    fixtures,
+    tradePool: generateTradePool(leagueKey, SEASON),
+    draftPool: [],
+    youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
+    news: [
+      { week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` },
+      { week: 0, type: "info", text: "🤝 One local sponsor is on the books. Win games and build the club's reputation to attract bigger backers." },
+      ...(gameMode === 'sandbox'
+        ? [{ week: 0, type: 'info', text: '🧪 Sandbox: boosted treasury & board patience — sacks and confidence votes are disabled.' }]
+        : []),
+      ...(gameMode === 'challenge'
+        ? [{ week: 0, type: 'board', text: '🔥 Challenge — Under the pump: leaner cash and a jumpy board from day one.' }]
+        : []),
+    ],
+    weeklyHistory: [],
+    inFinals: false,
+    finalsRound: 0,
+    finalsFixtures: [],
+    finalsResults: [],
+    premiership: null,
+    tacticChoice: "balanced",
+    seasonHistory: [],
+    saveVersion: SAVE_VERSION,
+    aiSquads: {},
+    draftOrder: [],
+    history: [],
+    brownlow: {},
+    boardWarning: 0,
+    gameOver: null,
+    themeMode: 'A',
+    options: {
+      autosave: true,
+      confirmBeforeNewCareer: true,
+      confirmBeforeDeleteSlot: true,
+      uiDensity: 'comfortable',
+      reduceMotion: false,
+      theme: (() => { try { return localStorage.getItem('fd-theme') ?? 'light'; } catch { return 'light'; } })(),
+    },
+    pendingTradeOffers: [],
+    inbox: [],
+    retiredThisSeason: [],
+    difficulty,
+    gameMode,
+    challengeId: gameMode === 'challenge' ? (challengeId || 'under_the_pump') : null,
+    challengeGoal: gameMode === 'challenge' ? challengeId : null,
+    tutorialStep: isFirstCareer && cfg.tutorialPolicy !== 'never' ? 0 : 6,
+    tutorialComplete: !(isFirstCareer && cfg.tutorialPolicy !== 'never'),
+    isFirstCareer,
+    committee: generateCommittee(league.tier),
+    footyTripAvailable: false,
+    footyTripUsed: false,
+    groundCondition: 85,
+    clubGround,
+    groundName: clubGround.shortName,
+    weeklyWeather: {},
+    winStreak: 0,
+    homeWinStreak: 0,
+    coachReputation: league.tier === 4 ? 5 : 30,
+    coachTier: league.tier === 4 ? 'Grassroots' : 'Journeyman',
+    coachAccreditation: startingAccreditationForTier(league.tier),
+    tier3Div1Titles: 0,
+    lastPromotionPlayoff: null,
+    coachStats: {
+      totalWins: 0, totalLosses: 0, totalDraws: 0,
+      premierships: 0, promotions: 0, relegations: 0,
+      clubsManaged: 1, seasonsManaged: 1,
+    },
+    previousClubs: [],
+    isSacked: false,
+    jobMarketOpen: false,
+    sackingStep: null,
+    jobOffers: [],
+    boardVotePrepBonus: 0,
+    jobMarketRerolls: 0,
+    arrivalBriefing: null,
+    journalist: generateJournalist(),
+    lastBoardConfidenceDelta: 0,
+    lastMatchSummary: null,
+    lastFinanceTickWeek: null,
+    lastFinanceTickDay: null,
+    cashCrisisStartWeek: null,
+    cashCrisisLevel: 0,
+    bankLoan: null,
+    sponsorRenewalProposals: [],
+    sponsorOffers: [],
+    expiredSponsorsLastSeason: [],
+    pendingRenewals: [],
+    renewalsClosed: false,
+    pendingStaffRenewals: [],
+    fundraisersUsed: {},
+    communityGrantUsed: false,
+    lastEosFinance: null,
+    postSeasonPhase: 'none',
+    inTradePeriod: false,
+    tradePeriodDay: 0,
+    freeAgencyOpen: false,
+    postSeasonDraftCountdown: null,
+    freeAgentBalance: { gained: 0, lost: 0 },
+    tradeHistory: [],
+    draftPickBank: null,
+    offSeasonFreeAgents: [],
+    clubCulture: defaultClubCulture(),
+    headToHead: {},
+    finalsRivalryLog: [],
+    captainId: null,
+    viceCaptainId: null,
+    captainHistory: [],
+    bogeyTeamId: null,
+    dominatedTeamId: null,
+    crucialFive: [],
+    crisisFiredThisSeason: false,
+    teamStats: null,
+  };
+  assignDefaultCaptains(newCareer);
+  ensureCareerBoard(newCareer, club, league);
+  generateSeasonObjectives(newCareer, league);
+  planSeasonBoardMeetings(newCareer);
+  primeSeasonStoryState(newCareer);
+  // First-ever draft is fully scouted so new players can read the board.
+  seedNationalDraft(newCareer, league, { inaugural: true, force: true, revealAll: true });
+  return newCareer;
+}
+
+// Curated beginner default: a random Tier-3 community underdog in Victoria on
+// Grassroots difficulty (patient board, low expectations). Picks from a live
+// competition pool so the selection is always valid. Returns a ready career.
+export function quickStartCareer({ existingSlots = {}, managerName = "" } = {}) {
+  const state = "VIC";
+  const tier3Leagues = LEAGUES_BY_STATE(state).filter(l => !l.isAcademy && l.tier === 3);
+  const league = tier3Leagues[0];
+  if (!league) throw new Error("No Tier 3 league available for Quick Start.");
+  const k = tier3DivisionCount(league.key, state) || 1;
+  // Deepest division = lowest pressure, the gentlest possible start.
+  const localDivision = k;
+  const pool = getCompetitionClubs(league.key, state, localDivision);
+  if (!pool.length) throw new Error("No clubs available for Quick Start.");
+  const club = pool[Math.floor(Math.random() * pool.length)];
+  return buildNewCareer({
+    clubId: club.id,
+    leagueKey: league.key,
+    state,
+    localDivision,
+    managerName,
+    difficulty: "grassroots",
+    gameMode: "normal",
+    existingSlots,
+  });
+}
+
+export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResume, themeClass = 'dirB' }) {
   const saved = loadSetup();
   const [gameMode, setGameMode] = useState(saved.gameMode ?? 'normal');
   const [challengeId, setChallengeId] = useState(saved.challengeId ?? 'under_the_pump');
@@ -166,200 +405,10 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
     setStartError(null);
     setLoading(true);
     try {
-      const club = findClub(clubId);
-      const league = PYRAMID[leagueKey];
-      if (!club) throw new Error(`Club not found: ${clubId}`);
-      if (!league) throw new Error(`League not found: ${leagueKey}`);
-      const SEASON = 2026;
-      const cfg = getDifficultyConfig(difficulty);
-      let tunedFinance = makeStartingFinance(league.tier, difficulty, 55);
-      if (gameMode === 'sandbox') {
-        tunedFinance = {
-          ...tunedFinance,
-          cash: Math.round(tunedFinance.cash * 2),
-          boardConfidence: Math.min(95, (tunedFinance.boardConfidence ?? 55) + 18),
-        };
-      } else if (gameMode === 'challenge') {
-        const ch = challengeId || 'under_the_pump';
-        if (ch === 'flag_or_sack') {
-          tunedFinance = {
-            ...tunedFinance,
-            boardConfidence: Math.max(42, (tunedFinance.boardConfidence ?? 55) - 6),
-          };
-        } else if (ch === 'rebuild') {
-          tunedFinance = {
-            ...tunedFinance,
-            cash: Math.round(tunedFinance.cash * 0.85),
-            boardConfidence: Math.min(88, (tunedFinance.boardConfidence ?? 55) + 12),
-          };
-        } else {
-          tunedFinance = {
-            ...tunedFinance,
-            cash: Math.round(tunedFinance.cash * 0.72),
-            boardConfidence: Math.max(38, (tunedFinance.boardConfidence ?? 55) - 14),
-          };
-        }
-      }
-      const tier3KStart = league.tier === 3 ? tier3DivisionCount(leagueKey, state) : 0;
-      const startDiv = league.tier === 3 ? Math.min(localDivision, tier3KStart) : null;
-      const compClubs = getCompetitionClubs(leagueKey, state, startDiv);
-      if (!compClubs.some((row) => row.id === clubId)) throw new Error('Selected club is not in this competition pool.');
-      const ladder0 = blankLadder(compClubs);
-      const squadRaw = generateSquad(clubId, league.tier, 32, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
-      const squad = scaledSquadToFitCap({ clubId, leagueKey, difficulty, finance: tunedFinance, squad: squadRaw });
-      const lineup = squad.slice().sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map(p => p.id);
-      const fixtures = generateFixtures(compClubs);
-      const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId, {
-        nationalDraft: league.tier === 1,
+      const newCareer = buildNewCareer({
+        clubId, leagueKey, state, localDivision,
+        managerName, difficulty, gameMode, challengeId, existingSlots,
       });
-      const facilities = DEFAULT_FACILITIES();
-      const clubGround = getClubGround(club, facilities.stadium.level, league.tier);
-      const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
-      const startingSponsors = buildStartingSponsors(league.tier);
-      const newCareer = {
-        managerName: managerName || "Coach",
-        clubId,
-        leagueKey,
-        regionState: state,
-        localDivision: startDiv,
-        season: SEASON,
-        week: 0,
-        currentDate: `${SEASON - 1}-11-01`,
-        phase: 'preseason',
-        eventQueue,
-        lastEvent: null,
-        inMatchDay: false,
-        currentMatchResult: null,
-        squad,
-        lineup,
-        training: DEFAULT_TRAINING(),
-        facilities,
-        finance: tunedFinance,
-        sponsors: startingSponsors,
-        staff: generateStaff(league.tier),
-        staffTasks: DEFAULT_STAFF_TASKS(),
-        kits: defaultKits(club.colors),
-        ladder: ladder0,
-        fixtures,
-        tradePool: generateTradePool(leagueKey, SEASON),
-        draftPool: [],
-        youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
-        news: [
-          { week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` },
-          { week: 0, type: "info", text: "🤝 One local sponsor is on the books. Win games and build the club's reputation to attract bigger backers." },
-          ...(gameMode === 'sandbox'
-            ? [{ week: 0, type: 'info', text: '🧪 Sandbox: boosted treasury & board patience — sacks and confidence votes are disabled.' }]
-            : []),
-          ...(gameMode === 'challenge'
-            ? [{ week: 0, type: 'board', text: '🔥 Challenge — Under the pump: leaner cash and a jumpy board from day one.' }]
-            : []),
-        ],
-        weeklyHistory: [],
-        inFinals: false,
-        finalsRound: 0,
-        finalsFixtures: [],
-        finalsResults: [],
-        premiership: null,
-        tacticChoice: "balanced",
-        seasonHistory: [],
-        saveVersion: SAVE_VERSION,
-        aiSquads: {},
-        draftOrder: [],
-        history: [],
-        brownlow: {},
-        boardWarning: 0,
-        gameOver: null,
-        themeMode: 'A',
-        options: {
-          autosave: true,
-          confirmBeforeNewCareer: true,
-          confirmBeforeDeleteSlot: true,
-          uiDensity: 'comfortable',
-          reduceMotion: false,
-          theme: (() => { try { return localStorage.getItem('fd-theme') ?? 'light'; } catch { return 'light'; } })(),
-        },
-        pendingTradeOffers: [],
-        inbox: [],
-        retiredThisSeason: [],
-        difficulty,
-        gameMode,
-        challengeId: gameMode === 'challenge' ? (challengeId || 'under_the_pump') : null,
-        challengeGoal: gameMode === 'challenge' ? challengeId : null,
-        tutorialStep: isFirstCareer && cfg.tutorialPolicy !== 'never' ? 0 : 6,
-        tutorialComplete: !(isFirstCareer && cfg.tutorialPolicy !== 'never'),
-        isFirstCareer,
-        committee: generateCommittee(league.tier),
-        footyTripAvailable: false,
-        footyTripUsed: false,
-        groundCondition: 85,
-        clubGround,
-        groundName: clubGround.shortName,
-        weeklyWeather: {},
-        winStreak: 0,
-        homeWinStreak: 0,
-        coachReputation: league.tier === 4 ? 5 : 30,
-        coachTier: league.tier === 4 ? 'Grassroots' : 'Journeyman',
-        coachAccreditation: startingAccreditationForTier(league.tier),
-        tier3Div1Titles: 0,
-        lastPromotionPlayoff: null,
-        coachStats: {
-          totalWins: 0, totalLosses: 0, totalDraws: 0,
-          premierships: 0, promotions: 0, relegations: 0,
-          clubsManaged: 1, seasonsManaged: 1,
-        },
-        previousClubs: [],
-        isSacked: false,
-        jobMarketOpen: false,
-        sackingStep: null,
-        jobOffers: [],
-        boardVotePrepBonus: 0,
-        jobMarketRerolls: 0,
-        arrivalBriefing: null,
-        journalist: generateJournalist(),
-        lastBoardConfidenceDelta: 0,
-        lastMatchSummary: null,
-        lastFinanceTickWeek: null,
-        lastFinanceTickDay: null,
-        cashCrisisStartWeek: null,
-        cashCrisisLevel: 0,
-        bankLoan: null,
-        sponsorRenewalProposals: [],
-        sponsorOffers: [],
-        expiredSponsorsLastSeason: [],
-        pendingRenewals: [],
-        renewalsClosed: false,
-        pendingStaffRenewals: [],
-        fundraisersUsed: {},
-        communityGrantUsed: false,
-        lastEosFinance: null,
-        postSeasonPhase: 'none',
-        inTradePeriod: false,
-        tradePeriodDay: 0,
-        freeAgencyOpen: false,
-        postSeasonDraftCountdown: null,
-        freeAgentBalance: { gained: 0, lost: 0 },
-        tradeHistory: [],
-        draftPickBank: null,
-        offSeasonFreeAgents: [],
-        clubCulture: defaultClubCulture(),
-        headToHead: {},
-        finalsRivalryLog: [],
-        captainId: null,
-        viceCaptainId: null,
-        captainHistory: [],
-        bogeyTeamId: null,
-        dominatedTeamId: null,
-        crucialFive: [],
-        crisisFiredThisSeason: false,
-        teamStats: null,
-      };
-      assignDefaultCaptains(newCareer);
-      ensureCareerBoard(newCareer, club, league);
-      generateSeasonObjectives(newCareer, league);
-      planSeasonBoardMeetings(newCareer);
-      primeSeasonStoryState(newCareer);
-      // First-ever draft is fully scouted so new players can read the board.
-      seedNationalDraft(newCareer, league, { inaugural: true, force: true, revealAll: true });
       onStart(newCareer);
     } catch (err) {
       setStartError(err.message);
@@ -429,6 +478,25 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
           {/* ── STEP 0: WHERE WILL YOUR STORY BEGIN? ─── */}
           {step === 0 && (
             <motion.div key="setup-step-0" className="space-y-8" {...slideIn}>
+
+              {/* Quick Start — skip the whole flow with a sensible default */}
+              {onQuickStart && (
+                <motion.button type="button" onClick={onQuickStart}
+                  whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}
+                  className="w-full panel rounded-xl p-4 flex items-center gap-4 text-left group">
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, var(--A-accent), var(--A-accent-2))', boxShadow: '0 4px 16px color-mix(in srgb, var(--A-accent) 30%, transparent)' }}>
+                    <Zap className="w-5 h-5" style={{ color: 'var(--fd-on-accent, #0A0D0C)' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-atext">Quick Start</div>
+                    <div className="text-[11px] text-atext-dim mt-0.5">
+                      Drop straight into a community club on a forgiving difficulty — no setup needed.
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-aaccent flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
+                </motion.button>
+              )}
 
               {/* Resume saves — only shown when saves exist */}
               {slotsWithSaves.length > 0 && (() => {
