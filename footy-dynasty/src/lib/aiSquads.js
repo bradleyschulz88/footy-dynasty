@@ -6,6 +6,7 @@ import { rand, rng, TIER_SCALE } from './rng.js';
 import { selectBalancedLineup } from './lineupBalance.js';
 import { competitionClubsForCareer } from './leagueEngine.js';
 import { LINEUP_CAP } from './lineupHelpers.js';
+import { classifySquadMode } from './draftEngine.js';
 
 const SQUAD_SIZE = 32;
 
@@ -57,7 +58,9 @@ export function tickAiSquads(aiSquads, season = 2026) {
     const availableCount = updated.filter(p => (p.injured ?? 0) === 0).length;
     if (availableCount < MIN_SQUAD_SIZE) {
       const needed = MIN_SQUAD_SIZE - availableCount;
-      const tier = updated[0]?.tier ?? 2;
+      // Use the first player that has a tier field — don't blindly take [0]
+      // which may lack the field if the squad predates the tier property.
+      const tier = updated.find(p => p.tier != null)?.tier ?? 2;
       for (let i = 0; i < needed; i++) {
         const slot = Math.floor(rng() * 1e6);
         const p = generatePlayer(tier, slot, { clubId: id, season });
@@ -67,17 +70,6 @@ export function tickAiSquads(aiSquads, season = 2026) {
     out[id] = updated;
   }
   return out;
-}
-
-// AI REALISM: Classify an AI squad as 'rebuild', 'develop', or 'compete' to
-// guide end-of-season list decisions (youth emphasis vs veteran depth).
-function classifySquadMode(squad) {
-  if (!squad || squad.length === 0) return 'develop';
-  const avgAge = squad.reduce((s, p) => s + (p.age ?? 24), 0) / squad.length;
-  const avgRating = squad.reduce((s, p) => s + (p.trueRating || p.overall || 70), 0) / squad.length;
-  if (avgAge >= 28 || avgRating >= 78) return 'compete';
-  if (avgAge <= 23 || avgRating <= 64) return 'rebuild';
-  return 'develop';
 }
 
 // End-of-season ageing for AI clubs
@@ -115,7 +107,7 @@ export function ageAiSquads(aiSquads, newLeagueTier, season = 2026) {
       // ~80% at 37.  Compete-mode clubs hold on a little longer.
       .filter(p => {
         if (p.age < 33) return true;
-        const retireChance = Math.min(0.90, (p.age - 32) * 0.22 - (mode === 'compete' ? 0.10 : 0));
+        const retireChance = Math.min(0.90, Math.max(0, (p.age - 32) * 0.22 - (mode === 'compete' ? 0.10 : 0)));
         return rng() >= retireChance;
       });
 

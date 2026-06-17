@@ -7,6 +7,7 @@ import { syncRecruitPhaseInboxRows } from './inbox.js';
 import { LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 import { draftPickPositionForClub } from './draftSeed.js';
 import { clubFinalsGrudgeTowardPlayer } from './finalsRivalry.js';
+import { squadPositionNeeds } from './draftEngine.js';
 
 /** Rich snapshot for trade offers / UI (attrs, status, career log). */
 export function tradePlayerSnapshot(p) {
@@ -70,27 +71,13 @@ export const FREE_AGENCY_END_DAY = 8;
 export const POST_TRADE_DRAFT_COUNTDOWN_DAYS = 7;
 
 /** AI trade offers use the same shape as pre-season pendingTradeOffers. */
-// AI REALISM: Helper — count positional gaps in an AI squad to guide which
-// positions they want to acquire in the trade market.
+// Convert squadPositionNeeds (object of {pos: boostAmount}) into a Set of
+// position strings for the trade-targeting check. Returns an empty Set when
+// the squad is uninitialised so that gaps.size === 0 and seedAiTradeOffers
+// falls back to random targeting rather than flagging every position as a gap.
 function aiSquadPositionGaps(aiSq) {
-  // Return empty set when squad hasn't been initialised yet (e.g. season 1
-  // before the first match preview calls ensureSquadsForLeague). An empty set
-  // makes gaps.size === 0, so seedAiTradeOffers falls back to random targeting
-  // rather than treating every position as a gap and biasing all offers.
   if (!aiSq || aiSq.length === 0) return new Set();
-  const counts = {};
-  for (const p of aiSq) {
-    const pos = p.position || 'C';
-    counts[pos] = (counts[pos] || 0) + 1;
-  }
-  const gaps = new Set();
-  if ((counts.RU || 0) < 2) gaps.add('RU');
-  if ((counts.KF || 0) + (counts.HF || 0) < 5) { gaps.add('KF'); gaps.add('HF'); }
-  if ((counts.KB || 0) + (counts.HB || 0) < 4) { gaps.add('KB'); gaps.add('HB'); }
-  if ((counts.C || 0) + (counts.WG || 0) + (counts.R || 0) < 6) {
-    gaps.add('C'); gaps.add('WG'); gaps.add('R');
-  }
-  return gaps;
+  return new Set(Object.keys(squadPositionNeeds(aiSq)));
 }
 
 function seedAiTradeOffers(c, league) {
