@@ -73,8 +73,13 @@ export const POST_TRADE_DRAFT_COUNTDOWN_DAYS = 7;
 // AI REALISM: Helper — count positional gaps in an AI squad to guide which
 // positions they want to acquire in the trade market.
 function aiSquadPositionGaps(aiSq) {
+  // Return empty set when squad hasn't been initialised yet (e.g. season 1
+  // before the first match preview calls ensureSquadsForLeague). An empty set
+  // makes gaps.size === 0, so seedAiTradeOffers falls back to random targeting
+  // rather than treating every position as a gap and biasing all offers.
+  if (!aiSq || aiSq.length === 0) return new Set();
   const counts = {};
-  for (const p of aiSq || []) {
+  for (const p of aiSq) {
     const pos = p.position || 'C';
     counts[pos] = (counts[pos] || 0) + 1;
   }
