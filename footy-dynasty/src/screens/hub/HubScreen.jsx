@@ -89,7 +89,7 @@ function HubGroundStrip({ club, league, setScreen, setTab }) {
         <div className="flex items-center justify-between mb-2">
           <div>
             <div className={css.label}>Home Ground</div>
-            <div className="font-bold text-sm text-atext leading-tight">{career.groundName || `${club.short} Oval`}</div>
+            <div className="font-bold text-sm text-atext leading-tight">{career.groundName || `${club?.short ?? '?'} Oval`}</div>
           </div>
           <Pill color={band.color}>{band.label}</Pill>
         </div>
@@ -205,7 +205,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
     return { wagesAnnual, sponsorsAnnual, squadAvg };
   }, [career.squad, career.staff, career.sponsors]);
   const { wagesAnnual, sponsorsAnnual, squadAvg } = hubTotals;
-  const posColor = myLadderPos <= 2 ? "var(--A-pos)" : myLadderPos <= 5 ? "var(--A-accent)" : "var(--A-neg)";
+  const posColor = myLadderPos == null ? "var(--A-text-mute)" : myLadderPos <= 2 ? "var(--A-pos)" : myLadderPos <= 5 ? "var(--A-accent)" : "var(--A-neg)";
 
   // Next 7 upcoming events
   const upcoming7 = (career.eventQueue || []).filter(e => !e.completed).slice(0, 7);
@@ -275,13 +275,13 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
                 color:cc3,
                 boxShadow:`0 6px 20px ${cc1}55, 0 0 0 1px ${cc1}33`,
               }}>
-              {club.short}
+              {club?.short}
             </div>
             {/* Club name + meta */}
             <div className="min-w-0 flex-1">
-              <h1 className="display text-[clamp(1.6rem,6vw,2.5rem)] tracking-wide text-atext leading-none truncate">{club.name.toUpperCase()}</h1>
+              <h1 className="display text-[clamp(1.6rem,6vw,2.5rem)] tracking-wide text-atext leading-none truncate">{club?.name?.toUpperCase()}</h1>
               <div className="text-[11px] text-atext-dim mt-0.5 truncate font-mono">
-                {league.name} · Season {career.season}
+                {league?.name} · Season {career.season}
                 {hubRoundTheme?.short && <> · <span style={{color:'var(--A-accent-2)'}}>{hubRoundTheme.short}</span></>}
               </div>
             </div>
