@@ -1485,6 +1485,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         focus: c.training?.focus,
         intensity: c.training?.intensity,
         trainingLeadId: c.staffTasks?.trainingLeadId ?? null,
+        facilities: c.facilities,
       },
     );
     c.squad = squad;
@@ -2243,7 +2244,7 @@ export function resolveLiveMatchHalfTime({ career, league, club, callId, setCare
   }
 
   const call = getCoachingCall(callId);
-  const mods = resolveCoachingCall(callId);
+  const mods = resolveCoachingCall(callId, c.staff);
   // Sim Q3 with the half-time call applied, then pause for the Q3 decision.
   simMatchQuarter(lm.simState, mods);
   const q3Snap = finishMatchSim(lm.simState); // partial snapshot for display
@@ -2288,7 +2289,7 @@ export function resolveQ3Decision({ career, league, club, callId, subOutId, subI
     c.lineup = c.lineup.map((id) => (id === subOutId ? subInId : id));
   }
 
-  const mods = resolveCoachingCall(callId);
+  const mods = resolveCoachingCall(callId, c.staff);
   const call = getCoachingCall(callId);
   simMatchQuarter(lm.simState, mods);
   const result = finishMatchSim(lm.simState);

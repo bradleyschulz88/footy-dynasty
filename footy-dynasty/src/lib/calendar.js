@@ -154,6 +154,13 @@ export function intensityScale(intensity) {
   return 1.2 + (i - 80) * 0.005;                   // 80→1.2, 100→1.3
 }
 
+const FACILITY_TRAINING_MAP = {
+  ball_drill: 'trainingGround',
+  run: 'trainingGround',
+  tactics: 'trainingGround',
+  gym: 'gym',
+};
+
 export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
   const info = TRAINING_INFO[subtype];
   if (!info || !lineup?.length) {
@@ -175,6 +182,10 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
   }
   const baseScale   = staffRating / 75;
 
+  const facilityKey = FACILITY_TRAINING_MAP[subtype];
+  const facilityLevel = facilityKey ? (opts.facilities?.[facilityKey]?.level ?? 1) : 1;
+  const facilityMult = 1 + (facilityLevel - 1) * 0.1;
+
   const gains    = {};
   const devNotes = [];
 
@@ -192,7 +203,7 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
     const nearCap = overall >= potential - 3;
     const capScale = nearCap ? 0.5 : 1.0;
 
-    const scale = baseScale * ageScale * fitnessScale * capScale * intScale;
+    const scale = baseScale * ageScale * fitnessScale * capScale * intScale * facilityMult;
 
     const updated = { ...p, attrs: { ...p.attrs } };
     info.attrs.forEach(attr => {
