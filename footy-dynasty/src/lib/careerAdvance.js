@@ -2244,7 +2244,52 @@ export function resolveLiveMatchHalfTime({ career, league, club, callId, setCare
 
   const call = getCoachingCall(callId);
   const mods = resolveCoachingCall(callId);
+  // Sim Q3 with the half-time call applied, then pause for the Q3 decision.
   simMatchQuarter(lm.simState, mods);
+  const q3Snap = finishMatchSim(lm.simState); // partial snapshot for display
+  const meta = lm.meta;
+  const isHome = meta.isHome;
+  const myQ3 = isHome ? q3Snap.homeTotal : q3Snap.awayTotal;
+  const oppQ3 = isHome ? q3Snap.awayTotal : q3Snap.homeTotal;
+
+  // Surface the Q3 pause state — Q4 call + optional sub still to come.
+  c.liveMatch = {
+    ...lm,
+    htCallId: callId,
+    htMods: mods,
+    matchPhase: 'after_q3',
+    q3Snapshot: {
+      myTotal: myQ3,
+      oppTotal: oppQ3,
+      margin: myQ3 - oppQ3,
+      quarters: q3Snap.quarters,
+    },
+  };
+  setCareer(c);
+}
+
+// Q4 CALL: applied after the Q3 check-in. subOutId/subInId are optional player IDs.
+export function resolveQ3Decision({ career, league, club, callId, subOutId, subInId, setCareer }) {
+  const c = JSON.parse(JSON.stringify(career));
+  const lm = c.liveMatch;
+  if (!lm?.simState || lm?.matchPhase !== 'after_q3') {
+    setCareer(c);
+    return;
+  }
+
+  // Apply substitution to squad form before Q4.
+  if (subOutId && subInId) {
+    c.squad = c.squad.map((p) => {
+      if (p.id === subOutId) return { ...p, substituted: true };
+      if (p.id === subInId) return { ...p, form: Math.min(100, (p.form ?? 70) + 8) };
+      return p;
+    });
+    // Swap in lineup: replace subOut with subIn.
+    c.lineup = c.lineup.map((id) => (id === subOutId ? subInId : id));
+  }
+
+  const mods = resolveCoachingCall(callId);
+  const call = getCoachingCall(callId);
   simMatchQuarter(lm.simState, mods);
   const result = finishMatchSim(lm.simState);
 
@@ -2276,6 +2321,7 @@ export function resolveLiveMatchHalfTime({ career, league, club, callId, setCare
     label: `Round ${meta.round}`,
     isAFL: league.tier === 1,
     coachCall: { id: call.id, icon: call.icon, label: call.label, note: mods.note },
+    q3Sub: subOutId && subInId ? { outId: subOutId, inId: subInId } : null,
   };
   c.lastMatchSummary = buildPostMatchSummary(c, league, club, myResult, meta.round);
   setCareer(c);

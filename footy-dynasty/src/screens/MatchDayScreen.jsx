@@ -21,13 +21,21 @@ function getRecommendedCall(margin) {
   return "steady";
 }
 
-export default function MatchDayScreen({ result, league, club, onContinue, onCoachCall }) {
+export default function MatchDayScreen({ result, liveMatch, squad, lineup, league, club, onContinue, onCoachCall, onQ3Decision }) {
   const career = useCareer();
   const [revealed, setRevealed] = useState(0);
   const [showEvents, setShowEvents] = useState(true);
   const [show3qtNote, setShow3qtNote] = useState(true);
+  const [q3CallId, setQ3CallId] = useState("steady");
+  const [q3SubOut, setQ3SubOut] = useState(null);
+  const [q3SubIn, setQ3SubIn] = useState(null);
+  // Pre-match brief: shown once on first render of a live match, dismissed by player.
+  const [briefDismissed, setBriefDismissed] = useState(false);
   // Live match: only the first half exists — the coach's call sims the rest.
   const isLive = !!result.live;
+  // Q3 decision phase: half-time call has been made, Q3 just finished, Q4 awaits.
+  const isQ3Phase = liveMatch?.matchPhase === 'after_q3';
+  const showPreBrief = isLive && !briefDismissed && !isQ3Phase;
   const sound = soundEnabled(career);
 
   const revealNextQuarter = () => {
@@ -223,6 +231,238 @@ export default function MatchDayScreen({ result, league, club, onContinue, onCoa
     : awayLeading
       ? (result.isHome ? result.opp?.short : club?.short) || "Away"
       : null;
+
+  // ── Pre-Match Tactical Brief ─────────────────────────────────────────────
+  if (showPreBrief) {
+    const opp = result.opp;
+    const oppName = opp?.name ?? "Opponent";
+    const oppShort = opp?.short ?? "OPP";
+    const oppColors = opp?.colors ?? ["#334155", "#0f172a"];
+    const h2h = career.headToHead?.[opp?.id];
+    const h2hGames = h2h ? (h2h.wins + h2h.losses + h2h.draws) : 0;
+    const streak = h2h?.streak ?? 0;
+    const isBogey = h2hGames >= 3 && streak <= -3;
+    const isDominated = h2hGames >= 3 && streak >= 3;
+    const clubColors = club?.colors ?? ["var(--A-accent)", "var(--A-accent-2)"];
+    const clubShort = club?.short ?? "US";
+    const tacticLabels = { balanced: "Balanced", attacking: "Attacking", defensive: "Defensive", contested: "Contested" };
+    const currentTactic = career.tacticChoice || "balanced";
+
+    return (
+      <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
+        {/* Header */}
+        <div className="px-4 pt-6 pb-5 text-center" style={{ borderBottom: "1px solid var(--A-line)" }}>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-atext-mute mb-3">{result.label ?? "Match Day"}</div>
+          <div className="flex items-center justify-center gap-5 mb-3">
+            {/* Us */}
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-display text-xl font-black flex-shrink-0"
+              style={{ background: `linear-gradient(135deg, ${clubColors[0]}, ${clubColors[1] ?? clubColors[0]})`, color: clubColors[2] ?? "#fff" }}>
+              {clubShort}
+            </div>
+            <div className="font-display text-3xl text-atext-mute">vs</div>
+            {/* Them */}
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-display text-xl font-black flex-shrink-0"
+              style={{ background: `linear-gradient(135deg, ${oppColors[0]}, ${oppColors[1] ?? oppColors[0]})`, color: oppColors[2] ?? "#fff" }}>
+              {oppShort}
+            </div>
+          </div>
+          <div className="text-sm font-semibold text-atext">{oppName}</div>
+          {result.isHome !== undefined && (
+            <div className="text-[11px] text-atext-mute mt-0.5">{result.isHome ? "Home game" : "Away game"}</div>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-5 max-w-2xl mx-auto w-full space-y-4">
+          {/* H2H Intel */}
+          {h2hGames >= 2 && (
+            <div className="rounded-2xl p-4" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line)" }}>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-2">Head to Head</div>
+              <div className="flex items-center gap-4">
+                <div className="text-center">
+                  <div className="font-display text-2xl" style={{ color: "var(--A-pos)" }}>{h2h?.wins ?? 0}</div>
+                  <div className="text-[10px] text-atext-mute">Wins</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-display text-2xl text-atext-dim">{h2h?.draws ?? 0}</div>
+                  <div className="text-[10px] text-atext-mute">Draws</div>
+                </div>
+                <div className="text-center">
+                  <div className="font-display text-2xl" style={{ color: "var(--A-neg)" }}>{h2h?.losses ?? 0}</div>
+                  <div className="text-[10px] text-atext-mute">Losses</div>
+                </div>
+                <div className="flex-1" />
+                {isBogey && <div className="text-xs px-2 py-1 rounded-lg font-bold" style={{ background: "color-mix(in srgb, var(--A-neg) 12%, transparent)", color: "var(--A-neg)", border: "1px solid color-mix(in srgb, var(--A-neg) 30%, transparent)" }}>⚠ Bogey team</div>}
+                {isDominated && <div className="text-xs px-2 py-1 rounded-lg font-bold" style={{ background: "color-mix(in srgb, var(--A-pos) 12%, transparent)", color: "var(--A-pos)", border: "1px solid color-mix(in srgb, var(--A-pos) 30%, transparent)" }}>★ Dominated</div>}
+                {!isBogey && !isDominated && <div className="text-xs text-atext-mute">{streak > 0 ? `${streak}W streak` : streak < 0 ? `${Math.abs(streak)}L streak` : "Evenly matched"}</div>}
+              </div>
+            </div>
+          )}
+
+          {/* Current tactic */}
+          <div className="rounded-2xl p-4" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line)" }}>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-2">Going in with</div>
+            <div className="flex items-center gap-3">
+              <div className="font-display text-lg text-atext">{tacticLabels[currentTactic] ?? currentTactic}</div>
+              <div className="text-xs text-atext-mute">
+                {currentTactic === "attacking" ? "High risk — more scoring, more conceding." :
+                 currentTactic === "defensive" ? "Safety first — protect the lead, limit conceding." :
+                 currentTactic === "contested" ? "Win the hard ball — midfield grind." :
+                 "Trust the structure. Balanced across the ground."}
+              </div>
+            </div>
+            {isBogey && (
+              <div className="mt-2 text-[11px]" style={{ color: "var(--A-neg)" }}>
+                ⚠ They've had your measure lately. Your ratings take a small hit going in. Break the streak.
+              </div>
+            )}
+          </div>
+
+          {/* Opponent scout if purchased */}
+          {career.oppositionReport?.[opp?.id]?.tier >= 1 && (
+            <div className="rounded-2xl p-4" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line)" }}>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-2">Scout Report</div>
+              <div className="text-xs text-atext-dim leading-relaxed">
+                {career.oppositionReport[opp.id].matchupNote ?? "No key intel available."}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="px-4 pb-6 pt-3 border-t border-aline">
+          <button type="button" onClick={() => setBriefDismissed(true)}
+            className="w-full py-4 rounded-xl font-display text-xl tracking-widest"
+            style={{
+              background: "linear-gradient(135deg, var(--A-accent), var(--A-accent-2))",
+              color: "var(--fd-on-accent, #0A0D0C)",
+              boxShadow: "0 4px 24px color-mix(in srgb, var(--A-accent) 35%, transparent)",
+            }}>
+            PLAY MATCH →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Q3 Decision Screen ───────────────────────────────────────────────────
+  if (isQ3Phase) {
+    const snap = liveMatch.q3Snapshot || {};
+    const margin = snap.margin ?? 0;
+    const marginAbs = Math.abs(margin);
+    const leading = margin > 0;
+    const tied = margin === 0;
+    const marginLabel = tied ? "All square" : `${leading ? "Up" : "Down"} by ${marginAbs} point${marginAbs === 1 ? "" : "s"}`;
+    const urgency = !leading && marginAbs > 24 ? "danger" : !leading && marginAbs > 12 ? "behind" : leading && marginAbs > 18 ? "protect" : "contest";
+    const urgencyColor = urgency === "danger" ? "var(--A-neg)" : urgency === "behind" ? "#F59E0B" : urgency === "protect" ? "var(--A-pos)" : "var(--A-accent)";
+    const recQ4Call = margin >= 12 ? "defensive_lock" : margin <= -18 ? "attack_surge" : margin <= -8 ? "spray" : "steady";
+
+    // Bench players available for sub (fit, not already in lineup, not substituted)
+    const lineupSet = new Set(lineup || []);
+    const benchAvail = (squad || []).filter(p => !lineupSet.has(p.id) && !p.substituted && !p.injured && p.fitness >= 60);
+    // Lineup players eligible to come off (those with low fitness or form)
+    const lineupPlayers = (squad || []).filter(p => lineupSet.has(p.id) && !p.substituted);
+
+    return (
+      <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
+        {/* Header */}
+        <div className="px-4 pt-5 pb-4 text-center" style={{ borderBottom: "1px solid var(--A-line)", background: `linear-gradient(180deg, color-mix(in srgb, ${urgencyColor} 6%, var(--A-panel)) 0%, transparent 100%)` }}>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-atext-mute mb-1">3 Quarter Time</div>
+          <div className="font-display text-5xl md:text-6xl mb-1">
+            <span style={{ color: leading || tied ? "var(--A-pos)" : "var(--A-neg)" }}>{snap.myTotal ?? "—"}</span>
+            <span className="text-atext-mute mx-2 text-3xl">vs</span>
+            <span className="text-atext-dim">{snap.oppTotal ?? "—"}</span>
+          </div>
+          <div className="text-sm font-bold mt-1" style={{ color: urgencyColor }}>{marginLabel}</div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-5 max-w-2xl mx-auto w-full space-y-5">
+          {/* Q4 tactical call */}
+          <div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-2">Q4 Tactical Call</div>
+            <div className="text-xs text-atext-dim mb-3">One final adjustment before the siren. Choose how the side attacks the last quarter.</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {COACHING_CALLS.map((call) => {
+                const isRec = call.id === recQ4Call;
+                const isSel = q3CallId === call.id;
+                return (
+                  <button key={call.id} type="button" onClick={() => setQ3CallId(call.id)}
+                    className="rounded-xl p-3 text-left transition-all"
+                    style={{
+                      background: isSel ? "color-mix(in srgb, var(--A-accent) 10%, var(--A-panel))" : "var(--A-panel)",
+                      border: isSel ? "1px solid var(--A-accent)" : isRec ? "1px solid color-mix(in srgb, var(--A-accent) 35%, var(--A-line))" : "1px solid var(--A-line)",
+                      transform: isSel ? "translateY(-1px)" : "",
+                      boxShadow: isSel ? "0 4px 16px color-mix(in srgb, var(--A-accent) 15%, transparent)" : "",
+                    }}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-base">{call.icon}</span>
+                      <span className="font-bold text-sm text-atext">{call.label}</span>
+                      {isRec && !isSel && <span className="text-[9px] px-1.5 py-0.5 rounded font-mono uppercase" style={{ background: "color-mix(in srgb, var(--A-accent) 15%, transparent)", color: "var(--A-accent)" }}>✦ Rec</span>}
+                      {isSel && <span className="text-[9px] px-1.5 py-0.5 rounded font-mono uppercase" style={{ background: "color-mix(in srgb, var(--A-accent) 20%, transparent)", color: "var(--A-accent)" }}>Selected</span>}
+                    </div>
+                    <div className="text-[11px] text-atext-dim leading-snug">{CALL_TACTICAL_EFFECTS[call.id]}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Substitution (optional) */}
+          {benchAvail.length > 0 && lineupPlayers.length > 0 && (
+            <div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-2">Make a Substitution <span className="text-atext-mute normal-case tracking-normal">(optional)</span></div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <div className="text-[10px] text-atext-mute mb-1.5">Take off</div>
+                  <div className="space-y-1 max-h-40 overflow-y-auto [scrollbar-width:thin]">
+                    {[{ id: null, label: "No sub" }, ...lineupPlayers.slice().sort((a,b) => (a.fitness ?? 100) - (b.fitness ?? 100)).slice(0, 8).map(p => ({ id: p.id, label: `${p.firstName ? p.firstName[0]+". "+p.lastName : p.name}  ${p.fitness ?? "—"}% fit` }))].map(opt => (
+                      <button key={opt.id ?? "none"} type="button" onClick={() => setQ3SubOut(opt.id)}
+                        className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                        style={{
+                          background: q3SubOut === opt.id ? "color-mix(in srgb, var(--A-neg) 10%, var(--A-panel))" : "var(--A-panel)",
+                          border: q3SubOut === opt.id ? "1px solid color-mix(in srgb, var(--A-neg) 50%, transparent)" : "1px solid var(--A-line)",
+                          color: q3SubOut === opt.id ? "var(--A-neg)" : "var(--A-text)",
+                        }}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-atext-mute mb-1.5">Bring on</div>
+                  <div className="space-y-1 max-h-40 overflow-y-auto [scrollbar-width:thin]">
+                    {[{ id: null, label: "No sub" }, ...benchAvail.slice().sort((a,b) => (b.overall ?? 0) - (a.overall ?? 0)).slice(0, 8).map(p => ({ id: p.id, label: `${p.firstName ? p.firstName[0]+". "+p.lastName : p.name}  OVR ${p.overall}` }))].map(opt => (
+                      <button key={opt.id ?? "none"} type="button" onClick={() => setQ3SubIn(opt.id)}
+                        className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                        style={{
+                          background: q3SubIn === opt.id ? "color-mix(in srgb, var(--A-pos) 10%, var(--A-panel))" : "var(--A-panel)",
+                          border: q3SubIn === opt.id ? "1px solid color-mix(in srgb, var(--A-pos) 50%, transparent)" : "1px solid var(--A-line)",
+                          color: q3SubIn === opt.id ? "var(--A-pos)" : "var(--A-text)",
+                        }}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* CTA */}
+        <div className="px-4 pb-6 pt-3 border-t border-aline">
+          <button type="button"
+            onClick={() => onQ3Decision?.({ callId: q3CallId, subOutId: q3SubOut, subInId: q3SubIn })}
+            className="w-full py-4 rounded-xl font-display text-xl tracking-widest"
+            style={{
+              background: `linear-gradient(135deg, ${urgencyColor}, color-mix(in srgb, ${urgencyColor} 70%, var(--A-accent-2)))`,
+              color: "#fff",
+              boxShadow: `0 4px 24px color-mix(in srgb, ${urgencyColor} 35%, transparent)`,
+            }}>
+            PLAY Q4 →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

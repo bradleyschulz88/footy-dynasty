@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   FileText,
   UserPlus, Wand2, ListFilter,
+  ChevronUp, ChevronDown, Search,
 } from "lucide-react";
 import { PYRAMID, findClub } from '../../data/pyramid.js';
 import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash } from '../../lib/playerGen.js';
@@ -483,11 +484,12 @@ function AllPlayersTab() {
   const updateCareer = useUpdateCareer();
   const [view, setView] = useState("overview");
   const [sort, setSort] = useState("overall");
+  const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const nm = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || "Player"));
 
   const rows = useMemo(() => {
-    const arr = [...(career.squad || [])];
+    let arr = [...(career.squad || [])];
     arr.sort((a, b) => {
       switch (sort) {
         case "name": return nm(a).localeCompare(nm(b));
@@ -498,11 +500,14 @@ function AllPlayersTab() {
         case "wage": return (b.wage ?? 0) - (a.wage ?? 0);
         case "contract": return (a.contract ?? 0) - (b.contract ?? 0);
         case "potential": return (b.potential ?? 0) - (a.potential ?? 0);
+        case "goals": return (b.goals ?? 0) - (a.goals ?? 0);
+        case "disposals": return (b.disposals ?? 0) - (a.disposals ?? 0);
         default: return (b.overall ?? 0) - (a.overall ?? 0);
       }
     });
+    if (search.trim()) arr = arr.filter(p => nm(p).toLowerCase().includes(search.toLowerCase()));
     return arr;
-  }, [career.squad, sort]);
+  }, [career.squad, sort, search]);
 
   const statCell = (v) => <span className="font-bold" style={{ color: statColor(v ?? 0) }}>{v ?? "—"}</span>;
   const posCell = (p) => <span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span>;
@@ -510,30 +515,30 @@ function AllPlayersTab() {
   const columns = {
     overview: [
       { head: "Pos", render: posCell },
-      { head: "Age", render: (p) => p.age, align: "center" },
-      { head: "OVR", render: (p) => <RatingDot value={p.overall} size="sm" />, align: "center" },
-      { head: "Pot", render: (p) => p.potential ?? "—", align: "center" },
-      { head: "Wage", render: (p) => fmtK(p.wage), align: "right" },
+      { head: "Age", sortKey: "age", render: (p) => p.age, align: "center" },
+      { head: "OVR", sortKey: "overall", tooltip: "Overall rating (1–99). Squad average shown in hub.", render: (p) => <RatingDot value={p.overall} size="sm" />, align: "center" },
+      { head: "Pot", sortKey: "potential", tooltip: "Potential ceiling. Visible after scouting (approx. ±10).", render: (p) => p.potential ?? "—", align: "center" },
+      { head: "Wage", sortKey: "wage", tooltip: "Weekly wage in $k.", render: (p) => fmtK(p.wage), align: "right" },
     ],
     condition: [
       { head: "Pos", render: posCell },
-      { head: "Form", render: (p) => statCell(p.form), align: "center" },
-      { head: "Fitness", render: (p) => statCell(p.fitness), align: "center" },
-      { head: "Morale", render: (p) => statCell(p.morale), align: "center" },
+      { head: "Form", sortKey: "form", tooltip: "Recent form (0–100). Above 75 = in form. Below 50 = struggling.", render: (p) => statCell(p.form), align: "center" },
+      { head: "Fitness", sortKey: "fitness", tooltip: "Match fitness (0–100). Below 70 risks injury.", render: (p) => statCell(p.fitness), align: "center" },
+      { head: "Morale", sortKey: "morale", tooltip: "Morale (0–100). Below 38 may trigger a transfer request.", render: (p) => statCell(p.morale), align: "center" },
       { head: "Status", render: (p) => p.suspended > 0 ? <Pill color="#A78BFA">SUS {p.suspended}w</Pill> : p.injured > 0 ? <Pill color="var(--A-neg)">{p.injured}w</Pill> : <span className="text-atext-mute text-xs">Fit</span>, align: "center" },
     ],
     contracts: [
       { head: "Pos", render: posCell },
-      { head: "Age", render: (p) => p.age, align: "center" },
-      { head: "Wage", render: (p) => fmtK(p.wage), align: "right" },
-      { head: "Yrs", render: (p) => `${p.contract ?? 0}y`, align: "center" },
+      { head: "Age", sortKey: "age", render: (p) => p.age, align: "center" },
+      { head: "Wage", sortKey: "wage", tooltip: "Weekly wage in $k.", render: (p) => fmtK(p.wage), align: "right" },
+      { head: "Yrs", sortKey: "contract", tooltip: "Years remaining on contract. 0 = out of contract (OOC).", render: (p) => `${p.contract ?? 0}y`, align: "center" },
       { head: "Status", render: (p) => (p.contract ?? 0) <= 1 ? contractBadge((p.contract ?? 0) <= 0) : <span className="text-atext-mute text-xs">Signed</span>, align: "right" },
     ],
     stats: [
       { head: "Pos", render: posCell },
-      { head: "G", render: (p) => p.goals ?? 0, align: "center" },
+      { head: "G", sortKey: "goals", tooltip: "Goals kicked this season.", render: (p) => p.goals ?? 0, align: "center" },
       { head: "B", render: (p) => p.behinds ?? 0, align: "center" },
-      { head: "Disp", render: (p) => p.disposals ?? 0, align: "center" },
+      { head: "Disp", sortKey: "disposals", tooltip: "Disposals this season.", render: (p) => p.disposals ?? 0, align: "center" },
       { head: "Marks", render: (p) => p.marks ?? 0, align: "center" },
     ],
   }[view];
@@ -548,6 +553,17 @@ function AllPlayersTab() {
         <p className="text-xs text-atext-dim max-w-2xl leading-relaxed">
           The whole list in one grid. Switch the column group to compare ratings, condition, contracts or season output — then tap anyone to open their card.
         </p>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-atext-mute pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search players…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full sm:max-w-xs pl-9 pr-4 py-2 rounded-xl border border-aline bg-apanel text-sm text-atext placeholder:text-atext-mute focus:outline-none focus:border-aaccent"
+        />
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -568,33 +584,39 @@ function AllPlayersTab() {
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <span className={css.label}>Sort</span>
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="text-sm font-semibold rounded-lg px-3 py-2 border border-aline bg-apanel text-atext"
-          >
-            <option value="overall">Rating</option>
-            <option value="potential">Potential</option>
-            <option value="age">Age</option>
-            <option value="form">Form</option>
-            <option value="fitness">Fitness</option>
-            <option value="morale">Morale</option>
-            <option value="wage">Wage</option>
-            <option value="contract">Contract (yrs left)</option>
-            <option value="name">Name</option>
-          </select>
-        </label>
       </div>
 
       <div className="rounded-2xl overflow-hidden border border-aline">
         <div className="overflow-x-auto">
           <div className="grid px-4 py-3 min-w-[640px]" style={{ gridTemplateColumns: template, gap: "0.5rem", background: "var(--A-panel-2)", borderBottom: "1px solid var(--A-line)" }}>
             <div className="text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute">#</div>
-            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute">Player</div>
+            <button
+              type="button"
+              onClick={() => setSort("name")}
+              className={`flex items-center gap-0.5 text-[10px] font-black uppercase tracking-[0.15em] transition-colors text-left ${sort === "name" ? "text-aaccent" : "text-atext-mute hover:text-atext"}`}
+            >
+              Player
+              {sort === "name" && <ChevronDown className="w-3 h-3 flex-shrink-0" />}
+            </button>
             {columns.map((c) => (
-              <div key={c.head} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${alignCls(c.align)}`}>{c.head}</div>
+              c.sortKey ? (
+                <button
+                  key={c.head}
+                  type="button"
+                  title={c.tooltip}
+                  onClick={() => setSort(c.sortKey)}
+                  className={`flex items-center gap-0.5 text-[10px] font-black uppercase tracking-[0.15em] transition-colors ${alignCls(c.align)} ${sort === c.sortKey ? "text-aaccent" : "text-atext-mute hover:text-atext"}`}
+                >
+                  {c.head}
+                  {sort === c.sortKey && (
+                    c.sortKey === "age" || c.sortKey === "contract"
+                      ? <ChevronUp className="w-3 h-3 flex-shrink-0" />
+                      : <ChevronDown className="w-3 h-3 flex-shrink-0" />
+                  )}
+                </button>
+              ) : (
+                <div key={c.head} title={c.tooltip} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${alignCls(c.align)}`}>{c.head}</div>
+              )
             ))}
           </div>
           <div className="max-h-[68vh] overflow-y-auto min-w-[640px] [scrollbar-width:thin]" style={{ background: "var(--A-panel)" }}>
