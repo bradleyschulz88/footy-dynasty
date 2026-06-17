@@ -121,10 +121,10 @@ export default function MatchDayScreen({ result, league, club, onContinue, onCoa
     result.isAFL
       ? [
           won
-            ? `${club.name} put in a dominant performance today.`
+            ? `${club?.name ?? 'Your side'} put in a dominant performance today.`
             : drew
               ? "An even contest — both sides had their chances."
-              : `A tough day at the office for ${club.name}.`,
+              : `A tough day at the office for ${club?.name ?? 'your side'}.`,
           result.myTotal > 80
             ? "The forward line was electric, converting at a high rate."
             : result.myTotal > 60
