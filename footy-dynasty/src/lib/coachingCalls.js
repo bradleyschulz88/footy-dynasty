@@ -6,6 +6,8 @@
 // ---------------------------------------------------------------------------
 import { rng } from './rng.js';
 
+const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+
 export const COACHING_CALLS = [
   {
     id: 'attack_surge',
@@ -57,17 +59,23 @@ export function getCoachingCall(id) {
  * once here: ~60% the rooms responds (+4), otherwise the group tightens (-1.5).
  * @returns {{ playerStrengthDelta: number, oppStrengthDelta: number, note: string }}
  */
-export function resolveCoachingCall(callId) {
+export function resolveCoachingCall(callId, staff = []) {
   const call = getCoachingCall(callId);
+  const s1 = (staff || []).find((s) => s.id === 's1');
+  const coachRating = Number(s1?.rating) || 70;
+  // rating 55 → 0.88×, 70 → 1.0×, 88 → 1.15× — better coaches get more from their calls
+  const coachScale = clamp(1 + (coachRating - 70) / 120, 0.75, 1.3);
   if (call.volatile) {
-    const responded = rng() < 0.6;
+    // Elite coaches get the rooms going more reliably
+    const threshold = Math.min(0.82, 0.6 + (coachRating - 70) * 0.004);
+    const responded = rng() < threshold;
     return responded
-      ? { playerStrengthDelta: 4, oppStrengthDelta: 0, note: 'The rooms responded — they came out flying.' }
+      ? { playerStrengthDelta: 4 * coachScale, oppStrengthDelta: 0, note: 'The rooms responded — they came out flying.' }
       : { playerStrengthDelta: -1.5, oppStrengthDelta: 0, note: 'The spray fell flat — a few heads dropped.' };
   }
   return {
-    playerStrengthDelta: call.playerStrengthDelta ?? 0,
-    oppStrengthDelta: call.oppStrengthDelta ?? 0,
+    playerStrengthDelta: (call.playerStrengthDelta ?? 0) * coachScale,
+    oppStrengthDelta: (call.oppStrengthDelta ?? 0) * coachScale,
     note: null,
   };
 }

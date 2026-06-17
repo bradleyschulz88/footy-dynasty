@@ -39,26 +39,28 @@ export function migrateDraftPoolScouting(pool) {
 }
 
 /** Display helpers for blurred ratings at low scout tiers. */
-export function displayDraftOverall(p) {
+export function displayDraftOverall(p, scoutRating = 70) {
   const t = scoutRevealTier(p);
   const o = Number(p.overall);
   if (!Number.isFinite(o)) return { label: "?", hint: "Unscouted" };
   if (t <= 0) return { label: "?", hint: "Run combine scouting" };
   if (t === 1) return { label: `${Math.round(o / 10) * 10}`, hint: "Rough band (~±10)" };
   if (t === 2) {
-    const d = stableSkew(p.id, 401, 4);
-    return { label: `${clampVal(Math.round(o + d), 40, 95)}`, hint: "Scout estimate (~±4)" };
+    const magnitude = clampVal(Math.round(4 * (1.5 - scoutRating / 140)), 2, 8);
+    const d = stableSkew(p.id, 401, magnitude);
+    return { label: `${clampVal(Math.round(o + d), 40, 95)}`, hint: `Scout estimate (~±${magnitude})` };
   }
   return { label: String(Math.round(o)), hint: null };
 }
 
-export function displayDraftPotential(p) {
+export function displayDraftPotential(p, scoutRating = 70) {
   const t = scoutRevealTier(p);
   const pot = Number(p.potential);
   if (!Number.isFinite(pot)) return { label: "?", hint: null };
   if (t <= 1) return { label: "?", hint: t === 0 ? null : "Potential still fuzzy" };
   if (t === 2) {
-    const d = stableSkew(p.id, 509, 6);
+    const magnitude = clampVal(Math.round(6 * (1.5 - scoutRating / 140)), 3, 12);
+    const d = stableSkew(p.id, 509, magnitude);
     return { label: `${clampVal(Math.round(pot + d), 45, 99)}`, hint: "Ceiling estimate" };
   }
   return { label: String(Math.round(pot)), hint: null };

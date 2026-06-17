@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import {
   Repeat, Target, ArrowRight,
   Sprout, Newspaper, GraduationCap,
-  Map, Plane, Award, FileText, UserPlus,
+  Map, Plane, Award, FileText, UserPlus, Send,
 } from "lucide-react";
 import { seedRng, rand, rng } from '../../lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, findClub, findLeagueOf } from '../../data/pyramid.js';
@@ -302,6 +302,191 @@ function FreeAgentsTab() {
   );
 }
 
+function ProposeTradePanel() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
+  const [targetClubId, setTargetClubId] = useState('');
+  const [theirPlayerId, setTheirPlayerId] = useState('');
+  const [ourPlayerId, setOurPlayerId] = useState('');
+  const [cashOffer, setCashOffer] = useState(0);
+  const [result, setResult] = useState(null);
+
+  // Reset result when selections change
+  useEffect(() => { setResult(null); }, [targetClubId, theirPlayerId, ourPlayerId]);
+
+  const clubs = Object.keys(career.aiSquads || {})
+    .filter(id => (career.aiSquads[id]?.length ?? 0) > 0)
+    .map(id => ({ id, club: findClub(id), squad: career.aiSquads[id] }))
+    .sort((a, b) => (a.club?.short ?? a.id).localeCompare(b.club?.short ?? b.id));
+
+  const theirSquad = [...(career.aiSquads?.[targetClubId] || [])].sort((a, b) => b.overall - a.overall);
+  const ourSquad = [...career.squad.filter(p => p.contract > 0)].sort((a, b) => b.overall - a.overall);
+  const theirPlayer = theirSquad.find(p => p.id === theirPlayerId);
+  const ourPlayer = ourSquad.find(p => p.id === ourPlayerId);
+
+  const sendProposal = () => {
+    if (!theirPlayer || !ourPlayer) {
+      setResult('Select a player from each side');
+      return;
+    }
+    if ((career.finance?.cash ?? 0) < cashOffer) {
+      setResult('Not enough cash for the cash component');
+      return;
+    }
+    const theirValue = theirPlayer.value ?? Math.round(theirPlayer.overall * 1500);
+    const offerValue = (ourPlayer.value ?? Math.round(ourPlayer.overall * 1500)) + cashOffer;
+    const ratio = offerValue / theirValue;
+    let acceptChance = 0;
+    if (ratio >= 0.88) acceptChance = 0.90;
+    else if (ratio >= 0.72) acceptChance = 0.55;
+    else if (ratio >= 0.55) acceptChance = 0.20;
+    const accepted = rng() < acceptChance;
+    const targetClubShort = findClub(targetClubId)?.short ?? targetClubId;
+    if (accepted) {
+      const wageDelta = (theirPlayer.wage ?? 0) - (ourPlayer.wage ?? 0);
+      if (!canAffordSigning(career, wageDelta)) {
+        setResult("Cap check failed — their player's wage would breach your salary cap.");
+        return;
+      }
+      const newPlayer = {
+        ...theirPlayer,
+        id: 'trade_' + Date.now() + '_' + Math.floor(Math.random() * 1e6),
+        receivedInTrade: career.season,
+        seasonsAtClub: 0,
+      };
+      const newsText = `🤝 Trade proposal accepted: ${ourPlayer.firstName} ${ourPlayer.lastName} → ${targetClubShort} for ${theirPlayer.firstName} ${theirPlayer.lastName}${cashOffer > 0 ? ' + ' + fmtK(cashOffer) + ' cash' : ''}`;
+      updateCareer({
+        squad: [...career.squad.filter(p => p.id !== ourPlayerId), newPlayer],
+        aiSquads: {
+          ...career.aiSquads,
+          [targetClubId]: [...career.aiSquads[targetClubId].filter(p => p.id !== theirPlayerId), ourPlayer],
+        },
+        lineup: (career.lineup || []).filter(id => id !== ourPlayerId),
+        finance: {
+          ...career.finance,
+          cash: career.finance.cash - cashOffer,
+        },
+        news: [{ week: career.week, type: 'win', text: newsText }, ...(career.news || [])].slice(0, 20),
+        pendingTradeOffers: (career.pendingTradeOffers || []).map(o =>
+          o.fromClubId === targetClubId && o.targetPlayerId === ourPlayerId && o.status === 'pending'
+            ? { ...o, status: 'expired' }
+            : o
+        ),
+      });
+      setResult('accepted');
+    } else {
+      const flavors = [
+        `${targetClubShort} reviewed the offer but want more value — their recruiting panel passed.`,
+        `${targetClubShort} declined. Their list managers don't see a fit at this time.`,
+        `${targetClubShort} held firm — they aren't moving ${theirPlayer.firstName} ${theirPlayer.lastName} for this package.`,
+      ];
+      const flavor = flavors[Math.floor(rng() * flavors.length)];
+      updateCareer({
+        news: [{ week: career.week, type: 'info', text: `📵 Trade proposal rejected: ${flavor}` }, ...(career.news || [])].slice(0, 20),
+      });
+      setResult('rejected:' + flavor);
+    }
+  };
+
+  return (
+    <div className={`${css.panel} p-5 mt-6`}>
+      <div className="flex items-center gap-2 mb-1">
+        <Send className="w-4 h-4" style={{ color: 'var(--A-accent)' }} />
+        <div className={`${css.h1} text-xl`}>INITIATE A TRADE</div>
+      </div>
+      <div className="text-xs mb-4" style={{ color: 'var(--A-text-dim)' }}>Make the first move — propose a swap to a rival club.</div>
+
+      <div className="flex flex-wrap gap-3 mb-3">
+        <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
+          <label className={`${css.label} text-[11px]`}>Target Club</label>
+          <select
+            value={targetClubId}
+            onChange={e => { setTargetClubId(e.target.value); setTheirPlayerId(''); }}
+            className="bg-apanel-2 border border-aline rounded-xl px-3 py-2 text-xs text-atext"
+          >
+            <option value="">Pick a club</option>
+            {clubs.map(({ id, club }) => (
+              <option key={id} value={id}>{club?.short ?? id}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
+          <label className={`${css.label} text-[11px]`}>Their Player</label>
+          <select
+            value={theirPlayerId}
+            onChange={e => setTheirPlayerId(e.target.value)}
+            disabled={!targetClubId}
+            className="bg-apanel-2 border border-aline rounded-xl px-3 py-2 text-xs text-atext disabled:opacity-50"
+          >
+            <option value="">Pick their player</option>
+            {theirSquad.map(p => (
+              <option key={p.id} value={p.id}>{p.firstName} {p.lastName} ({p.overall} {p.position} {p.age}A)</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
+          <label className={`${css.label} text-[11px]`}>Your Player</label>
+          <select
+            value={ourPlayerId}
+            onChange={e => setOurPlayerId(e.target.value)}
+            className="bg-apanel-2 border border-aline rounded-xl px-3 py-2 text-xs text-atext"
+          >
+            <option value="">Pick your player</option>
+            {ourSquad.map(p => (
+              <option key={p.id} value={p.id}>{p.firstName} {p.lastName} ({p.overall} {p.position} {p.age}A)</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex flex-col gap-1">
+          <label className={`${css.label} text-[11px]`}>Add cash (optional)</label>
+          <input
+            type="number"
+            min={0}
+            step={10000}
+            value={cashOffer}
+            placeholder="$0"
+            onChange={e => setCashOffer(Math.max(0, Number(e.target.value)))}
+            className="bg-apanel-2 border border-aline rounded-xl px-3 py-2 text-xs text-atext w-36"
+          />
+        </div>
+        <div className="text-xs self-end pb-2" style={{ color: 'var(--A-text-dim)' }}>
+          Available: {fmtK(career.finance?.cash ?? 0)}
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={sendProposal}
+        disabled={!theirPlayerId || !ourPlayerId || result === 'accepted'}
+        className={`${css.btnPrimary} text-sm px-5 py-2.5 min-h-[44px] disabled:opacity-40`}
+      >
+        Make Offer
+      </button>
+
+      {result && (
+        <div className="mt-4 rounded-xl px-4 py-3 text-sm" style={{
+          background: result === 'accepted'
+            ? 'color-mix(in srgb, var(--A-pos) 12%, transparent)'
+            : result.startsWith('rejected:')
+              ? 'color-mix(in srgb, var(--A-neg) 10%, transparent)'
+              : 'color-mix(in srgb, var(--A-accent) 8%, transparent)',
+          border: `1px solid ${result === 'accepted' ? 'color-mix(in srgb, var(--A-pos) 30%, transparent)' : result.startsWith('rejected:') ? 'color-mix(in srgb, var(--A-neg) 25%, transparent)' : 'color-mix(in srgb, var(--A-accent) 25%, transparent)'}`,
+          color: result === 'accepted' ? 'var(--A-pos)' : result.startsWith('rejected:') ? 'var(--A-neg)' : 'var(--A-accent)',
+        }}>
+          {result === 'accepted'
+            ? 'Deal done! Check your squad.'
+            : result.startsWith('rejected:')
+              ? result.slice('rejected:'.length)
+              : result}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OffersTab() {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
@@ -481,6 +666,7 @@ function OffersTab() {
           )}
         </div>
       )}
+      {career.inTradePeriod && <ProposeTradePanel />}
     </div>
   );
 }

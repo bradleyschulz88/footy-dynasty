@@ -107,7 +107,7 @@ import {
 } from './lib/board.js';
 import { getClubGround } from './data/grounds.js';
 import { buildMatchDayExitPatch } from './lib/matchDayFinalize.js';
-import { advanceCareerNextEvent, resolveLiveMatchHalfTime, triggerSackState, fastForwardFinals } from './lib/careerAdvance.js';
+import { advanceCareerNextEvent, resolveLiveMatchHalfTime, resolveQ3Decision, triggerSackState, fastForwardFinals } from './lib/careerAdvance.js';
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
 
@@ -349,7 +349,7 @@ function AFLManagerInner() {
   const completeMatchDay = useCallback((autoAdvanceCalendar = false) => {
     const { career: c, setCareer: sc, setScreen: ss, setTab: st } = advanceShellRef.current;
     if (!c?.clubId) return;
-    if (c.liveMatch) return; // half-time pause — coach's call resolves the match first
+    if (c.liveMatch) return; // half-time or Q3 pause — coach's call resolves the match first
     const patched = applyCareerPatch(c, buildMatchDayExitPatch);
     const isPreseason = !!c.currentMatchResult?.isPreseason;
     const isFinals = !!c.currentMatchResult?.isFinals;
@@ -1165,6 +1165,9 @@ function AFLManagerInner() {
           {globalStyle}
           <MatchDayScreen
           result={career.currentMatchResult}
+          liveMatch={career.liveMatch}
+          squad={career.squad}
+          lineup={career.lineup}
           league={league}
           club={club}
           onCoachCall={(callId) => {
@@ -1175,6 +1178,19 @@ function AFLManagerInner() {
               league: PYRAMID[c.leagueKey],
               club: findClub(c.clubId),
               callId,
+              setCareer: sc,
+            });
+          }}
+          onQ3Decision={({ callId, subOutId, subInId }) => {
+            const { career: c, setCareer: sc } = advanceShellRef.current;
+            if (!c?.liveMatch || c.liveMatch.matchPhase !== 'after_q3') return;
+            resolveQ3Decision({
+              career: c,
+              league: PYRAMID[c.leagueKey],
+              club: findClub(c.clubId),
+              callId,
+              subOutId,
+              subInId,
               setCareer: sc,
             });
           }}

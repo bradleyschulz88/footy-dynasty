@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AlertCircle, FileText } from "lucide-react";
 import { PYRAMID, findClub } from "../../data/pyramid.js";
 import { fmtK } from "../../lib/format.js";
@@ -174,12 +175,43 @@ export function ExpiringContractsList() {
 export function RenewalsTab() {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
+  const [counter, setCounter] = useState(null); // { proposal, wage } or null
   const queue = (career.pendingRenewals || []).filter(r => !r._handled);
   const renewalsLeague = PYRAMID[career.leagueKey];
   const capLimit = effectiveWageCap(career);
   const wageBillAnnual = annualWageBill(career);
   const headroom = capHeadroom(career);
   const closed = career.renewalsClosed;
+  const sendCounter = (proposal, offeredWage) => {
+    if (closed) return;
+    const ratio = offeredWage / (proposal.proposedWage || offeredWage);
+    // Acceptance probability: 100% at demand, 0% at 70%
+    const acceptProb = Math.max(0, (ratio - 0.70) / 0.30);
+    const roll = Math.random(); // intentionally non-seeded — fresh each time
+    const accepted = roll < acceptProb;
+    setCounter(null);
+    if (accepted) {
+      const counterProposal = { ...proposal, proposedWage: offeredWage };
+      if (!canAffordRenewal(career, counterProposal)) {
+        updateCareer({ news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot afford counter for ${proposal.name} — over salary cap` }, ...(career.news || [])].slice(0, 25) });
+        return;
+      }
+      const patch = applyRenewal(career, counterProposal);
+      updateCareer({
+        ...patch,
+        pendingRenewals: (career.pendingRenewals || []).map(r2 => r2.playerId === proposal.playerId ? { ...r2, _handled: 'accepted' } : r2),
+        news: [{ week: career.week, type: 'win', text: `✍️ Counter accepted: ${proposal.name} signed for ${proposal.proposedYears}y @ ${fmtK(offeredWage)}/yr` }, ...(career.news || [])].slice(0, 25),
+      });
+    } else {
+      const lines = [
+        `${proposal.name} rejected the counter — they want ${fmtK(proposal.proposedWage)}/yr or they walk.`,
+        `${proposal.name} isn't budging — the ${fmtK(proposal.proposedWage)}/yr demand stands.`,
+        `${proposal.name}'s agent called back: the original terms are the final offer.`,
+      ];
+      const text = lines[Math.floor(Math.random() * lines.length)];
+      updateCareer({ news: [{ week: career.week, type: 'loss', text: `❌ Counter rejected: ${text}` }, ...(career.news || [])].slice(0, 25) });
+    }
+  };
   const accept = (proposal) => {
     if (closed) return;
     if (!canAffordRenewal(career, proposal)) {
@@ -266,33 +298,78 @@ export function RenewalsTab() {
             const canAfford = canAffordRenewal(career, r);
             const formColor = (player.form ?? 70) >= 80 ? 'var(--A-pos)' : (player.form ?? 70) >= 60 ? 'var(--A-accent)' : 'var(--A-neg)';
             return (
-              <div key={r.playerId} className={`${css.panel} p-4`}>
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="font-bold text-base">{r.name}</div>
-                    <div className="text-[10px] text-atext-dim uppercase tracking-widest font-mono">{r.position} · age {r.age} · OVR {r.overall}</div>
+              <div key={r.playerId}>
+                <div className={`${css.panel} p-4`}>
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="font-bold text-base">{r.name}</div>
+                      <div className="text-[10px] text-atext-dim uppercase tracking-widest font-mono">{r.position} · age {r.age} · OVR {r.overall}</div>
+                    </div>
+                    <RatingDot value={r.overall} size="sm" />
                   </div>
-                  <RatingDot value={r.overall} size="sm" />
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
-                  <div className="text-atext-mute">Current</div>
-                  <div className="text-atext text-right font-mono">{fmtK(r.currentWage)}/yr</div>
-                  <div className="text-atext-mute">Demand</div>
-                  <div className="text-right font-mono font-bold" style={{ color: wageDelta >= 0 ? '#FFB347' : 'var(--A-pos)' }}>
-                    {fmtK(r.proposedWage)}/yr <span className="text-atext-mute font-normal">({wageDelta >= 0 ? '+' : ''}{fmtK(wageDelta)})</span>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
+                    <div className="text-atext-mute">Current</div>
+                    <div className="text-atext text-right font-mono">{fmtK(r.currentWage)}/yr</div>
+                    <div className="text-atext-mute">Demand</div>
+                    <div className="text-right font-mono font-bold" style={{ color: wageDelta >= 0 ? '#FFB347' : 'var(--A-pos)' }}>
+                      {fmtK(r.proposedWage)}/yr <span className="text-atext-mute font-normal">({wageDelta >= 0 ? '+' : ''}{fmtK(wageDelta)})</span>
+                    </div>
+                    <div className="text-atext-mute">Years</div>
+                    <div className="text-atext text-right font-mono">{r.proposedYears}y</div>
+                    <div className="text-atext-mute">Form factor</div>
+                    <div className="text-right font-mono" style={{ color: formColor }}>{(r.formMult ?? 1).toFixed(2)}×</div>
                   </div>
-                  <div className="text-atext-mute">Years</div>
-                  <div className="text-atext text-right font-mono">{r.proposedYears}y</div>
-                  <div className="text-atext-mute">Form factor</div>
-                  <div className="text-right font-mono" style={{ color: formColor }}>{(r.formMult ?? 1).toFixed(2)}×</div>
+                  {!canAfford && (
+                    <div className="text-[10px] text-aneg mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Over salary cap</div>
+                  )}
+                  <div className="flex gap-2 justify-end">
+                    <button type="button" onClick={() => reject(r)} disabled={closed} className={closed ? 'text-xs px-3 py-2 text-atext-mute' : 'text-xs px-3 py-2 rounded-lg text-aneg hover:bg-aneg/10'}>Let Walk</button>
+                    {!counter || counter.proposal.playerId !== r.playerId ? (
+                      <button
+                        type="button"
+                        onClick={() => setCounter({ proposal: r, wage: Math.round(r.proposedWage * 0.88) })}
+                        disabled={closed}
+                        className="text-xs px-3 py-2 rounded-lg font-bold"
+                        style={{ background: 'rgba(255,179,71,0.10)', color: '#FFB347', border: '1px solid rgba(255,179,71,0.30)' }}
+                      >
+                        Counter
+                      </button>
+                    ) : null}
+                    <button type="button" onClick={() => accept(r)} disabled={closed || !canAfford} className={canAfford && !closed ? `${css.btnPrimary} text-xs px-3 py-2` : "px-3 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>Re-Sign</button>
+                  </div>
                 </div>
-                {!canAfford && (
-                  <div className="text-[10px] text-aneg mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Over salary cap</div>
+                {counter?.proposal?.playerId === r.playerId && !closed && (
+                  <div className="mx-2 mb-3 rounded-xl p-4" style={{ background: 'color-mix(in srgb, #FFB347 8%, transparent)', border: '1px solid rgba(255,179,71,0.30)' }}>
+                    <div className="text-xs font-bold mb-3" style={{ color: '#FFB347' }}>📋 Counter offer to {r.name}</div>
+                    <div className="mb-3">
+                      <label className="block text-[10px] text-atext-dim mb-1 uppercase tracking-wide">Your wage offer (player demands {fmtK(r.proposedWage)}/yr)</label>
+                      <input
+                        type="range"
+                        min={Math.round(r.proposedWage * 0.70)}
+                        max={r.proposedWage}
+                        step={5000}
+                        value={counter.wage}
+                        onChange={(e) => setCounter({ ...counter, wage: Number(e.target.value) })}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-[10px] text-atext-dim mt-1">
+                        <span>{fmtK(Math.round(r.proposedWage * 0.70))} (70%)</span>
+                        <span className="font-bold text-atext">{fmtK(counter.wage)}/yr</span>
+                        <span>{fmtK(r.proposedWage)} (demand)</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button type="button" onClick={() => setCounter(null)} className="text-xs px-3 py-2 rounded-lg text-atext-mute hover:text-atext">Cancel</button>
+                      <button
+                        type="button"
+                        onClick={() => sendCounter(r, counter.wage)}
+                        className={`${css.btnPrimary} text-xs px-4 py-2`}
+                      >
+                        Send Counter ({fmtK(counter.wage)}/yr)
+                      </button>
+                    </div>
+                  </div>
                 )}
-                <div className="flex gap-2 justify-end">
-                  <button type="button" onClick={() => reject(r)} disabled={closed} className={closed ? 'text-xs px-3 py-2 text-atext-mute' : 'text-xs px-3 py-2 rounded-lg text-aneg hover:bg-aneg/10'}>Let Walk</button>
-                  <button type="button" onClick={() => accept(r)} disabled={closed || !canAfford} className={canAfford && !closed ? `${css.btnPrimary} text-xs px-3 py-2` : "px-3 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>Re-Sign</button>
-                </div>
               </div>
             );
           })}

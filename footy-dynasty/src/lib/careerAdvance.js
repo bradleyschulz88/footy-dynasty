@@ -423,10 +423,18 @@ function startFinals(c, league) {
 }
 
 function simFinalsPair(c, league, m, _roundLabel) {
-  const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff))
+  let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff))
     + getCaptainMatchBonus(c, true);
   const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
   const isHome = m.home === c.clubId;
+  if (isPlayerMatch) {
+    const finalsOppId = isHome ? m.away : m.home;
+    const h2hFinals = c.headToHead?.[finalsOppId];
+    if (h2hFinals && (h2hFinals.wins + h2hFinals.losses + h2hFinals.draws) >= 3) {
+      const streak = h2hFinals.streak ?? 0;
+      myRating += streak <= -5 ? -4 : streak <= -3 ? -2 : streak >= 5 ? 4 : streak >= 3 ? 2 : 0;
+    }
+  }
   const homeR = m.home === c.clubId ? myRating : aiClubRating(m.home, league.tier);
   const awayR = m.away === c.clubId ? myRating : aiClubRating(m.away, league.tier);
   let result;
@@ -890,6 +898,11 @@ function finishSeason(c, league) {
     return {
       ...p, age: newAge, overall: newOverall, trueRating: newTrue, tier: newLeagueTier,
       contract: Math.max(0, p.contract - 1), form: rand(50, 80), fitness: rand(85, 100),
+      // Accumulate lifetime career totals before wiping season counters.
+      careerGoals: (p.careerGoals || 0) + (p.goals || 0),
+      careerGames: (p.careerGames || 0) + (p.gamesPlayed || 0),
+      careerDisposals: (p.careerDisposals || 0) + (p.disposals || 0),
+      peakRating: Math.max(p.peakRating || 0, p.overall),
       goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0,
       suspended: 0, seasonsAtClub: (p.seasonsAtClub || 0) + 1,
     };
@@ -902,12 +915,21 @@ function finishSeason(c, league) {
       name: p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'),
       age: p.age,
       reason: p._walking ? 'walked' : p.age > 36 ? 'retired' : 'released',
-      career: { goals: p.goals || 0, gamesPlayed: p.gamesPlayed || 0 },
+      seasonsAtClub: p.seasonsAtClub || 0,
+      peakRating: p.peakRating || p.overall || 0,
+      // careerGoals/careerGames are already accumulated above — use those.
+      career: {
+        goals: p.careerGoals || 0,
+        gamesPlayed: p.careerGames || 0,
+        disposals: p.careerDisposals || 0,
+      },
     });
   });
   c.squad = survivors;
   c.lineup = sanitizeLineup(c.lineup, c.squad);
   c.retiredThisSeason = retiredThisYear;
+  // Permanent hall-of-fame archive — never cleared.
+  c.retiredPlayers = [...(c.retiredPlayers || []), ...retiredThisYear];
   c.staff = (c.staff || []).map((s) => ({ ...s, contract: Math.max(0, (s.contract ?? 0) - 1) }));
   c.pendingStaffRenewals = buildStaffRenewalQueue(c.staff);
   c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier, c.season);
@@ -1463,6 +1485,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         focus: c.training?.focus,
         intensity: c.training?.intensity,
         trainingLeadId: c.staffTasks?.trainingLeadId ?? null,
+        facilities: c.facilities,
       },
     );
     c.squad = squad;
@@ -1710,6 +1733,14 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         myRating += getCaptainMatchBonus(c, false);
         const scoutPrep = scoutPrepRatingBonus(c, opp.id, ev.round);
         myRating += scoutPrep;
+        // H2H psychological factor: bogey teams suppress confidence; dominated
+        // opponents inflate it. Only kicks in after 3 games (enough data).
+        // Capped at ±4 to stay within the noise band of other modifiers.
+        const h2hRec = c.headToHead?.[opp.id];
+        if (h2hRec && (h2hRec.wins + h2hRec.losses + h2hRec.draws) >= 3) {
+          const streak = h2hRec.streak ?? 0;
+          myRating += streak <= -5 ? -4 : streak <= -3 ? -2 : streak >= 5 ? 4 : streak >= 3 ? 2 : 0;
+        }
         const oppSquad = c.aiSquads?.[opp.id];
         const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
         const oppLineupIds = oppLineup.map((p) => p.id);
@@ -2213,8 +2244,53 @@ export function resolveLiveMatchHalfTime({ career, league, club, callId, setCare
   }
 
   const call = getCoachingCall(callId);
-  const mods = resolveCoachingCall(callId);
+  const mods = resolveCoachingCall(callId, c.staff);
+  // Sim Q3 with the half-time call applied, then pause for the Q3 decision.
   simMatchQuarter(lm.simState, mods);
+  const q3Snap = finishMatchSim(lm.simState); // partial snapshot for display
+  const meta = lm.meta;
+  const isHome = meta.isHome;
+  const myQ3 = isHome ? q3Snap.homeTotal : q3Snap.awayTotal;
+  const oppQ3 = isHome ? q3Snap.awayTotal : q3Snap.homeTotal;
+
+  // Surface the Q3 pause state — Q4 call + optional sub still to come.
+  c.liveMatch = {
+    ...lm,
+    htCallId: callId,
+    htMods: mods,
+    matchPhase: 'after_q3',
+    q3Snapshot: {
+      myTotal: myQ3,
+      oppTotal: oppQ3,
+      margin: myQ3 - oppQ3,
+      quarters: q3Snap.quarters,
+    },
+  };
+  setCareer(c);
+}
+
+// Q4 CALL: applied after the Q3 check-in. subOutId/subInId are optional player IDs.
+export function resolveQ3Decision({ career, league, club, callId, subOutId, subInId, setCareer }) {
+  const c = JSON.parse(JSON.stringify(career));
+  const lm = c.liveMatch;
+  if (!lm?.simState || lm?.matchPhase !== 'after_q3') {
+    setCareer(c);
+    return;
+  }
+
+  // Apply substitution to squad form before Q4.
+  if (subOutId && subInId) {
+    c.squad = c.squad.map((p) => {
+      if (p.id === subOutId) return { ...p, substituted: true };
+      if (p.id === subInId) return { ...p, form: Math.min(100, (p.form ?? 70) + 8) };
+      return p;
+    });
+    // Swap in lineup: replace subOut with subIn.
+    c.lineup = c.lineup.map((id) => (id === subOutId ? subInId : id));
+  }
+
+  const mods = resolveCoachingCall(callId, c.staff);
+  const call = getCoachingCall(callId);
   simMatchQuarter(lm.simState, mods);
   const result = finishMatchSim(lm.simState);
 
@@ -2246,6 +2322,7 @@ export function resolveLiveMatchHalfTime({ career, league, club, callId, setCare
     label: `Round ${meta.round}`,
     isAFL: league.tier === 1,
     coachCall: { id: call.id, icon: call.icon, label: call.label, note: mods.note },
+    q3Sub: subOutId && subInId ? { outId: subOutId, inId: subInId } : null,
   };
   c.lastMatchSummary = buildPostMatchSummary(c, league, club, myResult, meta.round);
   setCareer(c);

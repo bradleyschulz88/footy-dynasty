@@ -318,6 +318,7 @@ export function buildNewCareer({
     crucialFive: [],
     crisisFiredThisSeason: false,
     teamStats: null,
+    retiredPlayers: [],
   };
   assignDefaultCaptains(newCareer);
   ensureCareerBoard(newCareer, club, league);

@@ -3,7 +3,7 @@
 // simmed; the half-time coaching call sims Q3+Q4 and applies full-time effects.
 // ---------------------------------------------------------------------------
 import { describe, it, expect, beforeEach } from 'vitest';
-import { advanceCareerNextEvent, resolveLiveMatchHalfTime } from '../careerAdvance.js';
+import { advanceCareerNextEvent, resolveLiveMatchHalfTime, resolveQ3Decision } from '../careerAdvance.js';
 import { generateSquad } from '../playerGen.js';
 import { blankLadder } from '../leagueEngine.js';
 import { defaultFinance, DEFAULT_FACILITIES, DEFAULT_TRAINING, generateStaff } from '../defaults.js';
@@ -92,6 +92,18 @@ function resolveHalfTime(career, callId) {
   return out;
 }
 
+function resolveQ3Dec(career, callId) {
+  let out = null;
+  resolveQ3Decision({
+    career,
+    league,
+    club: findClub(CLUB),
+    callId,
+    setCareer: (c) => { out = c; },
+  });
+  return out;
+}
+
 describe('live match half-time flow', () => {
   beforeEach(() => seedRng(2026));
 
@@ -116,7 +128,14 @@ describe('live match half-time flow', () => {
 
   it('the coaching call finishes the match and applies full-time effects', () => {
     const half = advance(buildCareer());
-    const full = resolveHalfTime(half, 'midfield_grind');
+
+    // Phase 1: half-time call sims Q3 and pauses for Q3 decision.
+    const afterQ3 = resolveHalfTime(half, 'steady');
+    expect(afterQ3.liveMatch?.matchPhase).toBe('after_q3');
+    expect(afterQ3.liveMatch.simState.quarters.length).toBe(3);
+
+    // Phase 2: Q3 decision sims Q4 and applies full-time effects.
+    const full = resolveQ3Dec(afterQ3, 'midfield_grind');
 
     expect(full.liveMatch ?? null).toBe(null);
     expect(full.inMatchDay).toBe(true);
