@@ -56,6 +56,15 @@ import {
 } from '../../lib/draftEngine.js';
 import { useCareer, useUpdateCareer } from '../../lib/careerStore.js';
 
+// ── Position badge style helper ─────────────────────────────────────────────
+function posBadgeStyle(pos) {
+  if (pos === 'KF' || pos === 'HF') return {background:'color-mix(in srgb,#E84A6F 14%,transparent)',color:'#E84A6F',border:'1px solid color-mix(in srgb,#E84A6F 30%,transparent)'};
+  if (pos === 'HB' || pos === 'KB') return {background:'color-mix(in srgb,#60A5FA 14%,transparent)',color:'#60A5FA',border:'1px solid color-mix(in srgb,#60A5FA 30%,transparent)'};
+  if (pos === 'RU') return {background:'color-mix(in srgb,#A78BFA 14%,transparent)',color:'#A78BFA',border:'1px solid color-mix(in srgb,#A78BFA 30%,transparent)'};
+  if (pos === 'C' || pos === 'R' || pos === 'WG') return {background:'color-mix(in srgb,var(--A-accent) 14%,transparent)',color:'var(--A-accent)',border:'1px solid color-mix(in srgb,var(--A-accent) 30%,transparent)'};
+  return {background:'color-mix(in srgb,#9CA3AF 14%,transparent)',color:'#9CA3AF',border:'1px solid color-mix(in srgb,#9CA3AF 30%,transparent)'};
+}
+
 // ============================================================================
 // RECRUIT SCREEN — Trade / Draft / Youth / Local
 // ============================================================================
@@ -242,7 +251,10 @@ function FreeAgentsTab() {
     <div className="space-y-4">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>FREE AGENTS</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>FREE AGENTS</div>
+          </div>
           <div className="text-xs text-atext-dim">Out-of-contract players movement through Day 7 of the Trade Period.</div>
         </div>
         {!career.freeAgencyOpen && (
@@ -269,7 +281,7 @@ function FreeAgentsTab() {
                 <div className="font-semibold">{fa.firstName} {fa.lastName}</div>
                 <div className="text-[10px] text-atext-dim">{fa.freeAgentType || 'UFA'} · age {fa.age}</div>
               </div>
-              <div className="col-span-2"><Pill color="var(--A-accent)">{fa.position}</Pill></div>
+              <div className="col-span-2"><span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap" style={posBadgeStyle(fa.position)}>{fa.position}</span></div>
               <div className="col-span-2"><RatingDot value={fa.overall} /></div>
               <div className="col-span-2 text-right font-mono text-xs">{fmtK(fa.wageAsk)}/yr · {fa.contractYearsAsk}y</div>
               <div className="col-span-2 text-right">
@@ -394,7 +406,10 @@ function OffersTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>TRADE OFFERS</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>TRADE OFFERS</div>
+          </div>
           <div className="text-xs text-atext-dim">Rival clubs are circling. Accept, reject — or let the window close.</div>
         </div>
         <Stat label="Pending" value={offers.length} accent="var(--A-accent-2)" />
@@ -565,7 +580,10 @@ function TradeTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>TRADE MARKET</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>TRADE MARKET</div>
+          </div>
           <div className="text-xs text-atext-dim">Players currently available across the league pyramid.</div>
         </div>
         <div className="flex items-center flex-wrap gap-3">
@@ -915,7 +933,10 @@ function DraftTab({ club, league, onOpenDraftRoom }) {
       </div>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>NATIONAL DRAFT</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>NATIONAL DRAFT</div>
+          </div>
           <div className="text-xs text-atext-dim">{statusLine}</div>
         </div>
         <div className="flex items-center gap-3">
@@ -939,6 +960,7 @@ function DraftTab({ club, league, onOpenDraftRoom }) {
                     border: `1px solid ${onClock ? 'var(--A-accent)' : 'var(--A-line)'}`,
                     minWidth: 112,
                     minHeight: 76,
+                    boxShadow: onClock ? '0 0 10px color-mix(in srgb,var(--A-accent) 40%,transparent)' : undefined,
                   }}>
                   <div className="flex items-start gap-2">
                     {c ? <ClubBadge club={c} size="sm" /> : <div className="w-9 h-9 rounded-lg bg-apanel shrink-0" />}
@@ -948,6 +970,7 @@ function DraftTab({ club, league, onOpenDraftRoom }) {
                       {d.used && d.prospectName && <div className="text-[9px] text-atext-dim truncate mt-0.5 max-w-[7rem]">{d.prospectName} ({d.prospectOverall})</div>}
                     </div>
                   </div>
+                  {onClock && !d.used && <div className="text-[8px] font-black uppercase tracking-wider mt-0.5" style={{color:'var(--A-accent)'}}>On clock</div>}
                 </div>
               );
             })}
@@ -1020,6 +1043,11 @@ function DraftTab({ club, league, onOpenDraftRoom }) {
                   {st >= 3 ? (
                     <div className="flex items-center gap-2">
                       <div className="font-bold text-apos">{p.potential}</div>
+                      {p.potential > p.overall && (
+                        <span className="text-[9px] font-black" style={{color:'var(--A-pos)'}}>
+                          +{p.potential - p.overall}↑
+                        </span>
+                      )}
                       <Bar value={p.potential} color="var(--A-pos)" small />
                     </div>
                   ) : (
@@ -1198,7 +1226,10 @@ function YouthTab({ club }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>YOUTH ACADEMY</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>YOUTH ACADEMY</div>
+          </div>
           <div className="text-xs text-atext-dim">Develop talent from the {club.state} zone. Build the next generation.</div>
         </div>
         <div className="flex items-center gap-3">
@@ -1429,7 +1460,10 @@ function LocalTab({ club }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>LOCAL FOOTBALL</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>LOCAL FOOTBALL</div>
+          </div>
           <div className="text-xs text-atext-dim">Scout other {club.state} competitions (same tier or neighbouring levels). Interstate packs charge a scout-travel fee (Senior Scout rating + recruiting priority trim costs); reports gain a small accuracy bump vs local-only runs.</div>
         </div>
         <div className="flex items-center gap-3">

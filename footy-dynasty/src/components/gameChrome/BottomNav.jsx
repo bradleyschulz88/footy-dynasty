@@ -1,10 +1,12 @@
 // ---------------------------------------------------------------------------
 // BottomNav — mobile Stitch-direction 5-tab bar: Hub · Squad · [ADVANCE] · Recruit · Club
-// Active tab: thick lime top-border + lime icon. Glass background with backdrop-blur.
+// Active tab: animated sliding pill indicator (motion/react layoutId) + lime icon.
+// Glass background with backdrop-blur.
 // More sheet for Schedule, Competition, Careers, Settings.
 // Hidden on md+ where the Sidebar takes over.
 // ---------------------------------------------------------------------------
 import React, { useState } from "react";
+import { motion } from "motion/react";
 import {
   Home, Users, Building2, Trophy, Calendar, Settings, Play, MoreHorizontal, X, Bell, Briefcase, Search,
 } from "lucide-react";
@@ -122,10 +124,11 @@ export function BottomNav({
       <nav
         className="md:hidden fixed inset-x-0 bottom-0 z-30"
         style={{
-          background: "rgba(13, 17, 16, 0.96)",
-          backdropFilter: "blur(24px)",
-          WebkitBackdropFilter: "blur(24px)",
-          borderTop: "1px solid rgba(200,255,61,0.15)",
+          background: "rgba(10, 13, 12, 0.97)",
+          backdropFilter: "blur(28px)",
+          WebkitBackdropFilter: "blur(28px)",
+          borderTop: "1px solid rgba(200,255,61,0.18)",
+          boxShadow: "0 -4px 24px rgba(0,0,0,0.5), 0 -1px 0 rgba(200,255,61,0.08)",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
@@ -209,7 +212,6 @@ export function BottomNav({
               // Rightmost: Club + More
               const active = screen === item.key;
               const locked = navLocked(item.key);
-              const Icon = item.icon;
               return (
                 <React.Fragment key={item.key}>
                   <TabCell
@@ -228,7 +230,17 @@ export function BottomNav({
                     style={{ color: moreActive || sheetOpen ? LIME : "#5C6962" }}
                   >
                     {(moreActive || sheetOpen) && (
-                      <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-[3px] rounded-full" style={{ background: LIME }} />
+                      <motion.span
+                        layoutId="bottomnav-pill"
+                        className="absolute inset-x-1 rounded-full"
+                        style={{
+                          top: 0,
+                          height: 3,
+                          background: LIME,
+                          boxShadow: `0 0 10px ${LIME}CC`,
+                        }}
+                        transition={{ type: "spring", stiffness: 480, damping: 36 }}
+                      />
                     )}
                     <MoreHorizontal size={22} />
                     <span style={{ fontSize: 10, fontWeight: 700, lineHeight: 1, letterSpacing: "0.02em" }}>More</span>
@@ -266,13 +278,40 @@ function TabCell({ item, active, locked, onPress }) {
       style={{ opacity: locked ? 0.35 : 1, color: active ? LIME : "#5C6962" }}
     >
       {active && (
-        <span
-          className="absolute top-0 left-1/2 -translate-x-1/2 rounded-full"
-          style={{ width: 24, height: 3, background: LIME, boxShadow: `0 0 8px ${LIME}` }}
+        <motion.span
+          layoutId="bottomnav-pill"
+          className="absolute inset-x-1 rounded-full"
+          style={{
+            top: 0,
+            height: 3,
+            background: LIME,
+            boxShadow: `0 0 10px ${LIME}CC`,
+          }}
+          transition={{ type: "spring", stiffness: 480, damping: 36 }}
         />
       )}
-      <Icon size={22} />
-      <span style={{ fontSize: 10, fontWeight: 700, lineHeight: 1, letterSpacing: "0.02em" }}>{item.label}</span>
+      {/* Active backdrop glow */}
+      {active && (
+        <span
+          className="absolute inset-x-0 bottom-0 rounded-lg"
+          style={{
+            top: 4,
+            background: "radial-gradient(ellipse 60% 70% at 50% 0%, rgba(200,255,61,0.10), transparent 80%)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      <Icon size={active ? 23 : 22} strokeWidth={active ? 2.2 : 1.8} />
+      <span
+        style={{
+          fontSize: 10,
+          fontWeight: active ? 800 : 600,
+          lineHeight: 1,
+          letterSpacing: active ? "0.04em" : "0.02em",
+        }}
+      >
+        {item.label}
+      </span>
     </button>
   );
 }

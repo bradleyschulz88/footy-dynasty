@@ -85,7 +85,7 @@ function HubGroundStrip({ club, league, setScreen, setTab }) {
   return (
     <div className="grid sm:grid-cols-2 gap-3">
       {/* Ground conditions */}
-      <div className={`${css.panel} p-4`}>
+      <div className={`${css.panel} p-4`} style={{ background: 'color-mix(in srgb, var(--A-accent) 3%, var(--A-panel))' }}>
         <div className="flex items-center justify-between mb-2">
           <div>
             <div className={css.label}>Home Ground</div>
@@ -98,7 +98,7 @@ function HubGroundStrip({ club, league, setScreen, setTab }) {
           <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
             <div className="h-full rounded-full" style={{ width: `${career.groundCondition ?? 85}%`, background: `linear-gradient(90deg, ${band.color}88, ${band.color})` }} />
           </div>
-          <span className="font-display text-lg w-10 text-right" style={{ color: band.color }}>{career.groundCondition ?? 85}</span>
+          <span className="font-display text-lg w-10 text-right tabular-nums" style={{ color: band.color }}>{career.groundCondition ?? 85}</span>
         </div>
         <div className="text-[10px] text-atext-mute mt-1.5 italic">{band.desc}</div>
       </div>
@@ -145,7 +145,7 @@ function CommitteeMiniSummary({ setScreen, setTab }) {
   return (
     <div>
       <div className={css.label}>Committee Mood</div>
-      <div className="font-display text-3xl" style={{ color: accent }}>{avg}</div>
+      <div className="font-display text-3xl tabular-nums" style={{ color: accent }}>{avg}</div>
       <div className="text-[11px] text-atext-dim mb-2">{
         avg >= 70 ? 'The volunteers are happy. Things are humming.'
         : avg >= 40 ? 'The committee is supportive but watching closely.'
@@ -263,7 +263,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
       {/* Hero — club identity + advance CTA */}
       <motion.div variants={hubItem} className="panel rounded-2xl overflow-hidden border border-aline">
         {/* Club color stripe — thicker, more dramatic */}
-        <div className="h-1" style={{background:`linear-gradient(90deg, ${cc1}, ${cc2}, ${cc1}88)`}} />
+        <div className="h-1.5" style={{background:`linear-gradient(90deg, ${cc1}, ${cc2}, ${cc1}88)`}} />
         <div className="p-4 md:p-5">
           {/* Club identity row */}
           <div className="flex items-center gap-3 mb-4">
@@ -285,14 +285,15 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
                 {hubRoundTheme?.short && <> · <span style={{color:'var(--A-accent-2)'}}>{hubRoundTheme.short}</span></>}
               </div>
             </div>
-            {/* Position number — dramatic */}
-            <div className="text-center flex-shrink-0">
+            {/* Position number — dramatic scoreboard style */}
+            <div className="text-center flex-shrink-0 px-3 py-2 rounded-2xl" style={{ background: `color-mix(in srgb, ${posColor} 8%, var(--A-panel-2))`, border: `1px solid color-mix(in srgb, ${posColor} 20%, var(--A-line))` }}>
               <div
-                className="font-display leading-none"
+                className="font-display leading-none tabular-nums"
                 style={{
-                  fontSize: 'clamp(3rem,10vw,4rem)',
+                  fontSize: 'clamp(2.5rem,9vw,3.5rem)',
                   color: posColor,
                   textShadow: myLadderPos <= 4 ? `0 0 32px ${posColor}66, 0 0 64px ${posColor}33` : 'none',
+                  fontVariantNumeric: 'tabular-nums',
                 }}>
                 {myLadderPos || '—'}
               </div>
@@ -302,15 +303,15 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
           {/* Stats strip */}
           <div className="grid grid-cols-3 gap-2 mb-4 rounded-xl p-3" style={{background:'color-mix(in srgb, var(--A-accent) 4%, var(--A-panel-2))', border:'1px solid var(--A-line)'}}>
             <div className="text-center">
-              <div className="font-display text-2xl leading-none text-atext">{hubTotals.squadAvg || '—'}</div>
+              <div className="font-display text-2xl leading-none text-atext tabular-nums" style={{ fontVariantNumeric: 'tabular-nums' }}>{hubTotals.squadAvg || '—'}</div>
               <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">OVR</div>
             </div>
             <div className="text-center border-x border-aline">
-              <div className="font-display text-2xl leading-none text-atext">{myRow ? `${myRow.W}W ${myRow.L}L` : '—'}</div>
+              <div className="font-display text-2xl leading-none text-atext tabular-nums">{myRow ? `${myRow.W}W ${myRow.L}L` : '—'}</div>
               <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">Record</div>
             </div>
             <div className="text-center">
-              <div className="font-display text-2xl leading-none" style={{color:'var(--A-accent)'}}>{myRow?.pts ?? '—'}</div>
+              <div className="font-display text-2xl leading-none tabular-nums" style={{color:'var(--A-accent)', fontVariantNumeric: 'tabular-nums'}}>{myRow?.pts ?? '—'}</div>
               <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">Pts</div>
             </div>
           </div>
@@ -331,11 +332,29 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
               return <Pill color={cultureColor}>Culture: {career.clubCulture.tier}</Pill>;
             })()}
           </div>
+
+          {/* Next event hero strip — visible event type + date */}
+          {advanceCtx.nextEventShort && (
+            <div className="mb-4 rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+              style={{ background: 'color-mix(in srgb, var(--A-accent) 6%, var(--A-panel-2))', border: '1px solid color-mix(in srgb, var(--A-accent) 18%, var(--A-line))' }}>
+              <div className="min-w-0">
+                <div className="text-[9px] font-bold uppercase tracking-[0.22em] font-mono mb-0.5" style={{ color: 'var(--A-text-mute)' }}>Next Event</div>
+                <div className="font-display text-base text-atext leading-tight truncate">{advanceCtx.nextEventShort}</div>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <div className="text-[9px] font-mono uppercase tracking-widest text-atext-mute mb-0.5">Type</div>
+                <div className="text-[11px] font-black uppercase tracking-widest font-mono px-2.5 py-1 rounded-lg" style={{ background: 'color-mix(in srgb, var(--A-accent) 14%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 28%, transparent)' }}>
+                  {advanceCtx.buttonLabel}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Advance CTA */}
           <button
             type="button"
             onClick={onAdvance}
-            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-display text-lg uppercase tracking-[0.14em] transition-all active:scale-[0.98] advance-breathe"
+            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-display text-lg uppercase tracking-[0.14em] transition-all active:scale-[0.98] advance-breathe btn-sheen"
             style={{
               background: 'var(--A-accent)',
               color: 'var(--fd-on-accent, #0A0D0C)',
@@ -635,7 +654,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
                 </div>
                 <div className="font-bold text-atext">
                   {lastEv.isHome ? 'vs' : '@'} {lastEv.opp?.name}
-                  <span className="ml-3 font-display text-xl" style={{color: lastEv.won ? 'var(--A-pos)' : lastEv.drew ? 'var(--A-accent-2)' : 'var(--A-neg)'}}>
+                  <span className="ml-3 font-display text-xl tabular-nums" style={{color: lastEv.won ? 'var(--A-pos)' : lastEv.drew ? 'var(--A-accent-2)' : 'var(--A-neg)', fontVariantNumeric: 'tabular-nums'}}>
                     {lastEv.myTotal} – {lastEv.oppTotal}
                   </span>
                 </div>
@@ -803,7 +822,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
       )}
       </motion.div>
 
-      {/* Stat Row */}
+      {/* Stat Row — premium KPI cards */}
       <motion.div variants={hubItem} className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users} />
           <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="var(--A-pos)" icon={DollarSign} />
@@ -813,7 +832,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
 
       <motion.div variants={hubItem} className="grid md:grid-cols-5 gap-5">
         {/* Ladder */}
-        <div className={`${css.panel} md:col-span-3`}>
+        <div className={`${css.panel} md:col-span-3`} style={{ background: 'color-mix(in srgb, var(--A-accent) 2%, var(--A-panel))' }}>
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <h3 className="font-display text-xl tracking-wide text-atext">LADDER</h3>
             <button onClick={()=>setScreen("compete")} className="text-[11px] font-bold text-aaccent uppercase tracking-wider hover:text-aaccent-2">Full table →</button>
@@ -823,27 +842,44 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
               const c = findClub(row.id);
               if (!c) return null;
               const isMe = row.id === career.clubId;
-              const rankColor = i === 0 ? "#FFD700" : i === 1 ? "#C0C0C0" : i === 2 ? "#CD7F32" : "#94A3B8";
+              // Sports scoreboard rank colours
+              const rankColor = i === 0 ? "#FFD700" : i === 1 ? "#C0C0C0" : i === 2 ? "#CD7F32" : "var(--A-text-mute)";
               return (
                 <React.Fragment key={row.id}>
-                  <div className={`flex items-center gap-4 px-5 py-3 transition-colors ${isMe ? "" : "hover:bg-aaccent/5"}`}
-                    style={isMe ? {background:"linear-gradient(90deg, color-mix(in srgb, var(--A-accent) 8%, transparent), transparent)", borderLeft:"3px solid var(--A-accent)"} : {borderLeft:"3px solid transparent"}}>
-                    <div className="font-display text-2xl w-6 text-center flex-shrink-0" style={{color: rankColor}}>{i+1}</div>
+                  <div
+                    className={`flex items-center gap-3 px-4 py-3 transition-colors ${isMe ? "" : "hover:bg-aaccent/5"}`}
+                    style={isMe ? {
+                      background: "color-mix(in srgb, var(--A-accent) 8%, transparent)",
+                      borderLeft: "3px solid var(--A-accent)",
+                      borderRight: "3px solid transparent",
+                    } : { borderLeft: "3px solid transparent", borderRight: "3px solid transparent" }}
+                  >
+                    {/* Rank — monospace scoreboard style */}
+                    <div
+                      className="font-display w-7 text-center flex-shrink-0 tabular-nums leading-none"
+                      style={{
+                        fontSize: isMe ? '1.75rem' : '1.5rem',
+                        color: isMe ? 'var(--A-accent)' : rankColor,
+                        fontVariantNumeric: 'tabular-nums',
+                        textShadow: isMe ? `0 0 20px color-mix(in srgb, var(--A-accent) 50%, transparent)` : 'none',
+                      }}
+                    >{i+1}</div>
+                    {/* Club badge */}
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm flex-shrink-0"
-                      style={{background:`linear-gradient(135deg,${c.colors?.[0] ?? '#334155'},${c.colors?.[1] ?? '#0f172a'})`, color:c.colors?.[2] ?? c.colors?.[0] ?? '#fff'}}>
+                      style={{background:`linear-gradient(135deg,${c.colors?.[0] ?? '#334155'},${c.colors?.[1] ?? '#0f172a'})`, color:c.colors?.[2] ?? c.colors?.[0] ?? '#fff', boxShadow: isMe ? `0 2px 10px ${c.colors?.[0] ?? '#334155'}44` : 'none'}}>
                       {c.short}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className={`font-bold text-sm truncate ${isMe ? "text-aaccent" : "text-atext"}`}>{c.name}</div>
-                      <div className="text-[10px] text-atext-dim">{row.W}W {row.L}L {row.D}D</div>
+                      <div className="text-[10px] text-atext-dim font-mono">{row.W}W {row.L}L {row.D}D</div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-display text-2xl text-aaccent">{row.pts}</div>
-                      <div className="text-[10px] text-atext-dim">pts</div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="font-display tabular-nums leading-none" style={{ fontSize: '1.35rem', color: isMe ? 'var(--A-accent)' : 'var(--A-text)', fontVariantNumeric: 'tabular-nums' }}>{row.pts}</div>
+                      <div className="text-[10px] text-atext-mute font-mono">pts</div>
                     </div>
                   </div>
                   {league.tier >= 2 && i === 0 && (
-                    <div className="flex items-center gap-2 mx-5 my-0.5">
+                    <div className="flex items-center gap-2 mx-4 my-0.5">
                       <div className="flex-1 border-t border-dashed border-apos/50" />
                       <span className="text-[9px] text-apos font-mono uppercase tracking-wider">Promotion zone</span>
                       <div className="flex-1 border-t border-dashed border-apos/50" />
@@ -854,21 +890,27 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
             })}
             {myLadderPos > 5 && myRow && (
               <>
-                <div className="px-5 py-1 text-atext-mute text-xs">· · ·</div>
-                <div className="flex items-center gap-4 px-5 py-3"
-                  style={{background:"linear-gradient(90deg, color-mix(in srgb, var(--A-accent) 8%, transparent), transparent)", borderLeft:"3px solid var(--A-accent)"}}>
-                  <div className="font-display text-2xl w-6 text-center text-aaccent">{myLadderPos}</div>
+                <div className="px-5 py-1 text-atext-mute text-xs font-mono">· · ·</div>
+                <div
+                  className="flex items-center gap-3 px-4 py-3"
+                  style={{
+                    background: "color-mix(in srgb, var(--A-accent) 8%, transparent)",
+                    borderLeft: "3px solid var(--A-accent)",
+                    borderRight: "3px solid transparent",
+                  }}
+                >
+                  <div className="font-display w-7 text-center text-aaccent tabular-nums leading-none" style={{ fontSize: '1.75rem', fontVariantNumeric: 'tabular-nums', textShadow: '0 0 20px color-mix(in srgb, var(--A-accent) 50%, transparent)' }}>{myLadderPos}</div>
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center font-display text-sm"
-                    style={{background:`linear-gradient(135deg,${cc1},${cc2})`, color:cc3}}>
+                    style={{background:`linear-gradient(135deg,${cc1},${cc2})`, color:cc3, boxShadow: `0 2px 10px ${cc1}44`}}>
                     {club?.short}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm text-aaccent">{club?.name}</div>
-                    <div className="text-[10px] text-atext-dim">{myRow.W}W {myRow.L}L {myRow.D}D</div>
+                    <div className="text-[10px] text-atext-dim font-mono">{myRow.W}W {myRow.L}L {myRow.D}D</div>
                   </div>
-                  <div className="text-right">
-                    <div className="font-display text-2xl text-aaccent">{myRow.pts}</div>
-                    <div className="text-[10px] text-atext-dim">pts</div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="font-display tabular-nums leading-none text-aaccent" style={{ fontSize: '1.35rem', fontVariantNumeric: 'tabular-nums' }}>{myRow.pts}</div>
+                    <div className="text-[10px] text-atext-mute font-mono">pts</div>
                   </div>
                 </div>
               </>
@@ -882,7 +924,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
             <Newspaper className="w-4 h-4 text-aaccent" />
             <h3 className="font-display text-xl tracking-wide text-atext">NEWS</h3>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {recentNews.length === 0 && <div className="text-sm text-atext-dim py-4 text-center">No news yet.</div>}
             {recentNews.map((n, i) => {
               const borderColor = n.type === "win" ? "var(--A-pos)" : n.type === "loss" ? "var(--A-neg)" : n.type === "board" ? "#FFB347" : n.type === "info" ? "var(--A-accent-2)" : "var(--A-text-mute)";
@@ -891,8 +933,9 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
                 <div key={i} className="flex gap-3 p-3 rounded-xl" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)", borderLeft:`3px solid ${borderColor}`}}>
                   <div className="flex-shrink-0 text-sm leading-snug mt-0.5">{emoji}</div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-atext leading-snug">{n.text}</div>
-                    <div className="text-[9px] text-atext-mute uppercase tracking-widest mt-0.5 font-bold">{n.week === 0 ? 'Pre-Season' : `Round ${n.week}`}</div>
+                    {/* Headline bold, body dim, source very small */}
+                    <div className="font-bold text-sm text-atext leading-snug">{n.text}</div>
+                    <div className="text-[9px] font-mono text-atext-mute uppercase tracking-widest mt-1">{n.week === 0 ? 'Pre-Season' : `Round ${n.week}`}</div>
                   </div>
                 </div>
               );
@@ -1053,12 +1096,12 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
         <motion.div variants={hubItem}>
         <CollapsibleSection id="coaching_record" title="Coaching record">
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 text-center">
-            <div><div className="font-display text-2xl text-apos">{career.coachStats.totalWins ?? 0}</div><div className={css.label}>Wins</div></div>
-            <div><div className="font-display text-2xl text-aneg">{career.coachStats.totalLosses ?? 0}</div><div className={css.label}>Losses</div></div>
-            <div><div className="font-display text-2xl text-atext">{career.coachStats.totalDraws ?? 0}</div><div className={css.label}>Draws</div></div>
-            <div><div className="font-display text-2xl text-aaccent-2">{career.coachStats.premierships ?? 0}</div><div className={css.label}>Flags</div></div>
-            <div><div className="font-display text-2xl text-aaccent">{career.coachStats.promotions ?? 0}</div><div className={css.label}>Promotions</div></div>
-            <div><div className="font-display text-2xl text-atext-dim">{career.coachStats.seasonsManaged ?? 1}</div><div className={css.label}>Seasons</div></div>
+            <div><div className="font-display text-2xl text-apos tabular-nums">{career.coachStats.totalWins ?? 0}</div><div className={css.label}>Wins</div></div>
+            <div><div className="font-display text-2xl text-aneg tabular-nums">{career.coachStats.totalLosses ?? 0}</div><div className={css.label}>Losses</div></div>
+            <div><div className="font-display text-2xl text-atext tabular-nums">{career.coachStats.totalDraws ?? 0}</div><div className={css.label}>Draws</div></div>
+            <div><div className="font-display text-2xl text-aaccent-2 tabular-nums">{career.coachStats.premierships ?? 0}</div><div className={css.label}>Flags</div></div>
+            <div><div className="font-display text-2xl text-aaccent tabular-nums">{career.coachStats.promotions ?? 0}</div><div className={css.label}>Promotions</div></div>
+            <div><div className="font-display text-2xl text-atext-dim tabular-nums">{career.coachStats.seasonsManaged ?? 1}</div><div className={css.label}>Seasons</div></div>
           </div>
           {career.history && career.history.length > 0 && (
             <div className="mt-3 space-y-1">
@@ -1088,8 +1131,8 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
             <button key={q.label} onClick={()=>setScreen(q.screen)}
               className="rounded-2xl p-4 text-left flex items-center gap-4 transition-all group"
               style={{background:"var(--A-panel)", border:"1px solid var(--A-line)"}}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor=q.color; e.currentTarget.style.background="color-mix(in srgb, var(--A-accent) 5%, var(--A-panel))";}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--A-line)"; e.currentTarget.style.background="var(--A-panel)";}}>
+              onMouseEnter={e=>{e.currentTarget.style.borderColor=q.color; e.currentTarget.style.background="color-mix(in srgb, var(--A-accent) 5%, var(--A-panel))";;e.currentTarget.style.transform="translateY(-1px)"; e.currentTarget.style.boxShadow=`0 6px 20px color-mix(in srgb, ${q.color} 15%, transparent)`;}}
+              onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--A-line)"; e.currentTarget.style.background="var(--A-panel)";e.currentTarget.style.transform="";e.currentTarget.style.boxShadow="";}}>
               <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
                 style={{background:`color-mix(in srgb, ${q.color} 12%, transparent)`, color:q.color}}>
                 <Icon className="w-5 h-5" />
