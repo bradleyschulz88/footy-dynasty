@@ -51,7 +51,7 @@ import { advanceBlockedByCareerNeeds, applyCareerPatch } from './lib/inbox.js';
 import { hasBlockingNotification, pruneHandledNotifications } from './lib/notifications.js';
 import { HubScreen } from './screens/hub/HubScreen.jsx';
 import AppErrorBoundary from './components/AppErrorBoundary.jsx';
-import { CareerSetup } from './screens/CareerSetupScreen.jsx';
+import { CareerSetup, quickStartCareer } from './screens/CareerSetupScreen.jsx';
 import { Sidebar } from './components/gameChrome/Sidebar.jsx';
 import OvalBackdrop from './components/OvalBackdrop.jsx';
 import { BottomNav } from './components/gameChrome/BottomNav.jsx';
@@ -796,6 +796,61 @@ function AFLManagerInner() {
     });
   }, [career, activeSlot]);
 
+  // Commit a freshly-built career object: allocate a slot, persist, and enter
+  // the hub. Shared by the manual setup flow and one-tap Quick Start.
+  const commitNewCareer = (rawCareer) => {
+    const { _quickStart, ...c } = rawCareer;
+    const meta = readSlotMeta();
+    let slot = activeSlot;
+    if (!slot) {
+      slot = SLOT_IDS.find(s => !meta[s]) || 'A';
+    }
+    setActiveSlot(slot);
+    setActiveSlotState(slot);
+    const initialised = {
+      ...c,
+      saveVersion: SAVE_VERSION,
+      options: {
+        autosave: true,
+        confirmBeforeNewCareer: true,
+        confirmBeforeDeleteSlot: true,
+        uiDensity: 'comfortable',
+        reduceMotion: false,
+        sessionDiagnostics: false,
+        ...(c.options || {}),
+      },
+    };
+    const initLeague = PYRAMID[initialised.leagueKey];
+    const initClubCount =
+      getCompetitionClubs(initialised.leagueKey, initialised.regionState, initialised.localDivision)?.length
+      || initLeague?.clubs?.length
+      || 12;
+    assignDynastyQuestsForSeason(initialised, initLeague?.tier ?? 2, initClubCount);
+    writeSlot(slot, initialised);
+    sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
+    sessionStorage.removeItem(SETUP_SS_KEY);
+    recordGameEvent(initialised, 'career_started', {
+      clubId: initialised.clubId,
+      leagueKey: initialised.leagueKey,
+      difficulty: initialised.difficulty,
+      slot,
+      quickStart: !!_quickStart,
+    });
+    setCareer(initialised);
+    setScreen("hub");
+  };
+
+  const handleQuickStart = () => {
+    try {
+      const c = quickStartCareer({ existingSlots: readSlotMeta() });
+      commitNewCareer({ ...c, _quickStart: true });
+    } catch (err) {
+      console.error('[quickStart] career init error:', err);
+      // Fall back to the manual flow so the player is never stuck.
+      setShowLanding(false);
+    }
+  };
+
   // ============== LANDING SCREEN ==============
   if (!career && showLanding) {
     const slotMeta = readSlotMeta();
@@ -805,6 +860,7 @@ function AFLManagerInner() {
         <LandingScreen
           hasSaves={hasSaves}
           themeClass={themeClass}
+          onQuickStart={handleQuickStart}
           onNewCareer={() => setShowLanding(false)}
           onLoadGame={() => setShowLanding(false)}
         />
@@ -816,45 +872,13 @@ function AFLManagerInner() {
   if (!career) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <CareerSetup onStart={(c) => {
-          const meta = readSlotMeta();
-          let slot = activeSlot;
-          if (!slot) {
-            slot = SLOT_IDS.find(s => !meta[s]) || 'A';
-          }
-          setActiveSlot(slot);
-          setActiveSlotState(slot);
-          const initialised = {
-            ...c,
-            saveVersion: SAVE_VERSION,
-            options: {
-              autosave: true,
-              confirmBeforeNewCareer: true,
-              confirmBeforeDeleteSlot: true,
-              uiDensity: 'comfortable',
-              reduceMotion: false,
-              sessionDiagnostics: false,
-              ...(c.options || {}),
-            },
-          };
-          const initLeague = PYRAMID[initialised.leagueKey];
-          const initClubCount =
-            getCompetitionClubs(initialised.leagueKey, initialised.regionState, initialised.localDivision)?.length
-            || initLeague?.clubs?.length
-            || 12;
-          assignDynastyQuestsForSeason(initialised, initLeague?.tier ?? 2, initClubCount);
-          writeSlot(slot, initialised);
-          sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
-          sessionStorage.removeItem(SETUP_SS_KEY);
-          recordGameEvent(initialised, 'career_started', {
-            clubId: initialised.clubId,
-            leagueKey: initialised.leagueKey,
-            difficulty: initialised.difficulty,
-            slot,
-          });
-          setCareer(initialised);
-          setScreen("hub");
-        }} existingSlots={readSlotMeta()} onResume={(slot) => { handleSwitchSlot(slot); }} themeClass={themeClass} />
+        <CareerSetup
+          onStart={commitNewCareer}
+          onQuickStart={handleQuickStart}
+          existingSlots={readSlotMeta()}
+          onResume={(slot) => { handleSwitchSlot(slot); }}
+          themeClass={themeClass}
+        />
       </AppMotionConfig>
     );
   }

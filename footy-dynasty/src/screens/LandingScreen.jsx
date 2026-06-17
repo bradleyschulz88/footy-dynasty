@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Trophy, ChevronRight, FolderOpen } from "lucide-react";
+import { Trophy, FolderOpen, Zap, SlidersHorizontal } from "lucide-react";
 
 const TAGLINES = [
   "Build a dynasty. Leave a legacy.",
@@ -9,7 +9,7 @@ const TAGLINES = [
   "Every great dynasty started somewhere.",
 ];
 
-export default function LandingScreen({ hasSaves, themeClass = 'dirB', onNewCareer, onLoadGame }) {
+export default function LandingScreen({ hasSaves, themeClass = 'dirB', onQuickStart, onNewCareer, onLoadGame }) {
   const [tagline] = useState(() => TAGLINES[Math.floor(Math.random() * TAGLINES.length)]);
   const [ready, setReady] = useState(false);
 
@@ -116,15 +116,16 @@ export default function LandingScreen({ hasSaves, themeClass = 'dirB', onNewCare
 
             {/* CTAs */}
             <motion.div
-              className="flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-sm"
+              className="flex flex-col gap-3 w-full max-w-xs sm:max-w-sm"
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.52, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
             >
+              {/* Quick Start — the hero, jumps straight into a game */}
               <motion.button
                 type="button"
-                onClick={onNewCareer}
-                className="flex-1 py-4 px-6 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2"
+                onClick={onQuickStart}
+                className="w-full py-4 px-6 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2"
                 style={{
                   background: 'linear-gradient(135deg, var(--A-accent), var(--A-accent-2))',
                   color: 'var(--fd-on-accent, #0A0D0C)',
@@ -135,15 +136,19 @@ export default function LandingScreen({ hasSaves, themeClass = 'dirB', onNewCare
                 whileHover={{ scale: 1.03, y: -1 }}
                 whileTap={{ scale: 0.97 }}
               >
-                New Career
-                <ChevronRight className="w-4 h-4" />
+                <Zap className="w-4 h-4" />
+                Quick Start
               </motion.button>
+              <p className="text-[10px] text-atext-mute -mt-1 mb-1 tracking-wide">
+                Jump straight in with a community club — no setup.
+              </p>
 
-              {hasSaves && (
+              {/* Secondary paths */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
                 <motion.button
                   type="button"
-                  onClick={onLoadGame}
-                  className="flex-1 py-4 px-6 rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2"
+                  onClick={onNewCareer}
+                  className="flex-1 py-3.5 px-5 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
                   style={{
                     background: 'var(--A-panel, #111820)',
                     border: '1px solid var(--A-line, #1e2a36)',
@@ -152,10 +157,28 @@ export default function LandingScreen({ hasSaves, themeClass = 'dirB', onNewCare
                   whileHover={{ scale: 1.03, y: -1, borderColor: 'var(--A-accent)' }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  <FolderOpen className="w-4 h-4" />
-                  Load Game
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  Custom Setup
                 </motion.button>
-              )}
+
+                {hasSaves && (
+                  <motion.button
+                    type="button"
+                    onClick={onLoadGame}
+                    className="flex-1 py-3.5 px-5 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                    style={{
+                      background: 'var(--A-panel, #111820)',
+                      border: '1px solid var(--A-line, #1e2a36)',
+                      color: 'var(--A-text, #e8edf4)',
+                    }}
+                    whileHover={{ scale: 1.03, y: -1, borderColor: 'var(--A-accent)' }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" />
+                    Load Game
+                  </motion.button>
+                )}
+              </div>
             </motion.div>
 
             {/* Stats strip */}
