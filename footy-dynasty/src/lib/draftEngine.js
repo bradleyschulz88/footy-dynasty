@@ -102,7 +102,7 @@ function appendHistory(history, entry) {
 // AI REALISM: Expanded position-need detection with per-line thresholds.
 // Each AFL line needs a minimum quota from a 32-man squad; being thin at a
 // line gives a proportionally larger boost to prospects who fill that gap.
-function squadPositionNeeds(squad) {
+export function squadPositionNeeds(squad) {
   const counts = {};
   for (const p of squad || []) {
     const pos = p.position || 'C';
@@ -133,10 +133,10 @@ function squadPositionNeeds(squad) {
   return needs;
 }
 
-// AI REALISM: Classify squad mode (rebuild / develop / compete) to guide
-// which prospects get priority — young clubs draft high-potential youth;
-// contenders chase ready-now talent.
-function squadMode(squad) {
+// Classify squad mode (rebuild / develop / compete) to guide which prospects
+// get priority — young clubs draft high-potential youth; contenders chase
+// ready-now talent.  Also used by aiSquads.js for ageing decisions.
+export function classifySquadMode(squad) {
   if (!squad || squad.length === 0) return 'develop';
   const avgAge = squad.reduce((s, p) => s + (p.age ?? 24), 0) / squad.length;
   const avgRating = squad.reduce((s, p) => s + (p.trueRating || p.overall || 70), 0) / squad.length;
@@ -148,7 +148,7 @@ function squadMode(squad) {
 function aiPickFromPool(currentPool, clubId, aiSquad) {
   if (!currentPool.length) return null;
   const needs = squadPositionNeeds(aiSquad);
-  const mode = squadMode(aiSquad);
+  const mode = classifySquadMode(aiSquad);
   const { preferredTactic } = aiPersonalityForClub(clubId);
   const h = hashClubId(clubId);
   const ranked = [...currentPool].sort((a, b) => {

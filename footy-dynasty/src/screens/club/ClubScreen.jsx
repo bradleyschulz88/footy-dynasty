@@ -898,6 +898,19 @@ function RookieListTab() {
   );
 }
 
+function FinanceRow({ label, valueStr, color, sub, barPct }) {
+  return (
+    <div className="mb-3">
+      <div className="flex justify-between text-sm mb-1">
+        <span className="text-atext">{label}</span>
+        <span className="font-display text-lg" style={{ color }}>{valueStr}</span>
+      </div>
+      {sub && <div className="text-[10px] text-atext-mute mb-1">{sub}</div>}
+      <Bar value={barPct} color={color} />
+    </div>
+  );
+}
+
 function FinancesTab() {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
@@ -952,14 +965,7 @@ function FinancesTab() {
             { label: "Local Sponsorship",        value: inc.sponsors,  color: "#A78BFA",          sub: "signed deals" },
             { label: "Grants (received so far)", value: inc.grants,    color: "#4ADE80",          sub: "council / federation" },
           ].map(r => (
-            <div key={r.label} className="mb-3">
-              <div className="flex justify-between text-sm mb-0.5">
-                <span className="text-atext">{r.label}</span>
-                <span className="font-display text-lg" style={{ color: r.color }}>${r.value.toLocaleString()}</span>
-              </div>
-              {r.sub && <div className="text-[10px] text-atext-mute mb-1">{r.sub}</div>}
-              <Bar value={inc.grandTotal > 0 ? (r.value / inc.grandTotal) * 100 : 0} color={r.color} />
-            </div>
+            <FinanceRow key={r.label} label={r.label} valueStr={`$${r.value.toLocaleString()}`} color={r.color} sub={r.sub} barPct={inc.grandTotal > 0 ? (r.value / inc.grandTotal) * 100 : 0} />
           ))}
           <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
             <span>Total income</span><span className="text-apos">${inc.grandTotal.toLocaleString()}</span>
@@ -976,14 +982,7 @@ function FinancesTab() {
             { label: "Equipment / Kit",    value: exp.equipment,   color: "var(--A-accent-2)", sub: "est." },
             { label: "Facility Upkeep",    value: exp.facilities,  color: "var(--A-accent)",  sub: "annual" },
           ].map(r => (
-            <div key={r.label} className="mb-3">
-              <div className="flex justify-between text-sm mb-0.5">
-                <span className="text-atext">{r.label}</span>
-                <span className="font-display text-lg" style={{ color: r.color }}>${r.value.toLocaleString()}</span>
-              </div>
-              {r.sub && <div className="text-[10px] text-atext-mute mb-1">{r.sub}</div>}
-              <Bar value={exp.grandTotal > 0 ? (r.value / exp.grandTotal) * 100 : 0} color={r.color} />
-            </div>
+            <FinanceRow key={r.label} label={r.label} valueStr={`$${r.value.toLocaleString()}`} color={r.color} sub={r.sub} barPct={exp.grandTotal > 0 ? (r.value / exp.grandTotal) * 100 : 0} />
           ))}
           <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
             <span>Total expenses</span><span className="text-aneg">${exp.grandTotal.toLocaleString()}</span>
@@ -1198,13 +1197,7 @@ function FinancesTab() {
               { label: "Sponsorship",           value: inc.sponsors,    color: "#A78BFA" },
               ...(inc.gaming > 0 ? [{ label: "Gaming / Social Venue", value: inc.gaming, color: "#F59E0B" }] : []),
             ].map(r => (
-              <div key={r.label} className="mb-3">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-atext">{r.label}</span>
-                  <span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span>
-                </div>
-                <Bar value={inc.grandTotal > 0 ? (r.value / inc.grandTotal) * 100 : 0} color={r.color} />
-              </div>
+              <FinanceRow key={r.label} label={r.label} valueStr={fmtK(r.value)} color={r.color} barPct={inc.grandTotal > 0 ? (r.value / inc.grandTotal) * 100 : 0} />
             ))}
             <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
               <span>Total income</span><span className="text-apos">{fmtK(inc.grandTotal)}</span>
@@ -1217,13 +1210,7 @@ function FinancesTab() {
               { label: "Staff Wages",       value: exp.staffWages,  color: "var(--A-accent)" },
               { label: "Facilities Upkeep", value: exp.facilities,  color: "var(--A-accent)" },
             ].map(r => (
-              <div key={r.label} className="mb-3">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-atext">{r.label}</span>
-                  <span className="font-display text-lg" style={{ color: r.color }}>{fmtK(r.value)}</span>
-                </div>
-                <Bar value={exp.grandTotal > 0 ? (r.value / exp.grandTotal) * 100 : 0} color={r.color} />
-              </div>
+              <FinanceRow key={r.label} label={r.label} valueStr={fmtK(r.value)} color={r.color} barPct={exp.grandTotal > 0 ? (r.value / exp.grandTotal) * 100 : 0} />
             ))}
             <div className="mt-3 pt-3 flex justify-between text-sm font-bold" style={{ borderTop: '1px solid var(--A-line)' }}>
               <span>Total expenses</span><span className="text-aneg">{fmtK(exp.grandTotal)}</span>

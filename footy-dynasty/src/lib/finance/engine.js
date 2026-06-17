@@ -198,6 +198,25 @@ export function isoWeekOf(dateStr) {
   return Math.ceil(((tmp - yearStart) / 86400000 + 1) / 7);
 }
 
+// Estimated home games per season (half of projected total rounds).
+const HALF_SEASON_GAMES = Math.round(SEASON_MATCHES_EST / 2);
+
+// Shared weeklyHistory accumulator used by both tick functions.
+function accumWeeklyHistory(c, isoKey, delta, dayIncome, dayExpenses, extra = {}) {
+  const hist = c.weeklyHistory || [];
+  const last = hist[hist.length - 1];
+  if (last && last.isoKey === isoKey) {
+    last.profit   = (last.profit ?? 0) + delta;
+    last.cash     = c.finance.cash;
+    last.income   = (last.income ?? 0) + dayIncome;
+    last.expenses = (last.expenses ?? 0) + dayExpenses;
+    Object.assign(last, extra);
+  } else {
+    hist.push({ isoKey, week: c.week ?? 0, profit: delta, cash: c.finance.cash, income: dayIncome, expenses: dayExpenses, ...extra });
+  }
+  c.weeklyHistory = hist.slice(-52);
+}
+
 // Apply one day of operating cashflow when the career's calendar moves to a new date.
 // Returns the delta applied to cash. Idempotent if called twice for the same day.
 // Named `tickWeeklyCashflow` for backwards compatibility with imports/tests.
@@ -222,27 +241,8 @@ export function tickWeeklyCashflow(c) {
   const isoKey = `${day.slice(0, 4)}-W${isoWeekOf(day)}`;
   c.lastFinanceTickWeek = isoKey;
 
-  const hist = c.weeklyHistory || [];
   const boardConf = Math.round(c.finance?.boardConfidence ?? 0);
-  const last = hist[hist.length - 1];
-  if (last && last.isoKey === isoKey) {
-    last.profit = (last.profit ?? 0) + delta;
-    last.cash = c.finance.cash;
-    last.income = (last.income ?? 0) + dayIncome;
-    last.expenses = (last.expenses ?? 0) + dayExpenses;
-    last.boardConfidence = boardConf;
-  } else {
-    hist.push({
-      isoKey,
-      week: c.week ?? 0,
-      profit: delta,
-      cash: c.finance.cash,
-      income: dayIncome,
-      expenses: dayExpenses,
-      boardConfidence: boardConf,
-    });
-  }
-  c.weeklyHistory = hist.slice(-52);
+  accumWeeklyHistory(c, isoKey, delta, dayIncome, dayExpenses, { boardConfidence: boardConf });
 
   // Headline annual income shown in the UI = full season projection (per-match
   // lines + smoothed lines), so the number matches what the club actually banks.
@@ -268,8 +268,7 @@ export function grassrootsIncomeBreakdown(career) {
   const sponsors  = annualSponsorIncome(career);
   const listSize  = (career.squad || []).length;
   const regFees   = listSize * T4_COMMUNITY.registrationFeePerPlayer;
-  const homeGames = Math.round(SEASON_MATCHES_EST / 2);
-  const canteen   = homeGames * ((T4_COMMUNITY.canteenPerHomeGame.min + T4_COMMUNITY.canteenPerHomeGame.max) / 2);
+  const canteen   = HALF_SEASON_GAMES * ((T4_COMMUNITY.canteenPerHomeGame.min + T4_COMMUNITY.canteenPerHomeGame.max) / 2);
   const grants    = career.t4GrantsThisSeason ?? 0;
   return {
     sponsors, regFees, canteen, grants,
@@ -281,8 +280,7 @@ export function grassrootsIncomeBreakdown(career) {
 export function grassrootsExpenseBreakdown(career) {
   const fixed      = T4_COMMUNITY.affiliationFeeAnnual + T4_COMMUNITY.insuranceAnnual;
   const equip      = (T4_COMMUNITY.equipmentAnnual.min + T4_COMMUNITY.equipmentAnnual.max) / 2;
-  const homeGames  = Math.round(SEASON_MATCHES_EST / 2);
-  const groundHire = homeGames * T4_COMMUNITY.groundHirePerGame;
+  const groundHire = HALF_SEASON_GAMES * T4_COMMUNITY.groundHirePerGame;
   const umpires    = SEASON_MATCHES_EST * T4_COMMUNITY.umpireFeePerGame;
   const facilities = annualFacilityUpkeep(career);
   return {
@@ -331,17 +329,7 @@ export function tickGrassrootsFinance(c) {
   const isoKey = `${day.slice(0, 4)}-W${isoWeekOf(day)}`;
   c.lastFinanceTickWeek = isoKey;
 
-  const hist = c.weeklyHistory || [];
-  const last = hist[hist.length - 1];
-  if (last && last.isoKey === isoKey) {
-    last.profit   = (last.profit ?? 0) + delta;
-    last.cash     = c.finance.cash;
-    last.income   = (last.income ?? 0) + dayIncome;
-    last.expenses = (last.expenses ?? 0) + dayExpenses;
-  } else {
-    hist.push({ isoKey, week: c.week ?? 0, profit: delta, cash: c.finance.cash, income: dayIncome, expenses: dayExpenses });
-  }
-  c.weeklyHistory = hist.slice(-52);
+  accumWeeklyHistory(c, isoKey, delta, dayIncome, dayExpenses);
 
   // Shortage tracking (no sacking path at T4 — handled as sponsor-hunt / grant events).
   if (c.finance.cash < 0) {
