@@ -38,6 +38,28 @@ const POS_LINE_COLOR = {
 };
 function posColor(pos) { return POS_LINE_COLOR[pos] || "var(--A-accent)"; }
 
+function posBadgeStyle(pos) {
+  if (pos === 'KF' || pos === 'HF') return {background:'color-mix(in srgb,#E84A6F 14%,transparent)',color:'#E84A6F',border:'1px solid color-mix(in srgb,#E84A6F 30%,transparent)'};
+  if (pos === 'HB' || pos === 'KB') return {background:'color-mix(in srgb,#60A5FA 14%,transparent)',color:'#60A5FA',border:'1px solid color-mix(in srgb,#60A5FA 30%,transparent)'};
+  if (pos === 'RU') return {background:'color-mix(in srgb,#A78BFA 14%,transparent)',color:'#A78BFA',border:'1px solid color-mix(in srgb,#A78BFA 30%,transparent)'};
+  if (pos === 'C' || pos === 'R' || pos === 'WG') return {background:'color-mix(in srgb,var(--A-accent) 14%,transparent)',color:'var(--A-accent)',border:'1px solid color-mix(in srgb,var(--A-accent) 30%,transparent)'};
+  return {background:'color-mix(in srgb,#9CA3AF 14%,transparent)',color:'#9CA3AF',border:'1px solid color-mix(in srgb,#9CA3AF 30%,transparent)'};
+}
+
+function ratingColor(v) {
+  return v >= 80 ? 'var(--A-pos)' : v >= 65 ? '#F59E0B' : 'var(--A-neg)';
+}
+
+function ContractChip({ years }) {
+  if (years == null) return null;
+  const color = years <= 0 ? 'var(--A-neg)' : years === 1 ? '#F59E0B' : 'var(--A-pos)';
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[9px] font-mono font-black px-1.5 py-0.5 rounded" style={{background:`color-mix(in srgb,${color} 14%,transparent)`,color,border:`1px solid color-mix(in srgb,${color} 30%,transparent)`}}>
+      {years <= 0 ? 'OOC' : `${years}y`}
+    </span>
+  );
+}
+
 // ============================================================================
 // SHARED TAB NAV
 // ============================================================================
@@ -323,7 +345,7 @@ function PlayersTab() {
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-atext truncate">{pName(p)}</div>
-                    <div className="text-[10px] text-atext-mute"><span style={{ color: posColor(p.position) }}>{formatPositionSlash(p)}</span> · {POSITION_NAMES[p.position]} · age {p.age}</div>
+                    <div className="text-[10px] text-atext-mute flex items-center gap-1.5 flex-wrap"><span className="inline-flex items-center text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span> · {POSITION_NAMES[p.position]} · age {p.age}</div>
                   </div>
                   <RatingDot value={p.overall} size="sm" />
                 </div>
@@ -361,8 +383,8 @@ function PlayersTab() {
                     background: isSelected ? rowSelectBg : "transparent",
                     borderLeft: isSelected ? "3px solid var(--A-accent)" : "3px solid transparent",
                   }}
-                  onMouseEnter={e=>{if(!isSelected) e.currentTarget.style.background=rowHoverBg;}}
-                  onMouseLeave={e=>{if(!isSelected) e.currentTarget.style.background="transparent";}}>
+                  onMouseEnter={e=>{if(!isSelected){e.currentTarget.style.background=rowHoverBg; e.currentTarget.style.borderLeft='3px solid color-mix(in srgb,var(--A-accent) 45%,transparent)';}}}
+                  onMouseLeave={e=>{if(!isSelected){e.currentTarget.style.background='transparent'; e.currentTarget.style.borderLeft='3px solid transparent';}}}>
                   <div className="text-atext-mute text-sm font-bold text-left">{i+1}</div>
                   <div className="flex items-center gap-2 min-w-0 text-left">
                     {p.injured > 0 && <Heart className="w-3 h-3 flex-shrink-0 text-aneg" />}
@@ -370,7 +392,7 @@ function PlayersTab() {
                     <span className="truncate text-sm font-semibold text-atext">{pName(p)}</span>
                     {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"color-mix(in srgb, var(--A-accent) 13%, transparent)",color:"var(--A-accent)"}}>R</span>}
                   </div>
-                  <div className="text-center" title={POSITION_NAMES[p.position] + (p.secondaryPosition ? ` / ${POSITION_NAMES[p.secondaryPosition]}` : '')}><Pill color={posColor(p.position)}>{formatPositionSlash(p)}</Pill></div>
+                  <div className="text-center" title={POSITION_NAMES[p.position] + (p.secondaryPosition ? ` / ${POSITION_NAMES[p.secondaryPosition]}` : '')}><span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span></div>
                   <div className="text-center text-sm text-atext-dim">{p.age}</div>
                   <div className="text-center flex justify-center"><RatingDot value={p.overall} size="sm" /></div>
                   <div className="flex items-center gap-1">
@@ -386,7 +408,7 @@ function PlayersTab() {
                     <span className="text-[10px] font-bold w-6 text-right" style={{color:fitColor}}>{p.fitness}</span>
                   </div>
                   <div className="text-right text-xs font-mono text-atext-dim">{fmtK(p.wage)}</div>
-                  <div className="text-center">
+                  <div className="text-center flex flex-col items-center gap-0.5">
                     {p.suspended > 0
                       ? <Pill color="#A78BFA">SUS {p.suspended}w</Pill>
                       : p.injured > 0
@@ -394,6 +416,7 @@ function PlayersTab() {
                         : inLineup
                           ? <Pill color="var(--A-pos)">23</Pill>
                           : <span className="text-atext-mute text-xs">—</span>}
+                    <ContractChip years={p.contract} />
                   </div>
                 </button>
               );
@@ -482,7 +505,7 @@ function AllPlayersTab() {
   }, [career.squad, sort]);
 
   const statCell = (v) => <span className="font-bold" style={{ color: statColor(v ?? 0) }}>{v ?? "—"}</span>;
-  const posCell = (p) => <Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill>;
+  const posCell = (p) => <span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span>;
 
   const columns = {
     overview: [

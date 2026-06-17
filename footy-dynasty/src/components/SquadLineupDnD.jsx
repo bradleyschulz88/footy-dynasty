@@ -39,6 +39,14 @@ import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 
 const BENCH_TRAY_ID = "bench-tray";
 
+function posBadgeStyle(pos) {
+  if (pos === 'KF' || pos === 'HF') return {background:'color-mix(in srgb,#E84A6F 14%,transparent)',color:'#E84A6F',border:'1px solid color-mix(in srgb,#E84A6F 30%,transparent)'};
+  if (pos === 'HB' || pos === 'KB') return {background:'color-mix(in srgb,#60A5FA 14%,transparent)',color:'#60A5FA',border:'1px solid color-mix(in srgb,#60A5FA 30%,transparent)'};
+  if (pos === 'RU') return {background:'color-mix(in srgb,#A78BFA 14%,transparent)',color:'#A78BFA',border:'1px solid color-mix(in srgb,#A78BFA 30%,transparent)'};
+  if (pos === 'C' || pos === 'R' || pos === 'WG') return {background:'color-mix(in srgb,var(--A-accent) 14%,transparent)',color:'var(--A-accent)',border:'1px solid color-mix(in srgb,var(--A-accent) 30%,transparent)'};
+  return {background:'color-mix(in srgb,#9CA3AF 14%,transparent)',color:'#9CA3AF',border:'1px solid color-mix(in srgb,#9CA3AF 30%,transparent)'};
+}
+
 function pName(p) {
   return p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || "Player");
 }
@@ -143,7 +151,7 @@ function SortablePlayerRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="w-full flex items-center gap-1 px-2 py-2.5 min-h-[48px] rounded-xl border border-aline bg-apanel mb-1 touch-manipulation"
+      className="w-full flex items-center gap-1 px-2 py-2.5 min-h-[48px] rounded-xl border border-aline bg-apanel mb-1 touch-manipulation transition-all hover:border-[color-mix(in_srgb,var(--A-accent)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--A-accent)_4%,transparent)] hover:shadow-sm"
     >
       <button
         type="button"
@@ -160,7 +168,7 @@ function SortablePlayerRow({
           className="flex-1 flex items-center gap-2 min-w-0 text-left"
           onClick={() => onSelect(player)}
         >
-          <span className="text-[9px] px-1 py-0.5 bg-aline rounded font-bold text-center flex-shrink-0 max-w-[4rem] truncate">
+          <span className="text-[9px] px-1.5 py-0.5 rounded-md font-black text-center flex-shrink-0 uppercase tracking-wider" style={posBadgeStyle(player.position)}>
             {formatPositionSlash(player)}
           </span>
           <span className="text-sm font-semibold text-atext truncate">{pName(player)}</span>
@@ -169,7 +177,7 @@ function SortablePlayerRow({
         </button>
       ) : (
         <div className="flex-1 flex items-center gap-2 min-w-0">
-          <span className="text-[9px] px-1 py-0.5 bg-aline rounded font-bold text-center flex-shrink-0 max-w-[4rem] truncate">
+          <span className="text-[9px] px-1.5 py-0.5 rounded-md font-black text-center flex-shrink-0 uppercase tracking-wider" style={posBadgeStyle(player.position)}>
             {formatPositionSlash(player)}
           </span>
           <span className="text-sm font-semibold text-atext truncate">{pName(player)}</span>

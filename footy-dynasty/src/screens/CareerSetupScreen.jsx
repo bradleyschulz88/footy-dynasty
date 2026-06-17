@@ -572,15 +572,25 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
                     const active = difficulty === id;
                     return (
                       <button key={id} type="button" onClick={() => setDifficulty(id)}
-                        className={`text-left p-4 rounded-xl border transition-all ${active ? '' : 'hover:border-aaccent/30'}`}
+                        className="text-left p-4 rounded-xl border transition-all relative overflow-hidden group"
                         style={{
                           background: active
-                            ? `color-mix(in srgb, ${meta.color} 12%, var(--A-panel-2))`
+                            ? `linear-gradient(135deg, color-mix(in srgb, ${meta.color} 14%, var(--A-panel-2)), var(--A-panel-2))`
                             : 'var(--A-panel-2)',
                           borderColor: active ? meta.color : 'var(--A-line)',
-                          boxShadow: active ? `0 0 0 1px ${meta.color}44` : undefined,
+                          boxShadow: active
+                            ? `0 0 0 1px ${meta.color}33, 0 4px 16px color-mix(in srgb, ${meta.color} 15%, transparent)`
+                            : undefined,
+                          transform: active ? 'translateY(-1px)' : undefined,
                         }}>
-                        <div className="font-display text-xl mb-0.5" style={{ color: meta.color }}>
+                        {/* Active indicator strip */}
+                        {active && (
+                          <div
+                            className="absolute top-0 left-0 right-0 h-1 rounded-t-xl"
+                            style={{ background: `linear-gradient(90deg, ${meta.color}, ${meta.color}88)` }}
+                          />
+                        )}
+                        <div className="font-display text-xl mb-0.5 mt-1" style={{ color: meta.color }}>
                           {meta.label.toUpperCase()}
                         </div>
                         <div className="text-[10px] text-atext-mute mb-2 italic leading-snug">{meta.tagline}</div>
@@ -592,9 +602,20 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
                             </li>
                           ))}
                         </ul>
-                        {active && (
-                          <div className="text-[10px] font-mono font-bold uppercase tracking-widest" style={{ color: meta.color }}>
+                        {active ? (
+                          <div
+                            className="text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-1 rounded-md inline-block"
+                            style={{
+                              color: meta.color,
+                              background: `color-mix(in srgb, ${meta.color} 15%, transparent)`,
+                              border: `1px solid color-mix(in srgb, ${meta.color} 30%, transparent)`,
+                            }}
+                          >
                             ✓ Selected
+                          </div>
+                        ) : (
+                          <div className="text-[10px] font-mono text-atext-mute uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                            Click to select
                           </div>
                         )}
                       </button>
@@ -920,11 +941,16 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
                   const isSelected = clubId === c.id;
                   return (
                     <motion.button key={c.id} type="button" onClick={() => setClubId(c.id)}
-                      whileHover={!isSelected ? { y: -3, scale: 1.01 } : undefined}
-                      whileTap={{ scale: 0.97 }}
-                      className={`rounded-xl overflow-hidden text-left transition-all ${
-                        isSelected ? 'ring-2 ring-aaccent ring-offset-2 ring-offset-abg' : ''
-                      }`}>
+                      whileHover={!isSelected ? { y: -4, scale: 1.02 } : { scale: 1.01 }}
+                      whileTap={{ scale: 0.96 }}
+                      className="rounded-xl overflow-hidden text-left transition-all"
+                      style={{
+                        outline: isSelected ? `2px solid ${c.colors[0]}` : "2px solid transparent",
+                        outlineOffset: 2,
+                        boxShadow: isSelected
+                          ? `0 0 0 4px color-mix(in srgb, ${c.colors[0]} 22%, transparent), 0 8px 24px color-mix(in srgb, ${c.colors[0]} 25%, transparent)`
+                          : "0 2px 8px rgba(0,0,0,0.06)",
+                      }}>
                       {/* Club colour header */}
                       <div className="h-16 md:h-20 flex items-center justify-center relative"
                         style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})` }}>
@@ -932,19 +958,32 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume, themeClass 
                           {c.short}
                         </span>
                         {isSelected && (
-                          <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center"
-                            style={{ background: 'rgba(255,255,255,0.95)' }}>
-                            <Check className="w-3.5 h-3.5" style={{ color: c.colors[0] }} />
-                          </div>
+                          <>
+                            {/* Selection checkmark badge */}
+                            <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow-lg"
+                              style={{ background: "rgba(255,255,255,0.97)", boxShadow: `0 2px 8px rgba(0,0,0,0.3)` }}>
+                              <Check className="w-4 h-4" style={{ color: c.colors[0] }} />
+                            </div>
+                            {/* Selected shimmer overlay */}
+                            <div className="absolute inset-0 pointer-events-none"
+                              style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0))" }} />
+                          </>
                         )}
                       </div>
                       {/* Club info */}
-                      <div className={`px-3 py-2.5 transition-colors ${
-                        isSelected
-                          ? 'bg-aaccent/10'
-                          : 'bg-apanel'
-                      }`}>
-                        <div className={`font-bold text-sm leading-tight ${isSelected ? 'text-aaccent' : 'text-atext'}`}>
+                      <div
+                        className="px-3 py-2.5 transition-colors"
+                        style={{
+                          background: isSelected
+                            ? `color-mix(in srgb, ${c.colors[0]} 10%, var(--A-panel))`
+                            : "var(--A-panel)",
+                          borderTop: isSelected ? `2px solid color-mix(in srgb, ${c.colors[0]} 40%, transparent)` : "2px solid transparent",
+                        }}
+                      >
+                        <div
+                          className="font-bold text-sm leading-tight"
+                          style={{ color: isSelected ? c.colors[0] : "var(--A-text)" }}
+                        >
                           {c.name}
                         </div>
                         <div className="text-[10px] text-atext-mute mt-0.5 font-mono">{c.state}</div>

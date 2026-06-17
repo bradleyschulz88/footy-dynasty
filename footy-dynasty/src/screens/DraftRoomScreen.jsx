@@ -148,7 +148,10 @@ export default function DraftRoomScreen({ club, league, onExit }) {
     <div className="anim-in space-y-4 touch-manipulation">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>DRAFT ROOM</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>DRAFT ROOM</div>
+          </div>
           <p className="text-xs text-atext-dim mt-1">
             {draftComplete
               ? "Draft complete — review results or return to recruit."
@@ -184,15 +187,19 @@ export default function DraftRoomScreen({ club, league, onExit }) {
       {draftLive && !draftComplete && onClock && (
         <div
           className={`rounded-2xl p-4 border-2 flex flex-wrap items-center justify-between gap-4 ${isMyTurn ? "border-aaccent" : "border-aline"}`}
-          style={{ background: isMyTurn ? "color-mix(in srgb, var(--A-accent) 8%, transparent)" : "var(--A-panel-2)" }}
+          style={{
+            background: isMyTurn ? "color-mix(in srgb, var(--A-accent) 8%, transparent)" : "var(--A-panel-2)",
+            boxShadow: isMyTurn ? "0 0 24px color-mix(in srgb,var(--A-accent) 25%,transparent), inset 0 1px 0 rgba(255,255,255,0.08)" : undefined,
+          }}
         >
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isMyTurn ? "bg-aaccent/20" : "bg-apanel"}`}>
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isMyTurn ? "bg-aaccent/20" : "bg-apanel"}`}
+              style={isMyTurn ? {animation:'fdBreathe 3.5s ease-in-out infinite'} : undefined}>
               <Clock className={`w-6 h-6 ${isMyTurn ? "text-aaccent" : "text-atext-dim"}`} />
             </div>
             <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute">
-                {isMyTurn ? "On the clock" : "On the clock"}
+              <div className="text-[10px] font-black uppercase tracking-[0.2em]" style={{color: isMyTurn ? 'var(--A-accent)' : 'var(--A-text-mute)'}}>
+                {isMyTurn ? "Your turn — on the clock" : "On the clock"}
               </div>
               <div className="font-display text-2xl text-atext flex items-center gap-2">
                 {onClockClub ? <ClubBadge club={onClockClub} size="sm" /> : null}
@@ -271,7 +278,7 @@ export default function DraftRoomScreen({ club, league, onExit }) {
                     </div>
                     <div className="flex items-center gap-3">
                       {st >= 3 ? <RatingDot value={p.overall} size="sm" /> : <span className="font-bold">{oDisp.label}</span>}
-                      <span className="text-xs text-[#4AE89A]">Pot {st >= 3 ? p.potential : potDisp.label}</span>
+                      <span className="text-xs text-[#4AE89A]">Pot {st >= 3 ? p.potential : potDisp.label}{st >= 3 && p.potential > p.overall && (<span className="ml-1 text-[9px] font-black">+{p.potential - p.overall}↑</span>)}</span>
                       <span className="text-xs font-mono" style={{ color: capOk ? "#4AE89A" : "#E84A6F" }}>{wageDisp.label}</span>
                       {draftLive && isMyTurn && (
                         <button type="button" onClick={() => pickProspect(p)} className={`${css.btnPrimary} text-xs px-3 py-2 min-h-[40px]`}>
@@ -324,10 +331,12 @@ export default function DraftRoomScreen({ club, league, onExit }) {
                       background: d.clubId === career.clubId ? "color-mix(in srgb, var(--A-accent) 12%, transparent)" : "var(--A-panel-2)",
                       border: `1px solid ${clock ? "var(--A-accent)" : "var(--A-line)"}`,
                       minWidth: 88,
+                      boxShadow: clock ? '0 0 8px color-mix(in srgb,var(--A-accent) 35%,transparent)' : undefined,
                     }}
                   >
                     <div className="font-mono text-[9px] text-atext-mute">#{d.pick} R{d.round || 1}</div>
-                    <div className="font-display text-sm">{c?.short || d.clubId}</div>
+                    <div className={`font-display text-sm ${d.clubId === career.clubId ? 'text-aaccent' : ''}`}>{c?.short || d.clubId}</div>
+                    {clock && <div className="text-[8px] font-black uppercase tracking-wider mt-0.5" style={{color:'var(--A-accent)'}}>On clock</div>}
                   </div>
                 );
               })}

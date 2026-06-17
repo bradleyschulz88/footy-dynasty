@@ -10,10 +10,10 @@ export const css = {
   panel: "panel",
   panelHover: "panel card-hover cursor-pointer",
   inset: "panel-flat",
-  btn: "px-4 py-2.5 rounded-md font-semibold transition-all font-mono text-[11px] uppercase tracking-[0.18em]",
-  btnPrimary: "btn-primary text-xs px-5 py-2.5 font-mono font-bold uppercase tracking-[0.2em]",
-  btnGhost: "btn-ghost px-5 py-2.5",
-  btnDanger: "px-5 py-2.5 rounded-md font-semibold border border-aneg/40 text-aneg hover:bg-aneg/10 transition-all",
+  btn: "px-4 py-2.5 rounded-md font-semibold transition-all duration-150 active:scale-[0.98] font-mono text-[11px] uppercase tracking-[0.18em]",
+  btnPrimary: "btn-primary text-xs px-5 py-2.5 font-mono font-bold uppercase tracking-[0.2em] active:scale-[0.98]",
+  btnGhost: "btn-ghost px-5 py-2.5 active:scale-[0.98]",
+  btnDanger: "px-5 py-2.5 rounded-md font-semibold border border-aneg/40 text-aneg hover:bg-aneg/10 hover:border-aneg/70 active:scale-[0.98] transition-all duration-150",
   label: "label",
   h1: "display tracking-wider text-atext",
   num: "font-display tracking-wide text-atext",
@@ -207,6 +207,14 @@ export const GlobalStyle = () => (
     .dirS select { color:var(--A-text); background:var(--A-panel); border:1px solid var(--A-line); border-radius:8px; }
     input[type=color] { padding:2px; cursor:pointer; border-radius:6px; }
     button:disabled { opacity:0.4; cursor:not-allowed; }
+    /* Accessible focus rings — accent-tinted, theme-adaptive, only on keyboard focus. */
+    button:focus-visible, a:focus-visible, [role="button"]:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--A-bg), 0 0 0 4px color-mix(in srgb, var(--A-accent) 70%, transparent);
+      border-radius: var(--radius-md);
+    }
+    /* Subtle tactile press feedback for tappable buttons. */
+    button:not(:disabled):active { transform: translateY(0.5px); }
     * { box-sizing:border-box; }
   `}</style>
 );

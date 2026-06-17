@@ -21,6 +21,33 @@ function barStatPct(raw) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
+/** Returns a gradient stop pair based on value threshold for bar fills */
+function barGradient(value, color) {
+  // threshold-based gradient: green-ish above 60, amber 30-60, red below 30
+  if (color === "#86CEFF" || color === "#A78BFA") {
+    // board confidence / fan happiness — green > amber > red
+    if (value >= 60) {
+      return `linear-gradient(90deg, ${color}55, ${color}CC, ${color})`;
+    } else if (value >= 30) {
+      return `linear-gradient(90deg, #FF9A3C55, #FF9A3CCC, #FF9A3C)`;
+    } else {
+      return `linear-gradient(90deg, #FF5A7C55, #FF5A7CCC, #FF5A7C)`;
+    }
+  }
+  // cash / budget — always their accent colour
+  return `linear-gradient(90deg, ${color}55, ${color}CC, ${color})`;
+}
+
+/** Returns glow color for active bar */
+function barGlowColor(value, color) {
+  if (color === "#86CEFF" || color === "#A78BFA") {
+    if (value >= 60) return color;
+    if (value >= 30) return "#FF9A3C";
+    return "#FF5A7C";
+  }
+  return color;
+}
+
 export function TopBar({
   club,
   league,
@@ -162,6 +189,7 @@ export function TopBar({
                 hideBelow === "lg" ? "hidden lg:flex" :
                 hideBelow === "md" ? "hidden md:flex" :
                 hideBelow === "sm" ? "hidden sm:flex" : "flex";
+              const glowColor = bar ? barGlowColor(value, color) : color;
               return (
                 <motion.div
                   key={`${timeTick}-${label}`}
@@ -172,6 +200,7 @@ export function TopBar({
                   transition={{ duration: 0.26, ease: tickEase }}
                 >
                   <div>
+                    {/* Label */}
                     <div
                       style={{
                         fontFamily: "'JetBrains Mono', monospace",
@@ -180,46 +209,67 @@ export function TopBar({
                         fontWeight: 700,
                         textTransform: "uppercase",
                         color: "#5C6962",
+                        marginBottom: 1,
                       }}
                     >
                       {label}
                     </div>
                     {bar ? (
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      /* Bar stat: number + bar stacked tightly */
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span
+                            style={{
+                              fontFamily: "'JetBrains Mono', monospace",
+                              fontVariantNumeric: "tabular-nums",
+                              fontSize: 15,
+                              fontWeight: 700,
+                              lineHeight: 1,
+                              color: glowColor,
+                              letterSpacing: "0.03em",
+                            }}
+                          >
+                            {value}
+                          </span>
+                          {trend ? (
+                            <span style={{ fontSize: 10, color: trendColor(trend), lineHeight: 1 }}>{trendGlyph(trend)}</span>
+                          ) : null}
+                        </div>
+                        {/* Gradient bar with glow */}
                         <div
-                          className="rounded-full overflow-hidden"
                           style={{
-                            width: 40, height: 4,
-                            background: "rgba(255,255,255,0.08)",
-                            border: "1px solid rgba(255,255,255,0.06)",
+                            width: 52,
+                            height: 4,
+                            borderRadius: 9999,
+                            background: "rgba(255,255,255,0.07)",
+                            border: "1px solid rgba(255,255,255,0.05)",
+                            overflow: "hidden",
+                            position: "relative",
                           }}
                         >
                           <div
-                            className="h-full rounded-full"
-                            style={{ width: `${value}%`, background: `linear-gradient(90deg, ${color}88, ${color})` }}
+                            style={{
+                              height: "100%",
+                              width: `${value}%`,
+                              borderRadius: 9999,
+                              background: barGradient(value, color),
+                              boxShadow: `0 0 6px ${glowColor}88`,
+                              transition: "width 0.4s ease",
+                            }}
                           />
                         </div>
-                        <span
-                          style={{
-                            fontFamily: "'Bebas Neue', Oswald, sans-serif",
-                            fontSize: 17,
-                            lineHeight: 1,
-                            color,
-                          }}
-                        >
-                          {value}
-                        </span>
-                        {trend ? (
-                          <span style={{ fontSize: 10, color: trendColor(trend) }}>{trendGlyph(trend)}</span>
-                        ) : null}
                       </div>
                     ) : (
+                      /* Cash / Budget: monospace tabular number, slightly larger */
                       <div
                         style={{
-                          fontFamily: "'Bebas Neue', Oswald, sans-serif",
-                          fontSize: 18,
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontVariantNumeric: "tabular-nums",
+                          fontSize: 17,
+                          fontWeight: 700,
                           lineHeight: 1.05,
                           color,
+                          letterSpacing: "0.02em",
                         }}
                       >
                         {value}
@@ -232,7 +282,13 @@ export function TopBar({
           </div>
 
           {/* Right: notifications + next event label + advance button */}
-          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+          <div
+            className="flex items-center gap-2 md:gap-3 flex-shrink-0"
+            style={{
+              paddingLeft: 12,
+              borderLeft: "1px solid rgba(255,255,255,0.07)",
+            }}
+          >
             <NotificationBell onAction={onNotificationAction} open={notifOpen} onOpenChange={onNotifOpenChange} />
 
             <div className="text-right hidden lg:block max-w-[min(280px,40vw)] overflow-hidden">
@@ -302,6 +358,7 @@ export function TopBar({
                 opacity: advanceDisabled && !blockedToBell ? 0.5 : 1,
                 outline: tutorialSpotlightAdvance ? `2px solid ${LIME}` : "none",
                 outlineOffset: 2,
+                marginLeft: 4,
               }}
             >
               {blockedToBell ? <Bell size={14} /> : <Play size={14} fill="currentColor" />}

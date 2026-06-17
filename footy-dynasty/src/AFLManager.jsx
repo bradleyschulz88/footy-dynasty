@@ -138,17 +138,46 @@ function AppMotionConfig({ reducedMotion, children }) {
 
 function LazyRouteFallback({ label, reducedMotion }) {
   if (reducedMotion) {
-    return <div className="py-16 text-center text-atext-dim font-mono text-sm">{label}</div>;
+    return (
+      <div className="px-4 py-8 max-w-2xl mx-auto space-y-4">
+        <div className="h-7 w-48 rounded-lg bg-apanel-2" style={{ border: "1px solid var(--A-line)" }} />
+        {[100, 85, 92, 78].map((w, i) => (
+          <div key={i} className="h-5 rounded-md bg-apanel-2" style={{ width: `${w}%`, border: "1px solid var(--A-line)" }} />
+        ))}
+      </div>
+    );
   }
   return (
-    <motion.div
-      className="py-16 text-center text-atext-dim font-mono text-sm"
-      initial={{ opacity: 0.4 }}
-      animate={{ opacity: [0.4, 1, 0.4] }}
-      transition={{ duration: 1.25, repeat: Infinity, ease: "easeInOut" }}
-    >
-      {label}
-    </motion.div>
+    <div className="px-4 py-8 max-w-2xl mx-auto">
+      <style>{`
+        @keyframes fd-shimmer {
+          0%   { background-position: -600px 0; }
+          100% { background-position: 600px 0; }
+        }
+        .fd-skeleton {
+          background: linear-gradient(
+            90deg,
+            var(--A-panel-2) 25%,
+            color-mix(in srgb, var(--A-line-2) 60%, var(--A-panel-2)) 50%,
+            var(--A-panel-2) 75%
+          );
+          background-size: 600px 100%;
+          animation: fd-shimmer 1.5s ease-in-out infinite;
+          border-radius: 8px;
+          border: 1px solid var(--A-line);
+        }
+      `}</style>
+      {/* Header shimmer */}
+      <div className="fd-skeleton h-7 w-48 mb-6" />
+      {/* Content row shimmers */}
+      <div className="space-y-3">
+        <div className="fd-skeleton h-16 w-full" />
+        <div className="fd-skeleton h-12 w-full" style={{ animationDelay: "0.1s" }} />
+        <div className="fd-skeleton h-12 w-[92%]" style={{ animationDelay: "0.2s" }} />
+        <div className="fd-skeleton h-12 w-[85%]" style={{ animationDelay: "0.3s" }} />
+      </div>
+      <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-atext-mute text-center">{label}</div>
+    </div>
   );
 }
 
