@@ -58,5 +58,10 @@ export default defineConfig({
     globals: true,
     maxWorkers: process.env.CI ? 4 : '75%',
     exclude: ["**/node_modules/**", "**/e2e/**"],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json'],
+      include: ['src/lib/**'],
+    },
   },
 })

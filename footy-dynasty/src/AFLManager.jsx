@@ -1237,7 +1237,6 @@ function AFLManagerInner() {
       <Sidebar screen={screen} onNavigate={onNavScreen} club={club} league={league} myLadderPos={myLadderPos} />
       <main className="relative flex-1 overflow-y-auto min-w-0">
         <TopBar
-          career={career}
           club={club}
           league={league}
           myLadderPos={myLadderPos}
@@ -1355,8 +1354,6 @@ function AFLManagerInner() {
               {screen === "settings" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading settings…" reducedMotion={motionReduced} />}>
                   <SettingsScreenLazy
-                    career={career}
-                    updateCareer={updateCareer}
                     activeSlot={activeSlot}
                     onExportCareer={handleExportCareer}
                     onImportCareerFile={handleImportCareerFile}
@@ -1378,7 +1375,6 @@ function AFLManagerInner() {
       <BottomNav
         screen={screen}
         onNavigate={onNavScreen}
-        career={career}
         league={league}
         onAdvance={advanceToNextEvent}
         advanceDisabled={
@@ -1474,7 +1470,6 @@ function AFLManagerInner() {
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <AdvanceAgendaModal
         open={advanceAgendaOpen}
-        career={career}
         league={league}
         items={advanceAgendaItems}
         onClose={handleAdvanceAgendaClose}

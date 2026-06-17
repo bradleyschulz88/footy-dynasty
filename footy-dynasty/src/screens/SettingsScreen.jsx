@@ -4,13 +4,12 @@ import { css } from "../components/primitives.jsx";
 import { DIFFICULTY_IDS, getDifficultyConfig, getDifficultyProfile } from "../lib/difficulty.js";
 import { SLOT_IDS, LAST_EXPORT_STORAGE_KEY } from "../lib/save.js";
 import { findClub } from "../data/pyramid.js";
+import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 
 // ============================================================================
 // SETTINGS — save slots, new career, difficulty & preferences (game-wide)
 // ============================================================================
 export default function SettingsScreen({
-  career,
-  updateCareer,
   activeSlot,
   onExportCareer,
   onImportCareerFile,
@@ -23,6 +22,8 @@ export default function SettingsScreen({
   onSwitchSlot,
   onDeleteSlot,
 }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const importRef = useRef(null);
   const opts = career.options || {};
   const patchOpts = (p) => updateCareer({ options: { ...opts, ...p } });

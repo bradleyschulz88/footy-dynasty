@@ -3,16 +3,17 @@ import { AlertCircle, ArrowRight, Play, X } from "lucide-react";
 import { css } from "./primitives.jsx";
 import { collectFocusables } from "../lib/hotkeysHelpers.js";
 import { advanceAgendaModalTitle } from "../lib/advanceAgenda.js";
+import { useCareer } from "../lib/careerStore.js";
 
 export default function AdvanceAgendaModal({
   open,
-  career,
   league,
   items,
   onClose,
   onAdvanceAnyway,
   onGoTo,
 }) {
+  const career = useCareer();
   const panelRef = useRef(null);
   const advanceRef = useRef(null);
   const [snoozeForEvent, setSnoozeForEvent] = useState(true);
