@@ -1,5 +1,7 @@
 .cursor/
-.claude/
+.claude/*
+!.claude/skills/
+**/__pycache__/
 .claude-flow/
 .mcp.json
 CLAUDE.md
