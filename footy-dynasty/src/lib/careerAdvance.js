@@ -423,10 +423,18 @@ function startFinals(c, league) {
 }
 
 function simFinalsPair(c, league, m, _roundLabel) {
-  const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff))
+  let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff))
     + getCaptainMatchBonus(c, true);
   const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
   const isHome = m.home === c.clubId;
+  if (isPlayerMatch) {
+    const finalsOppId = isHome ? m.away : m.home;
+    const h2hFinals = c.headToHead?.[finalsOppId];
+    if (h2hFinals && (h2hFinals.wins + h2hFinals.losses + h2hFinals.draws) >= 3) {
+      const streak = h2hFinals.streak ?? 0;
+      myRating += streak <= -5 ? -4 : streak <= -3 ? -2 : streak >= 5 ? 4 : streak >= 3 ? 2 : 0;
+    }
+  }
   const homeR = m.home === c.clubId ? myRating : aiClubRating(m.home, league.tier);
   const awayR = m.away === c.clubId ? myRating : aiClubRating(m.away, league.tier);
   let result;
@@ -890,6 +898,11 @@ function finishSeason(c, league) {
     return {
       ...p, age: newAge, overall: newOverall, trueRating: newTrue, tier: newLeagueTier,
       contract: Math.max(0, p.contract - 1), form: rand(50, 80), fitness: rand(85, 100),
+      // Accumulate lifetime career totals before wiping season counters.
+      careerGoals: (p.careerGoals || 0) + (p.goals || 0),
+      careerGames: (p.careerGames || 0) + (p.gamesPlayed || 0),
+      careerDisposals: (p.careerDisposals || 0) + (p.disposals || 0),
+      peakRating: Math.max(p.peakRating || 0, p.overall),
       goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0,
       suspended: 0, seasonsAtClub: (p.seasonsAtClub || 0) + 1,
     };
@@ -902,12 +915,21 @@ function finishSeason(c, league) {
       name: p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'),
       age: p.age,
       reason: p._walking ? 'walked' : p.age > 36 ? 'retired' : 'released',
-      career: { goals: p.goals || 0, gamesPlayed: p.gamesPlayed || 0 },
+      seasonsAtClub: p.seasonsAtClub || 0,
+      peakRating: p.peakRating || p.overall || 0,
+      // careerGoals/careerGames are already accumulated above — use those.
+      career: {
+        goals: p.careerGoals || 0,
+        gamesPlayed: p.careerGames || 0,
+        disposals: p.careerDisposals || 0,
+      },
     });
   });
   c.squad = survivors;
   c.lineup = sanitizeLineup(c.lineup, c.squad);
   c.retiredThisSeason = retiredThisYear;
+  // Permanent hall-of-fame archive — never cleared.
+  c.retiredPlayers = [...(c.retiredPlayers || []), ...retiredThisYear];
   c.staff = (c.staff || []).map((s) => ({ ...s, contract: Math.max(0, (s.contract ?? 0) - 1) }));
   c.pendingStaffRenewals = buildStaffRenewalQueue(c.staff);
   c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier, c.season);
@@ -1710,6 +1732,14 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         myRating += getCaptainMatchBonus(c, false);
         const scoutPrep = scoutPrepRatingBonus(c, opp.id, ev.round);
         myRating += scoutPrep;
+        // H2H psychological factor: bogey teams suppress confidence; dominated
+        // opponents inflate it. Only kicks in after 3 games (enough data).
+        // Capped at ±4 to stay within the noise band of other modifiers.
+        const h2hRec = c.headToHead?.[opp.id];
+        if (h2hRec && (h2hRec.wins + h2hRec.losses + h2hRec.draws) >= 3) {
+          const streak = h2hRec.streak ?? 0;
+          myRating += streak <= -5 ? -4 : streak <= -3 ? -2 : streak >= 5 ? 4 : streak >= 3 ? 2 : 0;
+        }
         const oppSquad = c.aiSquads?.[opp.id];
         const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
         const oppLineupIds = oppLineup.map((p) => p.id);

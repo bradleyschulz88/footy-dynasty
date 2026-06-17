@@ -743,6 +743,46 @@ function HonoursTab({ club: _club }) {
             </div>
           )}
 
+          {/* Club Legends */}
+          {(career.retiredPlayers?.length > 0) && (
+            <div className={`${css.panel} p-4`}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">🌟</span>
+                <h3 className="font-display text-base tracking-wider text-aaccent">CLUB LEGENDS</h3>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-atext-mute font-black mb-2">Most Games</div>
+                  <div className="space-y-1.5">
+                    {[...career.retiredPlayers]
+                      .sort((a, b) => (b.career?.gamesPlayed || 0) - (a.career?.gamesPlayed || 0))
+                      .slice(0, 5)
+                      .map((p, i) => (
+                        <div key={p.id ?? i} className="flex items-center justify-between text-sm">
+                          <span className="text-atext font-semibold">{p.name}</span>
+                          <span className="text-atext-dim font-mono text-xs">{p.career?.gamesPlayed ?? 0} g · {p.seasonsAtClub} seasons</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-atext-mute font-black mb-2">Top Goal Kickers</div>
+                  <div className="space-y-1.5">
+                    {[...career.retiredPlayers]
+                      .sort((a, b) => (b.career?.goals || 0) - (a.career?.goals || 0))
+                      .slice(0, 5)
+                      .map((p, i) => (
+                        <div key={p.id ?? i} className="flex items-center justify-between text-sm">
+                          <span className="text-atext font-semibold">{p.name}</span>
+                          <span className="text-atext-dim font-mono text-xs">{p.career?.goals ?? 0} gls · {p.seasonsAtClub} seasons</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Roll of Honour: B&F + Top Scorer two-column grid */}
           {(bafWinners.length > 0 || topScorers.length > 0) && (
             <div className="grid md:grid-cols-2 gap-4">
@@ -794,6 +834,37 @@ function HonoursTab({ club: _club }) {
               </div>
             </div>
           )}
+
+          {/* Manager Record */}
+          {(() => {
+            const cs = career.coachStats;
+            if (!cs) return null;
+            const totalGames = (cs.totalWins || 0) + (cs.totalLosses || 0) + (cs.totalDraws || 0);
+            if (totalGames === 0) return null;
+            const winPct = Math.round((cs.totalWins / totalGames) * 100);
+            const seasonsManaged = cs.seasonsManaged || history.length;
+            return (
+              <div className={`${css.panel} p-4`}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">📋</span>
+                  <h3 className="font-display text-base tracking-wider text-aaccent">MANAGER RECORD</h3>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap mb-3">
+                  <Stat label="Seasons" value={seasonsManaged} accent="var(--A-accent)" icon={Calendar} />
+                  <Stat label="W-L-D" value={`${cs.totalWins}-${cs.totalLosses}-${cs.totalDraws}`} accent="var(--A-accent)" />
+                  <Stat label="Win %" value={`${winPct}%`} accent={winPct >= 50 ? "var(--A-pos)" : "var(--A-neg)"} />
+                  <Stat label="Premierships" value={cs.premierships || 0} accent="#FFD200" icon={Trophy} />
+                  <Stat label="Promotions" value={cs.promotions || 0} accent="var(--A-pos)" icon={ChevronsUp} />
+                </div>
+                {(career.coachTier || career.coachReputation != null) && (
+                  <div className="text-[11px] text-atext-dim font-mono border-t pt-2" style={{ borderColor: 'var(--A-line)' }}>
+                    {career.coachTier && <span className="mr-3">Tier: {career.coachTier}</span>}
+                    {career.coachReputation != null && <span>Reputation: {Math.round(career.coachReputation)}</span>}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Full season-by-season table */}
           <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
