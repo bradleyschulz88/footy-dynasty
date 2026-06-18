@@ -112,6 +112,10 @@ describe('matchDayRevenue (per-game model)', () => {
     expect(away.gate).toBe(0);
     expect(home.broadcast).toBe(away.broadcast);
     expect(home.broadcast).toBeGreaterThan(0);
+    // T1/T2: bar, canteen, gameExpenses are all 0
+    expect(home.bar).toBe(0);
+    expect(home.canteen).toBe(0);
+    expect(home.gameExpenses).toBe(0);
     expect(home.total).toBe(home.gate + home.broadcast + home.sponsor);
     expect(home.total).toBeGreaterThan(away.total);
   });
@@ -128,6 +132,21 @@ describe('matchDayRevenue (per-game model)', () => {
     const poor = baseCareer({ sponsors: [{ id: 'a', annualValue: 110_000 }] });
     expect(matchDayRevenue(rich, { isHome: false }).sponsor).toBeGreaterThan(matchDayRevenue(poor, { isHome: false }).sponsor);
   });
+
+  it('T3 home game earns bar + canteen, pays game expenses; T3 away has none', () => {
+    const c = baseCareer({ clubId: 'efnl_balwyn' });
+    const home = matchDayRevenue(c, { isHome: true, leagueTier: 3 });
+    const away = matchDayRevenue(c, { isHome: false, leagueTier: 3 });
+    expect(home.bar).toBeGreaterThan(0);
+    expect(home.canteen).toBeGreaterThan(0);
+    expect(home.gameExpenses).toBeGreaterThan(0);
+    expect(away.bar).toBe(0);
+    expect(away.canteen).toBe(0);
+    expect(away.gameExpenses).toBe(0);
+    // broadcast is 0 for T3
+    expect(home.broadcast).toBe(0);
+    expect(home.total).toBe(home.gate + home.broadcast + home.sponsor + home.bar + home.canteen - home.gameExpenses);
+  });
 });
 
 describe('continuous vs match-day split (no double counting)', () => {
@@ -139,9 +158,40 @@ describe('continuous vs match-day split (no double counting)', () => {
     expect(continuousAnnualIncome(c)).toBe(Math.round(recomputeAnnualIncome(c) * 0.30));
   });
 
-  it('income projection sums all five lines', () => {
+  it('income projection sums all lines (T1/T2: bar/canteen/regFees are 0)', () => {
     const inc = incomeBreakdown(baseCareer());
-    expect(inc.grandTotal).toBe(inc.broadcast + inc.gate + inc.membership + inc.merchandise + inc.sponsors);
+    // T1/T2 clubs have no bar, canteen, or regFees
+    expect(inc.bar).toBe(0);
+    expect(inc.canteen).toBe(0);
+    expect(inc.regFees).toBe(0);
+    expect(inc.grandTotal).toBe(inc.broadcast + inc.gate + inc.membership + inc.merchandise + inc.sponsors + inc.gaming + inc.bar + inc.canteen + inc.regFees);
+  });
+
+  it('T3 income projection includes bar, canteen, regFees > 0', () => {
+    const c = baseCareer({ clubId: 'efnl_balwyn', squad: [{ id: 'p1', wage: 5_000 }, { id: 'p2', wage: 4_000 }] });
+    const inc = incomeBreakdown(c);
+    expect(inc.bar).toBeGreaterThan(0);
+    expect(inc.canteen).toBeGreaterThan(0);
+    expect(inc.regFees).toBeGreaterThan(0);
+    expect(inc.broadcast).toBe(0);
+    expect(inc.grandTotal).toBe(inc.broadcast + inc.gate + inc.membership + inc.merchandise + inc.sponsors + inc.gaming + inc.bar + inc.canteen + inc.regFees);
+  });
+
+  it('T3 expense breakdown includes groundHire, umpires, affiliation > 0', () => {
+    const c = baseCareer({ clubId: 'efnl_balwyn' });
+    const exp = expenseBreakdown(c);
+    expect(exp.groundHire).toBeGreaterThan(0);
+    expect(exp.umpires).toBeGreaterThan(0);
+    expect(exp.affiliation).toBeGreaterThan(0);
+    expect(exp.grandTotal).toBe(exp.playerWages + exp.staffWages + exp.facilities + exp.groundHire + exp.umpires + exp.affiliation);
+  });
+
+  it('T1/T2 expense breakdown has groundHire, umpires, affiliation = 0', () => {
+    const exp = expenseBreakdown(baseCareer());
+    expect(exp.groundHire).toBe(0);
+    expect(exp.umpires).toBe(0);
+    expect(exp.affiliation).toBe(0);
+    expect(exp.grandTotal).toBe(exp.playerWages + exp.staffWages + exp.facilities);
   });
 });
 

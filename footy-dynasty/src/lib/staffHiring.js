@@ -135,3 +135,38 @@ export function recruitRandomVolunteerStaff(career, nowMs = Date.now()) {
   const idx = rand(0, VOLUNTEER_ROLE_TEMPLATES.length - 1);
   return recruitVolunteerStaff(career, idx, nowMs + 1);
 }
+
+export function generateStaffMarket(career, league) {
+  const tier = league?.tier ?? 3;
+  if (tier > 2) return [];
+
+  const coreRoleIds = ['s1', 's2', 's3', 's4', 's5'];
+  const upgradeable = coreRoleIds.filter(id => {
+    const existing = (career.staff || []).find(s => s.id === id);
+    return existing && (existing.rating ?? 60) < 82;
+  });
+
+  if (upgradeable.length === 0) return [];
+
+  return upgradeable.slice(0, 3).map((id, i) => {
+    const current = (career.staff || []).find(s => s.id === id);
+    seedRng((career.season ?? 1) * 1000 + id.charCodeAt(1) * 37 + i * 13);
+    const upgradeAmount = rand(6, 20);
+    const newRating = Math.min(95, (current?.rating ?? 60) + upgradeAmount);
+    const wageMult = 1 + (newRating - (current?.rating ?? 60)) * 0.025;
+    const newWage = Math.round((current?.wage ?? 50_000) * wageMult);
+    const name = `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
+
+    return {
+      marketId:      `mkt_${id}_${career.season ?? 1}`,
+      staffId:       id,
+      name,
+      rating:        newRating,
+      wage:          newWage,
+      contractYears: 2 + rand(0, 1),
+      signingFee:    Math.round(newWage * 0.4),
+      roleLabel:     current?.role ?? id,
+      currentRating: current?.rating ?? 60,
+    };
+  });
+}

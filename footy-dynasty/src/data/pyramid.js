@@ -63,8 +63,9 @@ export const PYRAMID = {
       { id: "qafl_noosa_tigers", name: "Noosa Tigers", short: "NOO", state: "QLD", colors: ["#003F87", "#FFD200", "#FFFFFF"] },
       { id: "qafl_palm_beach_currumbin", name: "Palm Beach Currumbin", short: "PBC", state: "QLD", colors: ["#003F87", "#FFD200", "#FFFFFF"] },
       { id: "qafl_redland_victoria_point", name: "Redland-Victoria Point", short: "RVP", state: "QLD", colors: ["#003F87", "#FFFFFF", "#CC2031"] },
-      { id: "qafl_sandgate", name: "Sandgate", short: "SAN", state: "QLD", colors: ["#CC2031", "#FFFFFF", "#003366"] },
+      { id: "qafl_sherwood_magpies", name: "Sherwood Magpies", short: "SHW", state: "QLD", colors: ["#000000", "#FFFFFF", "#000000"] },
       { id: "qafl_surfers_paradise", name: "Surfers Paradise", short: "SPA", state: "QLD", colors: ["#CC2031", "#000000", "#FFD200"] },
+      { id: "qafl_wilston_grange", name: "Wilston Grange", short: "WGR", state: "QLD", colors: ["#003087", "#CC2031", "#FFFFFF"] },
     ],
   },
   SANFL: {

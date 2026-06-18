@@ -9,7 +9,7 @@ import {
   TRANSFER_BUDGET_ROLLOVER_FRACTION,
   CONTINUOUS_INCOME_FRACTION, BROADCAST_PER_MATCH, SEASON_MATCHES_EST,
   TICKET_PRICE, BASE_ATTENDANCE,
-  T4_COMMUNITY, GAMING_VENUE, MEMBERSHIP_MILESTONES, BOARD_FINANCIAL_OBJECTIVES,
+  T4_COMMUNITY, T3_COMMUNITY, GAMING_VENUE, MEMBERSHIP_MILESTONES, BOARD_FINANCIAL_OBJECTIVES,
 } from './constants.js';
 import { getDifficultyConfig } from '../difficulty.js';
 import { findLeagueOf, PYRAMID } from '../../data/pyramid.js';
@@ -148,7 +148,13 @@ export function matchDayRevenue(career, { isHome = true, leagueTier, finalsMulti
   const gate = Math.round(attendance * (TICKET_PRICE[tier] ?? 10));
   const broadcast = Math.round((BROADCAST_PER_MATCH[tier] ?? 0) * finalsMultiplier);
   const sponsor = Math.round((annualSponsorIncome(career) / SEASON_MATCHES_EST) * finalsMultiplier);
-  return { attendance, gate, broadcast, sponsor, total: gate + broadcast + sponsor, isHome };
+  // T3 community clubs earn bar + canteen on home game days; also pay ground hire + umpires.
+  const isT3 = tier === 3;
+  const bar = isT3 && isHome ? Math.round(T3_COMMUNITY.barPerHomeGame.min + rng() * (T3_COMMUNITY.barPerHomeGame.max - T3_COMMUNITY.barPerHomeGame.min)) : 0;
+  const canteen = isT3 && isHome ? Math.round(T3_COMMUNITY.canteenPerHomeGame.min + rng() * (T3_COMMUNITY.canteenPerHomeGame.max - T3_COMMUNITY.canteenPerHomeGame.min)) : 0;
+  const gameExpenses = isT3 && isHome ? T3_COMMUNITY.groundHirePerGame + T3_COMMUNITY.umpireFeePerGame : 0;
+  const total = gate + broadcast + sponsor + bar + canteen - gameExpenses;
+  return { attendance, gate, broadcast, sponsor, bar, canteen, gameExpenses, total, isHome };
 }
 
 // Income that accrues continuously (smoothed daily) — memberships + merch only.
@@ -173,22 +179,29 @@ export function incomeBreakdown(career) {
   const membership  = Math.round(total * INCOME_MIX.membership);
   const merchandise = Math.round(total * INCOME_MIX.merchandise);
   const sponsors    = annualSponsorIncome(career);
+  const gaming      = gamingVenueAnnualRevenue(career);
 
-  const gaming = gamingVenueAnnualRevenue(career);
-  return {
-    broadcast, gate, membership, merchandise, sponsors, gaming,
-    grandTotal: broadcast + gate + membership + merchandise + sponsors + gaming,
-  };
+  // T3 community-specific income lines (projected annual).
+  const bar     = tier === 3 ? Math.round(homeGames * ((T3_COMMUNITY.barPerHomeGame.min + T3_COMMUNITY.barPerHomeGame.max) / 2)) : 0;
+  const canteen = tier === 3 ? Math.round(homeGames * ((T3_COMMUNITY.canteenPerHomeGame.min + T3_COMMUNITY.canteenPerHomeGame.max) / 2)) : 0;
+  const regFees = tier === 3 ? (career.squad || []).length * T3_COMMUNITY.registrationFeePerPlayer : 0;
+
+  const grandTotal = broadcast + gate + membership + merchandise + sponsors + gaming + bar + canteen + regFees;
+  return { broadcast, gate, membership, merchandise, sponsors, gaming, bar, canteen, regFees, grandTotal };
 }
 
 export function expenseBreakdown(career) {
+  const tier = leagueTierOf(career);
+  const homeGames = Math.round(SEASON_MATCHES_EST / 2);
   const playerWages = (career.squad || []).reduce((a, p) => a + (p.wage || 0), 0);
   const staffWages  = (career.staff || []).reduce((a, s) => a + (s.wage || 0), 0);
   const facilities  = annualFacilityUpkeep(career);
-  return {
-    playerWages, staffWages, facilities,
-    grandTotal: playerWages + staffWages + facilities,
-  };
+  // T3 community ops — ground hire + umpires + affiliation/insurance.
+  const groundHire  = tier === 3 ? homeGames * T3_COMMUNITY.groundHirePerGame : 0;
+  const umpires     = tier === 3 ? SEASON_MATCHES_EST * T3_COMMUNITY.umpireFeePerGame : 0;
+  const affiliation = tier === 3 ? T3_COMMUNITY.affiliationFeeAnnual + T3_COMMUNITY.insuranceAnnual : 0;
+  const grandTotal  = playerWages + staffWages + facilities + groundHire + umpires + affiliation;
+  return { playerWages, staffWages, facilities, groundHire, umpires, affiliation, grandTotal };
 }
 
 export function annualNetProjection(career) {

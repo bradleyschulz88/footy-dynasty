@@ -721,6 +721,41 @@ function HonoursTab({ club: _club }) {
         </div>
       </div>
 
+      {/* Dynasty Record panel */}
+      {(() => {
+        const cs = career.coachStats || {};
+        return (
+          <div className={`${css.panel} p-4`}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">📊</span>
+              <h3 className="font-display text-base tracking-wider text-aaccent">DYNASTY RECORD</h3>
+            </div>
+            <div className="text-[11px] text-atext-mute mb-3">
+              Career: {cs.totalWins ?? 0}W {cs.totalLosses ?? 0}L {cs.totalDraws ?? 0}D · {cs.seasonsManaged ?? 0} seasons{(cs.premierships ?? 0) > 0 ? ` · ${cs.premierships} Premiership${cs.premierships > 1 ? 's' : ''}` : ''}
+            </div>
+            {(career.history || []).length > 0 && (
+              <div className="space-y-0.5">
+                {[...career.history].reverse().map(h => (
+                  <div key={h.season} className="flex items-center gap-2 py-1.5 border-b text-[12px]"
+                    style={{ borderColor: 'var(--A-line)' }}>
+                    <span className="font-mono w-10 text-atext-mute text-[11px]">{h.season}</span>
+                    <span className="w-14 text-atext-mute text-[10px] truncate">{h.leagueShort}</span>
+                    <span className="w-5 text-center font-bold text-atext">#{h.position}</span>
+                    <span className="flex-1 text-atext-dim text-[11px]">{h.W}W {h.L}L{h.D > 0 ? ` ${h.D}D` : ''}</span>
+                    {h.champion  && <span className="text-[9px] px-1.5 py-0.5 rounded" style={{background:'rgba(234,179,8,0.2)',color:'#EAB308'}}>Premiers</span>}
+                    {h.promoted  && <span className="text-[9px] text-apos">↑ Up</span>}
+                    {h.relegated && <span className="text-[9px] text-aneg">↓ Down</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {(career.history || []).length === 0 && (
+              <p className="text-[11px] text-atext-dim">No completed seasons yet.</p>
+            )}
+          </div>
+        );
+      })()}
+
       {history.length === 0 ? (
         <div className={`${css.panel} p-12 text-center`}>
           <Award className="w-12 h-12 mx-auto mb-3 opacity-30 text-atext-mute" />
@@ -1201,7 +1236,7 @@ function FinancesTab() {
                     <div className="text-[10px] uppercase tracking-widest text-atext-mute font-bold mb-1">Home game</div>
                     <div className="font-display text-2xl text-apos">{fmtK(home.total)}</div>
                     <div className="text-[11px] text-atext-dim mt-1 leading-relaxed">
-                      Gate {fmtK(home.gate)} · TV {fmtK(home.broadcast)} · Sponsor {fmtK(home.sponsor)}
+                      Gate {fmtK(home.gate)}{home.broadcast > 0 ? ` · TV ${fmtK(home.broadcast)}` : ''}{home.bar > 0 ? ` · Bar ${fmtK(home.bar)}` : ''} · Sponsor {fmtK(home.sponsor)}
                     </div>
                     <div className="text-[10px] text-atext-mute mt-1">~{att.toLocaleString('en-AU')} crowd</div>
                   </div>
@@ -1209,7 +1244,7 @@ function FinancesTab() {
                     <div className="text-[10px] uppercase tracking-widest text-atext-mute font-bold mb-1">Away game</div>
                     <div className="font-display text-2xl text-aaccent">{fmtK(away.total)}</div>
                     <div className="text-[11px] text-atext-dim mt-1 leading-relaxed">
-                      TV {fmtK(away.broadcast)} · Sponsor {fmtK(away.sponsor)}
+                      {away.broadcast > 0 ? `TV ${fmtK(away.broadcast)} · ` : ''}Sponsor {fmtK(away.sponsor)}
                     </div>
                     <div className="text-[10px] text-atext-mute mt-1">No gate share away</div>
                   </div>
@@ -1265,11 +1300,14 @@ function FinancesTab() {
           <div className={`${css.panel} p-5`}>
             <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (ANNUAL)</h3>
             {[
-              { label: "Broadcast / TV Rights", value: inc.broadcast,   color: "var(--A-accent)" },
-              { label: "Gate Revenue",          value: inc.gate,        color: "var(--A-accent)" },
-              { label: "Membership",            value: inc.membership,  color: "var(--A-pos)" },
-              { label: "Merchandise",           value: inc.merchandise, color: "var(--A-accent-2)" },
-              { label: "Sponsorship",           value: inc.sponsors,    color: "#A78BFA" },
+              ...(inc.broadcast > 0 ? [{ label: "Broadcast / TV Rights", value: inc.broadcast, color: "var(--A-accent)" }] : []),
+              { label: "Gate Revenue",            value: inc.gate,        color: "var(--A-accent)" },
+              ...(inc.bar > 0    ? [{ label: "Bar & Social Club",         value: inc.bar,     color: "#F59E0B" }] : []),
+              ...(inc.canteen > 0 ? [{ label: "Canteen / BBQ",            value: inc.canteen, color: "#F59E0B" }] : []),
+              ...(inc.regFees > 0 ? [{ label: "Player Registrations",     value: inc.regFees, color: "var(--A-pos)" }] : []),
+              { label: "Membership",              value: inc.membership,  color: "var(--A-pos)" },
+              { label: inc.bar > 0 ? "Club Events & Merch" : "Merchandise", value: inc.merchandise, color: "var(--A-accent-2)" },
+              { label: "Sponsorship",             value: inc.sponsors,    color: "#A78BFA" },
               ...(inc.gaming > 0 ? [{ label: "Gaming / Social Venue", value: inc.gaming, color: "#F59E0B" }] : []),
             ].map(r => (
               <FinanceRow key={r.label} label={r.label} valueStr={fmtK(r.value)} color={r.color} barPct={inc.grandTotal > 0 ? (r.value / inc.grandTotal) * 100 : 0} />
@@ -1284,6 +1322,9 @@ function FinancesTab() {
               { label: "Player Wages",      value: exp.playerWages, color: "var(--A-neg)" },
               { label: "Staff Wages",       value: exp.staffWages,  color: "var(--A-accent)" },
               { label: "Facilities Upkeep", value: exp.facilities,  color: "var(--A-accent)" },
+              ...(exp.groundHire  > 0 ? [{ label: "Ground Hire",              value: exp.groundHire,  color: "var(--A-accent)" }] : []),
+              ...(exp.umpires     > 0 ? [{ label: "Umpires & Officials",      value: exp.umpires,     color: "var(--A-accent)" }] : []),
+              ...(exp.affiliation > 0 ? [{ label: "Affiliation & Insurance",  value: exp.affiliation, color: "var(--A-accent)" }] : []),
             ].map(r => (
               <FinanceRow key={r.label} label={r.label} valueStr={fmtK(r.value)} color={r.color} barPct={exp.grandTotal > 0 ? (r.value / exp.grandTotal) * 100 : 0} />
             ))}

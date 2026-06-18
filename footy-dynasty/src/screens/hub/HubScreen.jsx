@@ -1094,6 +1094,13 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
           </div>
         </div>
       )}
+      {career.journalist && (career.journalist.satisfaction < 35 || career.journalist.satisfaction >= 70) && (
+        <div className="text-[11px] text-atext-mute">
+          {career.journalist.satisfaction >= 70
+            ? `📰 Press: ${career.journalist.name} is onside`
+            : `📰 Press: ${career.journalist.name} is circling`}
+        </div>
+      )}
 
       {/* Contract Expiry Warnings */}
       {(() => {
