@@ -328,7 +328,6 @@ export function TopBar({
               style={{
                 padding: "10px 20px",
                 borderRadius: 10,
-                border: "none",
                 cursor: advanceDisabled && !blockedToBell ? "not-allowed" : "pointer",
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: 11,

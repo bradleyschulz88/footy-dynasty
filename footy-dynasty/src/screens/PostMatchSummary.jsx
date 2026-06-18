@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Award, Trophy, Newspaper, Users, ChevronRight, ChevronDown, ChevronUp, Banknote, Tv, Handshake, Ticket } from "lucide-react";
-import { css } from "../components/primitives.jsx";
+
 import { collectFocusables } from "../lib/hotkeysHelpers.js";
 import { fmtK } from "../lib/format.js";
 

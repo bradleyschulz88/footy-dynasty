@@ -10,7 +10,7 @@ import { motion } from "motion/react";
 import {
   Home, Users, Building2, Trophy, Calendar, Settings, Play, MoreHorizontal, X, Bell, Briefcase, Search,
 } from "lucide-react";
-import { getAdvanceContext, advanceTimeFingerprint } from "../../lib/advanceContext.js";
+import { getAdvanceContext } from "../../lib/advanceContext.js";
 import { tutorialAllowsNavigation } from "../TutorialOverlay.jsx";
 import { useCareer } from "../../lib/careerStore.js";
 
@@ -154,7 +154,7 @@ export function BottomNav({
 
         {/* Tab row */}
         <div className="flex items-stretch" style={{ height: 58, paddingLeft: 4, paddingRight: 4 }}>
-          {PRIMARY.map((item, i) => {
+          {PRIMARY.map((item, _i) => {
             if (!item) {
               // Centre ADVANCE button
               return (

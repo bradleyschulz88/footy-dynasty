@@ -39,26 +39,12 @@ function MoraleBandPill({ morale }) {
   return <Pill color={moraleToneColor(band.tone)}>{band.label}</Pill>;
 }
 
-// ── Position line colour helper ─────────────────────────────────────────────
-const POS_LINE_COLOR = {
-  KF: "#E84A6F", HF: "#F59E0B",
-  C: "var(--A-accent)", R: "var(--A-accent)", WG: "var(--A-accent)",
-  HB: "#60A5FA", KB: "#3B82F6",
-  RU: "#A78BFA",
-  UT: "#9CA3AF",
-};
-function posColor(pos) { return POS_LINE_COLOR[pos] || "var(--A-accent)"; }
-
 function posBadgeStyle(pos) {
   if (pos === 'KF' || pos === 'HF') return {background:'color-mix(in srgb,#E84A6F 14%,transparent)',color:'#E84A6F',border:'1px solid color-mix(in srgb,#E84A6F 30%,transparent)'};
   if (pos === 'HB' || pos === 'KB') return {background:'color-mix(in srgb,#60A5FA 14%,transparent)',color:'#60A5FA',border:'1px solid color-mix(in srgb,#60A5FA 30%,transparent)'};
   if (pos === 'RU') return {background:'color-mix(in srgb,#A78BFA 14%,transparent)',color:'#A78BFA',border:'1px solid color-mix(in srgb,#A78BFA 30%,transparent)'};
   if (pos === 'C' || pos === 'R' || pos === 'WG') return {background:'color-mix(in srgb,var(--A-accent) 14%,transparent)',color:'var(--A-accent)',border:'1px solid color-mix(in srgb,var(--A-accent) 30%,transparent)'};
   return {background:'color-mix(in srgb,#9CA3AF 14%,transparent)',color:'#9CA3AF',border:'1px solid color-mix(in srgb,#9CA3AF 30%,transparent)'};
-}
-
-function ratingColor(v) {
-  return v >= 80 ? 'var(--A-pos)' : v >= 65 ? '#F59E0B' : 'var(--A-neg)';
 }
 
 function ContractChip({ years }) {
@@ -93,8 +79,6 @@ function useIsLg() {
 
 /** Phone/tablet bottom-sheet that pops the player card immediately on tap. */
 function PlayerCardModal({ player, onClose }) {
-  const career = useCareer();
-  const updateCareer = useUpdateCareer();
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -113,7 +97,6 @@ function PlayerCardModal({ player, onClose }) {
 // ============================================================================
 export default function SquadScreen({ club, tab, setTab, tutorialActive, onOpenClubStaff, onNavigate }) {
   const career = useCareer();
-  const updateCareer = useUpdateCareer();
   const playerRenewals = (career.pendingRenewals || []).filter(r => !r._handled).length;
   const staffRenewals = (career.pendingStaffRenewals || []).filter((r) => !r._handled).length;
   const renewalCount = playerRenewals + staffRenewals;
@@ -580,7 +563,6 @@ const contractBadge = (out) => (
  */
 function AllPlayersTab() {
   const career = useCareer();
-  const updateCareer = useUpdateCareer();
   const [view, setView] = useState("overview");
   const [sort, setSort] = useState("overall");
   const [search, setSearch] = useState("");

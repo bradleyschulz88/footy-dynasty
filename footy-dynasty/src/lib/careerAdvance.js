@@ -67,7 +67,6 @@ import {
   matchDayRevenue, grassrootsCanteenIncome, grassrootsPerGameExpenses,
   collectRegistrationFees, applyMembershipMilestone,
   pickBoardFinancialObjective, evaluateBoardFinancialObjective,
-  leagueTierOf,
 } from './finance/engine.js';
 import {
   tickSponsorYears, proposalForRenewal, generateSponsorOffers,
@@ -2384,7 +2383,7 @@ function applyPostRoundBoardAndCalendar(c, league, club, meta, myResult) {
  * finishes the live sim, and runs every full-time effect that used to fire
  * when the calendar advanced. Mirrors advanceCareerNextEvent's clone+set flow.
  */
-export function resolveLiveMatchHalfTime({ career, league, club, callId, setCareer }) {
+export function resolveLiveMatchHalfTime({ career, _league, _club, callId, setCareer }) {
   const c = JSON.parse(JSON.stringify(career));
   const lm = c.liveMatch;
   if (!lm?.simState || !lm?.meta) {
@@ -2392,7 +2391,6 @@ export function resolveLiveMatchHalfTime({ career, league, club, callId, setCare
     return;
   }
 
-  const call = getCoachingCall(callId);
   const mods = resolveCoachingCall(callId, c.staff);
   // Sim Q3 with the half-time call applied, then pause for the Q3 decision.
   simMatchQuarter(lm.simState, mods);

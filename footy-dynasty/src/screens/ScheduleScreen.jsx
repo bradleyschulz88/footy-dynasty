@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useCareer } from "../lib/careerStore.js";
 import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { findClub } from "../data/pyramid.js";
@@ -57,7 +57,7 @@ export default function ScheduleScreen({ club: _club, league: _league, onOpenCom
     setSelectedDate(anchor);
   };
 
-  const allEvents = career.eventQueue || [];
+  const allEvents = useMemo(() => career.eventQueue || [], [career.eventQueue]);
   const eventsByDate = {};
   allEvents.forEach((ev) => {
     if (!eventsByDate[ev.date]) eventsByDate[ev.date] = [];
