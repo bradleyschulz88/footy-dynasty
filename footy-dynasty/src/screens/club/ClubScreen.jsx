@@ -80,7 +80,6 @@ function clubLeafSection(leaf, showCommittee) {
 // ============================================================================
 export default function ClubScreen({ club, tab, setTab, tutorialActive }) {
   const career = useCareer();
-  const updateCareer = useUpdateCareer();
   const t = clubEffectiveTab(tab);
   const tutStep = career.tutorialStep ?? 0;
   const clubTutorialTab = tutorialActive && (tutStep === 3 || tutStep === 4) ? tutorialHighlightTab(tutStep) : null;

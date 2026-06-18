@@ -418,7 +418,7 @@ function AFLManagerInner() {
     const next = step + 1;
     const isDone = next >= TUTORIAL_STEPS.length;
     setCareer((c) => ({ ...c, tutorialStep: next, tutorialComplete: isDone }));
-  }, [career, career?.tutorialStep, career?.tutorialComplete, career?.sponsors, screen, tab]);
+  }, [career, career?.tutorialStep, career?.tutorialComplete, career?.sponsors, screen, tab, setCareer]);
 
   useCareerHtmlDatasetEffect(career);
 

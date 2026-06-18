@@ -38,7 +38,7 @@ import { css, Pill, Stat, CollapsibleSection } from "../../components/primitives
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 import { finalsMagicNumber } from "../../lib/magicNumber.js";
 import { seasonNarrative } from "../../lib/seasonNarrative.js";
-import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
+import { useCareer } from "../../lib/careerStore.js";
 import { moraleBand, moraleToneColor } from "../../lib/morale.js";
 
 const hubContainer = {
@@ -182,7 +182,6 @@ function DifficultyMiniSummary({ cfg }) {
 
 export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance, onQuickAdvance }) {
   const career = useCareer();
-  const updateCareer = useUpdateCareer();
   const cc1 = club?.colors?.[0] ?? '#334155';
   const cc2 = club?.colors?.[1] ?? '#0f172a';
   const cc3 = club?.colors?.[2] ?? cc1;

@@ -6,7 +6,7 @@ import { fmtK } from "../lib/format.js";
 import { formatDate } from "../lib/calendar.js";
 import { css, RatingDot, Stat } from "../components/primitives.jsx";
 import { ClubBadge } from "../components/ClubBadge.jsx";
-import { canMatchBid, getZoneClub } from "../lib/academyZones.js";
+import { canMatchBid } from "../lib/academyZones.js";
 import {
   COMBINE_SCOUT_COST,
   displayDraftOverall,

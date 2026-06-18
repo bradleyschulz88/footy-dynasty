@@ -6,7 +6,6 @@ import { css } from "../components/primitives.jsx";
 export default function FinalsQualificationScreen({ qualification, club, onContinue }) {
   const pos = qualification?.position ?? "—";
   const suffix = pos === 1 ? "st" : pos === 2 ? "nd" : pos === 3 ? "rd" : "th";
-  const isTopSeed = pos === 1 || pos === 2;
 
   return (
     <motion.div
