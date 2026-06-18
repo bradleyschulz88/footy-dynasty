@@ -30,6 +30,8 @@ import { RenewalsTab } from "../contracts/ContractRenewals.jsx";
 import PlayerCard3D from "../../components/PlayerCard3D.jsx";
 import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
 import { moraleBand, moraleToneColor, promiseGameTime, backPlayer } from "../../lib/morale.js";
+import { cloneSerializable } from "../../lib/save.js";
+import PlayerContextMenu from "../../components/PlayerContextMenu.jsx";
 
 /** Small morale-state pill for the player card / rows. */
 function MoraleBandPill({ morale }) {
@@ -154,7 +156,7 @@ export default function SquadScreen({ club, tab, setTab, tutorialActive, onOpenC
         tutorialHighlightKey={squadTutorialTab}
         growButtons={false}
       />
-      {t === "players"  && <PlayersTab />}
+      {t === "players"  && <PlayersTab onNavigate={onNavigate} />}
       {t === "all"      && <AllPlayersTab />}
       {t === "tactics"  && <TacticsTab onOpenClubStaff={onOpenClubStaff} />}
       {t === "training" && <TrainingTab onOpenClubStaff={onOpenClubStaff} />}
@@ -182,16 +184,89 @@ function FormSparkline({ history, current }) {
   );
 }
 
-function PlayersTab() {
+function buildContextActions(player, career, updateCareer, onNavigate) {
+  const inLineup = lineupHasPlayer(career.lineup, player.id);
+  const lineupFull = lineupPlayerCount(career.lineup) >= LINEUP_CAP;
+  const morale = player.morale ?? 70;
+
+  return [
+    {
+      id: 'lineup_toggle',
+      label: inLineup ? 'Remove from lineup' : 'Add to lineup',
+      icon: inLineup ? '−' : '+',
+      disabled: !inLineup && lineupFull,
+      onClick: () => {
+        if (inLineup) {
+          updateCareer({ lineup: removeIdFromLineup(career.lineup, player.id) });
+        } else {
+          updateCareer({ lineup: [...(career.lineup || []), player.id] });
+        }
+      },
+    },
+    {
+      id: 'promise_gametime',
+      label: 'Promise game time',
+      icon: '🤝',
+      disabled: morale >= 75,
+      onClick: () => {
+        const next = cloneSerializable(career);
+        const p = next.squad.find(sp => sp.id === player.id);
+        if (p) {
+          p.morale = Math.min(100, (p.morale ?? 70) + 10);
+          p.transferRequested = false;
+          p.unhappySince = null;
+          next.news = [{ week: next.week, type: 'info', text: `🤝 Promised game time to ${p.firstName} ${p.lastName} — morale boosted.` }, ...(next.news || [])].slice(0, 20);
+        }
+        updateCareer(next);
+      },
+    },
+    {
+      id: 'back_player',
+      label: 'Back player publicly',
+      icon: '📢',
+      disabled: morale >= 80,
+      onClick: () => {
+        const next = cloneSerializable(career);
+        const p = next.squad.find(sp => sp.id === player.id);
+        if (p) {
+          p.morale = Math.min(100, (p.morale ?? 70) + 6);
+          next.news = [{ week: next.week, type: 'info', text: `📢 Publicly backed ${p.firstName} ${p.lastName} — the dressing room noticed.` }, ...(next.news || [])].slice(0, 20);
+        }
+        updateCareer(next);
+      },
+    },
+    {
+      id: 'view_contract',
+      label: 'View contract',
+      icon: '📋',
+      onClick: () => onNavigate?.('squad'),
+    },
+    {
+      id: 'request_trade',
+      label: player.listTeam === career.clubId ? 'List for trade' : 'Offer to clubs',
+      icon: '↔',
+      disabled: career.phase !== 'trade_period' && career.phase !== 'pre_season',
+      onClick: () => onNavigate?.('recruit'),
+    },
+  ];
+}
+
+function PlayersTab({ onNavigate }) {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
   const [sort, setSort] = useState("overall");
   const [filterPos, setFilterPos] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selected, setSelected] = useState(null);
+  const [contextMenu, setContextMenu] = useState(null);
   const isLg = useIsLg();
   const rowHoverBg = 'color-mix(in srgb, var(--A-accent) 6%, transparent)';
   const rowSelectBg = 'color-mix(in srgb, var(--A-accent) 10%, transparent)';
+
+  const handlePlayerRightClick = (e, player) => {
+    e.preventDefault();
+    setContextMenu({ player, pos: { x: e.clientX, y: e.clientY } });
+  };
   const name = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || ""));
 
   const sortedFullSquad = useMemo(() => {
@@ -345,6 +420,7 @@ function PlayersTab() {
                 key={p.id}
                 type="button"
                 onClick={() => setSelected(isSelected ? null : p)}
+                onContextMenu={(e) => handlePlayerRightClick(e, p)}
                 className="w-full text-left rounded-xl p-3 border transition-all touch-manipulation"
                 style={{
                   borderColor: isSelected ? "var(--A-accent)" : "var(--A-line)",
@@ -387,6 +463,7 @@ function PlayersTab() {
               const fitColor  = p.fitness >= 80 ? "var(--A-pos)" : p.fitness >= 60 ? "var(--A-accent)" : "var(--A-neg)";
               return (
                 <button key={p.id} onClick={()=>setSelected(isSelected ? null : p)}
+                  onContextMenu={(e) => handlePlayerRightClick(e, p)}
                   type="button"
                   className="w-full grid px-4 py-3 transition-all text-left"
                   style={{
@@ -461,6 +538,14 @@ function PlayersTab() {
       </section>
       {!isLg && selected && (
         <PlayerCardModal player={selected} onClose={() => setSelected(null)} />
+      )}
+      {contextMenu && (
+        <PlayerContextMenu
+          player={contextMenu.player}
+          pos={contextMenu.pos}
+          onClose={() => setContextMenu(null)}
+          actions={buildContextActions(contextMenu.player, career, updateCareer, onNavigate)}
+        />
       )}
     </div>
   );
