@@ -100,7 +100,8 @@ export { PRESS_MOMENTS };
  */
 export function pickPressMoment(career) {
   if ((career.pressFiredThisSeason || []).length >= 6) return null;
-  if (career.week - (career.lastPressWeek ?? -99) < 2) return null;
+  const gapRequired = (career.journalist?.satisfaction ?? 50) < 30 ? 1 : 2;
+  if (career.week - (career.lastPressWeek ?? -99) < gapRequired) return null;
 
   const fired = career.pressFiredThisSeason || [];
   const eligible = PRESS_MOMENTS.filter(m => {

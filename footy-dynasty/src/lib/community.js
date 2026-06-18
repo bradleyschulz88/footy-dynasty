@@ -559,3 +559,15 @@ export function rollPlayerTrait() {
   if (rng() > 0.20) return null;
   return pick(PLAYER_TRAITS);
 }
+
+/**
+ * Returns the fortnightly board confidence impact from journalist sentiment.
+ * +1 when the journalist is supportive (satisfaction >= 70),
+ * -1 when hostile (satisfaction <= 25), 0 in the neutral band.
+ */
+export function journalistBoardImpact(journalist) {
+  const sat = journalist?.satisfaction ?? 50;
+  if (sat >= 70) return +1;
+  if (sat <= 25) return -1;
+  return 0;
+}
