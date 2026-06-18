@@ -41,6 +41,7 @@ import {
   displayDraftWageEstimate,
   applyCombineScoutingRound,
   scoutRevealTier,
+  regionalScoutQuality,
 } from '../../lib/draftScouting.js';
 import { findClubByShort } from '../../data/pyramid.js';
 import {
@@ -309,6 +310,7 @@ function ProposeTradePanel() {
   const [theirPlayerId, setTheirPlayerId] = useState('');
   const [ourPlayerId, setOurPlayerId] = useState('');
   const [cashOffer, setCashOffer] = useState(0);
+  const [offeredPicks, setOfferedPicks] = useState([]);
   const [result, setResult] = useState(null);
 
   // Reset result when selections change
@@ -333,8 +335,11 @@ function ProposeTradePanel() {
       setResult('Not enough cash for the cash component');
       return;
     }
+    const picksToOffer = offeredPicks.map(i => (career.draftPickBank || [])[i]).filter(Boolean);
+    // Estimate pick value: R1 ~ 120000, R2 ~ 60000, R3+ ~ 30000
+    const pickValue = picksToOffer.reduce((sum, pk) => sum + (pk.round === 1 ? 120000 : pk.round === 2 ? 60000 : 30000), 0);
     const theirValue = theirPlayer.value ?? Math.round(theirPlayer.overall * 1500);
-    const offerValue = (ourPlayer.value ?? Math.round(ourPlayer.overall * 1500)) + cashOffer;
+    const offerValue = (ourPlayer.value ?? Math.round(ourPlayer.overall * 1500)) + cashOffer + pickValue;
     const ratio = offerValue / theirValue;
     let acceptChance = 0;
     if (ratio >= 0.88) acceptChance = 0.90;
@@ -354,7 +359,12 @@ function ProposeTradePanel() {
         receivedInTrade: career.season,
         seasonsAtClub: 0,
       };
-      const newsText = `🤝 Trade proposal accepted: ${ourPlayer.firstName} ${ourPlayer.lastName} → ${targetClubShort} for ${theirPlayer.firstName} ${theirPlayer.lastName}${cashOffer > 0 ? ' + ' + fmtK(cashOffer) + ' cash' : ''}`;
+      const picksSuffix = picksToOffer.length > 0
+        ? ' + ' + picksToOffer.map(pk => `${pk.season} R${pk.round}`).join(', ')
+        : '';
+      const newsText = `🤝 Trade proposal accepted: ${ourPlayer.firstName} ${ourPlayer.lastName} → ${targetClubShort} for ${theirPlayer.firstName} ${theirPlayer.lastName}${cashOffer > 0 ? ' + ' + fmtK(cashOffer) + ' cash' : ''}${picksSuffix}`;
+      // Remove traded picks from draftPickBank (array form)
+      const remainingBank = (career.draftPickBank || []).filter((_, i) => !offeredPicks.includes(i));
       updateCareer({
         squad: [...career.squad.filter(p => p.id !== ourPlayerId), newPlayer],
         aiSquads: {
@@ -366,6 +376,7 @@ function ProposeTradePanel() {
           ...career.finance,
           cash: career.finance.cash - cashOffer,
         },
+        draftPickBank: remainingBank,
         news: [{ week: career.week, type: 'win', text: newsText }, ...(career.news || [])].slice(0, 20),
         pendingTradeOffers: (career.pendingTradeOffers || []).map(o =>
           o.fromClubId === targetClubId && o.targetPlayerId === ourPlayerId && o.status === 'pending'
@@ -373,6 +384,7 @@ function ProposeTradePanel() {
             : o
         ),
       });
+      setOfferedPicks([]);
       setResult('accepted');
     } else {
       const flavors = [
@@ -455,6 +467,33 @@ function ProposeTradePanel() {
         <div className="text-xs self-end pb-2" style={{ color: 'var(--A-text-dim)' }}>
           Available: {fmtK(career.finance?.cash ?? 0)}
         </div>
+      </div>
+
+      {/* Draft picks */}
+      <div className="mt-2 mb-4">
+        <div className="text-[11px] font-mono uppercase text-atext-mute mb-2">Include draft picks</div>
+        {(career.draftPickBank || []).length === 0 && (
+          <div className="text-[11px] text-atext-dim">No picks in bank</div>
+        )}
+        {(career.draftPickBank || []).map((pick, idx) => {
+          const key = `${pick.season}-R${pick.round}`;
+          const selected = offeredPicks.includes(idx);
+          return (
+            <button
+              key={key + idx}
+              type="button"
+              onClick={() => setOfferedPicks(prev => selected ? prev.filter(i => i !== idx) : [...prev, idx])}
+              className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded mr-1 mb-1 transition"
+              style={{
+                background: selected ? 'var(--A-accent)' : 'var(--A-panel-2)',
+                color: selected ? '#000' : 'var(--A-text-mute)',
+                border: '1px solid var(--A-line)',
+              }}
+            >
+              {pick.season} R{pick.round}{pick.note ? ` (${pick.note})` : ''}
+            </button>
+          );
+        })}
       </div>
 
       <button
@@ -627,6 +666,9 @@ function OffersTab() {
                     <div className="font-display text-2xl text-atext mt-1">{fmtK(offer.offerCash)}{incomingPreview ? ` + ${incomingPreview.firstName} ${incomingPreview.lastName}` : ''}</div>
                     {incomingPreview && (
                       <div className="text-xs text-atext-dim mt-1">{incomingPreview.position} · {incomingPreview.overall} OVR · age {incomingPreview.age} · {incomingPreview.gamesPlayed ?? 0} gp</div>
+                    )}
+                    {offer.offeredPick && (
+                      <div className="text-[11px] text-aaccent mt-1">+ {offer.offeredPick.season} Round {offer.offeredPick.round} pick</div>
                     )}
                   </div>
                   <ArrowRight className="w-6 h-6 text-aaccent" />
@@ -1032,6 +1074,8 @@ function DraftTab({ club, league, onOpenDraftRoom }) {
   const updateCareer = useUpdateCareer();
   const [posFilter, setPosFilter] = useState("ALL");
   const [poolSort, setPoolSort] = useState("overall");
+  const clubState = findClub(career.clubId)?.state ?? club?.state ?? null;
+  const baseScoutRating = career.staff?.find(s => s.id === 's3')?.rating ?? 70;
 
   useEffect(() => {
     if (!league) return;
@@ -1196,7 +1240,10 @@ function DraftTab({ club, league, onOpenDraftRoom }) {
       <div className="hidden xl:block rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
         <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
           <div className="col-span-1">#</div>
-          <div className="col-span-4">Prospect</div>
+          <div className="col-span-4 flex items-center gap-2">
+            <span>Prospect</span>
+            {clubState && <span className="text-[9px] font-normal normal-case tracking-normal text-atext-dim">🏠 Home state bonus active</span>}
+          </div>
           <div className="col-span-1">Pos</div>
           <div className="col-span-1">OVR</div>
           <div className="col-span-2">Potential</div>
@@ -1208,8 +1255,9 @@ function DraftTab({ club, league, onOpenDraftRoom }) {
             const st = scoutRevealTier(p);
             const rw = rookieDraftWage(p.overall, dTier);
             const capOk = canAffordSigning(career, rw);
-            const oDisp = displayDraftOverall(p);
-            const potDisp = displayDraftPotential(p);
+            const scoutQuality = regionalScoutQuality(baseScoutRating, clubState, p.state ?? 'VIC');
+            const oDisp = displayDraftOverall(p, scoutQuality);
+            const potDisp = displayDraftPotential(p, scoutQuality);
             const wageDisp = displayDraftWageEstimate(rw, st);
             const wageAccurate = st >= 2;
             return (
@@ -1259,12 +1307,16 @@ function DraftTab({ club, league, onOpenDraftRoom }) {
       </div>
 
       <div className="xl:hidden space-y-3">
+        {clubState && (
+          <div className="text-[10px] text-atext-dim px-1">🏠 Home state bonus active</div>
+        )}
         {basePool.slice(0, 50).map((p, i) => {
           const st = scoutRevealTier(p);
           const rw = rookieDraftWage(p.overall, dTier);
           const capOk = canAffordSigning(career, rw);
-          const oDisp = displayDraftOverall(p);
-          const potDisp = displayDraftPotential(p);
+          const scoutQuality = regionalScoutQuality(baseScoutRating, clubState, p.state ?? 'VIC');
+          const oDisp = displayDraftOverall(p, scoutQuality);
+          const potDisp = displayDraftPotential(p, scoutQuality);
           const wageDisp = displayDraftWageEstimate(rw, st);
           const wageAccurate = st >= 2;
           return (

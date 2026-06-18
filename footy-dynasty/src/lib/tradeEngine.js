@@ -65,6 +65,12 @@ export function generateAiTradeOffers(c, league) {
     }
     if (rebuilding && targetPlayer.age >= 30) cashOffer = Math.round(cashOffer * 1.15);
 
+    // If the target is a high-value player, AI may sweeten with a future pick
+    const targetVal = targetPlayer.value ?? Math.round(targetPlayer.overall * 1500);
+    const offeredPick = targetVal > 400000 && rng() < 0.30
+      ? { season: (c.season ?? 2026) + 1, round: rand(1, 3) }
+      : null;
+
     offers.push({
       id: `trade_${offeringClub.id}_${targetPlayer.id}_${c.season}`,
       fromClubId: offeringClub.id,
@@ -73,6 +79,7 @@ export function generateAiTradeOffers(c, league) {
       targetPlayer: tradePlayerSnapshot(targetPlayer),
       offeredPlayer: swapPlayer ? tradePlayerSnapshot(swapPlayer) : null,
       cashOffer: Math.max(0, cashOffer),
+      offeredPick,
       expiresWeek: (c.week ?? 0) + rand(2, 5),
     });
   }

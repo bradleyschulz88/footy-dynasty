@@ -134,6 +134,11 @@ function seedAiTradeOffers(c, league) {
     if (grudge > 0) cashOffer = Math.round(cashOffer * (1 - 0.09 * Math.min(grudge, 2)));
     if (swapPlayer && rng() < 0.38) cashOffer = rng() < 0.45 ? 0 : Math.round(targetPlayer.value * (0.08 + rng() * 0.15));
     cashOffer = Math.max(0, cashOffer);
+    // High-value targets: 30% chance AI sweetens the deal with a future pick
+    const targetVal = targetPlayer.value ?? Math.round(targetPlayer.overall * 1500);
+    const offeredPick = targetVal > 400000 && rng() < 0.30
+      ? { season: (c.season ?? 2026) + 1, round: rand(1, 3) }
+      : null;
     offers.push({
       id: `tp_offer_${Date.now()}_${i}`,
       fromClubId: offeringClub.id,
@@ -142,6 +147,7 @@ function seedAiTradeOffers(c, league) {
       offerCash: cashOffer,
       offerPlayerId: swapPlayer?.id || null,
       offerPlayerSnapshot: swapPlayer ? tradePlayerSnapshot(swapPlayer) : null,
+      offeredPick,
       status: 'pending',
       createdAt: `postseason-${c.tradePeriodDay}`,
       tradePeriod: true,

@@ -2021,6 +2021,28 @@ function FacilitiesTab() {
     }
     updateCareer(payload);
   };
+  const financeUpgrade = (key) => {
+    const f = career.facilities[key];
+    if (f.level >= f.max) return;
+    const cost = f.cost * f.level;
+    const annualRepayment = Math.round(cost * 1.08 / 5);
+    const nextLevel = f.level + 1;
+    const payload = {
+      facilities: { ...career.facilities, [key]: { ...f, level: nextLevel } },
+      facilityLoans: [
+        ...(career.facilityLoans || []),
+        { facilityKey: key, originalCost: cost, annualRepayment, seasonsLeft: 5, takenSeason: career.season },
+      ],
+      news: [{ week: career.week, type: "info", text: `🏗️ ${FAC_INFO[key].name} upgraded on a 5-year facility loan ($${(annualRepayment / 1000).toFixed(0)}k/yr).` }, ...(career.news || [])].slice(0, 20),
+    };
+    if (key === "stadium") {
+      const lg = findLeagueOf(career.clubId);
+      const cg = getClubGround(findClub(career.clubId), nextLevel, lg?.tier ?? 2);
+      payload.clubGround = cg;
+      payload.groundName = cg.shortName;
+    }
+    updateCareer(payload);
+  };
   const totalLevel = Object.values(career.facilities).reduce((a,b)=>a+b.level,0);
   const maxTotal = Object.values(career.facilities).reduce((a,b)=>a+b.max,0);
   return (
@@ -2043,6 +2065,9 @@ function FacilitiesTab() {
           const cost = f.cost * f.level;
           const canAfford = career.finance.cash >= cost;
           const maxed = f.level >= f.max;
+          const hasActiveLoan = (career.facilityLoans || []).some(l => l.facilityKey === key);
+          const annualRepayment = Math.round(cost * 1.08 / 5);
+          const canFinance = !maxed && !hasActiveLoan;
           return (
             <div key={key} className={`${css.panel} p-5`}>
               <div className="flex items-start gap-4">
@@ -2060,13 +2085,26 @@ function FacilitiesTab() {
                       <div key={i} className="flex-1 h-2 rounded-full" style={{ background: i < f.level ? info.color : "var(--A-line)" }} />
                     ))}
                   </div>
-                  <div className="flex items-center justify-between mt-3">
+                  <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
                     <div className="text-xs text-atext-dim">
                       {maxed ? <span className="text-apos">⭐ Max level</span> : <>Upgrade: <span className={canAfford ? "text-atext font-bold" : "text-aneg font-bold"}>${(cost/1000).toFixed(0)}k</span></>}
                     </div>
-                    <button onClick={()=>upgrade(key)} disabled={maxed||!canAfford} className={maxed||!canAfford ? "px-3 py-1.5 rounded-lg text-xs font-bold bg-apanel-2 text-atext-mute" : `${css.btnPrimary} text-xs px-3 py-1.5`}>
-                      {maxed ? "Maxed" : "Upgrade"}
-                    </button>
+                    <div className="flex gap-2 flex-wrap">
+                      <button onClick={()=>upgrade(key)} disabled={maxed||!canAfford} className={maxed||!canAfford ? "px-3 py-1.5 rounded-lg text-xs font-bold bg-apanel-2 text-atext-mute" : `${css.btnPrimary} text-xs px-3 py-1.5`}>
+                        {maxed ? "Maxed" : "Upgrade"}
+                      </button>
+                      {!maxed && (
+                        <button
+                          type="button"
+                          disabled={!canFinance}
+                          onClick={() => financeUpgrade(key)}
+                          className="text-[11px] px-3 py-1.5 rounded-xl transition"
+                          style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)', color: canFinance ? 'var(--A-text-dim)' : 'var(--A-text-mute)', opacity: canFinance ? 1 : 0.5 }}
+                        >
+                          {hasActiveLoan ? 'Loan active' : `Finance (5yr · $${(annualRepayment / 1000).toFixed(0)}k/yr)`}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2074,6 +2112,18 @@ function FacilitiesTab() {
           );
         })}
       </div>
+
+      {(career.facilityLoans || []).length > 0 && (
+        <div className="mt-4 rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+          <div className="text-[11px] font-mono uppercase tracking-widest text-atext-mute mb-2">Active facility loans</div>
+          {(career.facilityLoans || []).map((loan, i) => (
+            <div key={i} className="flex justify-between text-[12px] text-atext mb-1">
+              <span>{FAC_INFO[loan.facilityKey]?.name ?? loan.facilityKey} — {loan.seasonsLeft} season{loan.seasonsLeft !== 1 ? 's' : ''} left</span>
+              <span className="text-aaccent">${(loan.annualRepayment / 1000).toFixed(0)}k/yr</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

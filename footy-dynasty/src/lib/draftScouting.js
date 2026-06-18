@@ -72,6 +72,16 @@ export function displayDraftWageEstimate(rookieWage, scoutTier) {
 }
 
 /**
+ * Scouting quality for a prospect given the club's home state.
+ * Clubs have a natural +20% quality advantage scouting in their own state.
+ */
+export function regionalScoutQuality(baseQuality, clubState, prospectState) {
+  if (!clubState || !prospectState) return baseQuality;
+  if (clubState === prospectState) return Math.min(100, Math.round(baseQuality * 1.2));
+  return baseQuality;
+}
+
+/**
  * Increase scoutReveal on up to `maxProspects` lowest-tier prospects by 1 (cap 3).
  */
 export function applyCombineScoutingRound(pool, maxProspects = 14) {
