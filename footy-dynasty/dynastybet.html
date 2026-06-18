@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DynastyBet — Win Like a Champion</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&family=Oswald:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #06070A;
+      --surface: #0C1018;
+      --card: #111827;
+      --card-2: #1A2235;
+      --border: rgba(255,255,255,0.06);
+      --gold: #F0B429;
+      --gold-dim: #B8892A;
+      --green: #00D68F;
+      --red: #FF4060;
+      --text: #E2E8F0;
+      --dim: #94A3B8;
+      --muted: #64748B;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── Keyframes ── */
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+    @keyframes float-slow { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-20px) rotate(1.5deg); } }
+    @keyframes pulse-red { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    @keyframes pulse-glow {
+      0%,100% { box-shadow: 0 0 8px rgba(240,180,41,0.3); }
+      50% { box-shadow: 0 0 28px rgba(240,180,41,0.8), 0 0 48px rgba(240,180,41,0.25); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(36px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes particle-rise {
+      0% { transform: translateY(100vh) scale(0); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 0.6; }
+      100% { transform: translateY(-40px) scale(1); opacity: 0; }
+    }
+    @keyframes oddsUp {
+      0% { background: rgba(0,214,143,0.25); color: var(--green); }
+      100% { background: var(--card-2); color: var(--text); }
+    }
+    @keyframes gradientShift {
+      0%,100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    /* ── Utilities ── */
+    .gold-text {
+      background: linear-gradient(135deg, #F0B429 0%, #FFD96A 45%, #F0B429 55%, #C48A10 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shimmer 3s linear infinite;
+    }
+    .hero-bg {
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(240,180,41,0.09) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 85% 50%, rgba(0,214,143,0.05) 0%, transparent 55%),
+        var(--bg);
+    }
+    .glass {
+      background: rgba(255,255,255,0.035);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .card-hover {
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      cursor: default;
+    }
+    .card-hover:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 0 0 1px rgba(240,180,41,0.25), 0 16px 48px rgba(0,0,0,0.5);
+    }
+    .btn-gold {
+      background: linear-gradient(135deg, #F0B429, #C48A10);
+      color: #000;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-gold::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.18), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(240,180,41,0.45); }
+    .btn-gold:hover::after { opacity: 1; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.18);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-outline:hover { border-color: var(--gold); color: var(--gold); background: rgba(240,180,41,0.06); }
+
+    /* Scroll reveal */
+    .reveal { opacity: 0; transform: translateY(36px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .reveal.in { opacity: 1; transform: translateY(0); }
+    .d1 { transition-delay: 0.1s; }
+    .d2 { transition-delay: 0.2s; }
+    .d3 { transition-delay: 0.3s; }
+    .d4 { transition-delay: 0.4s; }
+
+    /* Navbar */
+    #nav { position: fixed; top: 0; left: 0; right: 0; z-index: 50; padding: 18px 0; transition: all 0.35s ease; }
+    #nav.scrolled { background: rgba(6,7,10,0.92); backdrop-filter: blur(24px); border-bottom: 1px solid var(--border); padding: 12px 0; }
+
+    /* Ticker */
+    .ticker-wrap { overflow: hidden; white-space: nowrap; }
+    .ticker-inner { display: inline-block; animation: ticker 32s linear infinite; }
+    .ticker-inner:hover { animation-play-state: paused; }
+
+    /* Live badge */
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); animation: pulse-red 1.4s ease-in-out infinite; display: inline-block; flex-shrink: 0; }
+
+    /* Odds btn */
+    .odd-btn {
+      background: var(--card-2);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 10px 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .odd-btn:hover { background: var(--gold); border-color: var(--gold); color: #000; transform: scale(1.05); }
+    .odd-btn.flash { animation: oddsUp 0.5s ease forwards; }
+
+    /* Particle */
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      animation: particle-rise linear infinite;
+      pointer-events: none;
+    }
+
+    /* Grid lines overlay */
+    .grid-overlay {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+      background-size: 64px 64px;
+    }
+
+    /* Sport pill */
+    .sport-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 100px;
+      padding: 6px 14px;
+      font-size: 13px; font-weight: 500; color: var(--dim);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .sport-pill:hover, .sport-pill.active { background: rgba(240,180,41,0.1); border-color: rgba(240,180,41,0.3); color: var(--gold); }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════ NAV -->
+<nav id="nav">
+  <div style="max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;">
+    <a href="#" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+      <div style="width:34px;height:34px;background:linear-gradient(135deg,#F0B429,#C48A10);border-radius:9px;display:flex;align-items:center;justify-content:center;animation:pulse-glow 2.5s ease-in-out infinite;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+      <span style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:0.08em;color:#fff;">DYNASTY<span class="gold-text">BET</span></span>
+    </a>
+    <div style="display:none;gap:32px;align-items:center;" id="nav-links">
+      <a href="#features" style="color:var(--dim);font-size:14px;font-weight:500;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--dim)'">Sports</a>
+      <a href="#live" style="color:var(--dim);font-size:14px;font-weight:500;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--dim)'">Live Betting</a>
+      <a href="#promo" style="color:var(--dim);font-size:14px;font-weight:500;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--dim)'">Promotions</a>
+      <a href="#how" style="color:var(--dim);font-size:14px;font-weight:500;text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--dim)'">How It Works</a>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-outline" style="padding:9px 22px;border-radius:9px;font-size:14px;">Log In</button>
+      <button class="btn-gold" style="padding:9px 22px;border-radius:9px;font-size:14px;">Join Free</button>
+    </div>
+  </div>
+</nav>
+<style>@media(min-width:768px){#nav-links{display:flex!important;}}</style>
+
+<!-- ══════════════════════════════════ HERO -->
+<section class="hero-bg" style="min-height:100vh;display:flex;align-items:center;padding:120px 24px 80px;position:relative;overflow:hidden;">
+  <div class="grid-overlay"></div>
+  <div id="particles-container" style="position:absolute;inset:0;pointer-events:none;"></div>
+
+  <div style="max-width:1200px;margin:0 auto;width:100%;display:grid;gap:56px;align-items:center;" id="hero-grid">
+
+    <!-- LEFT: Copy -->
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(240,180,41,0.1);border:1px solid rgba(240,180,41,0.25);border-radius:100px;padding:6px 16px;margin-bottom:28px;animation:slideIn 0.6s ease both;">
+        <span class="live-dot"></span>
+        <span style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--gold);">LIVE BETTING OPEN · 1,248 MARKETS</span>
+      </div>
+
+      <h1 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(60px,8.5vw,100px);line-height:0.92;letter-spacing:0.02em;animation:slideUp 0.7s ease 0.1s both;">
+        BET SMARTER.<br>
+        WIN <span class="gold-text">BIGGER.</span><br>
+        EVERY DAY.
+      </h1>
+
+      <p style="margin-top:24px;font-size:18px;line-height:1.75;color:var(--dim);max-width:500px;animation:slideUp 0.7s ease 0.25s both;">
+        Australia's fastest sports betting platform. Unbeatable odds on 40+ sports, instant withdrawals, and a <strong style="color:var(--text);">$250 welcome bonus</strong> waiting right now.
+      </p>
+
+      <div style="margin-top:36px;display:flex;flex-wrap:wrap;gap:12px;animation:slideUp 0.7s ease 0.38s both;">
+        <button class="btn-gold" style="padding:15px 34px;border-radius:11px;font-size:16px;">Claim $250 Bonus</button>
+        <button class="btn-outline" style="padding:15px 28px;border-radius:11px;font-size:16px;display:flex;align-items:center;gap:9px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          See How It Works
+        </button>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:20px;margin-top:36px;animation:slideUp 0.7s ease 0.48s both;">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span style="font-size:13px;color:var(--muted);">Licensed & Regulated</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span style="font-size:13px;color:var(--muted);">Payouts in 60 seconds</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span style="font-size:13px;color:var(--muted);">Best Odds Guaranteed</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Floating bet slip -->
+    <div style="display:flex;justify-content:center;animation:slideUp 0.7s ease 0.2s both;">
+      <div style="position:relative;width:100%;max-width:400px;">
+
+        <!-- Main card -->
+        <div class="glass" style="border-radius:22px;padding:28px;animation:float-slow 6s ease-in-out infinite;position:relative;z-index:2;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <span style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:0.07em;">MATCH OF THE DAY</span>
+            <div style="display:flex;align-items:center;gap:6px;background:rgba(255,64,96,0.14);border:1px solid rgba(255,64,96,0.3);border-radius:100px;padding:4px 10px;">
+              <span class="live-dot" style="width:6px;height:6px;"></span>
+              <span style="font-size:11px;font-weight:700;color:var(--red);letter-spacing:0.07em;">LIVE Q3</span>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+            <div style="text-align:center;flex:1;">
+              <div style="width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#1a3a9f,#2a5bd4);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-family:'Bebas Neue';font-size:18px;color:#fff;">CC</div>
+              <div style="font-weight:700;font-size:15px;">Carlton</div>
+              <div style="font-size:26px;font-weight:900;font-family:'Bebas Neue';letter-spacing:0.04em;margin-top:6px;color:var(--gold);">54</div>
+            </div>
+            <div style="text-align:center;padding:0 12px;">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.1em;">VS</div>
+              <div style="width:1px;height:36px;background:var(--border);margin:8px auto;"></div>
+            </div>
+            <div style="text-align:center;flex:1;">
+              <div style="width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#8f0a0a,#cc2222);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-family:'Bebas Neue';font-size:16px;color:#fff;">GWS</div>
+              <div style="font-weight:700;font-size:15px;">GWS Giants</div>
+              <div style="font-size:26px;font-weight:900;font-family:'Bebas Neue';letter-spacing:0.04em;margin-top:6px;color:var(--dim);">47</div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;">
+            <button class="odd-btn" id="h-o1"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Carlton</div><div style="font-weight:700;font-size:17px;color:var(--text);" id="h-o1-v">1.85</div></button>
+            <button class="odd-btn" id="h-o2"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Draw</div><div style="font-weight:700;font-size:17px;color:var(--text);">21.00</div></button>
+            <button class="odd-btn" id="h-o3"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">GWS</div><div style="font-weight:700;font-size:17px;color:var(--text);" id="h-o3-v">2.10</div></button>
+          </div>
+
+          <button class="btn-gold" style="width:100%;padding:13px;border-radius:11px;font-size:15px;">Place Bet Now</button>
+        </div>
+
+        <!-- Floating win card -->
+        <div class="glass" style="position:absolute;top:-28px;right:-36px;border-radius:14px;padding:14px 18px;z-index:3;animation:float 4s ease-in-out infinite;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500;">Last win</div>
+          <div style="font-size:22px;font-weight:800;color:var(--green);font-family:'Bebas Neue';letter-spacing:0.04em;">+$340.00</div>
+        </div>
+
+        <!-- Floating market card -->
+        <div class="glass" style="position:absolute;bottom:-24px;left:-32px;border-radius:14px;padding:14px 18px;z-index:3;animation:float 5s ease-in-out infinite 0.8s;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:500;">Live markets</div>
+          <div style="display:flex;align-items:center;gap:7px;">
+            <span class="live-dot"></span>
+            <span style="font-size:20px;font-weight:800;color:var(--gold);font-family:'Bebas Neue';" id="live-market-count">1,248</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<style>@media(min-width:900px){#hero-grid{grid-template-columns:1fr 1fr!important;}}</style>
+
+<!-- ══════════════════════════════════ TICKER -->
+<div style="background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:13px 0;">
+  <div class="ticker-wrap">
+    <div class="ticker-inner" id="ticker-inner"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════ SPORTS PILLS -->
+<section style="padding:48px 24px 0;">
+  <div style="max-width:1200px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">
+    <div class="sport-pill active">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="10"/></svg>AFL
+    </div>
+    <div class="sport-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="10"/></svg>NRL
+    </div>
+    <div class="sport-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="10"/></svg>Soccer
+    </div>
+    <div class="sport-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="10"/></svg>Tennis
+    </div>
+    <div class="sport-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="10"/></svg>Racing
+    </div>
+    <div class="sport-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="10"/></svg>NBA
+    </div>
+    <div class="sport-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="10"/></svg>UFC / MMA
+    </div>
+    <div class="sport-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="10"/></svg>Cricket
+    </div>
+    <div class="sport-pill" style="background:rgba(240,180,41,0.06);border-color:rgba(240,180,41,0.2);color:var(--gold);">
+      View all 40+ →
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ FEATURES -->
+<section id="features" style="padding:88px 24px;">
+  <div style="max-width:1200px;margin:0 auto;">
+
+    <div class="reveal" style="text-align:center;margin-bottom:60px;">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(240,180,41,0.08);border:1px solid rgba(240,180,41,0.2);border-radius:100px;padding:6px 16px;margin-bottom:16px;">
+        <span style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--gold);">WHY DYNASTYBET</span>
+      </div>
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5vw,60px);letter-spacing:0.03em;">THE <span class="gold-text">WINNING</span> EDGE</h2>
+      <p style="margin-top:14px;color:var(--dim);font-size:17px;max-width:520px;margin-left:auto;margin-right:auto;line-height:1.75;">Everything built for serious bettors who demand more.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
+
+      <div class="glass card-hover reveal d1" style="border-radius:20px;padding:32px;">
+        <div style="width:52px;height:52px;border-radius:14px;background:rgba(240,180,41,0.1);border:1px solid rgba(240,180,41,0.22);display:flex;align-items:center;justify-content:center;margin-bottom:22px;animation:pulse-glow 2.5s ease-in-out infinite;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+        </div>
+        <h3 style="font-family:'Oswald',sans-serif;font-size:21px;font-weight:600;letter-spacing:0.03em;margin-bottom:10px;">Best Odds Guaranteed</h3>
+        <p style="color:var(--dim);line-height:1.7;font-size:15px;">Find better odds anywhere else? We'll match them and add 5%. Every sport, every market, every time.</p>
+        <div style="margin-top:22px;display:flex;align-items:center;gap:7px;color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;">Learn more <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+
+      <div class="glass card-hover reveal d2" style="border-radius:20px;padding:32px;">
+        <div style="width:52px;height:52px;border-radius:14px;background:rgba(0,214,143,0.09);border:1px solid rgba(0,214,143,0.22);display:flex;align-items:center;justify-content:center;margin-bottom:22px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h3 style="font-family:'Oswald',sans-serif;font-size:21px;font-weight:600;letter-spacing:0.03em;margin-bottom:10px;">60-Second Payouts</h3>
+        <p style="color:var(--dim);line-height:1.7;font-size:15px;">Win big, cash out fast. Funds hit your bank via PayID in under 60 seconds. No holds, no delays.</p>
+        <div style="margin-top:22px;display:flex;align-items:center;gap:7px;color:var(--green);font-size:13px;font-weight:600;cursor:pointer;">Learn more <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+
+      <div class="glass card-hover reveal d3" style="border-radius:20px;padding:32px;">
+        <div style="width:52px;height:52px;border-radius:14px;background:rgba(139,92,246,0.09);border:1px solid rgba(139,92,246,0.22);display:flex;align-items:center;justify-content:center;margin-bottom:22px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </div>
+        <h3 style="font-family:'Oswald',sans-serif;font-size:21px;font-weight:600;letter-spacing:0.03em;margin-bottom:10px;">In-Play Live Betting</h3>
+        <p style="color:var(--dim);line-height:1.7;font-size:15px;">Odds update every second. Bet on the next goal, next quarter, next minute. 1,000+ live markets open right now.</p>
+        <div style="margin-top:22px;display:flex;align-items:center;gap:7px;color:#8B5CF6;font-size:13px;font-weight:600;cursor:pointer;">Explore live <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+
+      <div class="glass card-hover reveal d1" style="border-radius:20px;padding:32px;">
+        <div style="width:52px;height:52px;border-radius:14px;background:rgba(59,130,246,0.09);border:1px solid rgba(59,130,246,0.22);display:flex;align-items:center;justify-content:center;margin-bottom:22px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </div>
+        <h3 style="font-family:'Oswald',sans-serif;font-size:21px;font-weight:600;letter-spacing:0.03em;margin-bottom:10px;">Mobile-First App</h3>
+        <p style="color:var(--dim);line-height:1.7;font-size:15px;">Native iOS & Android apps. Place bets, watch live streams, cash out — the full experience from your pocket.</p>
+        <div style="margin-top:22px;display:flex;align-items:center;gap:7px;color:#3B82F6;font-size:13px;font-weight:600;cursor:pointer;">Download app <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+
+      <div class="glass card-hover reveal d2" style="border-radius:20px;padding:32px;">
+        <div style="width:52px;height:52px;border-radius:14px;background:rgba(240,180,41,0.09);border:1px solid rgba(240,180,41,0.2);display:flex;align-items:center;justify-content:center;margin-bottom:22px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3 style="font-family:'Oswald',sans-serif;font-size:21px;font-weight:600;letter-spacing:0.03em;margin-bottom:10px;">Bank-Grade Security</h3>
+        <p style="color:var(--dim);line-height:1.7;font-size:15px;">256-bit SSL, biometric login, and fully segregated customer funds. Licensed by the NT Racing Commission.</p>
+        <div style="margin-top:22px;display:flex;align-items:center;gap:7px;color:var(--gold);font-size:13px;font-weight:600;cursor:pointer;">Our licence <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+
+      <div class="glass card-hover reveal d3" style="border-radius:20px;padding:32px;">
+        <div style="width:52px;height:52px;border-radius:14px;background:rgba(0,214,143,0.09);border:1px solid rgba(0,214,143,0.2);display:flex;align-items:center;justify-content:center;margin-bottom:22px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <h3 style="font-family:'Oswald',sans-serif;font-size:21px;font-weight:600;letter-spacing:0.03em;margin-bottom:10px;">24/7 Expert Support</h3>
+        <p style="color:var(--dim);line-height:1.7;font-size:15px;">Real sports experts, not bots. Live chat, phone, or email around the clock. Average response: 47 seconds.</p>
+        <div style="margin-top:22px;display:flex;align-items:center;gap:7px;color:var(--green);font-size:13px;font-weight:600;cursor:pointer;">Contact us <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ LIVE MATCHES -->
+<section id="live" style="padding:80px 24px;background:var(--surface);">
+  <div style="max-width:1200px;margin:0 auto;">
+
+    <div class="reveal" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:44px;">
+      <div>
+        <h2 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(32px,4.5vw,52px);letter-spacing:0.03em;">LIVE <span class="gold-text">NOW</span></h2>
+        <p style="color:var(--dim);margin-top:6px;font-size:15px;">Odds updating in real-time — every second counts</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px;background:rgba(255,64,96,0.1);border:1px solid rgba(255,64,96,0.25);border-radius:100px;padding:8px 18px;">
+        <span class="live-dot"></span>
+        <span style="font-size:13px;font-weight:700;color:var(--red);letter-spacing:0.05em;">1,248 LIVE MARKETS</span>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;">
+
+      <!-- Match 1 -->
+      <div class="glass card-hover reveal d1" style="border-radius:20px;padding:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <span style="font-size:12px;font-weight:600;color:var(--muted);letter-spacing:0.06em;">AFL · Q3 18:24</span>
+          <div style="display:flex;align-items:center;gap:5px;background:rgba(255,64,96,0.12);border:1px solid rgba(255,64,96,0.28);border-radius:6px;padding:3px 9px;">
+            <span class="live-dot" style="width:5px;height:5px;"></span>
+            <span style="font-size:10px;font-weight:700;color:var(--red);">LIVE</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <div><div style="font-weight:700;font-size:15px;">Collingwood</div><div style="font-size:12px;color:var(--muted);">Home</div></div>
+          <div style="font-family:'Bebas Neue';font-size:30px;letter-spacing:0.06em;color:var(--text);">87 — 73</div>
+          <div style="text-align:right;"><div style="font-weight:700;font-size:15px;">Brisbane</div><div style="font-size:12px;color:var(--muted);">Away</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <button class="odd-btn"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">1</div><div style="font-weight:700;font-size:16px;" id="m1-o1">1.62</div></button>
+          <button class="odd-btn"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Draw</div><div style="font-weight:700;font-size:16px;">19.00</div></button>
+          <button class="odd-btn"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">2</div><div style="font-weight:700;font-size:16px;" id="m1-o3">2.40</div></button>
+        </div>
+      </div>
+
+      <!-- Match 2 -->
+      <div class="glass card-hover reveal d2" style="border-radius:20px;padding:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <span style="font-size:12px;font-weight:600;color:var(--muted);letter-spacing:0.06em;">NRL · 54'</span>
+          <div style="display:flex;align-items:center;gap:5px;background:rgba(255,64,96,0.12);border:1px solid rgba(255,64,96,0.28);border-radius:6px;padding:3px 9px;">
+            <span class="live-dot" style="width:5px;height:5px;"></span>
+            <span style="font-size:10px;font-weight:700;color:var(--red);">LIVE</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <div><div style="font-weight:700;font-size:15px;">Storm</div><div style="font-size:12px;color:var(--muted);">Home</div></div>
+          <div style="font-family:'Bebas Neue';font-size:30px;letter-spacing:0.06em;color:var(--text);">18 — 12</div>
+          <div style="text-align:right;"><div style="font-weight:700;font-size:15px;">Roosters</div><div style="font-size:12px;color:var(--muted);">Away</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <button class="odd-btn"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">1</div><div style="font-weight:700;font-size:16px;" id="m2-o1">1.72</div></button>
+          <button class="odd-btn"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Draw</div><div style="font-weight:700;font-size:16px;">22.00</div></button>
+          <button class="odd-btn"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">2</div><div style="font-weight:700;font-size:16px;" id="m2-o3">2.20</div></button>
+        </div>
+      </div>
+
+      <!-- Match 3 -->
+      <div class="glass card-hover reveal d3" style="border-radius:20px;padding:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <span style="font-size:12px;font-weight:600;color:var(--muted);letter-spacing:0.06em;">EPL · 67'</span>
+          <div style="display:flex;align-items:center;gap:5px;background:rgba(255,64,96,0.12);border:1px solid rgba(255,64,96,0.28);border-radius:6px;padding:3px 9px;">
+            <span class="live-dot" style="width:5px;height:5px;"></span>
+            <span style="font-size:10px;font-weight:700;color:var(--red);">LIVE</span>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <div><div style="font-weight:700;font-size:15px;">Man City</div><div style="font-size:12px;color:var(--muted);">Home</div></div>
+          <div style="font-family:'Bebas Neue';font-size:30px;letter-spacing:0.06em;color:var(--text);">2 — 1</div>
+          <div style="text-align:right;"><div style="font-weight:700;font-size:15px;">Arsenal</div><div style="font-size:12px;color:var(--muted);">Away</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <button class="odd-btn"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">1</div><div style="font-weight:700;font-size:16px;" id="m3-o1">1.55</div></button>
+          <button class="odd-btn"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">Draw</div><div style="font-weight:700;font-size:16px;" id="m3-o2">4.20</div></button>
+          <button class="odd-btn"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">2</div><div style="font-weight:700;font-size:16px;" id="m3-o3">3.10</div></button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="reveal" style="text-align:center;margin-top:40px;">
+      <button class="btn-outline" style="padding:13px 40px;border-radius:10px;font-size:15px;">View All Live Markets</button>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ STATS -->
+<section style="padding:88px 24px;background:linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);">
+  <div style="max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:48px;text-align:center;">
+    <div class="reveal">
+      <div class="gold-text counter" style="font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,6vw,76px);letter-spacing:0.02em;" data-target="550" data-suffix="K+">0</div>
+      <div style="color:var(--dim);font-size:16px;margin-top:8px;font-weight:500;">Active Members</div>
+    </div>
+    <div class="reveal d1">
+      <div class="gold-text counter" style="font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,6vw,76px);letter-spacing:0.02em;" data-target="40" data-suffix="+">0</div>
+      <div style="color:var(--dim);font-size:16px;margin-top:8px;font-weight:500;">Sports Covered</div>
+    </div>
+    <div class="reveal d2">
+      <div class="gold-text counter" style="font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,6vw,76px);letter-spacing:0.02em;" data-target="98" data-suffix="%">0</div>
+      <div style="color:var(--dim);font-size:16px;margin-top:8px;font-weight:500;">Payout Rate</div>
+    </div>
+    <div class="reveal d3">
+      <div class="gold-text counter" style="font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,6vw,76px);letter-spacing:0.02em;" data-prefix="$" data-target="2" data-suffix="M+">0</div>
+      <div style="color:var(--dim);font-size:16px;margin-top:8px;font-weight:500;">Paid This Month</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ HOW IT WORKS -->
+<section id="how" style="padding:88px 24px;">
+  <div style="max-width:1000px;margin:0 auto;">
+
+    <div class="reveal" style="text-align:center;margin-bottom:64px;">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(0,214,143,0.08);border:1px solid rgba(0,214,143,0.2);border-radius:100px;padding:6px 16px;margin-bottom:16px;">
+        <span style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--green);">UP & RUNNING IN MINUTES</span>
+      </div>
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5vw,60px);letter-spacing:0.03em;">HOW IT <span class="gold-text">WORKS</span></h2>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px;text-align:center;">
+
+      <div class="reveal d1">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dim));display:flex;align-items:center;justify-content:center;margin:0 auto 22px;font-family:'Bebas Neue';font-size:28px;color:#000;animation:pulse-glow 2.5s ease-in-out infinite;">1</div>
+        <h3 style="font-family:'Oswald',sans-serif;font-size:19px;font-weight:600;margin-bottom:10px;letter-spacing:0.03em;">Create Account</h3>
+        <p style="color:var(--dim);line-height:1.7;font-size:14px;">Sign up in 60 seconds — name, email, DOB. No paperwork.</p>
+      </div>
+
+      <div class="reveal d2">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dim));display:flex;align-items:center;justify-content:center;margin:0 auto 22px;font-family:'Bebas Neue';font-size:28px;color:#000;">2</div>
+        <h3 style="font-family:'Oswald',sans-serif;font-size:19px;font-weight:600;margin-bottom:10px;letter-spacing:0.03em;">Claim Your Bonus</h3>
+        <p style="color:var(--dim);line-height:1.7;font-size:14px;">Deposit $50, get $250 in bonus bets instantly. No tricks.</p>
+      </div>
+
+      <div class="reveal d3">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dim));display:flex;align-items:center;justify-content:center;margin:0 auto 22px;font-family:'Bebas Neue';font-size:28px;color:#000;">3</div>
+        <h3 style="font-family:'Oswald',sans-serif;font-size:19px;font-weight:600;margin-bottom:10px;letter-spacing:0.03em;">Place Your Bets</h3>
+        <p style="color:var(--dim);line-height:1.7;font-size:14px;">40+ sports, 1,000+ daily markets. Singles, multis, same-game multis.</p>
+      </div>
+
+      <div class="reveal d4">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-dim));display:flex;align-items:center;justify-content:center;margin:0 auto 22px;font-family:'Bebas Neue';font-size:28px;color:#000;">4</div>
+        <h3 style="font-family:'Oswald',sans-serif;font-size:19px;font-weight:600;margin-bottom:10px;letter-spacing:0.03em;">Cash Out Fast</h3>
+        <p style="color:var(--dim);line-height:1.7;font-size:14px;">Win? Funds in your account in 60 seconds. Early cash-out always available.</p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ PROMO -->
+<section id="promo" style="padding:48px 24px 88px;">
+  <div style="max-width:860px;margin:0 auto;">
+    <div class="reveal" style="border-radius:28px;padding:64px 40px;text-align:center;position:relative;overflow:hidden;background:linear-gradient(135deg,#100A00,#091408,#080B18);border:1px solid rgba(240,180,41,0.22);">
+      <div style="position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:500px;height:260px;background:radial-gradient(ellipse,rgba(240,180,41,0.13) 0%,transparent 70%);pointer-events:none;"></div>
+      <div style="position:absolute;bottom:-60px;right:-60px;width:300px;height:300px;background:radial-gradient(ellipse,rgba(0,214,143,0.07) 0%,transparent 70%);pointer-events:none;"></div>
+
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(240,180,41,0.12);border:1px solid rgba(240,180,41,0.3);border-radius:100px;padding:6px 18px;margin-bottom:24px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="var(--gold)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span style="font-size:12px;font-weight:700;letter-spacing:0.1em;color:var(--gold);">NEW MEMBER EXCLUSIVE</span>
+      </div>
+
+      <h2 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(44px,7vw,80px);letter-spacing:0.02em;line-height:0.95;margin-bottom:18px;">GET $250<br><span class="gold-text">IN BONUS BETS</span></h2>
+      <p style="font-size:17px;color:var(--dim);line-height:1.75;margin-bottom:36px;max-width:460px;margin-left:auto;margin-right:auto;">Deposit just $50 and receive $250 in bonus bets instantly — no wagering maze, no fine print traps.</p>
+
+      <button class="btn-gold" style="padding:16px 48px;border-radius:12px;font-size:17px;">Claim My $250 Now</button>
+
+      <p style="margin-top:20px;font-size:12px;color:var(--muted);">T&Cs apply. 18+ only. New customers only. Gamble responsibly.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════ FOOTER -->
+<footer style="background:var(--card);border-top:1px solid var(--border);padding:56px 24px 32px;">
+  <div style="max-width:1200px;margin:0 auto;">
+
+    <!-- Responsible gambling -->
+    <div style="background:rgba(255,64,96,0.07);border:1px solid rgba(255,64,96,0.18);border-radius:14px;padding:20px 26px;margin-bottom:52px;display:flex;align-items:flex-start;gap:14px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p style="font-size:13px;color:var(--dim);line-height:1.65;"><strong style="color:var(--red);">RESPONSIBLE GAMBLING:</strong> If gambling stops being fun, free confidential help is available 24/7 at <strong style="color:var(--text);">1800 858 858</strong> or <a href="#" style="color:var(--gold);text-decoration:none;">gamblinghelponline.org.au</a>. You can set deposit and time limits on your account at any time.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:40px;margin-bottom:48px;">
+
+      <div>
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:18px;">
+          <div style="width:28px;height:28px;background:linear-gradient(135deg,#F0B429,#C48A10);border-radius:7px;display:flex;align-items:center;justify-content:center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <span style="font-family:'Bebas Neue';font-size:17px;letter-spacing:0.07em;">DYNASTY<span class="gold-text">BET</span></span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.7;">Australia's fastest-growing sports betting platform. NT Racing Commission licensed.</p>
+      </div>
+
+      <div>
+        <h4 style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--dim);text-transform:uppercase;margin-bottom:16px;">Sports</h4>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color=this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">AFL</a>
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">NRL</a>
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Soccer / EPL</a>
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Tennis</a>
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Horse Racing</a>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--dim);text-transform:uppercase;margin-bottom:16px;">Company</h4>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">About</a>
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Careers</a>
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Press</a>
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Contact</a>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--dim);text-transform:uppercase;margin-bottom:16px;">Help</h4>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">How to Bet</a>
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Deposits & Withdrawals</a>
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Account Verification</a>
+          <a href="#" style="font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Responsible Gambling</a>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:28px;display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:center;">
+      <p style="font-size:12px;color:var(--muted);">© 2026 DynastyBet Pty Ltd. ABN 12 345 678 901. Licensed by NT Racing Commission. 18+ only.</p>
+      <div style="display:flex;gap:20px;">
+        <a href="#" style="font-size:12px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Privacy</a>
+        <a href="#" style="font-size:12px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Terms</a>
+        <a href="#" style="font-size:12px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Cookies</a>
+      </div>
+    </div>
+
+  </div>
+</footer>
+
+<script>
+// ── Navbar scroll ──
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 20);
+}, { passive: true });
+
+// ── Scroll reveal ──
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Counter animation ──
+const counterObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting || e.target.dataset.done) return;
+    e.target.dataset.done = '1';
+    const target = +e.target.dataset.target;
+    const prefix = e.target.dataset.prefix || '';
+    const suffix = e.target.dataset.suffix || '';
+    const start = performance.now();
+    const duration = 1800;
+    (function update(now) {
+      const p = Math.min((now - start) / duration, 1);
+      const val = Math.floor((1 - Math.pow(1 - p, 3)) * target);
+      e.target.textContent = prefix + val + suffix;
+      if (p < 1) requestAnimationFrame(update);
+    })(start);
+  });
+}, { threshold: 0.5 });
+document.querySelectorAll('.counter').forEach(el => counterObs.observe(el));
+
+// ── Live ticker ──
+const tickerData = [
+  { sport: 'AFL', teams: 'Collingwood v Brisbane', odds: '1.62 / 2.40' },
+  { sport: 'NRL', teams: 'Storm v Roosters', odds: '1.72 / 2.20' },
+  { sport: 'EPL', teams: 'Man City v Arsenal', odds: '1.55 / 3.10' },
+  { sport: 'NBA', teams: 'Lakers v Celtics', odds: '2.20 / 1.72' },
+  { sport: 'Tennis', teams: 'Djokovic v Alcaraz', odds: '2.10 / 1.80' },
+  { sport: 'UFC', teams: 'Jones v Miocic', odds: '1.45 / 2.75' },
+  { sport: 'A-League', teams: 'City v Victory', odds: '2.05 / 2.05' },
+  { sport: 'Cricket', teams: 'AUS v ENG T20', odds: '1.68 / 2.28' },
+];
+const tickerEl = document.getElementById('ticker-inner');
+const html = [...tickerData, ...tickerData].map(m =>
+  `<span style="display:inline-flex;align-items:center;gap:10px;margin-right:52px;font-size:13px;">
+    <span style="background:rgba(255,64,96,0.18);border:1px solid rgba(255,64,96,0.35);color:var(--red);font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:0.06em;">LIVE</span>
+    <span style="font-weight:600;color:var(--text);">${m.sport}</span>
+    <span style="color:var(--dim);">${m.teams}</span>
+    <span style="color:var(--gold);font-weight:700;font-family:'JetBrains Mono',monospace;font-size:12px;">${m.odds}</span>
+    <span style="color:rgba(255,255,255,0.08);font-size:16px;">|</span>
+  </span>`
+).join('');
+tickerEl.innerHTML = html;
+
+// ── Odds flicker ──
+const liveOdds = [
+  { id: 'h-o1-v', base: 1.85 }, { id: 'h-o3-v', base: 2.10 },
+  { id: 'm1-o1', base: 1.62 }, { id: 'm1-o3', base: 2.40 },
+  { id: 'm2-o1', base: 1.72 }, { id: 'm2-o3', base: 2.20 },
+  { id: 'm3-o1', base: 1.55 }, { id: 'm3-o2', base: 4.20 }, { id: 'm3-o3', base: 3.10 },
+];
+function flickerOdds() {
+  const item = liveOdds[Math.floor(Math.random() * liveOdds.length)];
+  const el = document.getElementById(item.id);
+  if (el) {
+    item.base = Math.max(1.05, item.base + (Math.random() - 0.5) * 0.08);
+    el.textContent = item.base.toFixed(2);
+    const btn = el.closest('.odd-btn');
+    if (btn) { btn.classList.add('flash'); setTimeout(() => btn.classList.remove('flash'), 500); }
+  }
+  setTimeout(flickerOdds, 600 + Math.random() * 1600);
+}
+flickerOdds();
+
+// ── Particles ──
+const pc = document.getElementById('particles-container');
+for (let i = 0; i < 22; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const size = 2 + Math.random() * 3;
+  p.style.cssText = `
+    left:${Math.random()*100}%;
+    width:${size}px; height:${size}px;
+    background:${Math.random()>0.5?'#F0B429':'#00D68F'};
+    opacity:${0.15+Math.random()*0.35};
+    animation-duration:${9+Math.random()*14}s;
+    animation-delay:${Math.random()*10}s;
+  `;
+  pc.appendChild(p);
+}
+
+// ── Sport pill toggle ──
+document.querySelectorAll('.sport-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.sport-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+  });
+});
+
+// ── Live market counter flicker ──
+const lmc = document.getElementById('live-market-count');
+setInterval(() => {
+  const base = 1248 + Math.floor(Math.random() * 20 - 5);
+  lmc.textContent = base.toLocaleString();
+}, 3000);
+</script>
+</body>
+</html>
