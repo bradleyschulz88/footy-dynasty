@@ -27,7 +27,8 @@ import { awayTravelRatingPenalty } from './travelFatigue.js';
 import { generateTradePool } from './defaults.js';
 import { seedNationalDraft, careerHasNationalDraft } from './draftSeed.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
-import { generateOffseasonNotifications } from './notifications.js';
+import { generateOffseasonNotifications, buildPlayerTransferRequestNotice } from './notifications.js';
+import { adjustMorale, MORALE_REASONS } from './morale.js';
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
 import { ensureSquadsForLeague, tickAiSquads, ageAiSquads, selectAiLineup } from './aiSquads.js';
@@ -423,7 +424,7 @@ function startFinals(c, league) {
 }
 
 function simFinalsPair(c, league, m, _roundLabel) {
-  let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff))
+  let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles)
     + getCaptainMatchBonus(c, true);
   const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
   const isHome = m.home === c.clubId;
@@ -467,7 +468,7 @@ function simFinalsPair(c, league, m, _roundLabel) {
     const travelPen = awayTravelRatingPenalty(isHome, c.clubId, oppId);
     const matchWeather = ensureWeatherForWeek(c, c.week);
     const getPlayerStrengthForQuarter = (qi) =>
-      teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
+      teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi, c.playerRoles)
       + benchStrengthBonus(c.squad, c.lineup, qi)
       + interchangeRotationBonus(c.squad, c.lineup, qi)
       - travelPen;
@@ -905,6 +906,8 @@ function finishSeason(c, league) {
       peakRating: Math.max(p.peakRating || 0, p.overall),
       goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0,
       suspended: 0, seasonsAtClub: (p.seasonsAtClub || 0) + 1,
+      // Fresh slate for the new season — unhappiness/listing don't carry over.
+      unhappySince: null, transferRequested: false, weeksWithoutGame: 0,
     };
   });
   const survivors = c.squad.filter((p) => !p._walking && p.age <= 36 && p.contract > 0);
@@ -970,14 +973,13 @@ function finishSeason(c, league) {
   // longer one — players return refreshed (morale up) but a touch undercooked
   // (fitness dips, to be rebuilt in pre-season). A deep run means a shorter rest.
   if (!madeFinals) {
-    c.squad = c.squad.map((p) => ({
-      ...p,
-      morale: clamp((p.morale ?? 70) + rand(6, 14), 0, 100),
-      fitness: clamp((p.fitness ?? 90) - rand(4, 10), 40, 100),
-    }));
+    c.squad = c.squad.map((p) => {
+      const np = adjustMorale(p, rand(6, 14), 'Off-season break', 0);
+      return { ...np, fitness: clamp((np.fitness ?? 90) - rand(4, 10), 40, 100) };
+    });
     c.news = [{ week: 0, type: 'info', text: `🏖️ Season done — the playing group heads off on a well-earned holiday. They'll come back refreshed for pre-season.` }, ...(c.news || [])].slice(0, 20);
   } else {
-    c.squad = c.squad.map((p) => ({ ...p, morale: clamp((p.morale ?? 70) + rand(2, 6), 0, 100) }));
+    c.squad = c.squad.map((p) => adjustMorale(p, rand(2, 6), 'Finals campaign buzz', 0));
   }
 
   if (league.tier === 4) {
@@ -1670,7 +1672,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     c.aiSquads = ensureSquadsForLeague(c, league);
     const oppSquad = c.aiSquads?.[oppId];
     const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
-    const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
+    const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles);
     const oppRating = oppSquad?.length
       ? teamRating(oppSquad, oppLineup.map((p) => p.id), { intensity: 60, focus: {} }, 1, 60)
       : aiClubRating(oppId, league.tier);
@@ -1729,7 +1731,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       if (m.home === c.clubId || m.away === c.clubId) {
         const isHome = m.home === c.clubId;
         const opp = findClub(isHome ? m.away : m.home);
-        let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
+        let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles);
         myRating += getCaptainMatchBonus(c, false);
         const scoutPrep = scoutPrepRatingBonus(c, opp.id, ev.round);
         myRating += scoutPrep;
@@ -1767,7 +1769,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         const travelPen = awayTravelRatingPenalty(isHome, c.clubId, opp.id);
         const matchWeather = ensureWeatherForWeek(c, ev.round);
         const getPlayerStrengthForQuarter = (qi) =>
-          teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
+          teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi, c.playerRoles)
           + benchStrengthBonus(c.squad, c.lineup, qi)
           + interchangeRotationBonus(c.squad, c.lineup, qi)
           + scoutPrep
@@ -1929,11 +1931,25 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   // Attribute-centred stat multiplier (generation mean ≈ 68): skilled players
   // rack up more of the ball, so box scores read as earned, not rolled.
   const attrStatMult = (val) => clamp(1 + ((val ?? 60) - 68) * 0.012, 0.75, 1.35);
+  const matchMargin = Math.abs((myResult.myTotal ?? 0) - (myResult.oppTotal ?? 0));
+  const heavyDefeat = !won && !drew && matchMargin > 40;
   c.squad = c.squad.map((p) => {
-    if (!c.lineup.includes(p.id)) return p;
+    const playedThisWeek = c.lineup.includes(p.id);
+    if (!playedThisWeek) {
+      // Fringe players track how long they've gone without a run — a couple of
+      // weeks out of the side starts to grate (logged below for transparency).
+      const weeksOut = (p.weeksWithoutGame ?? 0) + 1;
+      let np = { ...p, weeksWithoutGame: weeksOut };
+      if (weeksOut >= 2 && (np.morale ?? 75) > cfg.moraleFloor) {
+        np = adjustMorale(np, -1, MORALE_REASONS.benched, meta.round);
+        if (np.morale < cfg.moraleFloor) np.morale = cfg.moraleFloor;
+      }
+      return np;
+    }
     const fitDrop = rand(8, 18);
     // Best-on-ground performances carry personal form, even in a loss.
-    const formChange = (won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1)) + (votesById[p.id] || 0);
+    const votes = votesById[p.id] || 0;
+    const formChange = (won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1)) + votes;
     const att = attribution[p.id] || { goals: 0, behinds: 0 };
     const ballSkill = ((p.attrs?.decision ?? 60) + (p.attrs?.handball ?? 60) + (p.attrs?.endurance ?? 60)) / 3;
     const dispAdd = Math.round((isMidPreferred(p) ? rand(15, 32) : rand(8, 22)) * attrStatMult(ballSkill));
@@ -1941,13 +1957,29 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
     const tackleAdd = Math.round(rand(1, 5) * attrStatMult(p.attrs?.tackling));
     const newForm = clamp(p.form + formChange, 30, 100);
     const formHistory = [...(p.formHistory || []), p.form].slice(-5);
-    const milestoneMorale = milestones.boostIds.has(p.id) ? 3 : 0;
-    return {
-      ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
-      morale: clamp((p.morale ?? 70) + milestoneMorale, cfg.moraleFloor, 100),
+    // Logged, cause-driven morale for players who took the field. Magnitude is
+    // kept modest so balance stays close to the old streak-driven model.
+    let resultDelta, resultReason;
+    if (won) {
+      const bigWin = matchMargin >= 40;
+      resultDelta = bigWin ? 4 : 2;
+      resultReason = bigWin ? MORALE_REASONS.bigWin : MORALE_REASONS.win;
+    } else if (drew) {
+      resultDelta = 0; resultReason = null;
+    } else {
+      resultDelta = heavyDefeat ? -4 : -2;
+      resultReason = heavyDefeat ? MORALE_REASONS.heavyLoss : MORALE_REASONS.loss;
+    }
+    let np = { ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
+      weeksWithoutGame: 0,
       goals: p.goals + (att.goals || 0), behinds: p.behinds + (att.behinds || 0), disposals: p.disposals + dispAdd,
-      marks: p.marks + markAdd, tackles: p.tackles + tackleAdd, gamesPlayed: p.gamesPlayed + 1,
-    };
+      marks: p.marks + markAdd, tackles: p.tackles + tackleAdd, gamesPlayed: p.gamesPlayed + 1 };
+    if (resultReason) np = adjustMorale(np, resultDelta, resultReason, meta.round);
+    // Cheap "starred" bump: vote-getters / milestone heroes get a lift, logged.
+    if (votes > 0) np = adjustMorale(np, 2, MORALE_REASONS.bestOnGround, meta.round);
+    else if (milestones.boostIds.has(p.id)) np = adjustMorale(np, 3, MORALE_REASONS.recalled, meta.round);
+    if (np.morale < cfg.moraleFloor) np.morale = cfg.moraleFloor;
+    return np;
   });
   if (milestones.items.length > 0) {
     c.news = [...milestones.items, ...(c.news || [])].slice(0, 22);
@@ -2111,27 +2143,73 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
     bumpClubCulture(c, 2);
   }
 
-  // Streak-driven squad morale: win/lose 3+ in a row creates momentum
+  // Streak-driven squad momentum: win/lose 3+ in a row nudges the dressing room.
+  // (Per-match win/loss/margin morale is applied with logged reasons above.)
   if (meta.phase === 'season') {
     const streak = c.winStreak ?? 0;
-    const margin = Math.abs(myResult.myTotal - myResult.oppTotal);
     let moraleDelta = 0;
-    if (streak >= 3) moraleDelta += 1;
-    else if (streak <= -3) moraleDelta -= 1;
-    if (won && margin >= 40) moraleDelta += 1;
-    else if (!won && !drew && margin >= 40) moraleDelta -= 1;
+    let streakReason = null;
+    if (streak >= 3) { moraleDelta = 1; streakReason = 'On a winning run'; }
+    else if (streak <= -3) { moraleDelta = -1; streakReason = 'Losing run biting'; }
     if (moraleDelta !== 0) {
-      c.squad = c.squad.map((p) =>
-        c.lineup.includes(p.id)
-          ? { ...p, morale: clamp((p.morale ?? 70) + moraleDelta, cfg.moraleFloor, 100) }
-          : p
-      );
+      c.squad = c.squad.map((p) => {
+        if (!c.lineup.includes(p.id)) return p;
+        const np = adjustMorale(p, moraleDelta, streakReason, meta.round);
+        if (np.morale < cfg.moraleFloor) np.morale = cfg.moraleFloor;
+        return np;
+      });
     }
   }
 
   if (isHome) {
     const weather = ensureWeatherForWeek(c, meta.round);
     c.groundCondition = applyGroundDegradation(c.groundCondition ?? 85, weather, c.facilities?.stadium?.level ?? 1);
+  }
+}
+
+/**
+ * Player unhappiness escalation. Runs once per round advance (after the week
+ * counter is set). Fair, legible triggers:
+ *   - morale < 40 sets `unhappySince` (the week it started); morale >= 50 clears
+ *     it and any standing transfer request.
+ *   - 3+ consecutive unhappy weeks, still < 40, contracted senior (OVR >= 65,
+ *     contract > 0), not already requested → transfer request + notification.
+ *   - A standing transfer request drains a little form each unsettled week
+ *     (training disruption). Mild, floored.
+ */
+function applyUnhappinessEscalation(c, league, week) {
+  if (!Array.isArray(c.squad)) return;
+  if (!Array.isArray(c.inbox)) c.inbox = [];
+  const newRequests = [];
+  c.squad = c.squad.map((p) => {
+    let np = p;
+    const morale = np.morale ?? 75;
+    if (morale < 40) {
+      if (np.unhappySince == null) np = { ...np, unhappySince: week };
+    } else if (morale >= 50) {
+      if (np.unhappySince != null || np.transferRequested) {
+        np = { ...np, unhappySince: null, transferRequested: false };
+      }
+    }
+    const unhappySince = np.unhappySince;
+    const weeksUnhappy = unhappySince != null ? week - unhappySince : 0;
+    const isSenior = (np.overall ?? 0) >= 65 && (np.contract ?? 0) > 0;
+    if (!np.transferRequested && unhappySince != null && weeksUnhappy >= 3 && (np.morale ?? 75) < 40 && isSenior) {
+      np = { ...np, transferRequested: true };
+      newRequests.push(np);
+    }
+    // Training disruption: an unsettled, transfer-listed player loses a touch of
+    // form each week the rift persists (floored so it can't tank them).
+    if (np.transferRequested && (np.morale ?? 75) < 40) {
+      np = { ...np, form: clamp((np.form ?? 70) - rand(1, 2), 30, 100) };
+    }
+    return np;
+  });
+  for (const p of newRequests) {
+    const name = p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'A player');
+    const note = buildPlayerTransferRequestNotice(p);
+    if (!c.inbox.some((m) => m.id === note.id)) c.inbox.unshift(note);
+    c.news = [{ week, type: 'loss', text: `🗣️ ${name} has requested a trade — unsettled by limited opportunities.` }, ...(c.news || [])].slice(0, 20);
   }
 }
 
@@ -2181,6 +2259,7 @@ function applyPostRoundBoardAndCalendar(c, league, club, meta, myResult) {
   }
 
   c.week = meta.round;
+  applyUnhappinessEscalation(c, league, meta.round);
   if (meta.phase === 'season') {
     refreshTurningPointForNextFixture(c, league);
     refreshCrucialFive(c, league, meta.round);

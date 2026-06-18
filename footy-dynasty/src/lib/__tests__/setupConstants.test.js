@@ -24,8 +24,8 @@ describe('constants', () => {
     expect(SAVE_VERSION).toBeGreaterThan(0);
   });
 
-  it('SLOT_IDS has 3 entries (A, B, C)', () => {
-    expect(SLOT_IDS).toEqual(['A', 'B', 'C']);
+  it('SLOT_IDS has 8 entries (A–H)', () => {
+    expect(SLOT_IDS).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
   });
 });
 

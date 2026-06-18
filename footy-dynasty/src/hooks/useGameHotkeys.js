@@ -14,17 +14,22 @@ export function useGameHotkeys({
   onAdvance,
   onOpenShortcuts,
   onNavigateScreen,
+  onQuickSave,
   tutorialStep,
   tutorialComplete,
 }) {
   const advanceRef = useRef(onAdvance);
   const navRef = useRef(onNavigateScreen);
   const openHelpRef = useRef(onOpenShortcuts);
+  const quickSaveRef = useRef(onQuickSave);
   const disabledRef = useRef(advanceDisabled);
 
   useEffect(() => {
     advanceRef.current = onAdvance;
   }, [onAdvance]);
+  useEffect(() => {
+    quickSaveRef.current = onQuickSave;
+  }, [onQuickSave]);
   useEffect(() => {
     navRef.current = onNavigateScreen;
   }, [onNavigateScreen]);
@@ -40,6 +45,20 @@ export function useGameHotkeys({
 
     const onKeyDown = (ev) => {
       if (ev.defaultPrevented) return;
+
+      // Ctrl/Cmd+S — quick-save to the active slot. Handled before the
+      // modifier guard below (and works even while typing) so the browser's
+      // own save dialog never opens.
+      if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (ev.key === "s" || ev.key === "S")) {
+        ev.preventDefault();
+        try {
+          quickSaveRef.current?.();
+        } catch (_) {
+          /* never let a save failure throw out of the key handler */
+        }
+        return;
+      }
+
       if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
       const target = ev.target;
       if (isTypingTarget(target)) return;

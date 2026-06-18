@@ -5,7 +5,7 @@
 import { PYRAMID, findClub } from '../data/pyramid.js';
 import { getClubGround } from '../data/grounds.js';
 
-import { migrateSaveBoardV8, migrateSaveBoardV9, migrateSaveBoardV10, migrateSaveBoardV11 } from './board.js';
+import { migrateSaveBoardV8, migrateSaveBoardV9, migrateSaveBoardV10, migrateSaveBoardV11, assignBoardPersonalities } from './board.js';
 import { migrateSaveGameDepthV12 } from './gameDepth.js';
 import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { migrateDraftPoolScouting } from './draftScouting.js';
@@ -441,6 +441,14 @@ export function migrate(save) {
     s.saveVersion = 32;
     // End-of-season job moves: the agreed offer that fires at the next rollover.
     if (s.pendingJobOffer === undefined) s.pendingJobOffer = null;
+  }
+
+  if (v < 33) {
+    s.saveVersion = 33;
+    // Backfill board member personality archetypes onto existing saves.
+    if (s.board?.members) {
+      assignBoardPersonalities(s.board, s.clubId);
+    }
   }
 
   return s;

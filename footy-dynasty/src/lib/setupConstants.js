@@ -8,10 +8,10 @@ export const SETUP_SS_KEY_LEGACY = "footy-dynasty-setup";
  * Persisted career schema version — bump only when `migrate()` gains new steps.
  * Imported by `save.js` (re-exported) and by career setup so the wizard does not load `save.js`.
  */
-export const SAVE_VERSION = 32;
+export const SAVE_VERSION = 33;
 
 /** Save slot ids — must match `save.js` slot localStorage keys (`footy-dynasty-career-slot-*`). */
-export const SLOT_IDS = ['A', 'B', 'C'];
+export const SLOT_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 /** Slot id with newest `savedAt` in meta (same shape as `readSlotMeta()`), or null. */
 export function getLatestSavedSlotMeta(meta) {

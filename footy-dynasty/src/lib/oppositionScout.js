@@ -56,6 +56,8 @@ export function buildOppositionReport(career, league, opts = {}) {
     career.training,
     1,
     60,
+    null,
+    career.playerRoles,
   );
 
   const ladder = sortedLadder(career.ladder || []);

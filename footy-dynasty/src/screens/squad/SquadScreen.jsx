@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { PYRAMID, findClub } from '../../data/pyramid.js';
 import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash } from '../../lib/playerGen.js';
+import { PLAYER_ROLES, roleFit } from '../../lib/playerRoles.js';
 import { fmtK, clamp } from '../../lib/format.js';
 import { TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
 import { css, RatingDot, Pill } from '../../components/primitives.jsx';
@@ -28,6 +29,13 @@ import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
 import { RenewalsTab } from "../contracts/ContractRenewals.jsx";
 import PlayerCard3D from "../../components/PlayerCard3D.jsx";
 import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
+import { moraleBand, moraleToneColor, promiseGameTime, backPlayer } from "../../lib/morale.js";
+
+/** Small morale-state pill for the player card / rows. */
+function MoraleBandPill({ morale }) {
+  const band = moraleBand(morale);
+  return <Pill color={moraleToneColor(band.tone)}>{band.label}</Pill>;
+}
 
 // ── Position line colour helper ─────────────────────────────────────────────
 const POS_LINE_COLOR = {
@@ -356,6 +364,9 @@ function PlayersTab() {
                   <span className="text-atext-mute">Fitness {p.fitness}</span>
                   {inLineup && <Pill color="var(--A-pos)">23</Pill>}
                   {p.injured > 0 && <Pill color="var(--A-neg)">{p.injured}w</Pill>}
+                  {p.transferRequested
+                    ? <Pill color="var(--A-neg)">Trade request</Pill>
+                    : (p.morale ?? 75) < 45 && <Pill color={moraleToneColor(moraleBand(p.morale).tone)}>{moraleBand(p.morale).label}</Pill>}
                 </div>
               </button>
             );
@@ -392,6 +403,9 @@ function PlayersTab() {
                     {inLineup && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:"var(--A-pos)", boxShadow:"0 0 4px var(--A-pos)"}} />}
                     <span className="truncate text-sm font-semibold text-atext">{pName(p)}</span>
                     {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"color-mix(in srgb, var(--A-accent) 13%, transparent)",color:"var(--A-accent)"}}>R</span>}
+                    {p.transferRequested
+                      ? <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0 whitespace-nowrap" style={{background:"color-mix(in srgb, var(--A-neg) 14%, transparent)",color:"var(--A-neg)",border:"1px solid color-mix(in srgb, var(--A-neg) 30%, transparent)"}}>TRADE REQ</span>
+                      : (p.morale ?? 75) < 45 && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0 whitespace-nowrap" style={{background:`color-mix(in srgb, ${moraleToneColor(moraleBand(p.morale).tone)} 14%, transparent)`,color:moraleToneColor(moraleBand(p.morale).tone)}}>UNHAPPY</span>}
                   </div>
                   <div className="text-center" title={POSITION_NAMES[p.position] + (p.secondaryPosition ? ` / ${POSITION_NAMES[p.secondaryPosition]}` : '')}><span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span></div>
                   <div className="text-center text-sm text-atext-dim">{p.age}</div>
@@ -700,6 +714,25 @@ function PlayerDetail({ player, onClose }) {
     updateCareer({ squad: career.squad.filter(p => p.id !== player.id), lineup: removeIdFromLineup(career.lineup, player.id) });
     onClose();
   };
+  // Unhappiness resolution. promiseGameTime also clears any standing trade request
+  // and the matching notification row; backPlayer is a smaller public vote of faith.
+  const resolveUnhappiness = (fn, label) => {
+    const week = career.week ?? 0;
+    const updated = fn(player, week);
+    const squad = career.squad.map((p) => (p.id === player.id ? updated : p));
+    const patch = {
+      squad,
+      news: [{ week, type: 'info', text: `🤝 ${pName}: ${label}.` }, ...(career.news || [])].slice(0, 25),
+    };
+    // Clearing a trade request resolves the bell notification too.
+    if (player.transferRequested && !updated.transferRequested) {
+      patch.inbox = (career.inbox || []).map((m) =>
+        m.id === `transfer_req_${player.id}` ? { ...m, resolved: true, resolvedAt: Date.now() } : m);
+    }
+    updateCareer(patch);
+  };
+  const onPromiseGameTime = () => resolveUnhappiness(promiseGameTime, 'promised more game time');
+  const onBackPlayer = () => resolveUnhappiness(backPlayer, 'publicly backed by the coach');
   const ATTR_COLORS = { kicking:"#4ADBE8", marking:"#4AE89A", handball:"#A78BFA", tackling:"#E84A6F", speed:"var(--A-accent)", endurance:"#4AE89A", strength:"#E84A6F", decision:"#4ADBE8" };
 
   const detailClub = findClub(career.clubId);
@@ -748,9 +781,38 @@ function PlayerDetail({ player, onClose }) {
                   <FormSparkline history={player.formHistory} current={player.form} />
                 </div>
               )}
+              {l === 'Morale' && (
+                <div className="flex justify-center mt-1.5">
+                  <MoraleBandPill morale={player.morale} />
+                </div>
+              )}
             </div>
           ))}
         </div>
+
+        {/* Morale event log — last few cause-and-effect changes */}
+        {(player.moraleLog?.length > 0 || player.transferRequested) && (
+          <div className="mt-3 rounded-xl p-2.5" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+            <div className="text-[8px] font-black uppercase tracking-widest text-atext-mute mb-1.5">Morale Log</div>
+            {player.transferRequested && (
+              <div className="text-[10px] font-bold text-aneg mb-1.5">🗣️ Has requested a trade — unsettled by limited opportunities.</div>
+            )}
+            {(player.moraleLog || []).slice(0, 4).map((e, i) => {
+              const up = (e.delta ?? 0) >= 0;
+              return (
+                <div key={i} className="flex items-center justify-between gap-2 text-[10px] leading-snug py-0.5">
+                  <span className="text-atext-dim truncate">{e.reason || '—'}</span>
+                  <span className="font-mono font-bold flex-shrink-0" style={{ color: up ? 'var(--A-pos)' : 'var(--A-neg)' }}>
+                    {up ? '+' : ''}{e.delta ?? 0}
+                  </span>
+                </div>
+              );
+            })}
+            {(player.moraleLog?.length ?? 0) === 0 && (
+              <div className="text-[10px] text-atext-mute italic">No recent changes logged.</div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Attributes */}
@@ -840,6 +902,17 @@ function PlayerDetail({ player, onClose }) {
 
       {/* Actions */}
       <div className="p-4 space-y-2" style={{borderTop:"1px solid var(--A-line)"}}>
+        {(player.transferRequested || (player.morale ?? 75) < 45) && (
+          <div className="rounded-xl p-2.5 mb-1 space-y-2" style={{ background: 'color-mix(in srgb, var(--A-neg) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--A-neg) 25%, transparent)' }}>
+            <div className="text-[10px] font-bold text-aneg leading-snug">
+              {player.transferRequested ? 'Wants a trade. Win him back:' : 'Mood is dropping — get ahead of it:'}
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={onPromiseGameTime} className={`flex-1 ${css.btnPrimary} text-xs py-2`}>Promise game time</button>
+              <button type="button" onClick={onBackPlayer} className={`flex-1 ${css.btnGhost} text-xs py-2`}>Back publicly</button>
+            </div>
+          </div>
+        )}
         <button onClick={toggleLineup} className={`w-full text-sm font-bold py-2.5 rounded-xl transition-all ${inLineup ? css.btnDanger : css.btnPrimary}`}>
           {inLineup ? "Remove from match squad" : lineupPlayerCount(career.lineup) >= LINEUP_CAP ? "Match squad full" : "Add to match squad"}
         </button>
@@ -912,6 +985,53 @@ function ZoneTacticPicker({ label, zoneColor, currentKey, onSelect, players }) {
   );
 }
 
+const ROLE_GRADE_COLOR = { A: 'var(--A-pos)', B: '#64748B', C: 'var(--A-neg)' };
+
+function PlayerRolesPanel({ lineup, playerRoles, onSet }) {
+  const roleEntries = Object.entries(PLAYER_ROLES);
+  return (
+    <div className={`${css.panel} p-5`}>
+      <h3 className={`${css.h1} text-2xl mb-1`}>PLAYER ROLES</h3>
+      <p className="text-xs text-atext-dim mb-4 leading-snug">
+        Assign roles to starters. <span className="text-atext font-semibold">A-grade</span> fits boost your team rating;{' '}
+        <span className="text-atext font-semibold">C-grade</span> mismatches cost you.
+      </p>
+      {lineup.length === 0 ? (
+        <div className="text-[11px] text-atext-dim">No players in your match squad yet.</div>
+      ) : (
+        <div className="space-y-1.5">
+          {lineup.map((p) => {
+            const roleKey = playerRoles[p.id] || 'none';
+            const fit = roleFit(p, roleKey);
+            const showFit = roleKey !== 'none' && PLAYER_ROLES[roleKey]?.attrs?.length;
+            return (
+              <div key={p.id} className={`${css.inset} flex items-center gap-2 p-2`}>
+                <RatingDot value={p.overall} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12px] font-semibold text-atext truncate">{p.name}</div>
+                  <div className="text-[10px] text-atext-dim uppercase tracking-wide">{formatPositionSlash(p) || p.position}</div>
+                </div>
+                {showFit ? (
+                  <Pill color={ROLE_GRADE_COLOR[fit.grade]}>{fit.grade}</Pill>
+                ) : null}
+                <select
+                  value={roleKey}
+                  onChange={(e) => onSet(p.id, e.target.value)}
+                  className="bg-apanel border border-aline rounded-lg text-[11px] text-atext px-2 py-1.5 min-h-[36px] max-w-[150px]"
+                >
+                  {roleEntries.map(([key, r]) => (
+                    <option key={key} value={key}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TacticsTab({ onOpenClubStaff }) {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
@@ -970,6 +1090,9 @@ function TacticsTab({ onOpenClubStaff }) {
           </button>
         )}
       </div>
+
+      <PlayerRolesPanel lineup={lineup} playerRoles={career.playerRoles || {}}
+        onSet={(playerId, roleKey) => updateCareer({ playerRoles: { ...(career.playerRoles || {}), [playerId]: roleKey } })} />
 
     <div className="grid md:grid-cols-2 gap-4">
       <div className={`${css.panel} p-5`}>

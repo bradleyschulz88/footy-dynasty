@@ -5,6 +5,7 @@ import { collectFocusables } from "../lib/hotkeysHelpers.js";
 
 const ROWS = [
   ["Advance time", "Space"],
+  ["Quick save", "Ctrl + S"],
   ["Keyboard shortcuts", "? or Shift + /"],
   ["Hub", "1"],
   ["Squad", "2"],

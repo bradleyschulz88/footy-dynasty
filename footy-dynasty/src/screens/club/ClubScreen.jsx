@@ -9,7 +9,7 @@ import {
   Heart, Activity, Sparkles,
   GraduationCap, Briefcase,
   Award, AlertCircle, ChevronsUp, FileText,
-  Landmark, LayoutDashboard, Wrench, MessageCircle,
+  Landmark, LayoutDashboard, Wrench, MessageCircle, BarChart3,
 } from "lucide-react";
 import { seedRng, rand, pick } from '../../lib/rng.js';
 import { STATES, PYRAMID, findClub, findLeagueOf } from '../../data/pyramid.js';
@@ -38,6 +38,7 @@ import {
 import { BOARD_FINANCIAL_OBJECTIVES, GAMING_VENUE } from '../../lib/finance/constants.js';
 import {
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
+  evaluateSponsorCounter, sponsorCounterAcceptChance, sponsorClauseTerms,
 } from '../../lib/finance/sponsors.js';
 import {
   boardObjectiveUiStatus,
@@ -61,6 +62,7 @@ import {
   tutorialHighlightTab,
 } from "../../components/TutorialOverlay.jsx";
 import { ClubOverviewTab, CommercialKpiStrip, ClubBreadcrumb } from "./ClubNavigationHub.jsx";
+import AnalyticsTab from "./AnalyticsTab.jsx";
 import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
 
 function clubLeafSection(leaf, showCommittee) {
@@ -69,7 +71,7 @@ function clubLeafSection(leaf, showCommittee) {
   const ops = ["facilities", "staff"];
   if (showCommittee) ops.push("committee");
   if (ops.includes(leaf)) return "operations";
-  if (["kits", "honours", "rookies"].includes(leaf)) return "identity";
+  if (["kits", "honours", "rookies", "analytics"].includes(leaf)) return "identity";
   return "overview";
 }
 
@@ -136,6 +138,7 @@ export default function ClubScreen({ club, tab, setTab, tutorialActive }) {
       { key: "kits", label: "Kits", icon: Shirt },
       { key: "honours", label: "Honours", icon: Award },
       { key: "rookies", label: "Rookie List", icon: Sprout },
+      { key: "analytics", label: "Analytics", icon: BarChart3 },
     ];
   }
 
@@ -218,6 +221,7 @@ export default function ClubScreen({ club, tab, setTab, tutorialActive }) {
       {t === "committee" && showCommittee && <CommitteeTab club={club} />}
       {t === "honours" && <HonoursTab club={club} />}
       {t === "rookies" && <RookieListTab />}
+      {t === "analytics" && <AnalyticsTab />}
     </div>
   );
 }
@@ -1600,6 +1604,94 @@ function BoardConfidenceChart() {
   );
 }
 
+// A single new-offer card with Accept / Counter / Decline + a top-4 clause toggle.
+function SponsorOfferCard({ offer, onAccept, onDecline, onCounter, onSignWithClause }) {
+  const base = offer.annualValue ?? 0;
+  const minV = base;
+  const maxV = Math.round(base * 1.5);
+  const [mode, setMode] = useState(null); // null | 'counter'
+  const [counter, setCounter] = useState(base);
+  const [withClause, setWithClause] = useState(false);
+
+  const clauseTerms = sponsorClauseTerms(offer);
+  const odds = Math.round(sponsorCounterAcceptChance(offer, counter) * 100);
+  const oddsColor = odds >= 66 ? 'var(--A-pos)' : odds >= 33 ? '#FFB347' : 'var(--A-neg)';
+
+  const sendCounter = () => {
+    onCounter(offer, counter, withClause ? sponsorClauseTerms(offer) : undefined);
+    setMode(null);
+  };
+  const accept = () => {
+    if (withClause) onSignWithClause(offer, clauseTerms);
+    else onAccept(offer);
+  };
+
+  return (
+    <div className={`${css.inset} p-4`}>
+      <div className="flex items-start justify-between mb-2">
+        <div>
+          <div className="font-display text-xl">{offer.name}</div>
+          <div className="text-[10px] text-atext-dim uppercase tracking-widest">{offer.category} · {offer.type}</div>
+        </div>
+        <Pill color="var(--A-accent)">{offer.yearsLeft}y</Pill>
+      </div>
+      <div className="text-[11px] text-atext-dim mb-2">
+        Offer: <span className="font-bold text-apos">{fmtK(base)}/yr</span>
+      </div>
+
+      {/* Top-4 performance clause toggle */}
+      <button
+        onClick={() => setWithClause(v => !v)}
+        className={`w-full text-left text-[11px] px-3 py-2 rounded-lg mb-2 border ${withClause ? 'border-aaccent bg-aaccent/10' : 'border-transparent bg-apanel-2 hover:bg-apanel-2/70'}`}
+      >
+        <span className="font-bold">{withClause ? '✓ ' : '+ '}Add a top-4 performance clause</span>
+        <div className="text-atext-dim mt-0.5">
+          {fmtK(clauseTerms.base)}/yr guaranteed · <span style={{color: 'var(--A-accent)'}}>+{fmtK(clauseTerms.bonus)} if you finish top 4</span>
+        </div>
+      </button>
+
+      {mode === 'counter' && (
+        <div className="mb-2 p-3 rounded-lg bg-apanel-2">
+          <div className="flex items-center justify-between text-[11px] mb-1">
+            <span className="text-atext-dim uppercase tracking-widest">Counter</span>
+            <span className="font-bold text-atext">{fmtK(counter)}/yr</span>
+          </div>
+          <input
+            type="range"
+            min={minV}
+            max={maxV}
+            step={Math.max(1, Math.round(base * 0.01))}
+            value={counter}
+            onChange={e => setCounter(Number(e.target.value))}
+            className="w-full"
+          />
+          <div className="flex items-center justify-between mt-2 text-[11px]">
+            <span className="text-atext-dim">Acceptance odds</span>
+            <span className="font-bold" style={{ color: oddsColor }}>{odds}%</span>
+          </div>
+          <div className="flex gap-2 justify-end mt-2">
+            <button onClick={() => setMode(null)} className="text-xs px-3 py-2 rounded-lg text-atext-mute hover:text-atext">Cancel</button>
+            <button onClick={sendCounter} className={`${css.btnPrimary} text-xs px-3 py-2`}>Send counter</button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-2 justify-end flex-wrap">
+        <button onClick={() => onDecline(offer)} className="text-xs px-3 py-2 rounded-lg text-atext-mute hover:text-atext">Pass</button>
+        <button
+          onClick={() => { setCounter(base); setMode(mode === 'counter' ? null : 'counter'); }}
+          className="text-xs px-3 py-2 rounded-lg text-aaccent hover:bg-aaccent/10"
+        >
+          Counter
+        </button>
+        <button onClick={accept} className={`${css.btnPrimary} text-xs px-3 py-2`}>
+          {withClause ? 'Accept w/ Clause' : 'Accept Deal'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function SponsorsTab() {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
@@ -1637,6 +1729,35 @@ function SponsorsTab() {
   };
   const declineOffer = (offer) => {
     updateCareer({ sponsorOffers: offers.filter(o => o.offerId !== offer.offerId) });
+  };
+  // Sign an offer, optionally at a negotiated value and/or with a top-4 clause.
+  const signOffer = (offer, { finalValue, clauseTerms } = {}) => {
+    const base = { ...offer };
+    if (finalValue != null) base.annualValue = finalValue;
+    if (clauseTerms) {
+      base.annualValue = clauseTerms.base;
+      base.clause = clauseTerms.clause;
+      base.bonus = clauseTerms.bonus;
+    }
+    const patch = applySponsorOfferAcceptance(career, base);
+    const clauseNote = clauseTerms ? ` + ${fmtK(clauseTerms.bonus)} top-4 bonus` : '';
+    updateCareer({
+      ...patch,
+      sponsorOffers: offers.filter(o => o.offerId !== offer.offerId),
+      news: [{ week: career.week, type: 'win', text: `📈 New sponsor: ${base.name} (${fmtK(base.annualValue)}/yr${clauseNote}, ${base.yearsLeft}y)` }, ...(career.news || [])].slice(0, 25),
+    });
+  };
+  // Send a counter-offer; the sponsor accepts probabilistically or walks.
+  const counterOffer = (offer, counterValue, clauseTerms) => {
+    const result = evaluateSponsorCounter(offer, counterValue);
+    if (result.accepted) {
+      signOffer(offer, { finalValue: result.finalValue, clauseTerms });
+    } else {
+      updateCareer({
+        sponsorOffers: offers.filter(o => o.offerId !== offer.offerId),
+        news: [{ week: career.week, type: 'loss', text: `🤝 ${offer.name} walked away — your counter was too steep` }, ...(career.news || [])].slice(0, 25),
+      });
+    }
   };
 
   return (
@@ -1692,23 +1813,17 @@ function SponsorsTab() {
       {offers.length > 0 && (
         <div className={`${css.panel} p-5`}>
           <h3 className={`${css.h1} text-2xl mb-3`}>NEW OFFERS</h3>
-          <p className="text-xs text-atext-dim mb-3">Brands knocking on the door — performance-weighted by your finish.</p>
+          <p className="text-xs text-atext-dim mb-3">Brands knocking on the door — accept, counter for more, or add a top-4 clause.</p>
           <div className="grid md:grid-cols-2 gap-3">
             {offers.map(o => (
-              <div key={o.offerId} className={`${css.inset} p-4`}>
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="font-display text-xl">{o.name}</div>
-                    <div className="text-[10px] text-atext-dim uppercase tracking-widest">{o.category} · {o.type}</div>
-                  </div>
-                  <Pill color="var(--A-accent)">{o.yearsLeft}y</Pill>
-                </div>
-                <div className="text-[11px] text-atext-dim mb-2">Offer: <span className="font-bold text-apos">{fmtK(o.annualValue)}/yr</span></div>
-                <div className="flex gap-2 justify-end">
-                  <button onClick={() => declineOffer(o)} className="text-xs px-3 py-2 rounded-lg text-atext-mute hover:text-atext">Pass</button>
-                  <button onClick={() => acceptOffer(o)} className={`${css.btnPrimary} text-xs px-3 py-2`}>Accept Deal</button>
-                </div>
-              </div>
+              <SponsorOfferCard
+                key={o.offerId}
+                offer={o}
+                onAccept={acceptOffer}
+                onDecline={declineOffer}
+                onCounter={counterOffer}
+                onSignWithClause={(offer, clauseTerms) => signOffer(offer, { clauseTerms })}
+              />
             ))}
           </div>
         </div>
@@ -1739,6 +1854,9 @@ function SponsorsTab() {
                 <div>
                   <div className="text-[10px] text-atext-dim uppercase tracking-widest">Annual Value</div>
                   <div className="font-display text-3xl text-apos">{fmtK(s.annualValue)}</div>
+                  {s.clause === 'top4' && (
+                    <div className="mt-1 text-[10px] text-aaccent uppercase tracking-widest">+{fmtK(s.bonus)} if top 4</div>
+                  )}
                 </div>
                 <button onClick={()=>drop(s)} className="text-xs px-3 py-2 rounded-lg text-aneg hover:bg-aneg/10">Drop</button>
               </div>
