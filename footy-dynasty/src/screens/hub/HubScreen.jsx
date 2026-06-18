@@ -39,6 +39,7 @@ import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 import { finalsMagicNumber } from "../../lib/magicNumber.js";
 import { seasonNarrative } from "../../lib/seasonNarrative.js";
 import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
+import { moraleBand, moraleToneColor } from "../../lib/morale.js";
 
 const hubContainer = {
   hidden: { opacity: 1 },
@@ -989,6 +990,44 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
                 </div>
               )}
             </CollapsibleSection>
+          </motion.div>
+        );
+      })()}
+
+      {/* Dressing Room — morale readout, only when something's noteworthy */}
+      {(() => {
+        const squad = career.squad || [];
+        const counts = { Restless: 0, Unhappy: 0, 'Wants Out': 0 };
+        let mostAtRisk = null;
+        squad.forEach((p) => {
+          const m = p.morale ?? 75;
+          const band = moraleBand(m).label;
+          if (band in counts) counts[band] += 1;
+          if (m < 45 && (mostAtRisk == null || m < (mostAtRisk.morale ?? 75))) mostAtRisk = p;
+        });
+        if (mostAtRisk == null) return null; // nothing under 45 → stay quiet
+        const parts = [];
+        if (counts.Restless) parts.push(`${counts.Restless} Restless`);
+        if (counts.Unhappy) parts.push(`${counts.Unhappy} Unhappy`);
+        if (counts['Wants Out']) parts.push(`${counts['Wants Out']} Wants Out`);
+        const riskBand = moraleBand(mostAtRisk.morale);
+        const riskName = mostAtRisk.firstName ? `${mostAtRisk.firstName} ${mostAtRisk.lastName}` : (mostAtRisk.name || 'A player');
+        return (
+          <motion.div variants={hubItem} className="rounded-2xl p-4 flex items-start gap-3"
+            style={{ background: 'color-mix(in srgb, var(--A-neg) 6%, var(--A-panel))', border: '1px solid color-mix(in srgb, var(--A-neg) 22%, var(--A-line))' }}>
+            <span className="text-2xl flex-shrink-0">🧊</span>
+            <div className="min-w-0 flex-1">
+              <div className="font-bold text-sm text-atext">Dressing Room</div>
+              <div className="text-xs text-atext-dim mt-1 leading-relaxed">
+                {parts.join(' · ') || 'Mood is dipping'} — most at risk:{' '}
+                <span className="font-semibold text-atext">{riskName}</span>{' '}
+                <span style={{ color: moraleToneColor(riskBand.tone) }}>({riskBand.label})</span>
+                {mostAtRisk.transferRequested && <span className="text-aneg font-bold"> · trade request</span>}
+              </div>
+              <button onClick={() => setScreen('squad')} className="mt-2 text-xs font-bold hover:opacity-80" style={{ color: 'var(--A-neg)' }}>
+                Manage squad →
+              </button>
+            </div>
           </motion.div>
         );
       })()}

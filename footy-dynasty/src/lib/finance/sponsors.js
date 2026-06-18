@@ -127,3 +127,69 @@ export function applySponsorOfferAcceptance(career, offer) {
   const { offerKind: _offerKind, offerId: _offerId, ...sponsor } = offer;
   return { sponsors: [...(career.sponsors || []), sponsor] };
 }
+
+// ---------------------------------------------------------------------------
+// Interactive negotiation — Accept / Counter / Decline + performance clauses.
+// Offer/sponsor objects use `annualValue` as the headline figure (see
+// generateSponsors in defaults.js); we read that, falling back to common
+// aliases for safety.
+// ---------------------------------------------------------------------------
+
+// Pull the base annual figure from an offer/sponsor regardless of field name.
+function offerBaseValue(offer) {
+  return offer?.annualValue ?? offer?.value ?? offer?.amount ?? 0;
+}
+
+// Probability the sponsor accepts a counter-offer at `counterValue`.
+// 1.0× base = certain; 1.5× base or higher = they walk; linear in between.
+export function sponsorCounterAcceptChance(offer, counterValue) {
+  const base = offerBaseValue(offer);
+  if (base <= 0) return 0;
+  const ratio = counterValue / base;
+  if (ratio <= 1.0) return 1.0;
+  if (ratio >= 1.5) return 0;
+  return 1 - (ratio - 1.0) / 0.5;
+}
+
+/**
+ * Evaluate a counter-offer on a sponsor deal.
+ * @returns {{ accepted: boolean, finalValue: number, note: string }}
+ */
+export function evaluateSponsorCounter(offer, counterValue) {
+  const base = offerBaseValue(offer);
+  if (base <= 0) return { accepted: false, finalValue: base, note: 'No base value to negotiate.' };
+  const acceptChance = sponsorCounterAcceptChance(offer, counterValue);
+  const roll = Math.random();
+  const accepted = roll < acceptChance;
+  return accepted
+    ? { accepted: true, finalValue: Math.round(counterValue), note: 'Sponsor agreed to your terms.' }
+    : { accepted: false, finalValue: base, note: 'Sponsor walked away from the table.' };
+}
+
+/**
+ * A performance-clause variant: lower guaranteed base, bonus on success.
+ * The bonus pays out when the club finishes/sits top-4 (see annualSponsorIncome
+ * in engine.js, which applies it when career ladder position <= 4).
+ * @returns {{ base: number, bonus: number, clause: string }}
+ */
+export function sponsorClauseTerms(offer) {
+  const base = offerBaseValue(offer);
+  return {
+    base: Math.round(base * 0.8),       // 20% less guaranteed
+    bonus: Math.round(base * 0.5),      // 50% bonus if clause met
+    clause: 'top4',                      // pays out if club finishes top 4
+  };
+}
+
+/**
+ * Bonus a single sponsor contributes this period given the current ladder.
+ * Pure helper used by annualSponsorIncome — returns 0 unless the sponsor holds
+ * a met performance clause. `ladderPos` is 1-indexed (1 = top of the table).
+ */
+export function sponsorClausePayout(sponsor, ladderPos) {
+  if (!sponsor?.clause || !sponsor?.bonus) return 0;
+  if (sponsor.clause === 'top4') {
+    return ladderPos != null && ladderPos <= 4 ? sponsor.bonus : 0;
+  }
+  return 0;
+}

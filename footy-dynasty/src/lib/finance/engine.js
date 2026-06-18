@@ -16,6 +16,7 @@ import { findLeagueOf, PYRAMID } from '../../data/pyramid.js';
 import { clamp } from '../format.js';
 import { rng } from '../rng.js';
 import { scoutAccuracyBonus, ensureStaffTasks } from '../staffTasks.js';
+import { sponsorClausePayout } from './sponsors.js';
 
 // =============================================================================
 // Helpers
@@ -106,9 +107,24 @@ export function annualWageBill(career) {
   return playerWages + staffWages;
 }
 
-// Annual sponsorship total
+// Current 1-indexed ladder position for the player's club (1 = top). Null if
+// the ladder isn't available yet.
+export function currentLadderPosition(career) {
+  const ladderRow = (career?.ladder || []).slice().sort((a, b) => (b.pts ?? 0) - (a.pts ?? 0));
+  const idx = ladderRow.findIndex(r => r.id === career?.clubId);
+  return idx >= 0 ? idx + 1 : null;
+}
+
+// Annual sponsorship total. Includes performance-clause bonuses: a sponsor with
+// a met clause (e.g. clause === 'top4' while the club sits top-4) pays its bonus
+// on top of its guaranteed base. This is recomputed live from the sponsor list,
+// so clause payouts track the ladder without touching careerAdvance.js.
 export function annualSponsorIncome(career) {
-  return (career.sponsors || []).reduce((a, s) => a + (s.annualValue || 0), 0);
+  const ladderPos = currentLadderPosition(career);
+  return (career.sponsors || []).reduce(
+    (a, s) => a + (s.annualValue || 0) + sponsorClausePayout(s, ladderPos),
+    0,
+  );
 }
 
 // Expected home-game attendance for the current tier, scaled by stadium + fan mood.
