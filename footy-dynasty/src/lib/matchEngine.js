@@ -2,6 +2,7 @@ import { rand, randNorm, rng, pick } from './rng.js';
 import { findClub } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred, isBackPreferred, playerHasPosition } from './playerGen.js';
 import { lineupStructureModifier } from './lineupBalance.js';
+import { lineupRoleModifier } from './playerRoles.js';
 import { LINEUP_CAP, LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 
 export const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
@@ -32,7 +33,7 @@ export function playerEffectiveMatchRating(player, quarter = null) {
 /**
  * @param {number|null|undefined} quarter  AFL quarter 1–4; if set, applies in-game fatigue in Q3–Q4 (fitness-dependent).
  */
-export function teamRating(squad, lineup, training, facilitiesAvg, staffAvg, quarter = null) {
+export function teamRating(squad, lineup, training, facilitiesAvg, staffAvg, quarter = null, playerRoles = null) {
   const starterIds =
     lineup && lineup.length
       ? lineup.slice(0, LINEUP_FIELD_COUNT).filter((id) => id != null && id !== '')
@@ -56,7 +57,8 @@ export function teamRating(squad, lineup, training, facilitiesAvg, staffAvg, qua
     + trainingBoost
     + (facilitiesAvg - 1) * 1.2
     + (staffAvg - 60) * 0.15
-    + lineupStructureModifier(squad, lineupIdsForStructure);
+    + lineupStructureModifier(squad, lineupIdsForStructure)
+    + lineupRoleModifier(squad, lineupIdsForStructure, playerRoles);
 }
 
 // Tactic adjustments (defense, balance, attack)

@@ -9,7 +9,7 @@ import {
   Heart, Activity, Sparkles,
   GraduationCap, Briefcase,
   Award, AlertCircle, ChevronsUp, FileText,
-  Landmark, LayoutDashboard, Wrench, MessageCircle,
+  Landmark, LayoutDashboard, Wrench, MessageCircle, BarChart3,
 } from "lucide-react";
 import { seedRng, rand, pick } from '../../lib/rng.js';
 import { STATES, PYRAMID, findClub, findLeagueOf } from '../../data/pyramid.js';
@@ -61,6 +61,7 @@ import {
   tutorialHighlightTab,
 } from "../../components/TutorialOverlay.jsx";
 import { ClubOverviewTab, CommercialKpiStrip, ClubBreadcrumb } from "./ClubNavigationHub.jsx";
+import AnalyticsTab from "./AnalyticsTab.jsx";
 import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
 
 function clubLeafSection(leaf, showCommittee) {
@@ -69,7 +70,7 @@ function clubLeafSection(leaf, showCommittee) {
   const ops = ["facilities", "staff"];
   if (showCommittee) ops.push("committee");
   if (ops.includes(leaf)) return "operations";
-  if (["kits", "honours", "rookies"].includes(leaf)) return "identity";
+  if (["kits", "honours", "rookies", "analytics"].includes(leaf)) return "identity";
   return "overview";
 }
 
@@ -136,6 +137,7 @@ export default function ClubScreen({ club, tab, setTab, tutorialActive }) {
       { key: "kits", label: "Kits", icon: Shirt },
       { key: "honours", label: "Honours", icon: Award },
       { key: "rookies", label: "Rookie List", icon: Sprout },
+      { key: "analytics", label: "Analytics", icon: BarChart3 },
     ];
   }
 
@@ -218,6 +220,7 @@ export default function ClubScreen({ club, tab, setTab, tutorialActive }) {
       {t === "committee" && showCommittee && <CommitteeTab club={club} />}
       {t === "honours" && <HonoursTab club={club} />}
       {t === "rookies" && <RookieListTab />}
+      {t === "analytics" && <AnalyticsTab />}
     </div>
   );
 }

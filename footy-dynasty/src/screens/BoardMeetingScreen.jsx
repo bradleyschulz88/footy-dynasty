@@ -5,6 +5,13 @@ import React from "react";
 import { Landmark } from "lucide-react";
 import { css } from "../components/primitives.jsx";
 import { useCareer } from "../lib/careerStore.js";
+import { BOARD_PERSONALITIES, boardMemberFlavor } from "../lib/board.js";
+
+function moodForConfidence(conf) {
+  if (conf >= 70) return "warm";
+  if (conf >= 40) return "neutral";
+  return "critical";
+}
 
 export default function BoardMeetingScreen({ blocking, onChoose }) {
   const career = useCareer();
@@ -14,6 +21,8 @@ export default function BoardMeetingScreen({ blocking, onChoose }) {
   const tier = blocking?.leagueTier ?? 2;
   const isCommittee = tier === 3;
   const headerLabel = isCommittee ? "Scheduled committee session" : "Scheduled board session";
+  const members = career.board?.members || [];
+  const topic = blocking?.kind || "review";
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
@@ -35,6 +44,43 @@ export default function BoardMeetingScreen({ blocking, onChoose }) {
           <div className="rounded-2xl p-6 mb-6" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line-2)" }}>
             <p className="text-atext leading-relaxed text-sm">{intro}</p>
           </div>
+          {members.length > 0 && (
+            <div className="mb-6">
+              <div className="text-[11px] text-atext-mute uppercase tracking-widest mb-3 font-mono">
+                {isCommittee ? "Around the table" : "Board reactions"}
+              </div>
+              <div className="space-y-2">
+                {members.map((m) => {
+                  const mood = moodForConfidence(m.confidence ?? 50);
+                  const archetype = BOARD_PERSONALITIES[m.personality];
+                  return (
+                    <div
+                      key={m.role}
+                      className="rounded-xl p-3"
+                      style={{ background: "var(--A-panel)", border: "1px solid var(--A-line-2)" }}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-[12px] font-semibold text-atext">{m.name}</span>
+                        <span className="text-[10px] text-atext-mute font-mono uppercase tracking-wider">{m.role}</span>
+                        {archetype && (
+                          <span
+                            className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                            style={{ background: "var(--A-bg-2)", border: "1px solid var(--A-line-2)", color: "var(--A-accent)" }}
+                            title={archetype.blurb}
+                          >
+                            {archetype.label}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[12px] text-atext-mute leading-snug italic">
+                        “{boardMemberFlavor(m, { mood, topic })}”
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <div className="text-[11px] text-atext-mute uppercase tracking-widest mb-3 font-mono">Your stance</div>
           <div className="space-y-3">
             {choices.map((ch) => (

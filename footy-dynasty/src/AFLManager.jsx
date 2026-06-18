@@ -449,6 +449,7 @@ function AFLManagerInner() {
     onAdvance: advanceToNextEvent,
     onOpenShortcuts: () => setShortcutsOpen(true),
     onNavigateScreen: onNavScreen,
+    onQuickSave: handleQuickSave,
     tutorialStep: career?.tutorialStep,
     tutorialComplete: career?.tutorialComplete,
   });
@@ -520,6 +521,21 @@ function AFLManagerInner() {
     if (!career || !activeSlot) return;
     writeSlot(activeSlot, career);
     setSlotMetaTick(t => t + 1);
+  }
+
+  // Ctrl/Cmd+S quick-save — reuses the active-slot writeSlot path and surfaces
+  // a brief confirmation in the news feed. Guarded so it never throws.
+  function handleQuickSave() {
+    try {
+      if (!career || !activeSlot) return;
+      writeSlot(activeSlot, career);
+      setSlotMetaTick(t => t + 1);
+      updateCareer({
+        news: [{ week: career.week, type: 'info', text: '💾 Game saved.' }, ...(career.news || [])].slice(0, 25),
+      });
+    } catch (_) {
+      /* ignore — manual save should never break the app */
+    }
   }
 
   function handleSwitchSlot(slot) {

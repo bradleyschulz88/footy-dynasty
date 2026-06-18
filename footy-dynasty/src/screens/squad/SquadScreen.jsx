@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { PYRAMID, findClub } from '../../data/pyramid.js';
 import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash } from '../../lib/playerGen.js';
+import { PLAYER_ROLES, roleFit } from '../../lib/playerRoles.js';
 import { fmtK, clamp } from '../../lib/format.js';
 import { TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
 import { css, RatingDot, Pill } from '../../components/primitives.jsx';
@@ -912,6 +913,53 @@ function ZoneTacticPicker({ label, zoneColor, currentKey, onSelect, players }) {
   );
 }
 
+const ROLE_GRADE_COLOR = { A: 'var(--A-pos)', B: '#64748B', C: 'var(--A-neg)' };
+
+function PlayerRolesPanel({ lineup, playerRoles, onSet }) {
+  const roleEntries = Object.entries(PLAYER_ROLES);
+  return (
+    <div className={`${css.panel} p-5`}>
+      <h3 className={`${css.h1} text-2xl mb-1`}>PLAYER ROLES</h3>
+      <p className="text-xs text-atext-dim mb-4 leading-snug">
+        Assign roles to starters. <span className="text-atext font-semibold">A-grade</span> fits boost your team rating;{' '}
+        <span className="text-atext font-semibold">C-grade</span> mismatches cost you.
+      </p>
+      {lineup.length === 0 ? (
+        <div className="text-[11px] text-atext-dim">No players in your match squad yet.</div>
+      ) : (
+        <div className="space-y-1.5">
+          {lineup.map((p) => {
+            const roleKey = playerRoles[p.id] || 'none';
+            const fit = roleFit(p, roleKey);
+            const showFit = roleKey !== 'none' && PLAYER_ROLES[roleKey]?.attrs?.length;
+            return (
+              <div key={p.id} className={`${css.inset} flex items-center gap-2 p-2`}>
+                <RatingDot value={p.overall} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12px] font-semibold text-atext truncate">{p.name}</div>
+                  <div className="text-[10px] text-atext-dim uppercase tracking-wide">{formatPositionSlash(p) || p.position}</div>
+                </div>
+                {showFit ? (
+                  <Pill color={ROLE_GRADE_COLOR[fit.grade]}>{fit.grade}</Pill>
+                ) : null}
+                <select
+                  value={roleKey}
+                  onChange={(e) => onSet(p.id, e.target.value)}
+                  className="bg-apanel border border-aline rounded-lg text-[11px] text-atext px-2 py-1.5 min-h-[36px] max-w-[150px]"
+                >
+                  {roleEntries.map(([key, r]) => (
+                    <option key={key} value={key}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TacticsTab({ onOpenClubStaff }) {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
@@ -970,6 +1018,9 @@ function TacticsTab({ onOpenClubStaff }) {
           </button>
         )}
       </div>
+
+      <PlayerRolesPanel lineup={lineup} playerRoles={career.playerRoles || {}}
+        onSet={(playerId, roleKey) => updateCareer({ playerRoles: { ...(career.playerRoles || {}), [playerId]: roleKey } })} />
 
     <div className="grid md:grid-cols-2 gap-4">
       <div className={`${css.panel} p-5`}>

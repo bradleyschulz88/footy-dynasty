@@ -82,6 +82,8 @@ export default function MatchPreviewPanel({ league }) {
       career.training,
       avgFacilities(career.facilities),
       avgStaff(career.staff),
+      null,
+      career.playerRoles,
     );
     const oppRating = oppSquad?.length
       ? teamRating(oppSquad, oppLineup.map((p) => p.id), NEUTRAL_TRAINING, 1, 60)

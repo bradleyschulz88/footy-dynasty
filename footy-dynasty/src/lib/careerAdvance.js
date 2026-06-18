@@ -423,7 +423,7 @@ function startFinals(c, league) {
 }
 
 function simFinalsPair(c, league, m, _roundLabel) {
-  let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff))
+  let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles)
     + getCaptainMatchBonus(c, true);
   const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
   const isHome = m.home === c.clubId;
@@ -467,7 +467,7 @@ function simFinalsPair(c, league, m, _roundLabel) {
     const travelPen = awayTravelRatingPenalty(isHome, c.clubId, oppId);
     const matchWeather = ensureWeatherForWeek(c, c.week);
     const getPlayerStrengthForQuarter = (qi) =>
-      teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
+      teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi, c.playerRoles)
       + benchStrengthBonus(c.squad, c.lineup, qi)
       + interchangeRotationBonus(c.squad, c.lineup, qi)
       - travelPen;
@@ -1670,7 +1670,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     c.aiSquads = ensureSquadsForLeague(c, league);
     const oppSquad = c.aiSquads?.[oppId];
     const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
-    const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
+    const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles);
     const oppRating = oppSquad?.length
       ? teamRating(oppSquad, oppLineup.map((p) => p.id), { intensity: 60, focus: {} }, 1, 60)
       : aiClubRating(oppId, league.tier);
@@ -1729,7 +1729,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       if (m.home === c.clubId || m.away === c.clubId) {
         const isHome = m.home === c.clubId;
         const opp = findClub(isHome ? m.away : m.home);
-        let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff));
+        let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles);
         myRating += getCaptainMatchBonus(c, false);
         const scoutPrep = scoutPrepRatingBonus(c, opp.id, ev.round);
         myRating += scoutPrep;
@@ -1767,7 +1767,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         const travelPen = awayTravelRatingPenalty(isHome, c.clubId, opp.id);
         const matchWeather = ensureWeatherForWeek(c, ev.round);
         const getPlayerStrengthForQuarter = (qi) =>
-          teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi)
+          teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), qi, c.playerRoles)
           + benchStrengthBonus(c.squad, c.lineup, qi)
           + interchangeRotationBonus(c.squad, c.lineup, qi)
           + scoutPrep
