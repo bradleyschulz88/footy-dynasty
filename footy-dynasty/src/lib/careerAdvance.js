@@ -1,6 +1,7 @@
 // Season calendar advancement: event loop, finals, end-of-season rollover.
 // Extracted from AFLManager.jsx so the shell stays UI-focused.
 
+import { pickPressMoment } from './pressEvents.js';
 import { rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub, getAFLClubsForSeason } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred } from './playerGen.js';
@@ -1150,6 +1151,27 @@ function finishSeason(c, league) {
       }, ...(c.news || [])].slice(0, 25);
     }
   }
+  // ── Facility loan repayments (annual, per season) ───────────────────────
+  if (c.facilityLoans?.length) {
+    const paidOff = [];
+    c.facilityLoans = c.facilityLoans
+      .map(loan => ({ ...loan, seasonsLeft: loan.seasonsLeft - 1 }))
+      .filter(loan => {
+        if (loan.seasonsLeft <= 0) {
+          paidOff.push(loan);
+          return false;
+        }
+        c.finance.cash = (c.finance.cash ?? 0) - loan.annualRepayment;
+        return true;
+      });
+    paidOff.forEach(loan => {
+      c.news = [{
+        week: 0, type: 'info',
+        text: `🏗️ Facility loan for ${loan.facilityKey} fully repaid ($${(loan.originalCost / 1000).toFixed(0)}k over 5 seasons).`,
+      }, ...(c.news || [])].slice(0, 25);
+    });
+  }
+
   // Snapshot carry-forwards for next season's evaluation
   c._seasonStartCash = c.finance.cash;
   c._seasonStartTransferBudget = refillTransferBudget(c);
@@ -1869,6 +1891,16 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     applyPostRoundBoardAndCalendar(c, league, club, {
       round: ev.round, phase: ev.phase, date: ev.date, themedRound: ev.themedRound ?? null, turningPoint: null,
     }, null);
+
+    // Press moment trigger (post-round)
+    const pressMomentBye = pickPressMoment(c);
+    if (pressMomentBye) {
+      c.pendingPressMoment = {
+        id: pressMomentBye.id,
+        prompt: typeof pressMomentBye.prompt === 'function' ? pressMomentBye.prompt(c) : pressMomentBye.prompt,
+      };
+    }
+
     markTutorialCompleteAfterAdvance(c);
     setCareer(c);
     return;
@@ -2391,6 +2423,15 @@ export function resolveQ3Decision({ career, league, club, callId, subOutId, subI
 
   applyPlayerMatchEffects(c, league, meta, myResult);
   applyPostRoundBoardAndCalendar(c, league, club, meta, myResult);
+
+  // Press moment trigger (post-round, after player match)
+  const pressMomentMatch = pickPressMoment(c);
+  if (pressMomentMatch) {
+    c.pendingPressMoment = {
+      id: pressMomentMatch.id,
+      prompt: typeof pressMomentMatch.prompt === 'function' ? pressMomentMatch.prompt(c) : pressMomentMatch.prompt,
+    };
+  }
 
   c.liveMatch = null;
   c.inMatchDay = true;

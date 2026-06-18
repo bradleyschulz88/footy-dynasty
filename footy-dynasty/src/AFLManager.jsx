@@ -42,6 +42,7 @@ import SackingSequence from './screens/SackingSequence.jsx';
 import VoteOfConfidenceFlow from './screens/VoteOfConfidenceFlow.jsx';
 import BoardMeetingScreen from './screens/BoardMeetingScreen.jsx';
 import ArrivalBriefingFlow from './screens/ArrivalBriefingFlow.jsx';
+import PressConferenceScreen from './screens/PressConferenceScreen.jsx';
 import TutorialOverlay, {
   tutorialAllowsNavigation,
   tutorialMidStepCompleted,
@@ -1229,6 +1230,21 @@ function AFLManagerInner() {
             }}
           />
         )}
+        </div>
+      </AppMotionConfig>
+    );
+  }
+
+  if (career.pendingPressMoment) {
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
+          {globalStyle}
+          <PressConferenceScreen
+            onComplete={(patch) => {
+              updateCareer({ ...cloneSerializable(career), ...patch });
+            }}
+          />
         </div>
       </AppMotionConfig>
     );
