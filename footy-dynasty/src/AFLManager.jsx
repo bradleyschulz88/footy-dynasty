@@ -43,6 +43,7 @@ import VoteOfConfidenceFlow from './screens/VoteOfConfidenceFlow.jsx';
 import BoardMeetingScreen from './screens/BoardMeetingScreen.jsx';
 import ArrivalBriefingFlow from './screens/ArrivalBriefingFlow.jsx';
 import PressConferenceScreen from './screens/PressConferenceScreen.jsx';
+import LegendFarewellScreen from './screens/LegendFarewellScreen.jsx';
 import TutorialOverlay, {
   tutorialAllowsNavigation,
   tutorialMidStepCompleted,
@@ -1154,6 +1155,17 @@ function AFLManagerInner() {
             onContinue={() => updateCareer({ showFinalsEliminated: false })}
           />
         </motion.div>
+      </AppMotionConfig>
+    );
+  }
+
+  if (career.pendingFarewells?.length > 0) {
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
+          {globalStyle}
+          <LegendFarewellScreen onComplete={() => updateCareer(c => ({ ...c, pendingFarewells: [] }))} />
+        </div>
       </AppMotionConfig>
     );
   }
