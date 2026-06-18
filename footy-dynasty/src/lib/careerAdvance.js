@@ -47,7 +47,7 @@ import {
   committeeMessage, bumpCommitteeMood, postMatchFundraiser,
   ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
   groundConditionBand, journalistMatchLine, generatePostMatchHeadline,
-  updateFanbase,
+  updateFanbase, journalistBoardImpact,
 } from './community.js';
 import {
   coachTierFromScore, applyEndOfSeasonReputation,
@@ -74,6 +74,7 @@ import {
 } from './finance/sponsors.js';
 import { buildRenewalQueue, buildAutoRenewList } from './finance/contracts.js';
 import { buildStaffRenewalQueue, flushUnhandledStaffRenewals } from './staffRenewals.js';
+import { generateStaffMarket } from './staffHiring.js';
 import {
   INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, T4_COMMUNITY, T3_COMMUNITY,
 } from './finance/constants.js';
@@ -928,6 +929,19 @@ function finishSeason(c, league) {
         disposals: p.careerDisposals || 0,
       },
     });
+    // Farewell trigger: club legend (100+ career games) gets a send-off event.
+    const careerGames = p.careerGames ?? p.gamesPlayed ?? p.stats?.careerGames ?? 0;
+    if (careerGames >= 100) {
+      c.pendingFarewells = [...(c.pendingFarewells || []), {
+        id: p.id,
+        name: p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'),
+        position: p.position,
+        careerGames,
+        careerGoals: p.careerGoals ?? p.goals ?? 0,
+        age: p.age,
+        seasons: p.seasonsAtClub ?? Math.round(careerGames / 18),
+      }];
+    }
   });
   c.squad = survivors;
   c.lineup = sanitizeLineup(c.lineup, c.squad);
@@ -1289,6 +1303,11 @@ function finishSeason(c, league) {
   if (champion) bumpClubCulture(c, 15);
   c.crisisFiredThisSeason = false;
 
+  // Generate staff market for tier 1–2 clubs
+  if (league.tier <= 2) {
+    c.staffMarket = generateStaffMarket(c, league);
+  }
+
   // AFL expansion: when new clubs join (e.g. Tasmania 2028), rebuild the fixture schedule
   if (c.leagueKey === 'AFL') {
     const newClubs = getAFLClubsForSeason(c.season);
@@ -1409,6 +1428,15 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
   const financePulse = isGrassroots ? tickGrassrootsFinance(c) : tickWeeklyCashflow(c);
   if (financePulse !== 0 && !isGrassroots) {
     weeklyClubOperationsPulse(c, league?.tier ?? 3);
+  }
+
+  // Fortnightly journalist board confidence effect
+  if (c.journalist && c.week % 2 === 0) {
+    const jImpact = journalistBoardImpact(c.journalist);
+    if (jImpact !== 0) {
+      const bc = Math.max(0, Math.min(100, (c.finance?.boardConfidence ?? 50) + jImpact));
+      c.finance = { ...c.finance, boardConfidence: bc };
+    }
   }
 
   // T4 cash-shortage escalation: no sacking — instead push the coach to find
