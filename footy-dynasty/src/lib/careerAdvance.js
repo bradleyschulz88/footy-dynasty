@@ -75,7 +75,7 @@ import {
 import { buildRenewalQueue, buildAutoRenewList } from './finance/contracts.js';
 import { buildStaffRenewalQueue, flushUnhandledStaffRenewals } from './staffRenewals.js';
 import {
-  INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, T4_COMMUNITY,
+  INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, T4_COMMUNITY, T3_COMMUNITY,
 } from './finance/constants.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
@@ -1236,6 +1236,13 @@ function finishSeason(c, league) {
     }, ...(c.news || [])].slice(0, 25);
   }
 
+  // T3 season-start: collect player registration fees.
+  if (league.tier === 3) {
+    const regFees = (c.squad || []).length * T3_COMMUNITY.registrationFeePerPlayer;
+    c.finance.cash += regFees;
+    c.news = [{ week: c.week, type: 'info', text: `📋 Player registrations collected — $${Math.round(regFees / 1000)}k to kick off the season.` }, ...(c.news || [])].slice(0, 25);
+  }
+
   // T4 fundraisers also available (same as Tier 3, with committee tone)
   if (league.tier === 4) {
     c.t4GrantsThisSeason = 0;
@@ -2094,6 +2101,9 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   const bits = [];
   if (rev.gate) bits.push(`gate ${fmtK(rev.gate)}`);
   if (rev.broadcast) bits.push(`TV ${fmtK(rev.broadcast)}`);
+  if (rev.bar) bits.push(`bar ${fmtK(rev.bar)}`);
+  if (rev.canteen) bits.push(`canteen ${fmtK(rev.canteen)}`);
+  if (rev.gameExpenses) bits.push(`ops -${fmtK(rev.gameExpenses)}`);
   if (rev.sponsor) bits.push(`sponsor ${fmtK(rev.sponsor)}`);
   c.news = [{ week: meta.round, type: 'info',
     text: `💰 Match-day income +${fmtK(rev.total)}${bits.length ? ` (${bits.join(', ')})` : ''}` },

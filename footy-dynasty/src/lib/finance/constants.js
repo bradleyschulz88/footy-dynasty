@@ -183,6 +183,29 @@ export const T4_COMMUNITY = {
 };
 
 // ---------------------------------------------------------------------------
+// Tier 3 / Semi-amateur community club budget constants.
+// Semi-professional — some paid players, but bar & social is the #1 game-day
+// earner. No broadcast, no gate beyond a small entry fee.
+// ---------------------------------------------------------------------------
+export const T3_COMMUNITY = {
+  // Bar / social club takings per home game — the main game-day earner.
+  barPerHomeGame:      { min: 500,  max: 2_000 },
+  // Canteen / food (BBQ, pies) — lower margin than bar.
+  canteenPerHomeGame:  { min: 200,  max: 700  },
+  // Player registration fee collected per listed player at season start.
+  registrationFeePerPlayer: 150,
+  // Ground hire per HOME game (away club covers their own ground).
+  groundHirePerGame:   350,
+  // Umpire fees — paid for all home games.
+  umpireFeePerGame:    180,
+  // Annual affiliation + insurance levy to the state body.
+  affiliationFeeAnnual: 1_500,
+  insuranceAnnual:      2_500,
+  // Equipment budget per season (training gear, first-aid, balls).
+  equipmentAnnual:     { min: 1_000, max: 3_000 },
+};
+
+// ---------------------------------------------------------------------------
 // Board financial objectives — set each season, evaluated at season end.
 // The board picks one based on the club's financial health.
 // ---------------------------------------------------------------------------
