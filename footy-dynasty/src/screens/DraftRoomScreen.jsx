@@ -6,6 +6,7 @@ import { fmtK } from "../lib/format.js";
 import { formatDate } from "../lib/calendar.js";
 import { css, RatingDot, Stat } from "../components/primitives.jsx";
 import { ClubBadge } from "../components/ClubBadge.jsx";
+import { canMatchBid, getZoneClub } from "../lib/academyZones.js";
 import {
   COMBINE_SCOUT_COST,
   displayDraftOverall,
@@ -40,6 +41,7 @@ export default function DraftRoomScreen({ club, league, onExit }) {
   const updateCareer = useUpdateCareer();
   const [posFilter, setPosFilter] = useState("ALL");
   const [poolSort, setPoolSort] = useState("overall");
+  const [pendingMatchBid, setPendingMatchBid] = useState(null);
   const dTier = leagueTierOf(career);
 
   useEffect(() => {
@@ -98,8 +100,32 @@ export default function DraftRoomScreen({ club, league, onExit }) {
   };
 
   const nextPick = () => {
+    const poolBefore = career.draftPool || [];
+    const onClockBefore = getOnClockPick(career);
     const patch = resolveNextPick(career);
-    if (patch) updateCareer(patch);
+    if (!patch) return;
+
+    // Check if the AI pick consumed a zone prospect the player can match
+    const poolAfter = patch.draftPool || [];
+    if (onClockBefore && onClockBefore.clubId !== career.clubId) {
+      const removedProspects = poolBefore.filter(
+        (p) => !poolAfter.some((q) => q.id === p.id)
+      );
+      const zoneMatch = removedProspects.find((p) => canMatchBid(career.clubId, p));
+      if (zoneMatch) {
+        const aiClubName = findClub(onClockBefore.clubId)?.name || onClockBefore.clubId;
+        setPendingMatchBid({
+          prospect: zoneMatch,
+          aiClubId: onClockBefore.clubId,
+          aiClub: aiClubName,
+          pick: onClockBefore.pick,
+          patch, // stash the patch so we can apply it either way
+        });
+        return; // Don't apply patch yet — wait for player's match/pass decision
+      }
+    }
+
+    updateCareer(patch);
   };
 
   const passPick = () => {
@@ -123,6 +149,37 @@ export default function DraftRoomScreen({ club, league, onExit }) {
     if (result.error) return;
     updateCareer(result.patch);
   };
+
+  const onMatchBidAccepted = (matchBid) => {
+    const { prospect, patch: aiPatch } = matchBid;
+    const newSquadPlayer = { ...prospect, receivedInTrade: career.season };
+    // Apply the AI pick patch (updates draftOrder, aiSquads, history, etc.)
+    // but override: give the prospect to the player's squad instead of the AI club
+    const aiClubId = matchBid.aiClubId;
+    const correctedAiSquads = { ...aiPatch.aiSquads };
+    // Remove the prospect from the AI club's squad (it was added in the patch)
+    if (correctedAiSquads[aiClubId]) {
+      correctedAiSquads[aiClubId] = correctedAiSquads[aiClubId].filter(
+        (p) => p.id !== prospect.id
+      );
+    }
+    const matchNews = {
+      week: career.week,
+      type: "info",
+      text: `🏠 Zone rights exercised — ${prospect.firstName} ${prospect.lastName} joins via academy match.`,
+    };
+    updateCareer({
+      ...aiPatch,
+      aiSquads: correctedAiSquads,
+      squad: [...(career.squad || []), newSquadPlayer],
+      news: [matchNews, ...(aiPatch.news ? aiPatch.news : career.news || [])].slice(0, 20),
+    });
+  };
+
+  const zoneProspects = useMemo(
+    () => (career.draftPool || []).filter((p) => canMatchBid(career.clubId, p)),
+    [career.draftPool, career.clubId]
+  );
 
   if (needsDraftSeed(career) && !draftOrder.length) {
     return (
@@ -224,6 +281,17 @@ export default function DraftRoomScreen({ club, league, onExit }) {
         </div>
       )}
 
+      {zoneProspects.length > 0 && (
+        <div className="rounded-xl px-3 py-2 mb-1 flex items-center gap-2"
+          style={{ background: 'color-mix(in srgb, var(--A-accent) 10%, var(--A-panel))', border: '1px solid var(--A-accent)' }}>
+          <span className="text-aaccent font-bold text-[12px]">🏠</span>
+          <span className="text-[12px] text-atext">
+            {zoneProspects.length} zone player{zoneProspects.length > 1 ? 's' : ''} in the pool —
+            you can match any bid on: {zoneProspects.map(p => p.lastName).join(', ')}
+          </span>
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-[1fr_280px] gap-4 items-start">
         <div className="space-y-4 min-w-0">
           <div className="flex flex-wrap gap-2 items-center">
@@ -273,7 +341,15 @@ export default function DraftRoomScreen({ club, league, onExit }) {
                   >
                     <div className="min-w-0">
                       <div className="text-[10px] text-aaccent font-bold">#{i + 1}</div>
-                      <div className="font-semibold text-atext">{p.firstName} {p.lastName}</div>
+                      <div className="font-semibold text-atext flex items-center gap-1.5">
+                        {p.firstName} {p.lastName}
+                        {canMatchBid(career.clubId, p) && (
+                          <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md"
+                            style={{ background: 'color-mix(in srgb, var(--A-accent) 18%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 40%, transparent)' }}>
+                            🏠 Zone
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-atext-dim mt-0.5">{formatPositionSlash(p)} · age {p.age}</div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -344,6 +420,49 @@ export default function DraftRoomScreen({ club, league, onExit }) {
           </div>
         </div>
       </div>
+
+      {pendingMatchBid && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="max-w-md w-full mx-4 rounded-2xl p-6" style={{ background: 'var(--A-panel)', border: '1px solid var(--A-accent)' }}>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-2">Academy Zone Rights</div>
+            <h3 className="font-display text-2xl text-atext mb-3">MATCH THE BID?</h3>
+            <p className="text-sm text-atext-mute mb-4">
+              {pendingMatchBid.aiClub} just selected your academy zone player{' '}
+              <span className="text-atext font-semibold">{pendingMatchBid.prospect.firstName} {pendingMatchBid.prospect.lastName}</span>{' '}
+              (Pick #{pendingMatchBid.pick}). Exercise your zone rights to match?
+            </p>
+            <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--A-panel-2)' }}>
+              <div className="text-[12px] text-atext">OVR {pendingMatchBid.prospect.overall} · {pendingMatchBid.prospect.position} · Age {pendingMatchBid.prospect.age}</div>
+              <div className="text-[11px] text-atext-mute mt-1">Potential: {pendingMatchBid.prospect.potential}</div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  onMatchBidAccepted(pendingMatchBid);
+                  setPendingMatchBid(null);
+                }}
+                className="flex-1 py-2 rounded-xl font-semibold text-sm"
+                style={{ background: 'var(--A-accent)', color: '#000' }}
+              >
+                Match the bid ✓
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Let the AI pick stand — apply the stashed patch
+                  updateCareer(pendingMatchBid.patch);
+                  setPendingMatchBid(null);
+                }}
+                className="flex-1 py-2 rounded-xl text-sm"
+                style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)', color: 'var(--A-text-mute)' }}
+              >
+                Pass — let them go
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
