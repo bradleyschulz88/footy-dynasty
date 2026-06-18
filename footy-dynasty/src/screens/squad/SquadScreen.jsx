@@ -1215,6 +1215,18 @@ function TacticsTab({ onOpenClubStaff }) {
   );
 }
 
+function trainingPhaseAdvice(career) {
+  const phase = career.phase ?? 'regular';
+  const completedRounds = career.completedRounds ?? 0;
+  const totalRounds = career.league?.rounds ?? career.currentLeague?.rounds ?? 22;
+  const roundsLeft = totalRounds - completedRounds;
+
+  if (phase === 'pre_season')  return { label: 'Pre-season',   advice: 'Push intensity — this is when fitness banks are built. 75–90 recommended.', intensity: 82 };
+  if (phase === 'finals')      return { label: 'Finals block', advice: 'Taper down — freshen the legs, trust the system. 55–65 recommended.',        intensity: 60 };
+  if (roundsLeft <= 3)         return { label: 'End of season','advice': 'Light work — preserve the list. 50–60 recommended.',                        intensity: 55 };
+  return                              { label: 'In-season',    advice: 'Moderate load — match fitness over development. 65–75 recommended.',           intensity: 70 };
+}
+
 function TrainingTab({ onOpenClubStaff }) {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
@@ -1355,6 +1367,24 @@ function TrainingTab({ onOpenClubStaff }) {
             Intensity scales raw attribute gains on training days — multiplier ≈{" "}
             <span className="text-atext font-mono font-bold">{intMul.toFixed(2)}×</span> (about 1.0 at intensity 60).
           </p>
+          {(() => {
+            const advice = trainingPhaseAdvice(career);
+            return (
+              <div className="rounded-xl px-3 py-2 mb-3 flex items-center justify-between gap-2"
+                style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent">{advice.label}</div>
+                  <div className="text-[11px] text-atext-mute mt-0.5 leading-tight">{advice.advice}</div>
+                </div>
+                <button
+                  onClick={() => updateCareer({ training: { ...t, intensity: advice.intensity } })}
+                  className="text-[11px] px-2 py-1 rounded-lg shrink-0 font-medium"
+                  style={{ background: 'var(--A-accent)', color: '#000' }}>
+                  Apply
+                </button>
+              </div>
+            );
+          })()}
           <div className="flex items-center gap-3 mb-2 py-1">
             <div className={`${css.h1} text-5xl text-aaccent w-20 text-center`}>{t.intensity}</div>
             <div className="flex-1 min-h-[48px] flex flex-col justify-center">
@@ -1449,7 +1479,51 @@ function TrainingTab({ onOpenClubStaff }) {
           })}
         </div>
       </div>
-    </div>
+      {career.staffMarket?.length > 0 && (
+      <div className="mt-6">
+        <h3 className="text-[11px] font-mono uppercase tracking-widest text-aaccent mb-2">Staff Market</h3>
+        <div className="space-y-2">
+          {career.staffMarket.map(candidate => (
+            <div key={candidate.marketId}
+              className="rounded-xl p-3 flex items-center justify-between gap-3"
+              style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold text-atext truncate">{candidate.name}</div>
+                <div className="text-[11px] text-atext-mute mt-0.5">
+                  {candidate.roleLabel} · Rating {candidate.rating}
+                  {candidate.currentRating ? ` (currently ${candidate.currentRating})` : ''}
+                </div>
+                <div className="text-[10px] text-atext-dim mt-0.5">
+                  ${(candidate.wage / 1000).toFixed(0)}k/yr · Sign-on ${(candidate.signingFee / 1000).toFixed(0)}k
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  updateCareer(c => {
+                    const updatedStaff = (c.staff || []).map(s =>
+                      s.id === candidate.staffId
+                        ? { ...s, name: candidate.name, rating: candidate.rating, wage: candidate.wage, contractYears: candidate.contractYears }
+                        : s
+                    );
+                    const newMarket = (c.staffMarket || []).filter(m => m.marketId !== candidate.marketId);
+                    return {
+                      ...c,
+                      staff: updatedStaff,
+                      staffMarket: newMarket,
+                      finance: { ...c.finance, cash: (c.finance?.cash ?? 0) - candidate.signingFee },
+                    };
+                  });
+                }}
+                className="text-[11px] px-3 py-1.5 rounded-lg shrink-0 font-medium"
+                style={{ background: 'var(--A-accent)', color: '#000' }}>
+                Sign
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
   );
 }
 
