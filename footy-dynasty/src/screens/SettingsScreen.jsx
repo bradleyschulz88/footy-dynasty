@@ -6,6 +6,60 @@ import { SLOT_IDS, LAST_EXPORT_STORAGE_KEY } from "../lib/save.js";
 import { findClub } from "../data/pyramid.js";
 import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 
+function downloadCsv(filename, rows) {
+  const csv = rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportSquad(career) {
+  const header = ['Name', 'Position', 'Age', 'Overall', 'Potential', 'Contract', 'Wage', 'Morale'];
+  const rows = (career.squad || []).map(p => [
+    `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim(),
+    p.position ?? '',
+    p.age ?? '',
+    p.overall ?? '',
+    p.potential ?? '',
+    p.contract ?? '',
+    p.wage ?? '',
+    p.morale ?? 70,
+  ]);
+  downloadCsv(`squad-s${career.season ?? 1}.csv`, [header, ...rows]);
+}
+
+function exportFinances(career) {
+  const header = ['Season', 'Cash', 'Revenue', 'Wages', 'Sponsorship', 'BoardConfidence'];
+  const f = career.finance ?? {};
+  const rows = [[
+    career.season ?? '',
+    f.cash ?? '',
+    f.annualIncome ?? '',
+    f.wages ?? '',
+    f.sponsorship ?? '',
+    f.boardConfidence ?? '',
+  ]];
+  downloadCsv(`finances-s${career.season ?? 1}.csv`, [header, ...rows]);
+}
+
+function exportLadder(career) {
+  const header = ['Pos', 'Club', 'W', 'L', 'D', 'PF', 'PA', 'Pts'];
+  const sorted = [...(career.ladder || [])].sort((a, b) => (b.pts ?? b.points ?? 0) - (a.pts ?? a.points ?? 0));
+  const rows = sorted.map((row, i) => [
+    i + 1,
+    row.id ?? row.clubId ?? '',
+    row.W ?? 0,
+    row.L ?? 0,
+    row.D ?? 0,
+    row.F ?? 0,
+    row.A ?? 0,
+    row.pts ?? row.points ?? 0,
+  ]);
+  downloadCsv(`ladder-s${career.season ?? 1}.csv`, [header, ...rows]);
+}
+
 // ============================================================================
 // SETTINGS — save slots, new career, difficulty & preferences (game-wide)
 // ============================================================================
@@ -364,6 +418,27 @@ export default function SettingsScreen({
               e.target.value = '';
             }}
           />
+        </div>
+      </div>
+
+      <div className={`${css.panel} p-5 space-y-4`}>
+        <h3 className={`${css.h1} text-2xl`}>EXPORT DATA</h3>
+        <p className="text-xs text-atext-dim">Download your current career data as CSV files for analysis or record-keeping.</p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { label: 'Squad CSV', fn: () => exportSquad(career) },
+            { label: 'Finances CSV', fn: () => exportFinances(career) },
+            { label: 'Ladder CSV', fn: () => exportLadder(career) },
+          ].map(({ label, fn }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={fn}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-bold uppercase tracking-widest border border-aline bg-apanel-2 hover:border-aaccent/40 text-atext-dim"
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
