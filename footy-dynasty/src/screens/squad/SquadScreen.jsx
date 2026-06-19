@@ -445,65 +445,69 @@ function PlayersTab({ onNavigate }) {
               <div key={h} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${i>1?"text-center":""} ${i===7?"text-right":""}`}>{h}</div>
             ))}
           </div>
-          <div className="max-h-[65vh] overflow-y-auto min-w-[820px] [scrollbar-width:thin]" style={{background:"var(--A-panel)"}}>
-            {players.map((p, i) => {
-              const inLineup = lineupHasPlayer(career.lineup, p.id);
-              const isSelected = selected?.id === p.id;
-              const formColor = p.form >= 75 ? "var(--A-pos)" : p.form >= 55 ? "var(--A-accent)" : "var(--A-neg)";
-              const fitColor  = p.fitness >= 80 ? "var(--A-pos)" : p.fitness >= 60 ? "var(--A-accent)" : "var(--A-neg)";
-              return (
-                <button key={p.id} onClick={()=>setSelected(isSelected ? null : p)}
-                  onContextMenu={(e) => handlePlayerRightClick(e, p)}
-                  type="button"
-                  className="w-full grid px-4 py-3 transition-all text-left"
-                  style={{
-                    gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem",
-                    borderBottom:"1px solid var(--A-line)",
-                    background: isSelected ? rowSelectBg : "transparent",
-                    borderLeft: isSelected ? "3px solid var(--A-accent)" : "3px solid transparent",
-                  }}
-                  onMouseEnter={e=>{if(!isSelected){e.currentTarget.style.background=rowHoverBg; e.currentTarget.style.borderLeft='3px solid color-mix(in srgb,var(--A-accent) 45%,transparent)';}}}
-                  onMouseLeave={e=>{if(!isSelected){e.currentTarget.style.background='transparent'; e.currentTarget.style.borderLeft='3px solid transparent';}}}>
-                  <div className="text-atext-mute text-sm font-bold text-left">{i+1}</div>
-                  <div className="flex items-center gap-2 min-w-0 text-left">
-                    {p.injured > 0 && <Heart className="w-3 h-3 flex-shrink-0 text-aneg" />}
-                    {inLineup && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:"var(--A-pos)", boxShadow:"0 0 4px var(--A-pos)"}} />}
-                    <span className="truncate text-sm font-semibold text-atext">{pName(p)}</span>
-                    <span title={PLAYER_TRAITS[p.trait ?? 'grinder']?.label} className="text-[10px] flex-shrink-0">{PLAYER_TRAITS[p.trait ?? 'grinder']?.emoji}</span>
-                    {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"color-mix(in srgb, var(--A-accent) 13%, transparent)",color:"var(--A-accent)"}}>R</span>}
-                    {p.transferRequested
-                      ? <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0 whitespace-nowrap" style={{background:"color-mix(in srgb, var(--A-neg) 14%, transparent)",color:"var(--A-neg)",border:"1px solid color-mix(in srgb, var(--A-neg) 30%, transparent)"}}>TRADE REQ</span>
-                      : (p.morale ?? 75) < 45 && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0 whitespace-nowrap" style={{background:`color-mix(in srgb, ${moraleToneColor(moraleBand(p.morale).tone)} 14%, transparent)`,color:moraleToneColor(moraleBand(p.morale).tone)}}>UNHAPPY</span>}
-                  </div>
-                  <div className="text-center" title={POSITION_NAMES[p.position] + (p.secondaryPosition ? ` / ${POSITION_NAMES[p.secondaryPosition]}` : '')}><span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span></div>
-                  <div className="text-center text-sm text-atext-dim">{p.age}</div>
-                  <div className="text-center flex justify-center"><RatingDot value={p.overall} size="sm" /></div>
-                  <div className="flex items-center gap-1">
-                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
-                      <div className="h-full rounded-full" style={{width:`${p.form}%`, background:formColor}} />
+          <div className="min-w-[820px]" style={{background:"var(--A-panel)"}}>
+            <Virtuoso
+              style={{ height: '420px' }}
+              data={players}
+              itemContent={(i, p) => {
+                const inLineup = lineupHasPlayer(career.lineup, p.id);
+                const isSelected = selected?.id === p.id;
+                const formColor = p.form >= 75 ? "var(--A-pos)" : p.form >= 55 ? "var(--A-accent)" : "var(--A-neg)";
+                const fitColor  = p.fitness >= 80 ? "var(--A-pos)" : p.fitness >= 60 ? "var(--A-accent)" : "var(--A-neg)";
+                return (
+                  <button key={p.id} onClick={()=>setSelected(isSelected ? null : p)}
+                    onContextMenu={(e) => handlePlayerRightClick(e, p)}
+                    type="button"
+                    className="w-full grid px-4 py-3 transition-all text-left"
+                    style={{
+                      gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem",
+                      borderBottom:"1px solid var(--A-line)",
+                      background: isSelected ? rowSelectBg : "transparent",
+                      borderLeft: isSelected ? "3px solid var(--A-accent)" : "3px solid transparent",
+                    }}
+                    onMouseEnter={e=>{if(!isSelected){e.currentTarget.style.background=rowHoverBg; e.currentTarget.style.borderLeft='3px solid color-mix(in srgb,var(--A-accent) 45%,transparent)';}}}
+                    onMouseLeave={e=>{if(!isSelected){e.currentTarget.style.background='transparent'; e.currentTarget.style.borderLeft='3px solid transparent';}}}>
+                    <div className="text-atext-mute text-sm font-bold text-left">{i+1}</div>
+                    <div className="flex items-center gap-2 min-w-0 text-left">
+                      {p.injured > 0 && <Heart className="w-3 h-3 flex-shrink-0 text-aneg" />}
+                      {inLineup && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:"var(--A-pos)", boxShadow:"0 0 4px var(--A-pos)"}} />}
+                      <span className="truncate text-sm font-semibold text-atext">{pName(p)}</span>
+                      <span title={PLAYER_TRAITS[p.trait ?? 'grinder']?.label} className="text-[10px] flex-shrink-0">{PLAYER_TRAITS[p.trait ?? 'grinder']?.emoji}</span>
+                      {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"color-mix(in srgb, var(--A-accent) 13%, transparent)",color:"var(--A-accent)"}}>R</span>}
+                      {p.transferRequested
+                        ? <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0 whitespace-nowrap" style={{background:"color-mix(in srgb, var(--A-neg) 14%, transparent)",color:"var(--A-neg)",border:"1px solid color-mix(in srgb, var(--A-neg) 30%, transparent)"}}>TRADE REQ</span>
+                        : (p.morale ?? 75) < 45 && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0 whitespace-nowrap" style={{background:`color-mix(in srgb, ${moraleToneColor(moraleBand(p.morale).tone)} 14%, transparent)`,color:moraleToneColor(moraleBand(p.morale).tone)}}>UNHAPPY</span>}
                     </div>
-                    <span className="text-[10px] font-bold w-6 text-right" style={{color:formColor}}>{p.form}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
-                      <div className="h-full rounded-full" style={{width:`${p.fitness}%`, background:fitColor}} />
+                    <div className="text-center" title={POSITION_NAMES[p.position] + (p.secondaryPosition ? ` / ${POSITION_NAMES[p.secondaryPosition]}` : '')}><span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span></div>
+                    <div className="text-center text-sm text-atext-dim">{p.age}</div>
+                    <div className="text-center flex justify-center"><RatingDot value={p.overall} size="sm" /></div>
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
+                        <div className="h-full rounded-full" style={{width:`${p.form}%`, background:formColor}} />
+                      </div>
+                      <span className="text-[10px] font-bold w-6 text-right" style={{color:formColor}}>{p.form}</span>
                     </div>
-                    <span className="text-[10px] font-bold w-6 text-right" style={{color:fitColor}}>{p.fitness}</span>
-                  </div>
-                  <div className="text-right text-xs font-mono text-atext-dim">{fmtK(p.wage)}</div>
-                  <div className="text-center flex flex-col items-center gap-0.5">
-                    {p.suspended > 0
-                      ? <Pill color="#A78BFA">SUS {p.suspended}w</Pill>
-                      : p.injured > 0
-                        ? <Pill color="var(--A-neg)">{p.injured}w</Pill>
-                        : inLineup
-                          ? <Pill color="var(--A-pos)">23</Pill>
-                          : <span className="text-atext-mute text-xs">—</span>}
-                    <ContractChip years={p.contract} />
-                  </div>
-                </button>
-              );
-            })}
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
+                        <div className="h-full rounded-full" style={{width:`${p.fitness}%`, background:fitColor}} />
+                      </div>
+                      <span className="text-[10px] font-bold w-6 text-right" style={{color:fitColor}}>{p.fitness}</span>
+                    </div>
+                    <div className="text-right text-xs font-mono text-atext-dim">{fmtK(p.wage)}</div>
+                    <div className="text-center flex flex-col items-center gap-0.5">
+                      {p.suspended > 0
+                        ? <Pill color="#A78BFA">SUS {p.suspended}w</Pill>
+                        : p.injured > 0
+                          ? <Pill color="var(--A-neg)">{p.injured}w</Pill>
+                          : inLineup
+                            ? <Pill color="var(--A-pos)">23</Pill>
+                            : <span className="text-atext-mute text-xs">—</span>}
+                      <ContractChip years={p.contract} />
+                    </div>
+                  </button>
+                );
+              }}
+            />
           </div>
           </div>
         </div>
