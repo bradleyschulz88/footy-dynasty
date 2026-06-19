@@ -114,6 +114,7 @@ import { buildMatchDayExitPatch } from './lib/matchDayFinalize.js';
 import { advanceCareerNextEvent, resolveLiveMatchHalfTime, resolveQ3Decision, triggerSackState, fastForwardFinals } from './lib/careerAdvance.js';
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
+import { injectClubTheme, clearClubTheme } from './lib/clubColors.js';
 
 const THEME_STORAGE_KEY = 'fd-theme';
 
@@ -235,6 +236,12 @@ function AFLManagerInner() {
   useEffect(() => {
     persistTheme(career?.options?.theme ?? 'light');
   }, [career?.options?.theme]);
+
+  // Inject club colour CSS custom properties when the user's team changes
+  useEffect(() => {
+    if (career?.team) injectClubTheme(career.team);
+    return () => clearClubTheme();
+  }, [career?.team]);
 
   useEffect(() => {
     const handler = () => setPwaNeedsUpdate(true);
