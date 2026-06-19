@@ -271,6 +271,24 @@ export default function SeasonSummaryScreen({
           </div>
         )}
 
+        {summary.highlights?.length > 0 && (
+          <div className="rounded-2xl p-4 mt-2"
+            style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}>
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3"
+              style={{ color: "var(--A-accent)" }}>
+              Season Moments
+            </div>
+            <div className="space-y-1.5">
+              {summary.highlights.map((h, i) => (
+                <div key={i} className="text-[12px] text-atext-mute leading-snug py-0.5 border-b last:border-0"
+                  style={{ borderColor: "var(--A-line)" }}>
+                  {h.text}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {eosFinance && (
           <div className="rounded-2xl p-5 mt-2" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line-2)" }}>
             <div className="flex items-center gap-2 mb-3">

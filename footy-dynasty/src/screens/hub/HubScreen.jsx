@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
+import { useAutoAnimate } from '@formkit/auto-animate/react';
 import {
   Users,
   DollarSign,
@@ -182,6 +183,7 @@ function DifficultyMiniSummary({ cfg }) {
 
 export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScreen, setTab, onAdvance, onQuickAdvance }) {
   const career = useCareer();
+  const [newsRef] = useAutoAnimate();
   const cc1 = club?.colors?.[0] ?? '#334155';
   const cc2 = club?.colors?.[1] ?? '#0f172a';
   const cc3 = club?.colors?.[2] ?? cc1;
@@ -924,7 +926,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
             <Newspaper className="w-4 h-4 text-aaccent" />
             <h3 className="font-display text-xl tracking-wide text-atext">NEWS</h3>
           </div>
-          <div className="space-y-2.5">
+          <div ref={newsRef} className="space-y-2.5">
             {recentNews.length === 0 && <div className="text-sm text-atext-dim py-4 text-center">No news yet.</div>}
             {recentNews.map((n, i) => {
               const borderColor = n.type === "win" ? "var(--A-pos)" : n.type === "loss" ? "var(--A-neg)" : n.type === "board" ? "#FFB347" : n.type === "info" ? "var(--A-accent-2)" : "var(--A-text-mute)";

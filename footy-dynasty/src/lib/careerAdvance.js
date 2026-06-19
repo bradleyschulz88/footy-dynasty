@@ -868,6 +868,7 @@ function finishSeason(c, league) {
   c.seasonSummary = {
     ...c.seasonSummary,
     brownlow: brownlowWinner,
+    highlights: (c.seasonHighlights || []).slice(0, 8),
   };
 
   const youthMet = youthSeniorGameCount(c.squad);

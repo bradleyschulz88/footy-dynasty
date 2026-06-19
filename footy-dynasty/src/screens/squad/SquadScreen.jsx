@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import FloatingTooltip from '../../components/FloatingTooltip.jsx';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { Virtuoso } from 'react-virtuoso';
 import {
@@ -395,46 +396,47 @@ function PlayersTab({ onNavigate }) {
     <div className="flex flex-col lg:flex-row gap-5 lg:gap-6">
       <div className="flex-1 min-w-0">
         <>
-        <div className="md:hidden space-y-2 max-h-[65vh] overflow-y-auto px-0.5 [scrollbar-width:thin]">
-          {players.map((p) => {
-            const inLineup = lineupHasPlayer(career.lineup, p.id);
-            const isSelected = selected?.id === p.id;
-            const formColor = p.form >= 75 ? "var(--A-pos)" : p.form >= 55 ? "var(--A-accent)" : "var(--A-neg)";
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setSelected(isSelected ? null : p)}
-                onContextMenu={(e) => handlePlayerRightClick(e, p)}
-                className="w-full text-left rounded-xl p-3 border transition-all touch-manipulation"
-                style={{
-                  borderColor: isSelected ? "var(--A-accent)" : "var(--A-line)",
-                  background: isSelected ? rowSelectBg : "var(--A-panel)",
-                }}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-atext truncate flex items-center gap-1">
-                      {pName(p)}
-                      <span title={PLAYER_TRAITS[p.trait ?? 'grinder']?.label} className="text-[10px] ml-1 flex-shrink-0">{PLAYER_TRAITS[p.trait ?? 'grinder']?.emoji}</span>
+        <div className="md:hidden px-0.5">
+          <Virtuoso
+            style={{ height: '420px' }}
+            data={players}
+            itemContent={(_, p) => {
+              const inLineup = lineupHasPlayer(career.lineup, p.id);
+              const isSelected = selected?.id === p.id;
+              const formColor = p.form >= 75 ? "var(--A-pos)" : p.form >= 55 ? "var(--A-accent)" : "var(--A-neg)";
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSelected(isSelected ? null : p)}
+                  onContextMenu={(e) => handlePlayerRightClick(e, p)}
+                  className="w-full text-left rounded-xl p-3 border transition-all touch-manipulation mb-2"
+                  style={{
+                    borderColor: isSelected ? "var(--A-accent)" : "var(--A-line)",
+                    background: isSelected ? rowSelectBg : "var(--A-panel)",
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-atext truncate">{pName(p)}</div>
+                      <div className="text-[10px] text-atext-mute flex items-center gap-1.5 flex-wrap"><span className="inline-flex items-center text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span> · {POSITION_NAMES[p.position]} · age {p.age}</div>
                     </div>
-                    <div className="text-[10px] text-atext-mute flex items-center gap-1.5 flex-wrap"><span className="inline-flex items-center text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span> · {POSITION_NAMES[p.position]} · age {p.age}</div>
+                    <RatingDot value={p.overall} size="sm" />
                   </div>
-                  <RatingDot value={p.overall} size="sm" />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mt-2 text-[10px]">
-                  <span className="font-bold" style={{ color: formColor }}>Form {p.form}</span>
-                  {p.formHistory?.length > 0 && <FormSparkline history={p.formHistory} current={p.form} />}
-                  <span className="text-atext-mute">Fitness {p.fitness}</span>
-                  {inLineup && <Pill color="var(--A-pos)">23</Pill>}
-                  {p.injured > 0 && <Pill color="var(--A-neg)">{p.injured}w</Pill>}
-                  {p.transferRequested
-                    ? <Pill color="var(--A-neg)">Trade request</Pill>
-                    : (p.morale ?? 75) < 45 && <Pill color={moraleToneColor(moraleBand(p.morale).tone)}>{moraleBand(p.morale).label}</Pill>}
-                </div>
-              </button>
-            );
-          })}
+                  <div className="flex flex-wrap items-center gap-2 mt-2 text-[10px]">
+                    <span className="font-bold" style={{ color: formColor }}>Form {p.form}</span>
+                    {p.formHistory?.length > 0 && <FormSparkline history={p.formHistory} current={p.form} />}
+                    <span className="text-atext-mute">Fitness {p.fitness}</span>
+                    {inLineup && <Pill color="var(--A-pos)">23</Pill>}
+                    {p.injured > 0 && <Pill color="var(--A-neg)">{p.injured}w</Pill>}
+                    {p.transferRequested
+                      ? <Pill color="var(--A-neg)">Trade request</Pill>
+                      : (p.morale ?? 75) < 45 && <Pill color={moraleToneColor(moraleBand(p.morale).tone)}>{moraleBand(p.morale).label}</Pill>}
+                  </div>
+                </button>
+              );
+            }}
+          />
         </div>
         <div className="hidden md:block rounded-2xl overflow-hidden border border-aline shadow-sm">
           <div className="overflow-x-auto">
@@ -687,22 +689,24 @@ function AllPlayersTab() {
             </button>
             {columns.map((c) => (
               c.sortKey ? (
-                <button
-                  key={c.head}
-                  type="button"
-                  title={c.tooltip}
-                  onClick={() => setSort(c.sortKey)}
-                  className={`flex items-center gap-0.5 text-[10px] font-black uppercase tracking-[0.15em] transition-colors ${alignCls(c.align)} ${sort === c.sortKey ? "text-aaccent" : "text-atext-mute hover:text-atext"}`}
-                >
-                  {c.head}
-                  {sort === c.sortKey && (
-                    c.sortKey === "age" || c.sortKey === "contract"
-                      ? <ChevronUp className="w-3 h-3 flex-shrink-0" />
-                      : <ChevronDown className="w-3 h-3 flex-shrink-0" />
-                  )}
-                </button>
+                <FloatingTooltip key={c.head} content={c.tooltip}>
+                  <button
+                    type="button"
+                    onClick={() => setSort(c.sortKey)}
+                    className={`flex items-center gap-0.5 text-[10px] font-black uppercase tracking-[0.15em] transition-colors ${alignCls(c.align)} ${sort === c.sortKey ? "text-aaccent" : "text-atext-mute hover:text-atext"}`}
+                  >
+                    {c.head}
+                    {sort === c.sortKey && (
+                      c.sortKey === "age" || c.sortKey === "contract"
+                        ? <ChevronUp className="w-3 h-3 flex-shrink-0" />
+                        : <ChevronDown className="w-3 h-3 flex-shrink-0" />
+                    )}
+                  </button>
+                </FloatingTooltip>
               ) : (
-                <div key={c.head} title={c.tooltip} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${alignCls(c.align)}`}>{c.head}</div>
+                <FloatingTooltip key={c.head} content={c.tooltip}>
+                  <div className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${alignCls(c.align)}`}>{c.head}</div>
+                </FloatingTooltip>
               )
             ))}
           </div>
