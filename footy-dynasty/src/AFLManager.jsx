@@ -30,6 +30,7 @@ import {
 import { computeInitialCareerBoot } from "./lib/bootCareer.js";
 import { seedNationalDraft } from "./lib/draftSeed.js";
 import { GlobalStyle } from "./components/primitives.jsx";
+import { Toaster } from 'sonner';
 import LandingScreen from "./screens/LandingScreen.jsx";
 import GameOverScreen from "./screens/GameOverScreen.jsx";
 import PostMatchSummary from "./screens/PostMatchSummary.jsx";
@@ -62,6 +63,7 @@ import { InboxBanner } from './components/InboxBanner.jsx';
 import { ExportReminderBanner } from './components/ExportReminderBanner.jsx';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.jsx';
 import AdvanceAgendaModal from './components/AdvanceAgendaModal.jsx';
+import CommandPalette from './components/CommandPalette.jsx';
 import { getVisibleAdvanceAgenda, snoozeAdvanceAgendaItems } from './lib/advanceAgenda.js';
 import { recordGameEvent } from './lib/gameAnalytics.js';
 import {
@@ -219,6 +221,7 @@ function AFLManagerInner() {
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
   const [advanceAgendaOpen, setAdvanceAgendaOpen] = useState(false);
   const [advanceAgendaItems, setAdvanceAgendaItems] = useState([]);
   const [pwaNeedsUpdate, setPwaNeedsUpdate] = useState(false);
@@ -248,6 +251,18 @@ function AFLManagerInner() {
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCmdOpen(v => !v);
+      }
+      if (e.key === 'Escape') setCmdOpen(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   const bumpSlotMeta = useCallback(() => setSlotMetaTick((t) => t + 1), []);
@@ -1580,6 +1595,13 @@ function AFLManagerInner() {
           </button>
         </div>
       )}
+      <CommandPalette
+        open={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        onNavigate={(key) => {
+          onNavScreen(key);
+        }}
+      />
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <AdvanceAgendaModal
         open={advanceAgendaOpen}
@@ -1588,6 +1610,18 @@ function AFLManagerInner() {
         onClose={handleAdvanceAgendaClose}
         onAdvanceAnyway={handleAdvanceAgendaAnyway}
         onGoTo={handleAdvanceAgendaGoTo}
+      />
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: 'var(--A-panel-2)',
+            color: 'var(--A-text)',
+            border: '1px solid var(--A-line)',
+            borderRadius: '12px',
+            fontSize: '13px',
+          },
+        }}
       />
     </div>
     </AppMotionConfig>

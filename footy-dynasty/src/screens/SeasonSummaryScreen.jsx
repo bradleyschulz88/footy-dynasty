@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import confetti from "canvas-confetti";
 import { DollarSign, AlertCircle } from "lucide-react";
 import { fmtK } from "../lib/format.js";
 import { css } from "../components/primitives.jsx";
@@ -113,6 +114,13 @@ export default function SeasonSummaryScreen({
   );
 
   const celebrate = summary.champion || summary.promoted;
+
+  useEffect(() => {
+    if (summary.champion) {
+      confetti({ particleCount: 120, spread: 70, origin: { x: 0.2, y: 0.6 } });
+      setTimeout(() => confetti({ particleCount: 120, spread: 70, origin: { x: 0.8, y: 0.6 } }), 300);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col relative" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
