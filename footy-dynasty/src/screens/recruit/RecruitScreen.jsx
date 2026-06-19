@@ -598,17 +598,25 @@ function OffersTab() {
       // Add the player we sold to their squad
       newAiSquads[offer.fromClubId] = [...newAiSquads[offer.fromClubId], targetPlayer];
     }
+    const acceptNews = [{
+      week: career.week,
+      type: 'info',
+      text: `🤝 Trade complete: ${targetPlayer.firstName} ${targetPlayer.lastName} → ${offer.fromClubName} for ${fmtK(offer.offerCash)}${incomingPlayer ? ` + ${incomingPlayer.firstName} ${incomingPlayer.lastName}` : ''}`,
+    }];
+    if (offer.rivalClubId) {
+      acceptNews.push({
+        week: career.week,
+        type: 'info',
+        text: `👀 ${offer.rivalClubName} was also chasing ${targetPlayer.firstName} ${targetPlayer.lastName} — you got in first.`,
+      });
+    }
     updateCareer({
       squad: newSquad,
       lineup: career.lineup.filter(id => id !== offer.targetPlayerId),
       aiSquads: newAiSquads,
       finance: { ...finance, cash: finance.cash + offer.offerCash, transferBudget: finance.transferBudget + Math.round(offer.offerCash * 0.4) },
       pendingTradeOffers: (career.pendingTradeOffers || []).map(o => o.id === offer.id ? { ...o, status: 'accepted' } : o),
-      news: [{
-        week: career.week,
-        type: 'info',
-        text: `🤝 Trade complete: ${targetPlayer.firstName} ${targetPlayer.lastName} → ${offer.fromClubName} for ${fmtK(offer.offerCash)}${incomingPlayer ? ` + ${incomingPlayer.firstName} ${incomingPlayer.lastName}` : ''}`,
-      }, ...(career.news || [])].slice(0, 20),
+      news: [...acceptNews, ...(career.news || [])].slice(0, 20),
     });
     setInspectOffer(null);
   };
@@ -620,9 +628,41 @@ function OffersTab() {
       `List managers at ${offer.fromClubName} wanted more movement — you held firm.`,
     ];
     const text = lines[Math.floor(rng() * lines.length)];
+    const updatedOffers = (career.pendingTradeOffers || []).map(o => o.id === offer.id ? { ...o, status: 'rejected' } : o);
+    const newsItems = [{ week: career.week, type: 'info', text: `📵 Trade declined: ${text}` }];
+
+    // Bidding war escalation: if a rival club was circling and this is bid round 1,
+    // the rival immediately submits a slightly sweeter counter-offer.
+    if (offer.rivalClubId && offer.bidRound === 1) {
+      const escalatedCash = Math.round((offer.offerCash || 0) * (1.12 + rng() * 0.18));
+      const counterId = `tp_counter_${Date.now()}`;
+      updatedOffers.push({
+        ...offer,
+        id: counterId,
+        fromClubId: offer.rivalClubId,
+        fromClubName: offer.rivalClubName,
+        offerCash: escalatedCash,
+        // No swap player — bidding war is cash-only escalation
+        offerPlayerId: null,
+        offerPlayerSnapshot: null,
+        status: 'pending',
+        createdAt: `postseason-${career.tradePeriodDay ?? 1}`,
+        tradePeriod: true,
+        rivalClubId: null,
+        rivalClubName: null,
+        bidRound: 2,
+        isCounter: true,
+      });
+      newsItems.push({
+        week: career.week,
+        type: 'info',
+        text: `⚡ ${offer.rivalClubName} pounced — they've tabled a counter-bid of ${fmtK(escalatedCash)} for the same player.`,
+      });
+    }
+
     updateCareer({
-      pendingTradeOffers: (career.pendingTradeOffers || []).map(o => o.id === offer.id ? { ...o, status: 'rejected' } : o),
-      news: [{ week: career.week, type: 'info', text: `📵 Trade declined: ${text}` }, ...(career.news || [])].slice(0, 20),
+      pendingTradeOffers: updatedOffers,
+      news: [...newsItems, ...(career.news || [])].slice(0, 20),
     });
   };
 
@@ -662,7 +702,21 @@ function OffersTab() {
               >
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                   <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-aaccent">{offer.fromClubName} offers</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-aaccent">{offer.fromClubName} offers</div>
+                      {offer.rivalClubName && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                          style={{ background: 'rgba(251,191,36,0.2)', color: '#FBBF24' }}>
+                          ⚡ {offer.rivalClubName} also interested
+                        </span>
+                      )}
+                      {offer.isCounter && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                          style={{ background: 'rgba(239,68,68,0.2)', color: '#EF4444' }}>
+                          🔥 Counter-bid
+                        </span>
+                      )}
+                    </div>
                     <div className="font-display text-2xl text-atext mt-1">{fmtK(offer.offerCash)}{incomingPreview ? ` + ${incomingPreview.firstName} ${incomingPreview.lastName}` : ''}</div>
                     {incomingPreview && (
                       <div className="text-xs text-atext-dim mt-1">{incomingPreview.position} · {incomingPreview.overall} OVR · age {incomingPreview.age} · {incomingPreview.gamesPlayed ?? 0} gp</div>

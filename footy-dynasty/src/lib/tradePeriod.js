@@ -139,6 +139,10 @@ function seedAiTradeOffers(c, league) {
     const offeredPick = targetVal > 400000 && rng() < 0.30
       ? { season: (c.season ?? 2026) + 1, round: rand(1, 3) }
       : null;
+    // Bidding war: 35% chance a second club is also circling this player.
+    // Stored as metadata on the offer — escalates on reject.
+    const rivalClubs = offerClubs.filter(cl => cl.id !== offeringClub.id);
+    const rival = targetVal > 200_000 && rng() < 0.35 && rivalClubs.length > 0 ? pick(rivalClubs) : null;
     offers.push({
       id: `tp_offer_${Date.now()}_${i}`,
       fromClubId: offeringClub.id,
@@ -151,6 +155,10 @@ function seedAiTradeOffers(c, league) {
       status: 'pending',
       createdAt: `postseason-${c.tradePeriodDay}`,
       tradePeriod: true,
+      // Bidding war metadata
+      rivalClubId:   rival?.id   ?? null,
+      rivalClubName: rival?.name ?? null,
+      bidRound: 1,
     });
   }
   if (offers.length) {
