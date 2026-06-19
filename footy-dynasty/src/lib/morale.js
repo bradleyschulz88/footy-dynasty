@@ -7,6 +7,20 @@
 // here is legibility, not volatility.
 // ---------------------------------------------------------------------------
 
+import { PLAYER_TRAITS } from './playerGen.js';
+
+/**
+ * Compute a squad trait morale delta capped at ±8.
+ * Sums the moraleMod of each player's trait, scales by 0.15, and clamps.
+ * Safe to call with an empty or undefined squad.
+ */
+export function squadTraitMoraleDelta(squad) {
+  const raw = (squad || []).reduce((acc, p) => {
+    return acc + (PLAYER_TRAITS[p.trait ?? 'grinder']?.moraleMod ?? 0);
+  }, 0);
+  return Math.max(-8, Math.min(8, raw * 0.15));
+}
+
 /** Apply a morale change to a player with a logged reason. Returns a new player object. */
 export function adjustMorale(player, delta, reason, week) {
   const cur = player.morale ?? 75;

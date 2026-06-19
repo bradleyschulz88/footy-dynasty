@@ -29,7 +29,7 @@ import { generateTradePool } from './defaults.js';
 import { seedNationalDraft, careerHasNationalDraft } from './draftSeed.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
 import { generateOffseasonNotifications, buildPlayerTransferRequestNotice } from './notifications.js';
-import { adjustMorale, MORALE_REASONS } from './morale.js';
+import { adjustMorale, MORALE_REASONS, squadTraitMoraleDelta } from './morale.js';
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
 import { ensureSquadsForLeague, tickAiSquads, ageAiSquads, selectAiLineup } from './aiSquads.js';
@@ -973,7 +973,9 @@ function finishSeason(c, league) {
     topScorer: byGoals[0] ? { name: pName(byGoals[0]), goals: byGoals[0].goals || 0 } : null,
     brownlow: brownlowWinner,
     finalsBracket: finalsBracketArchiveSnapshot(c.finalsBracket),
+    highlights: (c.seasonHighlights || []).slice(0, 8),
   });
+  c.seasonHighlights = [];
   c.brownlow = {};
   const capPatch = capBreachSanctionPatch(c, league);
   if (capPatch) Object.assign(c, capPatch);
@@ -1953,8 +1955,9 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 // =============================================================================
 
 const MILESTONE_GAMES = new Set([1, 50, 100, 150, 200, 250, 300]);
+const MILESTONE_GOALS = [50, 100, 200, 300, 500];
 
-/** Player story beats from one match: debuts, game milestones, first goals, big bags. */
+/** Player story beats from one match: debuts, game milestones, first goals, career goal tallies, big bags. */
 function collectMatchMilestones(c, attribution, round) {
   const items = [];
   const boostIds = new Set();
@@ -1970,7 +1973,18 @@ function collectMatchMilestones(c, attribution, round) {
       items.push({ week: round, type: 'win', text: `🏅 Game ${newGames} for ${name} — the banner gets a workout.` });
       boostIds.add(p.id);
     }
-    if ((p.goals || 0) === 0 && (att.goals || 0) > 0) {
+    // Career goal milestones — p.careerGoals = previous seasons, p.goals = this season so far
+    if ((att.goals || 0) > 0) {
+      const prevTotal = (p.careerGoals || 0) + (p.goals || 0);
+      const newTotal = prevTotal + att.goals;
+      for (const milestone of MILESTONE_GOALS) {
+        if (prevTotal < milestone && newTotal >= milestone) {
+          items.push({ week: round, type: 'win', text: `🎯 ${name} boots career goal #${milestone}! A milestone to savour.` });
+          boostIds.add(p.id);
+        }
+      }
+    }
+    if ((p.goals || 0) === 0 && (p.careerGoals || 0) === 0 && (att.goals || 0) > 0) {
       items.push({ week: round, type: 'win', text: `⚽ First career goal for ${name}! The bench loved that one.` });
       boostIds.add(p.id);
     }
@@ -2053,6 +2067,25 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   });
   if (milestones.items.length > 0) {
     c.news = [...milestones.items, ...(c.news || [])].slice(0, 22);
+    // Season highlights — save milestone news to display in end-of-season recap
+    c.seasonHighlights = [...(c.seasonHighlights || []), ...milestones.items].slice(0, 30);
+  }
+
+  // Crowd atmosphere: big home crowd gives a morale lift win or lose.
+  // Only for tier 1–3 (tier 4 has no meaningful gate).
+  if (isHome && (league?.tier ?? 4) <= 3) {
+    const baseCrowdForTier = league.tier === 1 ? 30_000 : league.tier === 2 ? 4_000 : 600;
+    const attendance = result?.attendance ?? meta?.attendance ?? c.lastMatchRevenue?.attendance ?? 0;
+    if (attendance > baseCrowdForTier * 1.15) {
+      const bonus = Math.min(3, Math.round((attendance / baseCrowdForTier - 1) * 4));
+      c.squad = c.squad.map((p) =>
+        c.lineup.includes(p.id) ? adjustMorale(p, bonus, MORALE_REASONS.bigWin, meta.round) : p
+      );
+      const crowdK = Math.round(attendance / 1000);
+      c.news = [{ week: meta.round, type: 'info',
+        text: `📣 ${crowdK}k packed the stands — the home crowd lifted the whole list.` },
+        ...(c.news || [])].slice(0, 22);
+    }
   }
 
   const intensity = c.training?.intensity ?? 60;
@@ -2332,6 +2365,19 @@ function applyPostRoundBoardAndCalendar(c, league, club, meta, myResult) {
   }
 
   c.week = meta.round;
+
+  // Apply squad trait morale delta once per round — traits like Leader/Mentor
+  // lift the room while Hothead/Drifter drag it slightly. Capped at ±8 total.
+  if (meta.phase === 'season' && Array.isArray(c.squad)) {
+    const traitDelta = squadTraitMoraleDelta(c.squad);
+    if (traitDelta !== 0) {
+      c.squad = c.squad.map((p) => {
+        const next = Math.max(0, Math.min(100, (p.morale ?? 75) + traitDelta));
+        return { ...p, morale: next };
+      });
+    }
+  }
+
   applyUnhappinessEscalation(c, league, meta.round);
   if (meta.phase === 'season') {
     refreshTurningPointForNextFixture(c, league);

@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { useAutoAnimate } from '@formkit/auto-animate/react';
+import { Virtuoso } from 'react-virtuoso';
 import {
   Users, Dumbbell,
   Zap, Heart, Target, Activity, Flame,
@@ -9,7 +11,7 @@ import {
   ChevronUp, ChevronDown, Search,
 } from "lucide-react";
 import { PYRAMID, findClub } from '../../data/pyramid.js';
-import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash } from '../../lib/playerGen.js';
+import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash, PLAYER_TRAITS } from '../../lib/playerGen.js';
 import { PLAYER_ROLES, roleFit } from '../../lib/playerRoles.js';
 import { fmtK, clamp } from '../../lib/format.js';
 import { TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
@@ -412,7 +414,10 @@ function PlayersTab({ onNavigate }) {
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-atext truncate">{pName(p)}</div>
+                    <div className="text-sm font-semibold text-atext truncate flex items-center gap-1">
+                      {pName(p)}
+                      <span title={PLAYER_TRAITS[p.trait ?? 'grinder']?.label} className="text-[10px] ml-1 flex-shrink-0">{PLAYER_TRAITS[p.trait ?? 'grinder']?.emoji}</span>
+                    </div>
                     <div className="text-[10px] text-atext-mute flex items-center gap-1.5 flex-wrap"><span className="inline-flex items-center text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span> · {POSITION_NAMES[p.position]} · age {p.age}</div>
                   </div>
                   <RatingDot value={p.overall} size="sm" />
@@ -462,6 +467,7 @@ function PlayersTab({ onNavigate }) {
                     {p.injured > 0 && <Heart className="w-3 h-3 flex-shrink-0 text-aneg" />}
                     {inLineup && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:"var(--A-pos)", boxShadow:"0 0 4px var(--A-pos)"}} />}
                     <span className="truncate text-sm font-semibold text-atext">{pName(p)}</span>
+                    <span title={PLAYER_TRAITS[p.trait ?? 'grinder']?.label} className="text-[10px] flex-shrink-0">{PLAYER_TRAITS[p.trait ?? 'grinder']?.emoji}</span>
                     {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"color-mix(in srgb, var(--A-accent) 13%, transparent)",color:"var(--A-accent)"}}>R</span>}
                     {p.transferRequested
                       ? <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0 whitespace-nowrap" style={{background:"color-mix(in srgb, var(--A-neg) 14%, transparent)",color:"var(--A-neg)",border:"1px solid color-mix(in srgb, var(--A-neg) 30%, transparent)"}}>TRADE REQ</span>
