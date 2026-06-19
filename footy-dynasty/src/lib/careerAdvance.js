@@ -928,9 +928,9 @@ function finishSeason(c, league) {
         disposals: p.careerDisposals || 0,
       },
     });
-    // Farewell trigger: club legend (100+ career games) gets a send-off event.
+    // Farewell trigger: genuine retirees (age > 36) with 100+ career games get a send-off.
     const careerGames = p.careerGames ?? p.gamesPlayed ?? p.stats?.careerGames ?? 0;
-    if (careerGames >= 100) {
+    if (p.age > 36 && careerGames >= 100) {
       c.pendingFarewells = [...(c.pendingFarewells || []), {
         id: p.id,
         name: p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'),
@@ -1302,9 +1302,11 @@ function finishSeason(c, league) {
   if (champion) bumpClubCulture(c, 15);
   c.crisisFiredThisSeason = false;
 
-  // Generate staff market for tier 1–2 clubs
+  // Generate staff market for tier 1–2 clubs; clear it for lower tiers
   if (league.tier <= 2) {
     c.staffMarket = generateStaffMarket(c, league);
+  } else {
+    c.staffMarket = [];
   }
 
   // AFL expansion: when new clubs join (e.g. Tasmania 2028), rebuild the fixture schedule
@@ -1429,8 +1431,10 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     weeklyClubOperationsPulse(c, league?.tier ?? 3);
   }
 
-  // Fortnightly journalist board confidence effect
-  if (c.journalist && c.week % 2 === 0) {
+  // Fortnightly journalist board confidence effect — guard with lastJournalistTickWeek
+  // to ensure it fires at most once per unique week value, not once per advance call.
+  if (c.journalist && c.week % 2 === 0 && c.week !== (c.lastJournalistTickWeek ?? -1)) {
+    c.lastJournalistTickWeek = c.week;
     const jImpact = journalistBoardImpact(c.journalist);
     if (jImpact !== 0) {
       const bc = Math.max(0, Math.min(100, (c.finance?.boardConfidence ?? 50) + jImpact));

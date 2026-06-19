@@ -150,12 +150,17 @@ export function generateStaffMarket(career, league) {
 
   return upgradeable.slice(0, 3).map((id, i) => {
     const current = (career.staff || []).find(s => s.id === id);
-    seedRng((career.season ?? 1) * 1000 + id.charCodeAt(1) * 37 + i * 13);
-    const upgradeAmount = rand(6, 20);
+    // Use a local deterministic hash rather than reseeding the shared RNG,
+    // which would corrupt all downstream randomness in the same finishSeason call.
+    const h = ((career.season ?? 1) * 1000 + id.charCodeAt(1) * 37 + i * 13) | 0;
+    const localRng = () => { const x = Math.sin(h + i * 997) * 43758.5453; return x - Math.floor(x); };
+    const upgradeAmount = 6 + Math.floor(localRng() * 15);
     const newRating = Math.min(95, (current?.rating ?? 60) + upgradeAmount);
     const wageMult = 1 + (newRating - (current?.rating ?? 60)) * 0.025;
     const newWage = Math.round((current?.wage ?? 50_000) * wageMult);
-    const name = `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
+    const fnIdx = Math.floor(localRng() * FIRST_NAMES.length);
+    const lnIdx = Math.floor(localRng() * LAST_NAMES.length);
+    const name = `${FIRST_NAMES[fnIdx]} ${LAST_NAMES[lnIdx]}`;
 
     return {
       marketId:      `mkt_${id}_${career.season ?? 1}`,

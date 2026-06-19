@@ -1480,8 +1480,10 @@ function TrainingTab({ onOpenClubStaff }) {
                 </div>
               </div>
               <button
+                disabled={(career.finance?.cash ?? 0) < candidate.signingFee}
                 onClick={() => {
                   updateCareer(c => {
+                    if ((c.finance?.cash ?? 0) < candidate.signingFee) return c;
                     const updatedStaff = (c.staff || []).map(s =>
                       s.id === candidate.staffId
                         ? { ...s, name: candidate.name, rating: candidate.rating, wage: candidate.wage, contractYears: candidate.contractYears }
@@ -1496,7 +1498,7 @@ function TrainingTab({ onOpenClubStaff }) {
                     };
                   });
                 }}
-                className="text-[11px] px-3 py-1.5 rounded-lg shrink-0 font-medium"
+                className="text-[11px] px-3 py-1.5 rounded-lg shrink-0 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: 'var(--A-accent)', color: '#000' }}>
                 Sign
               </button>
