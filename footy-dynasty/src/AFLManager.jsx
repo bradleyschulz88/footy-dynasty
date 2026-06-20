@@ -1404,7 +1404,7 @@ function AFLManagerInner() {
           }}
         />
         <ExportReminderBanner onGoSettings={() => setScreen("settings")} />
-        <div className="p-3 md:p-6 pb-28 md:pb-6 max-w-[1400px] mx-auto">
+        <div className="p-3 md:p-6 md:pb-6 max-w-[1400px] mx-auto" style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom, 0px))' }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={screen}

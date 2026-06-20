@@ -1,4 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
+import {
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer,
+} from "recharts";
 import FloatingTooltip from '../../components/FloatingTooltip.jsx';
 import { Virtuoso } from 'react-virtuoso';
 import {
@@ -437,9 +440,9 @@ function PlayersTab({ onNavigate }) {
             }}
           />
         </div>
-        <div className="hidden md:block rounded-2xl overflow-hidden border border-aline shadow-sm">
-          <div className="overflow-x-auto">
-          <div className="grid px-4 py-3 min-w-[720px]" style={{gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
+        <div className="hidden md:block rounded-2xl overflow-x-auto border border-aline shadow-sm">
+          <div>
+          <div className="grid px-4 py-3 min-w-[820px]" style={{gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
             {["#","Player","Pos","Age","OVR","Form","Fitness","Wage","Status"].map((h,i)=>(
               <div key={h} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${i>1?"text-center":""} ${i===7?"text-right":""}`}>{h}</div>
             ))}
@@ -898,16 +901,42 @@ function PlayerDetail({ player, onClose }) {
       {/* Attributes */}
       <div className="p-4" style={{borderTop:"1px solid var(--A-line)"}}>
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute mb-3">Attributes</div>
-        <div className="space-y-2.5">
+        {/* Radar chart */}
+        <div style={{height:190}}>
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart
+              data={Object.entries(player.attrs).map(([k, v]) => ({
+                attr: k.slice(0,3).toUpperCase(),
+                value: v,
+                fullMark: 100,
+              }))}
+              margin={{top:8,right:16,bottom:8,left:16}}
+            >
+              <PolarGrid stroke="var(--A-line)" strokeOpacity={0.7} />
+              <PolarAngleAxis
+                dataKey="attr"
+                tick={{ fontSize: 9, fill: 'var(--A-text-mute)', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em' }}
+              />
+              <Radar
+                name="attrs"
+                dataKey="value"
+                stroke="var(--A-accent)"
+                strokeWidth={1.5}
+                fill="var(--A-accent)"
+                fillOpacity={0.15}
+                dot={{ r: 2.5, fill: 'var(--A-accent)', strokeWidth: 0 }}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Compact numeric grid */}
+        <div className="grid grid-cols-4 gap-1 mt-2">
           {Object.entries(player.attrs).map(([k, v]) => {
             const color = ATTR_COLORS[k] || "var(--A-accent)";
             return (
-              <div key={k} className="flex items-center gap-2">
-                <div className="text-[11px] capitalize font-semibold text-atext-dim w-20 flex-shrink-0">{k}</div>
-                <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
-                  <div className="h-full rounded-full transition-all" style={{width:`${v}%`, background:`linear-gradient(90deg, color-mix(in srgb, ${color} 55%, transparent), ${color})`}} />
-                </div>
-                <div className="text-[12px] font-black w-7 text-right" style={{color}}>{v}</div>
+              <div key={k} className="rounded-lg px-1.5 py-1.5 text-center" style={{background:"var(--A-panel)"}}>
+                <div className="text-[8px] font-black uppercase tracking-wider" style={{color:"var(--A-text-mute)"}}>{k.slice(0,3)}</div>
+                <div className="text-[14px] font-black leading-tight tabular-nums" style={{color}}>{v}</div>
               </div>
             );
           })}

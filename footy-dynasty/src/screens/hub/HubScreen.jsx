@@ -1,4 +1,5 @@
 import React from "react";
+import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { motion } from "motion/react";
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import {
@@ -833,6 +834,55 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
           <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.W ?? 0}W / ${myRow?.L ?? 0}L`} accent={posColor} icon={Trophy} />
       </motion.div>
 
+      {/* Cash sparkline — shows at-a-glance financial trajectory */}
+      {(career.weeklyHistory?.length ?? 0) >= 3 && (() => {
+        const sparkData = (career.weeklyHistory || []).slice(-12).map((w, i) => ({
+          i,
+          cash: Math.round((w.cash ?? 0) / 1000),
+        }));
+        const first = sparkData[0]?.cash ?? 0;
+        const last = sparkData[sparkData.length - 1]?.cash ?? 0;
+        const trend = last > first ? 'up' : last < first ? 'down' : 'flat';
+        const trendColor = trend === 'up' ? 'var(--A-pos)' : trend === 'down' ? 'var(--A-neg)' : 'var(--A-text-mute)';
+        const trendArrow = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
+        return (
+          <motion.div variants={hubItem}
+            className="rounded-xl px-3 py-2 flex items-center gap-3"
+            style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}
+          >
+            <div className="flex-shrink-0">
+              <div className="text-[9px] font-black uppercase tracking-widest font-mono text-atext-mute">Cash trend</div>
+              <div className="text-[13px] font-black mt-0.5" style={{ color: trendColor }}>{trendArrow} {fmtK(last - first)}</div>
+            </div>
+            <div style={{ flex: 1, height: 36 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={sparkData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                  <defs>
+                    <linearGradient id="hubCashGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={trendColor} stopOpacity={0.35} />
+                      <stop offset="95%" stopColor={trendColor} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <Area
+                    type="monotone"
+                    dataKey="cash"
+                    stroke={trendColor}
+                    strokeWidth={1.5}
+                    fill="url(#hubCashGrad)"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex-shrink-0 text-right">
+              <div className="text-[9px] font-mono text-atext-mute uppercase tracking-widest">Now</div>
+              <div className="text-[13px] font-black text-atext">{fmtK(career.finance.cash)}</div>
+            </div>
+          </motion.div>
+        );
+      })()}
+
       <motion.div variants={hubItem} className="grid md:grid-cols-5 gap-5">
         {/* Ladder */}
         <div className={`${css.panel} md:col-span-3`} style={{ background: 'color-mix(in srgb, var(--A-accent) 2%, var(--A-panel))' }}>
@@ -970,6 +1020,38 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
                 ) : null
               }
             >
+              {/* Journalist relationship card */}
+              {career.journalist && (() => {
+                const sat = career.journalist.satisfaction ?? 50;
+                const jColor = sat >= 65 ? 'var(--A-pos)' : sat <= 35 ? 'var(--A-neg)' : 'var(--A-accent-2)';
+                const jTone = sat >= 65 ? 'Onside' : sat <= 35 ? 'Hostile' : 'Neutral';
+                const jIcon = sat >= 65 ? '📣' : sat <= 35 ? '🔥' : '📰';
+                const jEffect = sat >= 70 ? '+1 board confidence / fortnight'
+                  : sat <= 25 ? '−1 board confidence / fortnight'
+                  : 'No board confidence effect';
+                const jFreq = sat < 30 ? 'Press events more frequent' : null;
+                return (
+                  <div className="rounded-xl p-3 mb-3 flex items-center gap-3"
+                    style={{ background: `color-mix(in srgb, ${jColor} 6%, var(--A-panel-2))`, border: `1px solid color-mix(in srgb, ${jColor} 25%, var(--A-line))` }}>
+                    <span className="text-xl flex-shrink-0">{jIcon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-[11px] font-bold text-atext truncate">{career.journalist.name}</div>
+                        <span className="text-[9px] font-black uppercase tracking-widest shrink-0 px-1.5 py-0.5 rounded"
+                          style={{ background: `color-mix(in srgb, ${jColor} 14%, transparent)`, color: jColor }}>
+                          {jTone}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full mt-1.5 mb-1 overflow-hidden" style={{ background: 'var(--A-line)' }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${sat}%`, background: jColor }} />
+                      </div>
+                      <div className="text-[10px] text-atext-dim leading-snug">
+                        {jEffect}{jFreq ? ` · ${jFreq}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
               {pressItems.length === 0 ? (
                 <div className="text-sm text-atext-dim py-2 text-center leading-relaxed">
                   No press coverage yet — results will generate headlines
@@ -1094,13 +1176,6 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
             <div className="font-bold text-sm text-aneg">Board On Notice — Confidence {career.finance.boardConfidence}%</div>
             <div className="text-xs text-atext-dim">Win your next match or face consequences. The board is watching closely.</div>
           </div>
-        </div>
-      )}
-      {career.journalist && (career.journalist.satisfaction < 35 || career.journalist.satisfaction >= 70) && (
-        <div className="text-[11px] text-atext-mute">
-          {career.journalist.satisfaction >= 70
-            ? `📰 Press: ${career.journalist.name} is onside`
-            : `📰 Press: ${career.journalist.name} is circling`}
         </div>
       )}
 
