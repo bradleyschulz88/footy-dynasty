@@ -1914,7 +1914,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 
     c.squad = c.squad.map((p) => {
       if (c.lineup.includes(p.id)) return p;
-      return { ...p, fitness: clamp(p.fitness + rand(8, 14), 30, 100), injured: Math.max(0, p.injured - 1) };
+      return { ...p, fitness: clamp((p.fitness ?? 90) + rand(8, 14), 30, 100), injured: Math.max(0, (p.injured ?? 0) - 1) };
     });
 
     // Player match in progress — pause at half time for the coach's call.

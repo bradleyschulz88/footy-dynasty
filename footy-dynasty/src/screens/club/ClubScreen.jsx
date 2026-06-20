@@ -2194,7 +2194,9 @@ function StaffTab() {
       news: [{ week: career.week, type: "info", text: `🤝 Hired new ${old.role}: ${newStaff[idx].name} (${newRating} OVR)` }, ...career.news].slice(0,15),
     });
   };
-  const avgRating = Math.round(career.staff.reduce((a,s)=>a+s.rating,0) / career.staff.length);
+  const avgRating = (career.staff?.length ?? 0)
+    ? Math.round(career.staff.reduce((a,s)=>a+(s.rating||0),0) / career.staff.length)
+    : 0;
   const tasks = ensureStaffTasks(career);
   const clubState = findClub(career.clubId)?.state ?? null;
   const patchStaffTasks = (partial) =>
