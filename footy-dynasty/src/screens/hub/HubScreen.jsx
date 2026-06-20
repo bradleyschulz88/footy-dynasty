@@ -1020,6 +1020,38 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
                 ) : null
               }
             >
+              {/* Journalist relationship card */}
+              {career.journalist && (() => {
+                const sat = career.journalist.satisfaction ?? 50;
+                const jColor = sat >= 65 ? 'var(--A-pos)' : sat <= 35 ? 'var(--A-neg)' : 'var(--A-accent-2)';
+                const jTone = sat >= 65 ? 'Onside' : sat <= 35 ? 'Hostile' : 'Neutral';
+                const jIcon = sat >= 65 ? '📣' : sat <= 35 ? '🔥' : '📰';
+                const jEffect = sat >= 70 ? '+1 board confidence / fortnight'
+                  : sat <= 25 ? '−1 board confidence / fortnight'
+                  : 'No board confidence effect';
+                const jFreq = sat < 30 ? 'Press events more frequent' : null;
+                return (
+                  <div className="rounded-xl p-3 mb-3 flex items-center gap-3"
+                    style={{ background: `color-mix(in srgb, ${jColor} 6%, var(--A-panel-2))`, border: `1px solid color-mix(in srgb, ${jColor} 25%, var(--A-line))` }}>
+                    <span className="text-xl flex-shrink-0">{jIcon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-[11px] font-bold text-atext truncate">{career.journalist.name}</div>
+                        <span className="text-[9px] font-black uppercase tracking-widest shrink-0 px-1.5 py-0.5 rounded"
+                          style={{ background: `color-mix(in srgb, ${jColor} 14%, transparent)`, color: jColor }}>
+                          {jTone}
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full mt-1.5 mb-1 overflow-hidden" style={{ background: 'var(--A-line)' }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${sat}%`, background: jColor }} />
+                      </div>
+                      <div className="text-[10px] text-atext-dim leading-snug">
+                        {jEffect}{jFreq ? ` · ${jFreq}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
               {pressItems.length === 0 ? (
                 <div className="text-sm text-atext-dim py-2 text-center leading-relaxed">
                   No press coverage yet — results will generate headlines
@@ -1144,13 +1176,6 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
             <div className="font-bold text-sm text-aneg">Board On Notice — Confidence {career.finance.boardConfidence}%</div>
             <div className="text-xs text-atext-dim">Win your next match or face consequences. The board is watching closely.</div>
           </div>
-        </div>
-      )}
-      {career.journalist && (career.journalist.satisfaction < 35 || career.journalist.satisfaction >= 70) && (
-        <div className="text-[11px] text-atext-mute">
-          {career.journalist.satisfaction >= 70
-            ? `📰 Press: ${career.journalist.name} is onside`
-            : `📰 Press: ${career.journalist.name} is circling`}
         </div>
       )}
 
