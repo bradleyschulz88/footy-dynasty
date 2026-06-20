@@ -572,24 +572,29 @@ export function journalistBoardImpact(journalist) {
   return 0;
 }
 
-// Call weekly during T3/T4 career to tick volunteer fatigue
+// Call weekly during T3/T4 career to tick volunteer fatigue.
+// On burnout the role is NOT left vacant — a fresh (low-rated) volunteer steps
+// up so staff-by-id consumers (training s2/s4/s5, medical s6) keep working,
+// but with a real capability hit. Uses the seeded rng for replay determinism.
 export function tickVolunteerBurnout(career) {
   const staff = career.staff ?? [];
   const news = [];
   const updated = staff.map(s => {
     if (!s.volunteer) return s;
-    const weeklyDelta = 3 + Math.floor(Math.random() * 5); // 3–7 per week
+    const weeklyDelta = 3 + Math.floor(rng() * 5); // 3–7 per week
     const prev = s.fatigue ?? 0;
     const next = Math.min(100, prev + weeklyDelta);
     if (next >= 100) {
-      news.push({ type: 'warning', text: `😓 ${s.name} has burned out and stepped down as ${s.role}. You'll need to find a replacement.` });
-      return null;
+      const freshName = pickName();
+      const freshRating = rand(46, 58); // a green newcomer — noticeably weaker
+      news.push({ type: 'warning', text: `😓 ${s.name} has burned out and stepped down as ${s.role}. ${freshName} has volunteered to step in — they'll need time to find their feet.` });
+      return { ...s, name: freshName, rating: freshRating, fatigue: 0 };
     }
     if (next >= 75 && prev < 75) {
       news.push({ type: 'info', text: `⚠️ ${s.name} (${s.role}) is showing signs of volunteer fatigue.` });
     }
     return { ...s, fatigue: next };
-  }).filter(Boolean);
+  });
   return { staff: updated, news };
 }
 

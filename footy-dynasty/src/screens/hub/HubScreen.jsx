@@ -198,8 +198,8 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
   const recentNews = (career.news || []).slice(0, 6);
   const hubTotals = React.useMemo(() => {
     const wagesAnnual =
-      career.squad.reduce((a, p) => a + p.wage, 0) +
-      career.staff.reduce((a, s) => a + s.wage, 0);
+      (career.squad || []).reduce((a, p) => a + (p.wage || 0), 0) +
+      (career.staff || []).reduce((a, s) => a + (s.wage || 0), 0);
     const sponsorsAnnual = (career.sponsors || []).reduce((a, s) => a + s.annualValue, 0);
     const squadAvg = career.squad.length
       ? Math.round(career.squad.reduce((a, p) => a + p.overall, 0) / career.squad.length)
