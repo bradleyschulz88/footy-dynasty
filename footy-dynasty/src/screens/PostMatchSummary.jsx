@@ -30,6 +30,7 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
     } else {
       gameToast.info("Draw");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

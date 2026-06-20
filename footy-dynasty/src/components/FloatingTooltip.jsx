@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   useFloating,
   autoUpdate,
@@ -13,10 +13,6 @@ import {
   FloatingPortal,
 } from '@floating-ui/react';
 
-/**
- * Drop-in replacement for `title` attributes.
- * Usage: <FloatingTooltip content="Tooltip text"><span>…</span></FloatingTooltip>
- */
 export default function FloatingTooltip({ content, children, placement = 'top' }) {
   const [open, setOpen] = useState(false);
 
@@ -28,10 +24,10 @@ export default function FloatingTooltip({ content, children, placement = 'top' }
     middleware: [offset(6), flip(), shift({ padding: 8 })],
   });
 
-  const hover  = useHover(context,  { move: false });
-  const focus  = useFocus(context);
+  const hover   = useHover(context,  { move: false });
+  const focus   = useFocus(context);
   const dismiss = useDismiss(context);
-  const role   = useRole(context,   { role: 'tooltip' });
+  const role    = useRole(context,   { role: 'tooltip' });
 
   const { getReferenceProps, getFloatingProps } = useInteractions([hover, focus, dismiss, role]);
 
@@ -46,7 +42,6 @@ export default function FloatingTooltip({ content, children, placement = 'top' }
         <FloatingPortal>
           <div
             ref={refs.setFloating}
-            style={{ ...floatingStyles, zIndex: 9999, maxWidth: 220 }}
             {...getFloatingProps()}
             className="rounded-lg px-2.5 py-1.5 text-[11px] leading-snug shadow-xl pointer-events-none"
             style={{

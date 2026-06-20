@@ -120,6 +120,7 @@ export default function SeasonSummaryScreen({
       confetti({ particleCount: 120, spread: 70, origin: { x: 0.2, y: 0.6 } });
       setTimeout(() => confetti({ particleCount: 120, spread: 70, origin: { x: 0.8, y: 0.6 } }), 300);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

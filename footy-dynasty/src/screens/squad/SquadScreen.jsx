@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
 import FloatingTooltip from '../../components/FloatingTooltip.jsx';
-import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { Virtuoso } from 'react-virtuoso';
 import {
   Users, Dumbbell,

@@ -1,4 +1,4 @@
-import { Howl, Howler } from 'howler';
+import { Howler } from 'howler';
 
 // Volume settings — persisted in localStorage
 let masterVolume = parseFloat(localStorage.getItem('fd_volume') ?? '0.6');
