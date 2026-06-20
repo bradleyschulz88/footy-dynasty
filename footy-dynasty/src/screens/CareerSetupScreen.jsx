@@ -356,7 +356,7 @@ export function quickStartCareer({ existingSlots = {}, managerName = "" } = {}) 
   });
 }
 
-export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResume, themeClass = 'dirB' }) {
+export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResume, themeClass = 'dirV4' }) {
   const saved = loadSetup();
   const [gameMode, setGameMode] = useState(saved.gameMode ?? 'normal');
   const [challengeId, setChallengeId] = useState(saved.challengeId ?? 'under_the_pump');

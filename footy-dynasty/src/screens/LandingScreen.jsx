@@ -9,7 +9,7 @@ const TAGLINES = [
   "Every great dynasty started somewhere.",
 ];
 
-export default function LandingScreen({ hasSaves, themeClass = 'dirB', onQuickStart, onNewCareer, onLoadGame }) {
+export default function LandingScreen({ hasSaves, themeClass = 'dirV4', onQuickStart, onNewCareer, onLoadGame }) {
   const [tagline] = useState(() => TAGLINES[Math.floor(Math.random() * TAGLINES.length)]);
   const [ready, setReady] = useState(false);
 
