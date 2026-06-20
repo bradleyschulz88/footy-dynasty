@@ -1,8 +1,57 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { motion, useAnimationControls } from "motion/react";
 import { useCareer } from "../lib/careerStore.js";
 import { formatDate } from "../lib/calendar.js";
 import { COACHING_CALLS } from "../lib/coachingCalls.js";
 import { playCrowdCheer, playSiren, playWhistle, soundEnabled } from "../lib/sound.js";
+
+// ── Count-up animated number ────────────────────────────────────────────────
+// Rolls the displayed value up/down to `value` over ~600ms via rAF.
+// Pure presentational: no side-effects beyond its own local state.
+function AnimatedScore({ value, duration = 600 }) {
+  const [display, setDisplay] = useState(value);
+  const fromRef = useRef(value);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const target = typeof value === "number" ? value : 0;
+    const start = typeof fromRef.current === "number" ? fromRef.current : 0;
+    if (start === target) {
+      setDisplay(target);
+      return undefined;
+    }
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced || typeof requestAnimationFrame === "undefined") {
+      fromRef.current = target;
+      setDisplay(target);
+      return undefined;
+    }
+    let startTime = null;
+    const tick = (now) => {
+      if (startTime == null) startTime = now;
+      const t = Math.min(1, (now - startTime) / duration);
+      // easeOutCubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      const current = Math.round(start + (target - start) * eased);
+      setDisplay(current);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        fromRef.current = target;
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      fromRef.current = target;
+    };
+  }, [value, duration]);
+
+  return <>{display}</>;
+}
 
 // Plain-English tactical effect descriptions for each coaching call
 const CALL_TACTICAL_EFFECTS = {
@@ -124,6 +173,36 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
         ? "READY"
         : `END Q${revealed}`;
   const headerColor = fullTime ? resultColor : "var(--A-accent)";
+
+  // ── Cinematic goal flash / shake / cheer ──────────────────────────────────
+  // Fires only when the *cumulative goal count* actually increases, guarded by
+  // refs so React re-renders alone never re-trigger it.
+  const [scoreFlash, setScoreFlash] = useState(0); // bump to re-fire keyframe
+  const scoreboardCtrl = useAnimationControls();
+  const totalGoals = useMemo(() => {
+    let g = 0;
+    for (const ev of eventFeed) if (ev.kind === "goal") g += 1;
+    return g;
+  }, [eventFeed]);
+  const prevGoalsRef = useRef(totalGoals);
+
+  useEffect(() => {
+    const prev = prevGoalsRef.current;
+    prevGoalsRef.current = totalGoals;
+    // Only celebrate genuinely new goals (not the very first paint / decrease).
+    if (totalGoals <= prev) return undefined;
+    // Re-fire the scoreFlash CSS keyframe by bumping a key.
+    setScoreFlash((n) => n + 1);
+    if (sound) playCrowdCheer(0.8);
+    // Brief screen-shake on the scoreboard container.
+    scoreboardCtrl.start({
+      x: [0, -5, 5, -4, 4, 0],
+      y: [0, 3, -3, 2, -2, 0],
+      transition: { duration: 0.25, ease: "easeInOut" },
+    });
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalGoals]);
 
   const commentary =
     result.isAFL
@@ -516,7 +595,7 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
         )}
 
         {/* Teams + Scoreboard */}
-        <div className="flex items-center justify-center gap-4 md:gap-8">
+        <motion.div animate={scoreboardCtrl} className="flex items-center justify-center gap-4 md:gap-8">
           {/* Home team */}
           <div className="text-center flex-1">
             <div
@@ -543,7 +622,8 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
           <div className="text-center px-2 flex-shrink-0">
             {/* Score — very large, monospace */}
             <div
-              className="font-display leading-none tabular-nums"
+              key={`flash-${scoreFlash}`}
+              className={`font-display leading-none tabular-nums${scoreFlash > 0 ? " score-flash" : ""}`}
               style={{
                 fontSize: "clamp(3rem, 12vw, 5.5rem)",
                 color: headerColor,
@@ -555,7 +635,15 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
                 letterSpacing: "-0.02em",
               }}
             >
-              {headerScore}
+              {headerHome != null && headerAway != null ? (
+                <>
+                  <AnimatedScore value={headerHome} />
+                  {" – "}
+                  <AnimatedScore value={headerAway} />
+                </>
+              ) : (
+                headerScore
+              )}
             </div>
 
             {/* Status chip */}
@@ -595,7 +683,7 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
               }}
             >AWAY</div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* ── Momentum / pressure bar ── */}
@@ -730,16 +818,20 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
                   const oppSnap = result.isHome ? ev.snapA : ev.snapH;
                   const scoreSnap = (isGoal || ev.kind === "behind") ? `${mySnap}–${oppSnap}` : null;
                   return (
-                    <div
+                    <motion.div
                       key={i}
-                      className={`flex items-center gap-2 px-2 rounded-lg ${isGoal ? 'py-2' : 'py-1'}`}
+                      initial={isGoal ? { opacity: 0, x: -12, scale: 0.97 } : { opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      transition={{ duration: isGoal ? 0.4 : 0.3, ease: [0.2, 0.7, 0.3, 1] }}
+                      className={`feed-item flex items-center gap-2 px-2 rounded-lg ${isGoal ? 'py-2' : 'py-1'}`}
                       style={{
                         background: isGoal && i === 0
-                          ? `color-mix(in srgb, ${evColor} 12%, var(--A-panel))`
+                          ? `color-mix(in srgb, ${evColor} 16%, var(--A-panel))`
                           : isGoal
-                            ? `color-mix(in srgb, ${evColor} 6%, transparent)`
+                            ? `color-mix(in srgb, ${evColor} 8%, transparent)`
                             : 'transparent',
                         borderLeft: isGoal ? `3px solid ${evColor}` : `2px solid ${i === 0 ? evColor : 'transparent'}`,
+                        boxShadow: isGoal && i === 0 ? `0 2px 12px color-mix(in srgb, ${evColor} 22%, transparent)` : 'none',
                       }}
                     >
                       <span className="text-[9px] font-mono text-atext-mute w-14 flex-shrink-0 tabular-nums">
@@ -754,16 +846,19 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
                       >
                         {sideMine ? club?.short : result.opp?.short || "OPP"}
                       </span>
-                      <span className={`flex-1 truncate ${isGoal ? 'text-[12px] font-semibold text-atext' : 'text-[11px] text-atext-dim'}`}>
+                      <span
+                        className={`flex-1 truncate ${isGoal ? 'text-[13px] font-bold text-atext tracking-wide' : 'text-[11px] text-atext-dim'}`}
+                        style={isGoal ? { textShadow: `0 0 12px color-mix(in srgb, ${evColor} 35%, transparent)` } : undefined}
+                      >
                         {label}
                       </span>
                       {scoreSnap && (
-                        <span className="text-[10px] font-mono font-bold tabular-nums flex-shrink-0"
+                        <span className={`font-mono font-bold tabular-nums flex-shrink-0 ${isGoal ? 'text-[11px]' : 'text-[10px]'}`}
                           style={{ color: mySnap > oppSnap ? 'var(--A-pos)' : mySnap < oppSnap ? 'var(--A-neg)' : 'var(--A-accent)' }}>
                           {scoreSnap}
                         </span>
                       )}
-                    </div>
+                    </motion.div>
                   );
                 });
               })()}
@@ -797,14 +892,18 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
               const momentumArrow = myMomentumUp ? "↑" : myMomentumDown ? "↓" : "→";
               const momentumArrowColor = myMomentumUp ? "var(--A-pos)" : myMomentumDown ? "var(--A-neg)" : "var(--A-text-mute)";
               return (
-                <div
+                <motion.div
                   key={i}
-                  className={`rounded-2xl p-4 transition-all duration-300 ${isShowing ? "opacity-100" : "opacity-0 translate-y-2"}`}
+                  initial={false}
+                  animate={isShowing ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+                  transition={{ duration: 0.4, ease: [0.2, 0.7, 0.3, 1], delay: isShowing ? Math.min(i, 3) * 0.06 : 0 }}
+                  className="rounded-2xl p-4"
                   style={{
                     background: "var(--A-panel-2)",
                     border: isShowing && myWon
                       ? `1px solid color-mix(in srgb, var(--A-pos) 22%, var(--A-line))`
                       : "1px solid var(--A-line)",
+                    pointerEvents: isShowing ? "auto" : "none",
                   }}
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -884,7 +983,7 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
                       </div>
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })}
           </div>

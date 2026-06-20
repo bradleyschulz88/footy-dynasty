@@ -58,6 +58,7 @@ import {
   startDraftSessionPatch,
 } from '../../lib/draftEngine.js';
 import { useCareer, useUpdateCareer } from '../../lib/careerStore.js';
+import { gameToast } from '../../lib/toast.js';
 
 // ── Position badge style helper ─────────────────────────────────────────────
 function posBadgeStyle(pos) {
@@ -249,6 +250,7 @@ function FreeAgentsTab() {
       freeAgentBalance: bal,
       news: [{ week: career.week, type: 'win', text: `✍️ Free agency: signed ${fa.firstName} ${fa.lastName} — ${fa.contractYearsAsk}yr @ ${fmtK(fa.wageAsk)}/yr` }, ...(career.news || [])].slice(0, 20),
     });
+    gameToast.signing(`Signed ${fa.firstName} ${fa.lastName} to ${findClub(career.clubId)?.name || 'your club'}`);
   };
   return (
     <div className="space-y-4">
@@ -388,6 +390,7 @@ function ProposeTradePanel() {
       });
       setOfferedPicks([]);
       setResult('accepted');
+      gameToast.trade(`Trade done: ${theirPlayer.firstName} ${theirPlayer.lastName} joins from ${targetClubShort}`);
     } else {
       const flavors = [
         `${targetClubShort} reviewed the offer but want more value — their recruiting panel passed.`,
@@ -621,6 +624,11 @@ function OffersTab() {
       news: [...acceptNews, ...(career.news || [])].slice(0, 20),
     });
     setInspectOffer(null);
+    gameToast.trade(
+      incomingPlayer
+        ? `Trade complete: ${incomingPlayer.firstName} ${incomingPlayer.lastName} in from ${offer.fromClubName}`
+        : `Trade complete: ${targetPlayer.firstName} ${targetPlayer.lastName} → ${offer.fromClubName} for ${fmtK(offer.offerCash)}`
+    );
   };
 
   const rejectOffer = (offer) => {
@@ -846,6 +854,7 @@ function TradeTab() {
       news: [{ week: career.week, type: "win", text: `🤝 Signed ${p.firstName} ${p.lastName} (${p.overall} OVR) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr` }, ...career.news].slice(0,15),
     });
     setNegotiating(null);
+    gameToast.signing(`Signed ${p.firstName} ${p.lastName} (${p.overall} OVR) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr`);
   };
 
   const counterOffer = (p) => {
