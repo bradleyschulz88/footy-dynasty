@@ -152,7 +152,7 @@ export function generateFixtures(leagueClubs, { homeAndAway = true, maxRounds = 
 export function blankLadder(leagueClubs) {
   return leagueClubs.map(c => ({
     id: c.id, name: c.name, short: c.short,
-    P: 0, W: 0, L: 0, D: 0, F: 0, A: 0, pts: 0, pct: 0,
+    P: 0, W: 0, L: 0, D: 0, F: 0, A: 0, pts: 0, pct: 0, form: [],
   }));
 }
 
@@ -169,7 +169,9 @@ export function applyResultToLadder(ladder, homeId, awayId, hScore, aScore) {
     const A   = row.A + ag;
     const pts = W * 4 + D * 2;
     const pct = A === 0 ? 0 : (F / A) * 100;
-    return { ...row, P: row.P + 1, W, L, D, F, A, pts, pct };
+    const resultChar = fr > ag ? 'W' : fr < ag ? 'L' : 'D';
+    const form = [...(row.form ?? []), resultChar].slice(-5);
+    return { ...row, P: row.P + 1, W, L, D, F, A, pts, pct, form };
   });
 }
 

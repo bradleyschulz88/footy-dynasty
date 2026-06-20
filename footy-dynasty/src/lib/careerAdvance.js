@@ -47,7 +47,7 @@ import {
   committeeMessage, bumpCommitteeMood, postMatchFundraiser,
   ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
   groundConditionBand, journalistMatchLine, generatePostMatchHeadline,
-  updateFanbase, journalistBoardImpact,
+  updateFanbase, journalistBoardImpact, tickVolunteerBurnout, recoverVolunteers,
 } from './community.js';
 import {
   coachTierFromScore, applyEndOfSeasonReputation,
@@ -1084,6 +1084,7 @@ function finishSeason(c, league) {
 
   c.groundCondition = recoverGroundPreseason(c.groundCondition ?? 85);
   c.weeklyWeather = {};
+  if ((league?.tier ?? 4) >= 3) c.staff = recoverVolunteers(c.staff);
 
   c.footyTripUsed = false;
   c.footyTripAvailable = false;
@@ -1442,6 +1443,16 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     if (jImpact !== 0) {
       const bc = Math.max(0, Math.min(100, (c.finance?.boardConfidence ?? 50) + jImpact));
       c.finance = { ...c.finance, boardConfidence: bc };
+    }
+  }
+
+  // Volunteer burnout — weekly fatigue tick for T3/T4 clubs (once per unique week)
+  if ((league?.tier ?? 4) >= 3 && c.week !== (c.lastVolunteerBurnoutWeek ?? -1)) {
+    c.lastVolunteerBurnoutWeek = c.week;
+    const { staff: updatedStaff, news: burnoutNews } = tickVolunteerBurnout(c);
+    c.staff = updatedStaff;
+    if (burnoutNews.length > 0) {
+      c.news = [...burnoutNews.map(n => ({ ...n, week: c.week })), ...(c.news ?? [])].slice(0, 25);
     }
   }
 

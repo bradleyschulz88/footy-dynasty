@@ -190,6 +190,11 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
   const gains    = {};
   const devNotes = [];
 
+  const TRAIT_TRAIN_MULT = { grinder: 1.20, hothead: 1.10, leader: 1.05, mentor: 1.0, drifter: 0.82 };
+
+  // First pass: compute gains for each player in the lineup
+  const playerGainsMap = new Map(); // playerId -> { attr -> gain }
+
   const newSquad = squad.map(p => {
     if (!lineup.includes(p.id)) return p;
 
@@ -208,18 +213,22 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
 
     const trait = PLAYER_TRAITS[p.trait ?? 'grinder'];
     const traitDevMod = trait?.devMod ?? 0;
+    const gainMultiplier = TRAIT_TRAIN_MULT[p.trait] ?? 1.0;
 
     const updated = { ...p, attrs: { ...p.attrs } };
+    const pGains = {};
     info.attrs.forEach(attr => {
       if (attr in updated.attrs) {
         const focusBoost = focusBoostFor(attr, focus);
         const rawBase = Math.max(0, Math.round((rng() * 1.5 + 0.5) * scale * focusBoost));
-        const raw = Math.round(rawBase * (1 + traitDevMod));
+        const raw = Math.round(rawBase * (1 + traitDevMod) * gainMultiplier);
         const g   = Math.min(raw, Math.max(0, potential - updated.attrs[attr]));
         updated.attrs[attr] = Math.min(potential, updated.attrs[attr] + g);
         gains[attr] = (gains[attr] || 0) + g;
+        pGains[attr] = g;
       }
     });
+    playerGainsMap.set(p.id, { pGains, updated, age: age, potential: potential, lastName: p.lastName || p.name?.split(' ').slice(-1)[0] || 'Player', nearCap });
 
     const vals = Object.values(updated.attrs);
     updated.overall = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
@@ -230,6 +239,42 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
 
     return updated;
   });
+
+  // Mentor bonus: mentor players boost up to 2 younger lineup teammates by 15% of their raw gains
+  const mentorEntries = [];
+  playerGainsMap.forEach((data, pid) => {
+    const p = newSquad.find(x => x.id === pid);
+    if (p && p.trait === 'mentor') mentorEntries.push({ pid, age: data.age, pGains: data.pGains });
+  });
+  if (mentorEntries.length > 0) {
+    const squadById = new Map(newSquad.map(p => [p.id, p]));
+    mentorEntries.forEach(({ pid: mentorId, age: mentorAge, pGains: mentorGains }) => {
+      // Find up to 2 younger lineup players
+      const younger = lineup
+        .filter(id => id !== mentorId && playerGainsMap.has(id))
+        .map(id => ({ id, age: playerGainsMap.get(id).age }))
+        .filter(x => x.age < mentorAge)
+        .slice(0, 2);
+      younger.forEach(({ id: targetId }) => {
+        const targetData = playerGainsMap.get(targetId);
+        const targetPlayer = squadById.get(targetId);
+        if (!targetPlayer || !targetData) return;
+        info.attrs.forEach(attr => {
+          if (attr in targetPlayer.attrs) {
+            const bonus = Math.floor((mentorGains[attr] ?? 0) * 0.15);
+            if (bonus > 0) {
+              const potential = targetData.potential;
+              const capped = Math.min(bonus, Math.max(0, potential - targetPlayer.attrs[attr]));
+              targetPlayer.attrs[attr] = Math.min(potential, targetPlayer.attrs[attr] + capped);
+              gains[attr] = (gains[attr] || 0) + capped;
+            }
+          }
+        });
+        const vals = Object.values(targetPlayer.attrs);
+        targetPlayer.overall = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+      });
+    });
+  }
 
   if (focus && focus.recovery >= 35) {
     devNotes.push(`Recovery focus (${focus.recovery}%) — squad fitness boost`);

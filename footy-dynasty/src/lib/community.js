@@ -571,3 +571,31 @@ export function journalistBoardImpact(journalist) {
   if (sat <= 25) return -1;
   return 0;
 }
+
+// Call weekly during T3/T4 career to tick volunteer fatigue
+export function tickVolunteerBurnout(career) {
+  const staff = career.staff ?? [];
+  const news = [];
+  const updated = staff.map(s => {
+    if (!s.volunteer) return s;
+    const weeklyDelta = 3 + Math.floor(Math.random() * 5); // 3–7 per week
+    const prev = s.fatigue ?? 0;
+    const next = Math.min(100, prev + weeklyDelta);
+    if (next >= 100) {
+      news.push({ type: 'warning', text: `😓 ${s.name} has burned out and stepped down as ${s.role}. You'll need to find a replacement.` });
+      return null;
+    }
+    if (next >= 75 && prev < 75) {
+      news.push({ type: 'info', text: `⚠️ ${s.name} (${s.role}) is showing signs of volunteer fatigue.` });
+    }
+    return { ...s, fatigue: next };
+  }).filter(Boolean);
+  return { staff: updated, news };
+}
+
+// Call at season start to partially recover volunteer fatigue
+export function recoverVolunteers(staff) {
+  return (staff ?? []).map(s =>
+    s.volunteer ? { ...s, fatigue: Math.max(0, (s.fatigue ?? 0) - 45) } : s
+  );
+}

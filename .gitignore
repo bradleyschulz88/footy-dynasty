@@ -3,6 +3,7 @@
 !.claude/skills/
 **/__pycache__/
 .claude-flow/
+.swarm/
 .mcp.json
 CLAUDE.md
 node_modules/
