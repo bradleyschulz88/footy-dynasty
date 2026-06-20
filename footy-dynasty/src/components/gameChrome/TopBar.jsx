@@ -124,6 +124,7 @@ export function TopBar({
         WebkitBackdropFilter: "blur(24px)",
         borderBottom: "1px solid rgba(200,255,61,0.15)",
         boxShadow: "0 1px 0 rgba(200,255,61,0.06)",
+        paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
       {/* Lime progress flash on advance */}
