@@ -220,6 +220,36 @@ GROUND_BY_CLUB_ID.qafl_sherwood_magpies = g("Latrobe Terrace", "Latrobe Tc", "Pa
 GROUND_BY_CLUB_ID.qafl_surfers_paradise = g("Surfers Paradise Oval", "SP Oval", "Surfers Paradise", "Gold Coast", "QLD", 7_000, false, 61, 5, "Demons' iconic Gold Coast location — tourist strip backdrop, red-and-blue locals pack it out.");
 GROUND_BY_CLUB_ID.qafl_wilston_grange = g("Grimwade Street Ground", "Grimwade St", "Newmarket", "Brisbane", "QLD", 7_000, false, 63, 6, "Gorillas' northside Brisbane home — Grange precinct, compact terrace, classic QAFL Saturday.");
 
+// ─── Perth Football League (tier 3, WA) ───────────────────────────────────────
+// Real Perth metro community grounds — grass reserves, small stands, fierce local pride.
+GROUND_BY_CLUB_ID.perthfootballleague_mount_lawley = g("McGillivray Oval", "McGillivray", "Mount Lawley", "Perth", "WA", 6_000, false, 60, 5, "Hawks' inner-north oval — one of Perth FL's best suburban grounds, McGillivray Street faithful.");
+GROUND_BY_CLUB_ID.perthfootballleague_north_beach = g("North Beach Reserve", "N.Beach Res", "North Beach", "Perth", "WA", 4_000, false, 52, 4, "Roosters' coastal reserve — sea breeze off the Indian Ocean, intimate ocean-suburb crowd.");
+GROUND_BY_CLUB_ID.perthfootballleague_kingsway = g("Kingsway Reserve", "Kingsway", "Madeley", "Perth", "WA", 5_000, false, 56, 5, "Roos' northern suburban ground in Madeley — open grassy reserve, growing northern-corridor crowd.");
+GROUND_BY_CLUB_ID.perthfootballleague_trinity_aquinas = g("Aquinas College Oval", "Aquinas Oval", "Salter Point", "Perth", "WA", 4_500, false, 54, 5, "Trinity Aquinas' riverside college ground on the Canning — old-boys atmosphere, tight community oval.");
+GROUND_BY_CLUB_ID.perthfootballleague_fremantle_cb = g("Fremantle CBC Oval", "CBC Oval", "Fremantle", "Perth", "WA", 4_500, false, 55, 5, "CBC's south-of-the-river home — CBC old-boys faithful, tidy compact oval in the port city.");
+GROUND_BY_CLUB_ID.perthfootballleague_curtin_unive = g("Curtin Stadium", "Curtin Stad", "Bentley", "Perth", "WA", 5_000, false, 56, 5, "Demons' Bentley university campus ground — student crowd adds energy, broad turf, coastal wind.");
+GROUND_BY_CLUB_ID.perthfootballleague_university = g("UWA Oval", "UWA Oval", "Crawley", "Perth", "WA", 5_500, false, 58, 5, "Blues' campus oval on the Swan River — towpath beside the ground, academic crowd, fine Perth turf.");
+GROUND_BY_CLUB_ID.perthfootballleague_collegians = g("Collegians Reserve", "Collegians", "South Perth", "Perth", "WA", 4_000, false, 52, 4, "South of the river reserve — old-school Collegians faithful, Swan River suburb, flat fast ground.");
+GROUND_BY_CLUB_ID.perthfootballleague_kalamunda = g("Jorgensen Park", "Jorgensen Pk", "Kalamunda", "Perth", "WA", 4_500, false, 54, 5, "Roos' hills ground at Jorgensen Park — Darling Range backdrop, tight terrace, passionate hill crowd.");
+GROUND_BY_CLUB_ID.perthfootballleague_kingsley = g("Kingsley Reserve", "Kingsley Res", "Kingsley", "Perth", "WA", 4_000, false, 52, 4, "Eagles' northern suburbs reserve — flat open oval, loyal Kingsley community faithful.");
+GROUND_BY_CLUB_ID.perthfootballleague_whitford = g("Whitford Reserve", "Whitford Res", "Whitford", "Perth", "WA", 4_000, false, 52, 4, "Eagles' northern coastal reserve — Whitford suburb close to the ocean, family-club atmosphere.");
+GROUND_BY_CLUB_ID.perthfootballleague_warnbro_swans = g("Warnbro Community Reserve", "Warnbro Res", "Port Kennedy", "Perth", "WA", 3_500, false, 48, 4, "Swans' southern corridor home — Port Kennedy growth area, passionate red-and-white community faithful.");
+GROUND_BY_CLUB_ID.perthfootballleague_applecross = g("Applecross Reserve", "Applecross", "Ardross", "Perth", "WA", 4_000, false, 52, 4, "South of the river reserve — riverside suburb, tight ground, loyal Applecross community.");
+GROUND_BY_CLUB_ID.perthfootballleague_scarborough = g("Abbett Park", "Abbett Park", "Scarborough", "Perth", "WA", 5_500, false, 58, 5, "Jets' beachside oval at Abbett Park — Scarborough strip backdrop, enthusiastic coastal crowd.");
+GROUND_BY_CLUB_ID.perthfootballleague_wanneroo = g("Wanneroo Showgrounds", "Wann Showgrd", "Wanneroo", "Perth", "WA", 4_500, false, 53, 4, "Roos' northern outskirts home — open showgrounds oval, long trip from the city, passionate locals.");
+GROUND_BY_CLUB_ID.perthfootballleague_melville = g("Melville Oval", "Melville Oval", "Melville", "Perth", "WA", 4_500, false, 54, 4, "Eagles' south-of-river home — Melville suburb oval, growing Cockburn corridor crowd.");
+GROUND_BY_CLUB_ID.perthfootballleague_gosnells = g("Gosnells City Oval", "Gosnells CO", "Gosnells", "Perth", "WA", 4_000, false, 50, 4, "Hawks' south-east suburban oval — Gosnells community reserve, flat fast surface in the outer burbs.");
+GROUND_BY_CLUB_ID.perthfootballleague_hamersley_ca = g("Hamersley Reserve", "Hamersley", "Hamersley", "Perth", "WA", 4_000, false, 50, 4, "Cougars' northern suburbs reserve — flat Hamersley oval, blue-and-gold community pride.");
+GROUND_BY_CLUB_ID.perthfootballleague_baldivis = g("Settlers Hills Reserve", "Settlers Hills", "Baldivis", "Perth", "WA", 4_000, false, 50, 4, "Bombers' southern growth corridor ground — new estate suburb oval, young Baldivis community.");
+GROUND_BY_CLUB_ID.perthfootballleague_cockburn_lak = g("Cockburn ARC Oval", "Cockburn ARC", "Success", "Perth", "WA", 5_000, false, 56, 5, "Bombers' modern Success suburb oval near the ARC — well-resourced facility, southern Perth crowd.");
+GROUND_BY_CLUB_ID.perthfootballleague_brentwood_bo = g("Brentwood Reserve", "Brentwood", "Booragoon", "Perth", "WA", 4_000, false, 52, 4, "Bulls' south-of-river home — Garden City precinct, compact oval, local Booragoon faithful.");
+GROUND_BY_CLUB_ID.perthfootballleague_bullcreek_le = g("Bullcreek Reserve", "Bullcreek", "Bull Creek", "Perth", "WA", 4_000, false, 50, 4, "Lions' southern suburbs reserve — Bull Creek quiet oval, dedicated green-and-gold crowd.");
+
+// ─── Peel Football League (tier 3, WA) ────────────────────────────────────────
+GROUND_BY_CLUB_ID.peelfootballleague_mandurah = g("Chris Doust Oval", "Chris Doust", "Mandurah", "Mandurah", "WA", 4_000, false, 52, 5, "Mandurah's Peel League home — canal-city oval, lively waterside-suburb community crowd.");
+GROUND_BY_CLUB_ID.peelfootballleague_halls_head = g("Halls Head Reserve", "Halls Head", "Halls Head", "Mandurah", "WA", 3_500, false, 48, 4, "Falcons' coastal Peel home — Halls Head beach suburb, passionate community oval.");
+GROUND_BY_CLUB_ID.peelfootballleague_baldivis = g("Baldivis Reserve", "Baldivis Res", "Baldivis", "Mandurah", "WA", 3_500, false, 46, 4, "Growth-area oval in Baldivis — newer Peel suburb reserve, family-club atmosphere.");
+
 const GROUND_SUFFIXES = [
   "Oval",
   "Reserve",
