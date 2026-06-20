@@ -504,6 +504,34 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
         </motion.div>
       )}
 
+      {/* Journalist tone — hostile warning or supportive note */}
+      {career.journalist && (career.journalist.satisfaction < 35 || career.journalist.satisfaction >= 72) && (
+        <motion.div variants={hubItem}
+          className="rounded-xl px-3 py-2 flex items-center gap-2"
+          style={{
+            background: career.journalist.satisfaction < 35
+              ? 'color-mix(in srgb, var(--A-neg) 6%, var(--A-panel))'
+              : 'color-mix(in srgb, var(--A-pos) 5%, var(--A-panel))',
+            border: career.journalist.satisfaction < 35
+              ? '1px solid color-mix(in srgb, var(--A-neg) 20%, var(--A-line))'
+              : '1px solid color-mix(in srgb, var(--A-pos) 18%, var(--A-line))',
+          }}>
+          <Newspaper className="w-3.5 h-3.5 flex-shrink-0"
+            style={{ color: career.journalist.satisfaction < 35 ? 'var(--A-neg)' : 'var(--A-pos)' }} />
+          <span className="text-[11px]">
+            <span className="font-bold mr-1"
+              style={{ color: career.journalist.satisfaction < 35 ? 'var(--A-neg)' : 'var(--A-pos)' }}>
+              Press:
+            </span>
+            <span className="text-atext-dim">
+              {career.journalist.satisfaction < 35
+                ? `${career.journalist.name} is circling — hostile press erodes board confidence every fortnight.`
+                : `${career.journalist.name} is onside — good press adds a confidence point fortnightly.`}
+            </span>
+          </span>
+        </motion.div>
+      )}
+
       {/* Season narrative arc */}
       {(() => {
         const narr = seasonNarrative(career, sorted, league);
