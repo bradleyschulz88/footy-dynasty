@@ -9,6 +9,7 @@ import { Award, Trophy, Newspaper, Users, ChevronRight, ChevronDown, ChevronUp, 
 
 import { collectFocusables } from "../lib/hotkeysHelpers.js";
 import { fmtK } from "../lib/format.js";
+import { gameToast } from "../lib/toast.js";
 
 export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
   const isTier4 = leagueTier === 4;
@@ -19,6 +20,18 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
   const handleContinue = useCallback(() => {
     onContinue?.();
   }, [onContinue]);
+
+  useEffect(() => {
+    if (!summary) return;
+    if (summary.result === "WIN") {
+      gameToast.win(`Victory by ${summary.margin} pts`);
+    } else if (summary.result === "LOSS") {
+      gameToast.loss(`Defeated by ${summary.margin} pts`);
+    } else {
+      gameToast.info("Draw");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!summary) return undefined;

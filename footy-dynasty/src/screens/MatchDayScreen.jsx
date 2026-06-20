@@ -682,70 +682,91 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
           </button>
           {showEvents && (
             <div
-              className="rounded-2xl p-3 max-h-52 overflow-y-auto space-y-1"
+              className="rounded-2xl p-3 max-h-64 overflow-y-auto space-y-0.5"
               style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}
             >
               {eventFeed.length === 0 && (
                 <div className="text-xs text-atext-mute text-center py-3">Waiting for first quarter…</div>
               )}
-              {eventFeed
-                .slice()
-                .reverse()
-                .map((ev, i) => {
+              {(() => {
+                // Build running score as we scan events chronologically
+                let runH = 0, runA = 0;
+                const withScore = [...eventFeed].map(ev => {
+                  if (ev.kind === 'goal') {
+                    if (ev.side === 'home') runH += 6; else runA += 6;
+                  } else if (ev.kind === 'behind') {
+                    if (ev.side === 'home') runH += 1; else runA += 1;
+                  }
+                  return { ...ev, snapH: runH, snapA: runA };
+                });
+                return withScore.slice().reverse().map((ev, i) => {
                   const player = ev.scorer
                     ? playerLookup[ev.scorer]
                     : ev.playerId
                       ? playerLookup[ev.playerId]
                       : null;
                   const sideMine = (result.isHome ? "home" : "away") === ev.side;
+                  const isGoal = ev.kind === "goal";
                   const evColor =
-                    ev.kind === "goal"
-                      ? "var(--A-pos)"
+                    isGoal
+                      ? sideMine ? "var(--A-pos)" : "var(--A-neg)"
                       : ev.kind === "behind"
                         ? "var(--A-accent)"
                         : ev.kind === "moment"
                           ? "#A78BFA"
                           : "var(--A-text-mute)";
                   const icon =
-                    ev.kind === "goal" ? "⚽" : ev.kind === "behind" ? "○" : ev.kind === "miss" ? "×" : "✦";
+                    isGoal ? "⚽" : ev.kind === "behind" ? "○" : ev.kind === "miss" ? "·" : "✦";
+                  const playerLabel = player
+                    ? `${player.firstName ? player.firstName + " " : ""}${player.lastName || player.name || ""}`
+                    : null;
                   let label = "";
-                  if (ev.kind === "goal") label = "GOAL";
-                  else if (ev.kind === "behind") label = "Behind";
-                  else if (ev.kind === "miss") label = "Out on the full / OOB";
+                  if (isGoal) label = playerLabel ? `${playerLabel} — GOAL` : "GOAL";
+                  else if (ev.kind === "behind") label = playerLabel ? `${playerLabel} — Behind` : "Behind";
+                  else if (ev.kind === "miss") label = "Out on the full";
                   else if (ev.kind === "moment") label = ev.text;
+                  // Running score display for goals/behinds
+                  const mySnap = result.isHome ? ev.snapH : ev.snapA;
+                  const oppSnap = result.isHome ? ev.snapA : ev.snapH;
+                  const scoreSnap = (isGoal || ev.kind === "behind") ? `${mySnap}–${oppSnap}` : null;
                   return (
                     <div
                       key={i}
-                      className="flex items-center gap-2 text-xs py-1.5 px-2 rounded-lg feed-item"
+                      className={`flex items-center gap-2 px-2 rounded-lg ${isGoal ? 'py-2' : 'py-1'}`}
                       style={{
-                        background: i === 0
-                          ? `color-mix(in srgb, ${evColor} 8%, var(--A-panel))`
-                          : "transparent",
-                        borderLeft: `2px solid ${i === 0 ? evColor : "transparent"}`,
+                        background: isGoal && i === 0
+                          ? `color-mix(in srgb, ${evColor} 12%, var(--A-panel))`
+                          : isGoal
+                            ? `color-mix(in srgb, ${evColor} 6%, transparent)`
+                            : 'transparent',
+                        borderLeft: isGoal ? `3px solid ${evColor}` : `2px solid ${i === 0 ? evColor : 'transparent'}`,
                       }}
                     >
-                      {/* Monospace timestamp */}
                       <span className="text-[9px] font-mono text-atext-mute w-14 flex-shrink-0 tabular-nums">
                         Q{ev.q} {String(ev.minute % 25).padStart(2, "0")}{"'"}
                       </span>
-                      <span style={{ color: evColor }} className="font-bold w-4 flex-shrink-0 text-center">
+                      <span style={{ color: evColor }} className={`flex-shrink-0 text-center ${isGoal ? 'text-[15px]' : 'text-xs'}`}>
                         {icon}
                       </span>
                       <span
                         className="text-[10px] uppercase tracking-wider font-black w-12 flex-shrink-0 font-mono"
                         style={{ color: sideMine ? "var(--A-pos)" : "var(--A-neg)" }}
                       >
-                        {sideMine ? club.short : result.opp?.short || "OPP"}
+                        {sideMine ? club?.short : result.opp?.short || "OPP"}
                       </span>
-                      <span className="text-atext-dim flex-1 truncate text-[11px]">
-                        {player
-                          ? `${player.firstName ? player.firstName[0] + ". " : ""}${player.lastName || player.name || ""}: `
-                          : ""}
+                      <span className={`flex-1 truncate ${isGoal ? 'text-[12px] font-semibold text-atext' : 'text-[11px] text-atext-dim'}`}>
                         {label}
                       </span>
+                      {scoreSnap && (
+                        <span className="text-[10px] font-mono font-bold tabular-nums flex-shrink-0"
+                          style={{ color: mySnap > oppSnap ? 'var(--A-pos)' : mySnap < oppSnap ? 'var(--A-neg)' : 'var(--A-accent)' }}>
+                          {scoreSnap}
+                        </span>
+                      )}
                     </div>
                   );
-                })}
+                });
+              })()}
             </div>
           )}
         </div>

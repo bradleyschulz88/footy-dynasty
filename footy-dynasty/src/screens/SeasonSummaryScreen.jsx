@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import confetti from "canvas-confetti";
 import { DollarSign, AlertCircle } from "lucide-react";
 import { fmtK } from "../lib/format.js";
 import { css } from "../components/primitives.jsx";
@@ -113,6 +114,14 @@ export default function SeasonSummaryScreen({
   );
 
   const celebrate = summary.champion || summary.promoted;
+
+  useEffect(() => {
+    if (summary.champion) {
+      confetti({ particleCount: 120, spread: 70, origin: { x: 0.2, y: 0.6 } });
+      setTimeout(() => confetti({ particleCount: 120, spread: 70, origin: { x: 0.8, y: 0.6 } }), 300);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col relative" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
@@ -259,6 +268,24 @@ export default function SeasonSummaryScreen({
             </div>
             <div className="text-sm text-atext-mute mt-1">
               Time to rebuild and fight back up.
+            </div>
+          </div>
+        )}
+
+        {summary.highlights?.length > 0 && (
+          <div className="rounded-2xl p-4 mt-2"
+            style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}>
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3"
+              style={{ color: "var(--A-accent)" }}>
+              Season Moments
+            </div>
+            <div className="space-y-1.5">
+              {summary.highlights.map((h, i) => (
+                <div key={i} className="text-[12px] text-atext-mute leading-snug py-0.5 border-b last:border-0"
+                  style={{ borderColor: "var(--A-line)" }}>
+                  {h.text}
+                </div>
+              ))}
             </div>
           </div>
         )}

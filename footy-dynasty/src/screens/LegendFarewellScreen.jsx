@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import confetti from 'canvas-confetti';
 import { motion } from 'motion/react';
 import { useCareer, useUpdateCareer } from '../lib/careerStore.js';
 
@@ -29,6 +30,7 @@ export default function LegendFarewellScreen({ onComplete }) {
 
   function handleContinue() {
     if (isLast) {
+      confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ['#FFD700', '#FFA500', '#00da9b'] });
       updateCareer(c => ({ ...c, pendingFarewells: [] }));
       onComplete();
     } else {

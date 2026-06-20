@@ -5,6 +5,7 @@
 import { rng } from './rng.js';
 import { clamp } from './format.js';
 import { themedRoundForNumber } from './themedRounds.js';
+import { PLAYER_TRAITS } from './playerGen.js';
 
 export function addDays(dateStr, n) {
   const y = parseInt(dateStr.slice(0, 4), 10);
@@ -205,11 +206,15 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
 
     const scale = baseScale * ageScale * fitnessScale * capScale * intScale * facilityMult;
 
+    const trait = PLAYER_TRAITS[p.trait ?? 'grinder'];
+    const traitDevMod = trait?.devMod ?? 0;
+
     const updated = { ...p, attrs: { ...p.attrs } };
     info.attrs.forEach(attr => {
       if (attr in updated.attrs) {
         const focusBoost = focusBoostFor(attr, focus);
-        const raw = Math.max(0, Math.round((rng() * 1.5 + 0.5) * scale * focusBoost));
+        const rawBase = Math.max(0, Math.round((rng() * 1.5 + 0.5) * scale * focusBoost));
+        const raw = Math.round(rawBase * (1 + traitDevMod));
         const g   = Math.min(raw, Math.max(0, potential - updated.attrs[attr]));
         updated.attrs[attr] = Math.min(potential, updated.attrs[attr] + g);
         gains[attr] = (gains[attr] || 0) + g;
