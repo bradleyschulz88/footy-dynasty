@@ -118,11 +118,9 @@ import { injectClubTheme, clearClubTheme } from './lib/clubColors.js';
 
 const THEME_STORAGE_KEY = 'fd-theme';
 
-// The game ships a single "Tactician Dark" (V4) identity across every screen.
-// Older light/dark/stitch themes were retired — the theme resolver always
-// returns dirV4 regardless of any legacy stored preference.
+// The game ships the "Daylight" light theme (dirA) — clean white/teal.
 function resolveThemeClass() {
-  return 'dirV4';
+  return 'dirA';
 }
 
 function persistTheme() {
