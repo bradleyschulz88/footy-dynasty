@@ -35,22 +35,54 @@ export function getClubPrimary(teamName) {
   return key ? CLUB_COLORS[key] : FALLBACK;
 }
 
+// Lift a club colour into something that reads as a legible accent on a dark
+// panel. Very dark clubs (Collingwood black, Hawthorn brown) would otherwise
+// vanish, so we floor luminance and keep enough saturation to stay "club".
+function deriveAccent(c) {
+  let accent = c;
+  let guard = 0;
+  // Push toward a target luminance window that's legible on both dark and
+  // light surfaces without going washed-out.
+  while (accent.luminance() < 0.18 && guard < 12) {
+    accent = accent.brighten(0.35);
+    guard += 1;
+  }
+  while (accent.luminance() > 0.6 && guard < 24) {
+    accent = accent.darken(0.3);
+    guard += 1;
+  }
+  // Keep it saturated so it still feels like a team colour, not grey.
+  if (accent.get('hsl.s') < 0.35) {
+    accent = accent.set('hsl.s', 0.5);
+  }
+  return accent;
+}
+
 export function injectClubTheme(teamName) {
   const primary = getClubPrimary(teamName);
   let c;
   try { c = chroma(primary); } catch { c = chroma(FALLBACK); }
 
+  const accent = deriveAccent(c);
   const root = document.documentElement;
-  // Subtle override — only change the accent colour, not the full theme
-  root.style.setProperty('--club-primary',      c.hex());
-  root.style.setProperty('--club-primary-dim',  c.alpha(0.15).css());
-  root.style.setProperty('--club-primary-glow', c.brighten(0.5).hex());
-  // Don't override --A-accent globally — just make club colour available
+  // Make a coherent, chroma-derived club palette available as CSS vars.
+  // Deliberately NOT touching --A-accent so the theme system stays in charge.
+  root.style.setProperty('--club-primary',       c.hex());
+  root.style.setProperty('--club-primary-dim',   c.alpha(0.15).css());
+  root.style.setProperty('--club-glow',          c.brighten(0.8).hex());
+  // Back-compat alias for the old var name.
+  root.style.setProperty('--club-primary-glow',  c.brighten(0.8).hex());
+  root.style.setProperty('--club-accent',        accent.hex());
+  // Pick black/white text for sitting *on* the club primary, by luminance.
+  root.style.setProperty('--club-contrast-text', c.luminance() > 0.4 ? '#0b0f14' : '#ffffff');
 }
 
 export function clearClubTheme() {
   const root = document.documentElement;
   root.style.removeProperty('--club-primary');
   root.style.removeProperty('--club-primary-dim');
+  root.style.removeProperty('--club-glow');
   root.style.removeProperty('--club-primary-glow');
+  root.style.removeProperty('--club-accent');
+  root.style.removeProperty('--club-contrast-text');
 }

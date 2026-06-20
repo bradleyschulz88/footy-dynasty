@@ -828,6 +828,16 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   0% { color: var(--A-accent); text-shadow: 0 0 24px var(--A-accent); }
   100% { color: var(--A-text); text-shadow: none; }
 }
+/* Theme-agnostic goal flash: scales + glows in the element's own colour, then settles. */
+@keyframes scorePop {
+  0%   { transform: scale(1); text-shadow: 0 0 0 transparent; }
+  35%  { transform: scale(1.08); text-shadow: 0 0 26px currentColor; }
+  100% { transform: scale(1); text-shadow: 0 0 0 transparent; }
+}
+.score-flash { animation: scorePop 0.6s cubic-bezier(0.2, 0.7, 0.3, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .score-flash { animation: none; }
+}
 @keyframes shine {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
