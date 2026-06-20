@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Ivanhoe FC — Hub (Slate Pro)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#16181D;
+    --panel:#1E212A;
+    --panel-2:#23262F;
+    --border:#2A2E3A;
+    --indigo:#7C5CFF;
+    --violet:#9B7BFF;
+    --coral:#FF6B5C;
+    --mint:#34E0A1;
+    --text:#F2F4F8;
+    --muted:#9BA3B4;
+    --dim:#646C7E;
+    --club:#CC2224;
+    --radius:18px;
+    --radius-sm:13px;
+    --shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    font-family:"Plus Jakarta Sans",system-ui,sans-serif;
+    color:var(--text);
+    display:flex;justify-content:center;
+    min-height:100vh;
+  }
+  .phone{
+    width:390px;
+    min-height:100vh;
+    background:var(--bg);
+    position:relative;
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  /* tap targets / interactivity */
+  button,.tap{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit;}
+  .icon{display:block;}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";}
+
+  /* ---------- TOP BAR ---------- */
+  .topbar{
+    position:fixed;top:0;left:50%;transform:translateX(-50%);
+    width:390px;height:52px;z-index:40;
+    display:flex;align-items:center;gap:10px;
+    padding:0 16px;
+    background:rgba(22,24,29,.86);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border);
+  }
+  .badge{
+    width:30px;height:30px;border-radius:9px;flex:0 0 auto;
+    background:linear-gradient(160deg,#E2342F,var(--club));
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:13px;color:#fff;letter-spacing:.5px;
+    box-shadow:0 2px 8px rgba(204,34,36,.4);
+  }
+  .club-meta{display:flex;flex-direction:column;line-height:1.1;flex:1;min-width:0;}
+  .club-meta .name{font-weight:700;font-size:14.5px;}
+  .club-meta .sub{font-size:10.5px;color:var(--muted);margin-top:2px;}
+  .topbtn{
+    width:36px;height:36px;border-radius:10px;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--muted);transition:color .16s,background .16s;
+  }
+  .topbtn:hover{color:var(--text);background:var(--panel-2);}
+
+  /* ---------- SCROLL BODY ---------- */
+  .scroll{
+    flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding:62px 16px 96px;
+  }
+  .scroll::-webkit-scrollbar{width:0;}
+
+  .sec-label{
+    font-size:10px;font-weight:700;letter-spacing:1.4px;
+    text-transform:uppercase;color:var(--dim);
+    margin:0 0 9px 2px;
+  }
+
+  /* ---------- KPI GRID ---------- */
+  .kpi-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:9px;
+    margin-bottom:16px;
+  }
+  .kpi{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    padding:10px 10px 9px;
+    position:relative;overflow:hidden;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .kpi .ic{
+    width:22px;height:22px;border-radius:7px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(124,92,255,.14);color:var(--violet);
+    margin-bottom:8px;
+  }
+  .kpi.coral .ic{background:rgba(255,107,92,.14);color:var(--coral);}
+  .kpi.mint .ic{background:rgba(52,224,161,.14);color:var(--mint);}
+  .kpi .val{font-size:21px;font-weight:800;line-height:1;letter-spacing:-.5px;}
+  .kpi .val.v-violet{color:var(--violet);}
+  .kpi .val.v-mint{color:var(--mint);}
+  .kpi .val.v-coral{color:var(--coral);}
+  .kpi .lbl{font-size:10px;color:var(--muted);margin-top:5px;font-weight:500;letter-spacing:.2px;}
+  .kpi .spark{position:absolute;right:8px;bottom:8px;opacity:.55;}
+
+  /* ---------- NEXT MATCH ---------- */
+  .match{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:14px 15px 14px;
+    margin-bottom:16px;
+    box-shadow:var(--shadow);
+    position:relative;overflow:hidden;
+  }
+  .match::before{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(120% 80% at 100% 0%,rgba(124,92,255,.12),transparent 60%);
+    pointer-events:none;
+  }
+  .match .cap{font-size:10px;font-weight:700;letter-spacing:1.3px;color:var(--violet);text-transform:uppercase;}
+  .match .vs{font-size:19px;font-weight:800;margin-top:6px;letter-spacing:-.3px;}
+  .match .meta{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;}
+  .match .meta span{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);font-weight:500;}
+  .match .meta svg{color:var(--dim);}
+  .advance{
+    margin-top:13px;width:100%;height:46px;border-radius:13px;
+    background:linear-gradient(135deg,var(--indigo),#A07BFF);
+    color:#fff;font-weight:700;font-size:14.5px;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    box-shadow:0 6px 18px rgba(124,92,255,.4);
+    transition:opacity .16s,box-shadow .16s;
+  }
+  .advance:hover{opacity:.92;}
+  .advance:active{opacity:.85;}
+
+  /* ---------- TWO MINI PANELS ---------- */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+  .mini{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--border);border-radius:var(--radius);
+    padding:13px 13px 12px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+  }
+  .mini .cap{font-size:9.5px;font-weight:700;letter-spacing:1.1px;color:var(--dim);text-transform:uppercase;margin-bottom:9px;}
+  .ring-wrap{display:flex;align-items:center;gap:11px;}
+  .ring{position:relative;width:62px;height:62px;flex:0 0 auto;}
+  .ring .center{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;line-height:1;
+  }
+  .ring .center .pct{font-size:16px;font-weight:800;}
+  .ring .center .t{font-size:7.5px;color:var(--muted);margin-top:2px;letter-spacing:.3px;}
+  .mini .obj{font-size:10.5px;color:var(--muted);line-height:1.35;font-weight:500;}
+  .mini .obj b{color:var(--text);font-weight:600;}
+  /* squad health stacked */
+  .health-rows{display:flex;flex-direction:column;gap:8px;margin-top:2px;}
+  .ovr-big{font-size:25px;font-weight:800;letter-spacing:-.5px;color:var(--mint);line-height:1;}
+  .ovr-big span{font-size:11px;color:var(--muted);font-weight:600;margin-left:3px;}
+  .fitbar{height:7px;border-radius:5px;background:var(--panel);overflow:hidden;display:flex;border:1px solid var(--border);}
+  .fitbar i{display:block;height:100%;}
+  .legend{display:flex;gap:13px;font-size:10.5px;color:var(--muted);font-weight:500;}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle;}
+
+  /* ---------- LADDER ---------- */
+  .panel{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--border);border-radius:var(--radius);
+    padding:13px 14px;margin-bottom:16px;
+  }
+  table.ladder{width:100%;border-collapse:collapse;}
+  table.ladder th{
+    font-size:9.5px;font-weight:600;color:var(--dim);text-transform:uppercase;
+    letter-spacing:.6px;text-align:right;padding:0 0 8px;
+  }
+  table.ladder th.l,table.ladder td.l{text-align:left;}
+  table.ladder td{font-size:12.5px;padding:7px 0;color:var(--text);text-align:right;font-weight:600;}
+  table.ladder td.team{font-weight:600;color:var(--muted);}
+  table.ladder tr{border-top:1px solid var(--border);}
+  table.ladder thead tr{border-top:none;}
+  .pos{display:inline-flex;width:18px;color:var(--dim);font-weight:700;}
+  tr.me td{color:var(--text);}
+  tr.me td.team{color:var(--text);font-weight:700;}
+  tr.me{position:relative;}
+  tr.me td:first-child{box-shadow:inset 3px 0 0 var(--indigo);border-radius:2px;}
+  tr.me .pos{color:var(--violet);}
+  td.pts{color:var(--violet);font-weight:800;}
+
+  /* ---------- ACTIVITY ---------- */
+  .feed{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--border);border-radius:var(--radius);
+    padding:6px 14px;
+  }
+  .feed-row{display:flex;align-items:center;gap:11px;padding:11px 0;border-top:1px solid var(--border);}
+  .feed-row:first-child{border-top:none;}
+  .chip{
+    width:30px;height:30px;border-radius:9px;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .chip.g{background:rgba(52,224,161,.14);color:var(--mint);}
+  .chip.c{background:rgba(255,107,92,.14);color:var(--coral);}
+  .chip.v{background:rgba(124,92,255,.14);color:var(--violet);}
+  .feed-row .txt{flex:1;font-size:12px;color:var(--text);line-height:1.3;font-weight:500;}
+  .feed-row .txt b{font-weight:700;}
+  .feed-row .ts{font-size:10px;color:var(--dim);flex:0 0 auto;font-weight:500;}
+
+  /* ---------- BOTTOM NAV ---------- */
+  .nav{
+    position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    width:358px;height:64px;z-index:40;
+    display:flex;align-items:center;justify-content:space-around;
+    background:rgba(30,33,42,.82);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+    border:1px solid var(--border);border-radius:22px;
+    box-shadow:0 12px 30px rgba(0,0,0,.45);
+    padding:0 14px;
+  }
+  .nav-btn{
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    color:var(--dim);min-width:44px;min-height:44px;justify-content:center;
+    transition:color .16s;
+  }
+  .nav-btn .nl{font-size:9px;font-weight:600;letter-spacing:.2px;}
+  .nav-btn:hover{color:var(--muted);}
+  .nav-btn.active{color:var(--violet);}
+  .nav-center{
+    width:54px;height:54px;border-radius:50%;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--indigo),#A07BFF);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;margin-top:-22px;
+    box-shadow:0 8px 20px rgba(124,92,255,.5);
+    transition:opacity .16s;
+  }
+  .nav-center:hover{opacity:.92;}
+
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important;animation:none !important;}
+  }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- TOP BAR -->
+  <header class="topbar">
+    <div class="badge" aria-hidden="true">IH</div>
+    <div class="club-meta">
+      <span class="name">Ivanhoe FC</span>
+      <span class="sub">NFNL · Season 2025</span>
+    </div>
+    <button class="topbtn" aria-label="Search">
+      <svg class="icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3"/></svg>
+    </button>
+    <button class="topbtn" aria-label="Profile and menu">
+      <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>
+    </button>
+  </header>
+
+  <!-- SCROLL BODY -->
+  <main class="scroll">
+
+    <!-- KPI GRID -->
+    <p class="sec-label">Season Overview</p>
+    <section class="kpi-grid" aria-label="Key performance indicators">
+      <div class="kpi">
+        <div class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16M7 20V9M12 20V4M17 20v-7"/></svg></div>
+        <div class="val v-violet num">#3</div>
+        <div class="lbl">Ladder · of 18</div>
+      </div>
+      <div class="kpi">
+        <div class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M21 12a9 9 0 1 1-5-8"/></svg></div>
+        <div class="val num">8<span style="color:var(--dim);font-size:15px">-</span>4</div>
+        <div class="lbl">Record W-L</div>
+      </div>
+      <div class="kpi mint">
+        <div class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-9"/><path d="M16 7h5v5"/></svg></div>
+        <div class="val v-mint num">67%</div>
+        <div class="lbl">Win rate</div>
+        <svg class="spark" width="34" height="14" viewBox="0 0 34 14" fill="none" stroke="var(--mint)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 11 6 9 11 10 16 5 21 6 26 3 33 1"/></svg>
+      </div>
+      <div class="kpi coral">
+        <div class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="val v-coral num">$150k</div>
+        <div class="lbl">Cash balance</div>
+      </div>
+      <div class="kpi">
+        <div class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/></svg></div>
+        <div class="val v-violet num">68</div>
+        <div class="lbl">Squad OVR</div>
+      </div>
+      <div class="kpi coral">
+        <div class="ic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a10 10 0 1 0-10-10"/><path d="M12 6v6l4 2"/></svg></div>
+        <div class="val v-coral num">84%</div>
+        <div class="lbl">Wage cap</div>
+        <svg class="spark" width="34" height="14" viewBox="0 0 34 14" fill="none" stroke="var(--coral)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M1 9 7 8 13 9 19 6 25 7 33 4"/></svg>
+      </div>
+    </section>
+
+    <!-- NEXT MATCH -->
+    <section class="match" aria-label="Next fixture">
+      <span class="cap">Next Fixture</span>
+      <div class="vs">vs Eltham Wildcats</div>
+      <div class="meta">
+        <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg>Round 13</span>
+        <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6 7-12a7 7 0 1 0-14 0c0 6 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></svg>Home</span>
+        <span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>Sat 14 Jun</span>
+      </div>
+      <button class="advance">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7z"/></svg>
+        Advance Week
+      </button>
+    </section>
+
+    <!-- TWO MINI PANELS -->
+    <section class="duo">
+      <!-- Board Confidence -->
+      <div class="mini" aria-label="Board confidence 72 percent">
+        <div class="cap">Board</div>
+        <div class="ring-wrap">
+          <div class="ring">
+            <svg width="62" height="62" viewBox="0 0 62 62">
+              <circle cx="31" cy="31" r="26" fill="none" stroke="var(--panel)" stroke-width="7"/>
+              <circle cx="31" cy="31" r="26" fill="none" stroke="var(--indigo)" stroke-width="7" stroke-linecap="round"
+                      stroke-dasharray="163.4" stroke-dashoffset="45.8" transform="rotate(-90 31 31)"/>
+            </svg>
+            <div class="center"><span class="pct num">72%</span><span class="t">Confidence</span></div>
+          </div>
+        </div>
+        <div class="obj" style="margin-top:9px;">Objective: <b>Make finals</b></div>
+      </div>
+
+      <!-- Squad Health -->
+      <div class="mini" aria-label="Squad health">
+        <div class="cap">Squad Health</div>
+        <div class="ovr-big num">68<span>OVR</span></div>
+        <div class="health-rows" style="margin-top:10px;">
+          <div class="fitbar" aria-hidden="true">
+            <i style="width:92%;background:var(--mint)"></i>
+            <i style="width:8%;background:var(--coral)"></i>
+          </div>
+          <div class="legend">
+            <span><span class="dot" style="background:var(--mint)"></span>22 fit</span>
+            <span><span class="dot" style="background:var(--coral)"></span>1 out</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LADDER -->
+    <p class="sec-label">Ladder Snapshot</p>
+    <section class="panel">
+      <table class="ladder">
+        <thead>
+          <tr><th class="l">Team</th><th>P</th><th>W</th><th>L</th><th>Pts</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="l team"><span class="pos num">2</span>Greensborough</td>
+            <td class="num">12</td><td class="num">9</td><td class="num">3</td><td class="pts num">36</td>
+          </tr>
+          <tr class="me">
+            <td class="l team"><span class="pos num">3</span>Ivanhoe FC</td>
+            <td class="num">12</td><td class="num">8</td><td class="num">4</td><td class="pts num">32</td>
+          </tr>
+          <tr>
+            <td class="l team"><span class="pos num">4</span>Eltham Wildcats</td>
+            <td class="num">12</td><td class="num">7</td><td class="num">5</td><td class="pts num">28</td>
+          </tr>
+          <tr>
+            <td class="l team"><span class="pos num">5</span>Montmorency</td>
+            <td class="num">12</td><td class="num">7</td><td class="num">5</td><td class="pts num">28</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ACTIVITY -->
+    <p class="sec-label">Recent Activity</p>
+    <section class="feed">
+      <div class="feed-row">
+        <div class="chip g"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <div class="txt"><b>Win</b> vs Diamond Creek 84–61</div>
+        <div class="ts num">2d</div>
+      </div>
+      <div class="feed-row">
+        <div class="chip c"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14a7 7 0 1 0-7 7"/><path d="M12 8v4M22 22l-3-3"/></svg></div>
+        <div class="txt">J. Carter ruled <b>out 2 wks</b> — hamstring</div>
+        <div class="ts num">3d</div>
+      </div>
+      <div class="feed-row">
+        <div class="chip v"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6m0 0 3-3m-3 3-3-3"/><rect x="4" y="10" width="16" height="11" rx="2"/></svg></div>
+        <div class="txt">Scout report ready: <b>T. Nguyen</b></div>
+        <div class="ts num">4d</div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="nav" aria-label="Primary">
+    <button class="nav-btn active" aria-label="Hub" aria-current="page">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+      <span class="nl">Hub</span>
+    </button>
+    <button class="nav-btn" aria-label="Squad">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6M21 20a6 6 0 0 0-4-5.6"/></svg>
+      <span class="nl">Squad</span>
+    </button>
+    <button class="nav-center" aria-label="Advance week">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5l12 7-12 7z"/></svg>
+    </button>
+    <button class="nav-btn" aria-label="Recruit">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3-3M11 8v6M8 11h6"/></svg>
+      <span class="nl">Recruit</span>
+    </button>
+    <button class="nav-btn" aria-label="Club">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V8l7-4 7 4v13"/><path d="M9 21v-5h6v5"/><path d="M5 21h14"/></svg>
+      <span class="nl">Club</span>
+    </button>
+  </nav>
+
+</div>
+</body>
+</html>
