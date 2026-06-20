@@ -367,6 +367,12 @@ export function advanceTradePeriodDay(c, league, _leagueKey) {
       ...(c.news || []),
     ].slice(0, 20);
   }
+  if (day === TRADE_PERIOD_DAYS) {
+    c.news = [
+      { week: c.week ?? 0, type: 'warning', text: '🚨 DEADLINE DAY — the trade window closes tonight. Act fast or lose your targets.' },
+      ...(c.news ?? [])
+    ].slice(0, 25);
+  }
   if (day >= TRADE_PERIOD_DAYS) {
     closeTradePeriodStartDraftCountdown(c);
     return;

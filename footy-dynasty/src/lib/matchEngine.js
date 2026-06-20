@@ -27,7 +27,18 @@ export function playerEffectiveMatchRating(player, quarter = null) {
     fatigue = 1 - u * (1 - fitnessMult) * 0.35;
     fatigue = clamp(fatigue, 0.72, 1);
   }
-  return base * formMult * fitnessMult * moraleMult * fatigue;
+  const computed = base * formMult * fitnessMult * moraleMult * fatigue;
+  const traitBonus = (() => {
+    switch (player?.trait) {
+      case 'leader':  return 1.5;
+      case 'grinder': return 1.0;
+      case 'hothead': return Math.random() < 0.45 ? 6 : -4; // volatile
+      case 'drifter': return -2.0;
+      case 'mentor':  return 0.5;
+      default: return 0;
+    }
+  })();
+  return Math.max(1, computed + traitBonus);
 }
 
 /**

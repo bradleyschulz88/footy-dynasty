@@ -53,10 +53,36 @@ export default function CompetitionScreen({ club, league, tab, setTab, onOpenCal
   );
 }
 
+const FORM_COLORS = { W: '#22c55e', L: '#ef4444', D: '#f59e0b' };
+
+function FormDots({ form = [] }) {
+  // Always show 5 slots; pad unfilled ones on the left
+  const slots = Array(5).fill(null);
+  const offset = 5 - form.length;
+  form.forEach((r, i) => { slots[offset + i] = r; });
+  return (
+    <div className="flex gap-0.5 mx-2 flex-shrink-0">
+      {slots.map((r, i) => (
+        <div
+          key={i}
+          style={{
+            width: 7, height: 7,
+            borderRadius: 2,
+            background: r ? FORM_COLORS[r] : 'rgba(255,255,255,0.12)',
+            display: 'inline-flex',
+            flexShrink: 0,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 function LadderTab({ club: _club, league }) {
   const career = useCareer();
   const sorted = sortedLadder(career.ladder);
-  const promoCutoff = league.tier > 1 ? 1 : 8; // top 1 promoted; top 8 finals at tier 1
+  const finalsTeams = league.tier === 1 ? (career.league?.finalsTeams ?? 8) : 6;
+  const promoCutoff = league.tier > 1 ? 1 : finalsTeams; // top 1 promoted; top N finals at tier 1
   const relegCutoff = league.tier === 1 ? 999 : sorted.length; // bottom 1 relegated except tier 1
   return (
     <div className="space-y-4">
@@ -66,7 +92,7 @@ function LadderTab({ club: _club, league }) {
           <div className="text-xs text-atext-dim">Round {career.week} of {career.fixtures.length} · {league.name}</div>
         </div>
         <div className="flex items-center gap-3">
-          <Pill color="var(--A-pos)">{league.tier === 1 ? "Top 8 = Finals" : "Top 1 = Promoted"}</Pill>
+          <Pill color="var(--A-pos)">{league.tier === 1 ? `Top ${finalsTeams} = Finals` : "Top 1 = Promoted"}</Pill>
           {league.tier > 1 && <Pill color="var(--A-neg)">Bottom = Relegated</Pill>}
         </div>
       </div>
@@ -86,10 +112,12 @@ function LadderTab({ club: _club, league }) {
           const pos = i + 1;
           const inPromo = pos <= promoCutoff;
           const inReleg = pos === relegCutoff && league.tier > 1;
-          const showFinalsLine = league.tier === 1 && pos === 8;
+          const inBottomTwo = league.tier > 1 && pos > sorted.length - 2;
+          const showFinalsLine = league.tier === 1 && pos === finalsTeams;
           const showPromoLine = league.tier > 1 && pos === promoCutoff;
           const showRelegLine = league.tier > 1 && pos === relegCutoff - 1;
           const pct = row.A > 0 ? ((row.F/row.A)*100).toFixed(1) : "—";
+          const posColor = inPromo ? 'var(--A-pos)' : inBottomTwo ? 'var(--A-neg)' : 'var(--A-text-mute)';
           return (
             <React.Fragment key={row.id}>
               <div
@@ -101,13 +129,14 @@ function LadderTab({ club: _club, league }) {
                 }}
               >
                 <div className="flex items-center gap-0.5">
-                  <span className={`font-bold text-xs ${inPromo ? "text-apos" : inReleg ? "text-aneg" : "text-atext-mute"}`}>{pos}</span>
+                  <span className="font-bold text-xs" style={{color: posColor}}>{pos}</span>
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-3 h-5 rounded-sm flex-shrink-0" style={{background: c?.colors ? `linear-gradient(180deg,${c.colors[0]},${c.colors[1]})` : "var(--A-line)"}} />
                   <span className={`text-sm truncate ${isMe ? "font-bold text-aaccent" : "font-medium text-atext"}`}>{c?.short || row.id}</span>
                   {isMe && <Crown className="w-3 h-3 text-aaccent flex-shrink-0" />}
                   {!isMe && c?.name && <span className="text-xs text-atext-dim truncate hidden sm:inline">{c.name}</span>}
+                  <FormDots form={row.form} />
                   {inPromo && <ArrowUp className="w-3 h-3 text-apos flex-shrink-0" />}
                   {inReleg && <ArrowDown className="w-3 h-3 text-aneg flex-shrink-0" />}
                 </div>

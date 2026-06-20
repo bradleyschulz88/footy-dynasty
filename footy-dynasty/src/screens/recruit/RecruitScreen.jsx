@@ -13,7 +13,9 @@ import { formatDate } from '../../lib/calendar.js';
 import {
   playerBlockedFromTrade,
   playerFromTradeSnapshot,
+  TRADE_PERIOD_DAYS,
 } from '../../lib/tradePeriod.js';
+import DeadlineDayBanner from '../../components/DeadlineDayBanner.jsx';
 import RecruitPlayerProfile from '../../components/RecruitPlayerProfile.jsx';
 import { css, Bar, RatingDot, Pill, Stat } from '../../components/primitives.jsx';
 import TabNav from '../../components/TabNav.jsx';
@@ -860,6 +862,7 @@ function TradeTab() {
 
   return (
     <div className="space-y-4">
+      <DeadlineDayBanner tradePeriodDay={career.tradePeriodDay} totalDays={TRADE_PERIOD_DAYS} />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-3">
