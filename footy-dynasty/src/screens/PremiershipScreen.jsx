@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from "react";
 import { motion } from "motion/react";
+import confetti from "canvas-confetti";
 import { Trophy, Star } from "lucide-react";
 import { css } from "../components/primitives.jsx";
 import { fmtK } from "../lib/format.js";
 import { PRIZE_MONEY } from "../lib/finance/constants.js";
+import { playCrowdCheer, playSiren, soundEnabled } from "../lib/sound.js";
+import { useCareer } from "../lib/careerStore.js";
 
 function GoldParticles() {
   const canvasRef = useRef(null);
@@ -61,8 +64,31 @@ function GoldParticles() {
 }
 
 export default function PremiershipScreen({ moment, club, onContinue }) {
+  const career = useCareer();
   const tier = moment?.leagueTier ?? 1;
   const prize = PRIZE_MONEY[tier]?.premiership ?? 0;
+
+  // The biggest celebration in the game — a sustained confetti barrage from both
+  // bottom corners over ~2.5s, plus the crowd roar and the final siren. Mount-only.
+  useEffect(() => {
+    const colors = ["#FFD700", "#FFF176", "#C8FF3D"];
+    const bursts = [0, 350, 700, 1100, 1600, 2200];
+    const timers = bursts.map((delay, i) =>
+      setTimeout(() => {
+        confetti({ particleCount: 140, spread: 75, startVelocity: 55, origin: { x: 0.1, y: 0.7 }, angle: 60, colors });
+        confetti({ particleCount: 140, spread: 75, startVelocity: 55, origin: { x: 0.9, y: 0.7 }, angle: 120, colors });
+        if (i === 0) {
+          confetti({ particleCount: 90, spread: 120, startVelocity: 45, origin: { x: 0.5, y: 0.4 }, colors });
+        }
+      }, delay)
+    );
+    if (soundEnabled(career)) {
+      playCrowdCheer(1.0);
+      playSiren();
+    }
+    return () => timers.forEach(clearTimeout);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div

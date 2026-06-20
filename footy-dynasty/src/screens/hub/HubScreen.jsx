@@ -35,7 +35,7 @@ import {
 import { ladderNeighbourClubs } from "../../lib/hubRivals.js";
 import { boardObjectiveUiStatus, youthSeniorGameCount } from "../../lib/board.js";
 import { themedRoundForNumber } from "../../lib/themedRounds.js";
-import { css, Pill, Stat, CollapsibleSection } from "../../components/primitives.jsx";
+import { css, Pill, Stat, AnimatedNumber, CollapsibleSection } from "../../components/primitives.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 import { finalsMagicNumber } from "../../lib/magicNumber.js";
 import { seasonNarrative } from "../../lib/seasonNarrative.js";
@@ -198,8 +198,8 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
   const recentNews = (career.news || []).slice(0, 6);
   const hubTotals = React.useMemo(() => {
     const wagesAnnual =
-      career.squad.reduce((a, p) => a + p.wage, 0) +
-      career.staff.reduce((a, s) => a + s.wage, 0);
+      (career.squad || []).reduce((a, p) => a + (p.wage || 0), 0) +
+      (career.staff || []).reduce((a, s) => a + (s.wage || 0), 0);
     const sponsorsAnnual = (career.sponsors || []).reduce((a, s) => a + s.annualValue, 0);
     const squadAvg = career.squad.length
       ? Math.round(career.squad.reduce((a, p) => a + p.overall, 0) / career.squad.length)
@@ -269,19 +269,21 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
         <div className="p-4 md:p-5">
           {/* Club identity row */}
           <div className="flex items-center gap-3 mb-4">
-            {/* Club badge */}
+            {/* Club badge — glow tinted by the chroma-derived club colour */}
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center font-display text-2xl flex-shrink-0"
               style={{
                 background:`linear-gradient(145deg,${cc1},${cc2})`,
                 color:cc3,
-                boxShadow:`0 6px 20px ${cc1}55, 0 0 0 1px ${cc1}33`,
+                boxShadow:`0 6px 20px var(--club-glow, ${cc1}55), 0 0 0 1px var(--club-primary, ${cc1}33), 0 0 22px var(--club-primary-dim, transparent)`,
               }}>
               {club?.short}
             </div>
             {/* Club name + meta */}
             <div className="min-w-0 flex-1">
               <h1 className="display text-[clamp(1.6rem,6vw,2.5rem)] tracking-wide text-atext leading-none truncate">{club?.name?.toUpperCase()}</h1>
+              {/* Club identity underline — subtle showcase of the club colour */}
+              <div className="h-0.5 w-16 rounded-full mt-1" style={{ background: 'linear-gradient(90deg, var(--club-glow, var(--A-accent)), transparent)' }} />
               <div className="text-[11px] text-atext-dim mt-0.5 truncate font-mono">
                 {league?.name} · Season {career.season}
                 {hubRoundTheme?.short && <> · <span style={{color:'var(--A-accent-2)'}}>{hubRoundTheme.short}</span></>}
@@ -289,31 +291,30 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
             </div>
             {/* Position number — dramatic scoreboard style */}
             <div className="text-center flex-shrink-0 px-3 py-2 rounded-2xl" style={{ background: `color-mix(in srgb, ${posColor} 8%, var(--A-panel-2))`, border: `1px solid color-mix(in srgb, ${posColor} 20%, var(--A-line))` }}>
-              <div
-                className="font-display leading-none tabular-nums"
+              <AnimatedNumber
+                value={myLadderPos || '—'}
+                className="font-display leading-none tabular-nums block"
                 style={{
                   fontSize: 'clamp(2.5rem,9vw,3.5rem)',
                   color: posColor,
                   textShadow: myLadderPos <= 4 ? `0 0 32px ${posColor}66, 0 0 64px ${posColor}33` : 'none',
                   fontVariantNumeric: 'tabular-nums',
-                }}>
-                {myLadderPos || '—'}
-              </div>
+                }} />
               <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono">Pos</div>
             </div>
           </div>
           {/* Stats strip */}
           <div className="grid grid-cols-3 gap-2 mb-4 rounded-xl p-3" style={{background:'color-mix(in srgb, var(--A-accent) 4%, var(--A-panel-2))', border:'1px solid var(--A-line)'}}>
             <div className="text-center">
-              <div className="font-display text-2xl leading-none text-atext tabular-nums" style={{ fontVariantNumeric: 'tabular-nums' }}>{hubTotals.squadAvg || '—'}</div>
+              <AnimatedNumber value={hubTotals.squadAvg || '—'} className="font-display text-2xl leading-none text-atext-mute tabular-nums block" style={{ fontVariantNumeric: 'tabular-nums' }} />
               <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">OVR</div>
             </div>
             <div className="text-center border-x border-aline">
-              <div className="font-display text-2xl leading-none text-atext tabular-nums">{myRow ? `${myRow.W}W ${myRow.L}L` : '—'}</div>
+              <div className="font-display text-2xl leading-none text-atext-mute tabular-nums">{myRow ? `${myRow.W}W ${myRow.L}L` : '—'}</div>
               <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">Record</div>
             </div>
             <div className="text-center">
-              <div className="font-display text-2xl leading-none tabular-nums" style={{color:'var(--A-accent)', fontVariantNumeric: 'tabular-nums'}}>{myRow?.pts ?? '—'}</div>
+              <AnimatedNumber value={myRow?.pts ?? '—'} className="font-display text-2xl leading-none tabular-nums block" style={{color:'color-mix(in srgb, var(--A-accent) 70%, var(--A-text-mute))', fontVariantNumeric: 'tabular-nums'}} />
               <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">Pts</div>
             </div>
           </div>

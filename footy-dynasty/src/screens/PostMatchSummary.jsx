@@ -5,6 +5,7 @@
 // "Show full report" toggle → expands detailed breakdown inline.
 // ---------------------------------------------------------------------------
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import confetti from "canvas-confetti";
 import { Award, Trophy, Newspaper, Users, ChevronRight, ChevronDown, ChevronUp, Banknote, Tv, Handshake, Ticket } from "lucide-react";
 
 import { collectFocusables } from "../lib/hotkeysHelpers.js";
@@ -25,6 +26,8 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
     if (!summary) return;
     if (summary.result === "WIN") {
       gameToast.win(`Victory by ${summary.margin} pts`);
+      // Modest single burst on a win — celebratory but smaller than a premiership.
+      confetti({ particleCount: 80, spread: 65, startVelocity: 45, origin: { x: 0.5, y: 0.65 } });
     } else if (summary.result === "LOSS") {
       gameToast.loss(`Defeated by ${summary.margin} pts`);
     } else {

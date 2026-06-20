@@ -5,6 +5,7 @@
 // ---------------------------------------------------------------------------
 import React from "react";
 import { ChevronDown } from "lucide-react";
+import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 
 export const css = {
   panel: "panel",
@@ -52,16 +53,83 @@ export const Pill = ({ children, color = "#64748B" }) => (
   </span>
 );
 
-// KPI tile with accent strip + optional icon.
-export const Stat = ({ label, value, sub, accent = "var(--A-accent)", icon: Icon }) => (
-  <div className={`${css.panel} p-5 relative overflow-hidden`}>
-    <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{ background: accent }} />
-    {Icon && <Icon className="w-5 h-5 mb-2 opacity-60" style={{ color: accent }} />}
-    <div className={css.label}>{label}</div>
-    <div className={`${css.num} text-4xl mt-1.5 leading-none`} style={{ color: accent }}>{value}</div>
-    {sub && <div className="text-xs text-atext-dim mt-1.5 font-medium">{sub}</div>}
-  </div>
-);
+/**
+ * AnimatedNumber — smoothly counts to `value` whenever it changes. Built on
+ * motion/react's spring so it feels organic rather than linear. Falls back to
+ * rendering the raw value when `value` isn't a finite number (e.g. an em-dash
+ * placeholder or a pre-formatted string), so callers can stay simple.
+ *
+ * @param {number} value    target number to animate toward
+ * @param {(n:number)=>any} [format] formats the live number (default Math.round)
+ */
+export const AnimatedNumber = ({ value, format = Math.round, className, style }) => {
+  const isNumeric = typeof value === "number" && Number.isFinite(value);
+  // Start at the first value so the initial mount lands on the real number;
+  // subsequent changes animate. A spring tuned for a ~700ms ease-out feel.
+  const mv = useMotionValue(isNumeric ? value : 0);
+  const spring = useSpring(mv, { stiffness: 90, damping: 20, mass: 0.6 });
+  const text = useTransform(spring, (latest) => format(latest));
+
+  React.useEffect(() => {
+    if (isNumeric) mv.set(value);
+  }, [value, isNumeric, mv]);
+
+  if (!isNumeric) {
+    return <span className={className} style={style}>{value}</span>;
+  }
+  return <motion.span className={className} style={style}>{text}</motion.span>;
+};
+
+// Visual weight presets for Stat — establishes the dashboard numeric hierarchy.
+const STAT_VARIANTS = {
+  hero: {
+    padding: "p-6",
+    strip: "w-1.5",
+    numClass: "text-5xl mt-2 leading-none",
+    panelExtra: "card-hover",
+    glow: true,
+  },
+  primary: {
+    padding: "p-5",
+    strip: "w-1",
+    numClass: "text-4xl mt-1.5 leading-none",
+    panelExtra: "",
+    glow: false,
+  },
+  secondary: {
+    padding: "p-4",
+    strip: "w-0.5",
+    numClass: "text-2xl mt-1 leading-none",
+    panelExtra: "",
+    glow: false,
+  },
+};
+
+// KPI tile with accent strip + optional icon. `variant` drives numeric
+// hierarchy: 'hero' (largest, glowing), 'primary' (default), 'secondary'
+// (muted). When `value` is a finite number it counts up via AnimatedNumber;
+// strings (pre-formatted text, em-dashes) pass through unchanged.
+export const Stat = ({ label, value, sub, accent = "var(--A-accent)", icon: Icon, variant = "primary", format }) => {
+  const v = STAT_VARIANTS[variant] || STAT_VARIANTS.primary;
+  const isNumeric = typeof value === "number" && Number.isFinite(value);
+  const heroStyle = v.glow
+    ? {
+        border: `1px solid color-mix(in srgb, ${accent} 35%, var(--A-line))`,
+        boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 12%, transparent), 0 8px 28px color-mix(in srgb, ${accent} 14%, transparent)`,
+      }
+    : undefined;
+  return (
+    <div className={`${css.panel} ${v.padding} ${v.panelExtra} relative overflow-hidden`} style={heroStyle}>
+      <div className={`absolute top-0 left-0 ${v.strip} h-full rounded-l-2xl`} style={{ background: accent }} />
+      {Icon && <Icon className={`w-5 h-5 mb-2 ${variant === "secondary" ? "opacity-45" : "opacity-60"}`} style={{ color: accent }} />}
+      <div className={css.label} style={variant === "secondary" ? { color: "var(--A-text-mute)" } : undefined}>{label}</div>
+      <div className={`${css.num} ${v.numClass} tabular-nums`} style={{ color: accent, fontVariantNumeric: "tabular-nums" }}>
+        {isNumeric ? <AnimatedNumber value={value} format={format} /> : value}
+      </div>
+      {sub && <div className="text-xs text-atext-dim mt-1.5 font-medium">{sub}</div>}
+    </div>
+  );
+};
 
 // Inline SVG kit preview used by the Kits tab and squad selectors.
 export const Jersey = ({ kit, size = 64 }) => {
