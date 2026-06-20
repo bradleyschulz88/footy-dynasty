@@ -17,6 +17,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { TaskList } from "../../components/TaskList.jsx";
+import { ClubBadge } from "../../components/ClubBadge.jsx";
 import { findClub } from "../../data/pyramid.js";
 import { finalsRoundLabel, playerFinalsOpponent, finalsSeedFor } from "../../lib/finalsBracket.js";
 import { fmtK } from "../../lib/format.js";
@@ -263,125 +264,226 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
 
   return (
     <motion.div className="space-y-5" variants={hubContainer} initial="hidden" animate="show">
-      {/* Hero — club identity + advance CTA */}
+      {/* Hero — Tactician Dark command centre */}
+      {(() => {
+        const winPct = myRow && (myRow.W + myRow.L) > 0
+          ? Math.round((myRow.W / (myRow.W + myRow.L)) * 100)
+          : 0;
+        // Board confidence ring — finance.boardConfidence is the canonical 0–100 figure.
+        const boardConf = career.finance?.boardConfidence ?? career.board?.confidence ?? null;
+        const ringR = 20;
+        const ringCirc = 2 * Math.PI * ringR; // ≈125.66
+        const ringPct = boardConf == null ? 0 : Math.max(0, Math.min(100, boardConf));
+        const ringOffset = ringCirc * (1 - ringPct / 100);
+        const boardObj = boardObjectiveRows[0] || null;
+        const objStatusColor = boardObj
+          ? (boardObj.status === 'MET' || boardObj.status === 'ON TRACK' ? 'var(--A-pos)'
+            : boardObj.status === 'AT RISK' ? 'var(--A-accent-2)'
+            : 'var(--A-neg)')
+          : 'var(--A-text-mute)';
+        return (
       <motion.div variants={hubItem} className="panel rounded-2xl overflow-hidden border border-aline">
-        {/* Club color stripe — thicker, more dramatic */}
+        {/* Club colour stripe */}
         <div className="h-1.5" style={{background:`linear-gradient(90deg, ${cc1}, ${cc2}, ${cc1}88)`}} />
-        <div className="p-4 md:p-5">
+        <div className="p-3 md:p-4 space-y-2.5">
           {/* Club identity row */}
-          <div className="flex items-center gap-3 mb-4">
-            {/* Club badge — glow tinted by the chroma-derived club colour */}
+          <div className="flex items-center gap-2.5">
             <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center font-display text-2xl flex-shrink-0"
+              className="w-11 h-11 rounded-xl flex items-center justify-center font-display text-lg flex-shrink-0"
               style={{
                 background:`linear-gradient(145deg,${cc1},${cc2})`,
                 color:cc3,
-                boxShadow:`0 6px 20px var(--club-glow, ${cc1}55), 0 0 0 1px var(--club-primary, ${cc1}33), 0 0 22px var(--club-primary-dim, transparent)`,
+                boxShadow:`0 4px 14px ${cc1}55, inset 0 0 0 1px rgba(255,255,255,.12)`,
               }}>
               {club?.short}
             </div>
-            {/* Club name + meta */}
             <div className="min-w-0 flex-1">
-              <h1 className="display text-[clamp(1.6rem,6vw,2.5rem)] tracking-wide text-atext leading-none truncate">{club?.name?.toUpperCase()}</h1>
-              {/* Club identity underline — subtle showcase of the club colour */}
-              <div className="h-0.5 w-16 rounded-full mt-1" style={{ background: 'linear-gradient(90deg, var(--club-glow, var(--A-accent)), transparent)' }} />
-              <div className="text-[11px] text-atext-dim mt-0.5 truncate font-mono">
-                {league?.name} · Season {career.season}
+              <h1 className="display text-xl tracking-wide text-atext leading-none truncate">{club?.name?.toUpperCase()}</h1>
+              <div className="text-[10px] text-atext-dim mt-1 truncate font-mono tracking-wide">
+                {league?.name} · Tier {league.tier} · Season {career.season}
                 {hubRoundTheme?.short && <> · <span style={{color:'var(--A-accent-2)'}}>{hubRoundTheme.short}</span></>}
               </div>
             </div>
-            {/* Position number — dramatic scoreboard style */}
-            <div className="text-center flex-shrink-0 px-3 py-2 rounded-2xl" style={{ background: `color-mix(in srgb, ${posColor} 8%, var(--A-panel-2))`, border: `1px solid color-mix(in srgb, ${posColor} 20%, var(--A-line))` }}>
-              <AnimatedNumber
-                value={myLadderPos || '—'}
-                className="font-display leading-none tabular-nums block"
-                style={{
-                  fontSize: 'clamp(2.5rem,9vw,3.5rem)',
-                  color: posColor,
-                  textShadow: myLadderPos <= 4 ? `0 0 32px ${posColor}66, 0 0 64px ${posColor}33` : 'none',
-                  fontVariantNumeric: 'tabular-nums',
-                }} />
-              <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono">Pos</div>
-            </div>
-          </div>
-          {/* Stats strip */}
-          <div className="grid grid-cols-3 gap-2 mb-4 rounded-xl p-3" style={{background:'color-mix(in srgb, var(--A-accent) 4%, var(--A-panel-2))', border:'1px solid var(--A-line)'}}>
-            <div className="text-center">
-              <AnimatedNumber value={hubTotals.squadAvg || '—'} className="font-display text-2xl leading-none text-atext-mute tabular-nums block" style={{ fontVariantNumeric: 'tabular-nums' }} />
-              <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">OVR</div>
-            </div>
-            <div className="text-center border-x border-aline">
-              <div className="font-display text-2xl leading-none text-atext-mute tabular-nums">{myRow ? `${myRow.W}W ${myRow.L}L` : '—'}</div>
-              <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">Record</div>
-            </div>
-            <div className="text-center">
-              <AnimatedNumber value={myRow?.pts ?? '—'} className="font-display text-2xl leading-none tabular-nums block" style={{color:'color-mix(in srgb, var(--A-accent) 70%, var(--A-text-mute))', fontVariantNumeric: 'tabular-nums'}} />
-              <div className="text-[9px] text-atext-mute uppercase tracking-widest font-mono mt-0.5">Pts</div>
-            </div>
-          </div>
-          {/* Pills */}
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            <Pill color="var(--A-accent)">Tier {league.tier}</Pill>
-            {career.phase === 'preseason'
-              ? <Pill color="var(--A-accent)">Pre-Season</Pill>
-              : career.inFinals
-                ? <Pill color="var(--A-neg)">Finals</Pill>
-                : <Pill color="var(--A-accent)">Round {career.week}</Pill>}
-            {league.tier === 1 && !career.inFinals && career.phase !== 'preseason' && (() => {
-              const mn = finalsMagicNumber(career);
-              return mn ? <Pill color={mn.clinched ? 'var(--A-pos)' : 'var(--A-accent-2)'}>{mn.label}</Pill> : null;
-            })()}
-            {career.clubCulture && (() => {
-              const cultureColor = career.clubCulture.tier === 'Elite' ? 'var(--A-accent-2)' : career.clubCulture.tier === 'Strong' ? 'var(--A-pos)' : career.clubCulture.tier === 'Developing' ? 'var(--A-accent)' : 'var(--A-text-mute)';
-              return <Pill color={cultureColor}>Culture: {career.clubCulture.tier}</Pill>;
-            })()}
           </div>
 
-          {/* Next event hero strip — visible event type + date */}
-          {advanceCtx.nextEventShort && (
-            <div className="mb-4 rounded-xl px-4 py-3 flex items-center justify-between gap-3"
-              style={{ background: 'color-mix(in srgb, var(--A-accent) 6%, var(--A-panel-2))', border: '1px solid color-mix(in srgb, var(--A-accent) 18%, var(--A-line))' }}>
-              <div className="min-w-0">
-                <div className="text-[9px] font-bold uppercase tracking-[0.22em] font-mono mb-0.5" style={{ color: 'var(--A-text-mute)' }}>Next Event</div>
-                <div className="font-display text-base text-atext leading-tight truncate">{advanceCtx.nextEventShort}</div>
+          {/* Summary strip — ladder / record / win rate */}
+          <div className="flex items-center rounded-xl py-2 px-1" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+            <div className="flex-1 text-center leading-none">
+              <div className="font-display text-lg tabular-nums" style={{ color: 'var(--A-accent)', fontVariantNumeric: 'tabular-nums' }}>#{myLadderPos || '—'}</div>
+              <div className="text-[8px] text-atext-mute uppercase tracking-[0.12em] font-mono mt-1">Ladder</div>
+            </div>
+            <div className="w-px h-6" style={{ background: 'var(--A-line)' }} />
+            <div className="flex-1 text-center leading-none">
+              <div className="font-display text-lg tabular-nums" style={{ color: 'var(--A-accent)', fontVariantNumeric: 'tabular-nums' }}>
+                {myRow ? <>{myRow.W}<small className="text-[11px] text-atext-mute font-semibold">W</small>-{myRow.L}<small className="text-[11px] text-atext-mute font-semibold">L</small></> : '—'}
               </div>
-              <div className="text-right flex-shrink-0">
-                <div className="text-[9px] font-mono uppercase tracking-widest text-atext-mute mb-0.5">Type</div>
-                <div className="text-[11px] font-black uppercase tracking-widest font-mono px-2.5 py-1 rounded-lg" style={{ background: 'color-mix(in srgb, var(--A-accent) 14%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 28%, transparent)' }}>
-                  {advanceCtx.buttonLabel}
+              <div className="text-[8px] text-atext-mute uppercase tracking-[0.12em] font-mono mt-1">Record</div>
+            </div>
+            <div className="w-px h-6" style={{ background: 'var(--A-line)' }} />
+            <div className="flex-1 text-center leading-none">
+              <div className="font-display text-lg tabular-nums" style={{ color: 'var(--A-accent)', fontVariantNumeric: 'tabular-nums' }}>{winPct}<small className="text-[11px] text-atext-mute font-semibold">%</small></div>
+              <div className="text-[8px] text-atext-mute uppercase tracking-[0.12em] font-mono mt-1">Win Rate</div>
+            </div>
+          </div>
+
+          {/* Panel grid */}
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* Next Match (wide) */}
+            <div className="col-span-2 rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Play className="w-3 h-3" style={{ color: 'var(--A-accent)' }} fill="currentColor" />
+                <span className="text-[9px] uppercase tracking-[0.12em] font-bold font-mono" style={{ color: 'var(--A-accent)' }}>Next Match</span>
+              </div>
+              {advanceCtx.nextEventShort && (
+                <div className="flex items-center justify-between gap-2 mb-2.5">
+                  <div className="min-w-0">
+                    <div className="text-[9px] font-mono uppercase tracking-widest text-atext-mute mb-0.5">{advanceCtx.buttonLabel}</div>
+                    <div className="font-display text-sm text-atext leading-tight truncate">{advanceCtx.nextEventShort}</div>
+                  </div>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={onAdvance}
+                aria-label={advanceCtx.buttonLabel}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-display text-base uppercase tracking-[0.12em] transition-all active:scale-[0.98] advance-breathe btn-sheen"
+                style={{
+                  background: 'var(--A-accent)',
+                  color: 'var(--fd-on-accent, #0A0D0C)',
+                  boxShadow: '0 4px 20px color-mix(in srgb, var(--A-accent) 35%, transparent), 0 0 0 1px color-mix(in srgb, var(--A-accent) 40%, transparent)',
+                }}
+              >
+                <Play className="w-4 h-4" fill="currentColor" />
+                {advanceCtx.buttonLabel.toUpperCase()}
+              </button>
+              {onQuickAdvance && (
+                <button
+                  type="button"
+                  onClick={onQuickAdvance}
+                  className="w-full mt-2 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold uppercase tracking-[0.14em] text-atext-dim hover:text-atext transition-colors"
+                  style={{ border: '1px solid var(--A-line)' }}
+                  title="Batch through training days and stop at the next match, key event or decision"
+                >
+                  <FastForward className="w-3 h-3" />
+                  Sim to next key moment
+                </button>
+              )}
+            </div>
+
+            {/* Finances */}
+            <div className="rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <DollarSign className="w-3 h-3 text-atext-mute" />
+                <span className="text-[9px] uppercase tracking-[0.12em] font-bold font-mono text-atext-mute">Finances</span>
+              </div>
+              <div className="font-display text-xl leading-none tabular-nums" style={{ color: 'var(--A-accent-2)', fontVariantNumeric: 'tabular-nums' }}>{fmtK(career.finance?.cash ?? 0)}</div>
+              <div className="text-[9px] text-atext-mute mt-1">Available cash</div>
+              {cap > 0 && (
+                <div className="mt-2.5">
+                  <div className="flex items-center justify-between text-[8px] mb-1">
+                    <span className="text-atext-mute uppercase tracking-wider font-mono">Wage Cap</span>
+                    <span className="font-display tabular-nums" style={{ color: 'var(--A-accent-2)' }}>{capPctHub}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--A-panel)' }}>
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, capPctHub)}%`, background: 'linear-gradient(90deg, var(--A-accent-2), #FF8A3D)' }} />
+                  </div>
+                  <div className="text-[8px] text-atext-mute mt-1 font-mono tabular-nums">{fmtK(playerWagesHub)} / {fmtK(cap)}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Board */}
+            <div className="rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Handshake className="w-3 h-3 text-atext-mute" />
+                <span className="text-[9px] uppercase tracking-[0.12em] font-bold font-mono text-atext-mute">Board</span>
+              </div>
+              <div className="flex items-center gap-2.5">
+                {boardConf != null && (
+                  <div className="relative flex-shrink-0" style={{ width: 50, height: 50 }}>
+                    <svg width="50" height="50" viewBox="0 0 50 50" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
+                      <circle cx="25" cy="25" r={ringR} fill="none" stroke="var(--A-line)" strokeWidth="5" />
+                      <circle cx="25" cy="25" r={ringR} fill="none" stroke="var(--A-accent-2)" strokeWidth="5" strokeLinecap="round" strokeDasharray={ringCirc} strokeDashoffset={ringOffset} />
+                    </svg>
+                    <span className="absolute inset-0 flex items-center justify-center font-display text-sm tabular-nums" style={{ color: 'var(--A-accent-2)', fontVariantNumeric: 'tabular-nums' }}>{Math.round(ringPct)}%</span>
+                  </div>
+                )}
+                <div className="min-w-0 leading-tight">
+                  <div className="text-[8px] text-atext-mute uppercase tracking-wider font-mono">{boardConf != null ? 'Confidence' : 'Objective'}</div>
+                  {boardObj ? (
+                    <>
+                      <div className="font-display text-xs text-atext leading-tight mt-0.5 line-clamp-2">{boardObj.description}</div>
+                      <div className="text-[9px] mt-1 flex items-center gap-1" style={{ color: objStatusColor }}>
+                        <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: objStatusColor }} />
+                        {boardObj.status}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="font-display text-xs text-atext mt-0.5">No active objectives</div>
+                  )}
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Advance CTA */}
-          <button
-            type="button"
-            onClick={onAdvance}
-            className="w-full flex items-center justify-center gap-2.5 py-4 rounded-2xl font-display text-lg uppercase tracking-[0.14em] transition-all active:scale-[0.98] advance-breathe btn-sheen"
-            style={{
-              background: 'var(--A-accent)',
-              color: 'var(--fd-on-accent, #0A0D0C)',
-              boxShadow: '0 4px 24px color-mix(in srgb, var(--A-accent) 35%, transparent), 0 0 0 1px color-mix(in srgb, var(--A-accent) 40%, transparent)',
-            }}
-          >
-            <Play className="w-5 h-5" fill="currentColor" />
-            {advanceCtx.buttonLabel.toUpperCase()}
-          </button>
-          {onQuickAdvance && (
-            <button
-              type="button"
-              onClick={onQuickAdvance}
-              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-[0.16em] text-atext-dim hover:text-atext transition-colors"
-              style={{ border: '1px solid var(--A-line)' }}
-              title="Batch through training days and stop at the next match, key event or decision"
-            >
-              <FastForward className="w-3.5 h-3.5" />
-              Sim to next key moment
-            </button>
-          )}
+            {/* Squad */}
+            <div className="rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Users className="w-3 h-3 text-atext-mute" />
+                <span className="text-[9px] uppercase tracking-[0.12em] font-bold font-mono text-atext-mute">Squad</span>
+              </div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-display text-3xl leading-none tabular-nums" style={{ color: 'var(--A-accent)', fontVariantNumeric: 'tabular-nums' }}>{hubTotals.squadAvg || '—'}</span>
+                <span className="text-[10px] text-atext-mute font-semibold">OVR</span>
+              </div>
+              <div className="mt-2 flex items-center gap-1.5 text-[10px] text-atext-mute">
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--A-accent)' }} />
+                <b className="font-display text-atext">{(career.squad || []).length}</b> players
+              </div>
+            </div>
+
+            {/* Ladder mini-table (wide) */}
+            <div className="col-span-2 rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+              <div className="flex items-center gap-1.5 mb-2">
+                <Trophy className="w-3 h-3 text-atext-mute" />
+                <span className="text-[9px] uppercase tracking-[0.12em] font-bold font-mono text-atext-mute">Ladder · {league?.name}</span>
+              </div>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="text-[8px] uppercase tracking-wider font-mono text-atext-mute">
+                    <th className="text-left font-bold pb-1.5 w-5">#</th>
+                    <th className="text-left font-bold pb-1.5">Club</th>
+                    <th className="text-right font-bold pb-1.5 w-7">W</th>
+                    <th className="text-right font-bold pb-1.5 w-7">L</th>
+                    <th className="text-right font-bold pb-1.5 w-9">Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {top5.map((r, i) => {
+                    const rc = (r.colors || r.short) ? r : findClub(r.id);
+                    const isMe = r.id === career.clubId;
+                    return (
+                      <tr key={r.id} style={isMe ? { background: 'color-mix(in srgb, var(--A-accent) 7%, transparent)' } : undefined}>
+                        <td className="text-left font-display text-xs py-1.5 tabular-nums" style={{ color: isMe ? 'var(--A-accent)' : 'var(--A-text-mute)', borderTop: i === 0 ? 'none' : '1px solid var(--A-line)' }}>{i + 1}</td>
+                        <td className="text-left py-1.5" style={{ borderTop: i === 0 ? 'none' : '1px solid var(--A-line)' }}>
+                          <span className="flex items-center gap-1.5">
+                            <ClubBadge club={rc} size="xs" />
+                            <span className="font-display text-xs truncate" style={{ color: isMe ? 'var(--A-accent)' : 'var(--A-text)' }}>{rc?.name ?? r.name ?? r.short}</span>
+                          </span>
+                        </td>
+                        <td className="text-right font-display text-xs py-1.5 tabular-nums" style={{ color: isMe ? 'var(--A-accent)' : 'var(--A-text-mute)', borderTop: i === 0 ? 'none' : '1px solid var(--A-line)' }}>{r.W}</td>
+                        <td className="text-right font-display text-xs py-1.5 tabular-nums" style={{ color: isMe ? 'var(--A-accent)' : 'var(--A-text-mute)', borderTop: i === 0 ? 'none' : '1px solid var(--A-line)' }}>{r.L}</td>
+                        <td className="text-right font-display text-xs py-1.5 tabular-nums font-bold" style={{ color: isMe ? 'var(--A-accent)' : 'var(--A-text)', borderTop: i === 0 ? 'none' : '1px solid var(--A-line)' }}>{r.pts}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </motion.div>
+        );
+      })()}
 
       {cap > 0 && (
         <motion.div variants={hubItem} className="flex flex-wrap items-center gap-2 px-0.5">

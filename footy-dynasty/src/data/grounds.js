@@ -98,6 +98,43 @@ export const GROUND_BY_CLUB_ID = {
   tas: g("Blundstone Arena", "Blundstone", "Bellerive", "Hobart", "TAS", 23_000, false, 83, 8, "Bellerive — Tassie devils hunting under the hill."),
 };
 
+// ─── NFNL (Northern Football Netball League, tier 3) ──────────────────────────
+// Real community home grounds in Melbourne's north-east. Open suburban reserves:
+// small/no seating, grass, modest home advantage. Entries marked "approx" use a
+// plausible local venue where the exact senior ground couldn't be firmly verified.
+GROUND_BY_CLUB_ID.nfnl_banyule = g("Yallambie Park", "Yallambie", "Yallambie", "Melbourne", "VIC", 3_000, false, 38, 3, "Quiet riverside reserve below the Plenty — locals ring the fence on a Saturday."); // approx (exact senior ground unconfirmed)
+GROUND_BY_CLUB_ID.nfnl_bundoora = g("La Trobe Sports Park", "La Trobe", "Bundoora", "Melbourne", "VIC", 4_000, false, 42, 3, "Open university-precinct oval — wide wings and a cold northerly off the parkland.");
+GROUND_BY_CLUB_ID.nfnl_diamond_creek = g("Coventry Oval", "Coventry", "Diamond Creek", "Melbourne", "VIC", 4_000, false, 46, 4, "Tidy creekside ground hemmed by gums — vocal Creekers crowd right on the boundary.");
+GROUND_BY_CLUB_ID.nfnl_eltham = g("Eltham Central Park", "Central Park", "Eltham", "Melbourne", "VIC", 5_000, false, 48, 4, "Leafy Panther home by the trestle bridge — big banks, big noise on finals day.");
+GROUND_BY_CLUB_ID.nfnl_epping = g("Epping Recreation Reserve", "Epping Rec", "Epping", "Melbourne", "VIC", 3_500, false, 40, 3, "Flat northern-suburbs reserve — exposed and windy, honest contested footy.");
+GROUND_BY_CLUB_ID.nfnl_fitzroy_stars = g("Sir Doug Nicholls Oval", "Nicholls Oval", "Thornbury", "Melbourne", "VIC", 3_000, false, 50, 4, "Proud Indigenous club's home beside the Advancement League — tight, passionate crowd.");
+GROUND_BY_CLUB_ID.nfnl_greensborough = g("War Memorial Park", "War Memorial", "Greensborough", "Melbourne", "VIC", 5_000, false, 48, 4, "The Boro's hilly home off Henry Street — steep grass banks pen the visitors in.");
+GROUND_BY_CLUB_ID.nfnl_heidelberg = g("Warringal Park", "Warringal", "Heidelberg", "Melbourne", "VIC", 5_000, false, 48, 4, "Tigers' deck by the Yarra flats — long history, loud terrace under the gums.");
+GROUND_BY_CLUB_ID.nfnl_heidelberg_west = g("Heidelberg Park", "Heidelberg Pk", "Heidelberg West", "Melbourne", "VIC", 2_500, false, 36, 3, "Modest flat reserve — tin-roof clubrooms and a hand-turned scoreboard.");
+GROUND_BY_CLUB_ID.nfnl_hurstbridge = g("Ben Frilay Oval", "Ben Frilay", "Hurstbridge", "Melbourne", "VIC", 3_000, false, 42, 4, "Outer-fringe bush ground — gum-lined wings and a one-eyed home pocket.");
+GROUND_BY_CLUB_ID.nfnl_ivanhoe = g("Ivanhoe Park", "Ivanhoe Pk", "Ivanhoe", "Melbourne", "VIC", 3_500, false, 42, 3, "Genteel reserve off The Boulevard — close fences, polite-but-pointed home crowd.");
+GROUND_BY_CLUB_ID.nfnl_kilmore = g("J.J. Clancy Reserve", "Clancy", "Kilmore", "Kilmore", "VIC", 4_000, false, 44, 4, "Country-town oval an hour north — wide open, cold, and a long trip for visitors.");
+GROUND_BY_CLUB_ID.nfnl_kinglake = g("Kinglake Memorial Oval", "Kinglake", "Kinglake", "Kinglake", "VIC", 2_500, false, 40, 4, "Ranges ground up in the cool air — misty, tight, the Lakers know every divot.");
+GROUND_BY_CLUB_ID.nfnl_lalor = g("Lalor Recreation Reserve", "Lalor Rec", "Lalor", "Melbourne", "VIC", 3_500, false, 40, 3, "Honest suburban reserve — flat turf, canteen chips, fence-side regulars.");
+GROUND_BY_CLUB_ID.nfnl_laurimar = g("Laurimar Reserve", "Laurimar", "Doreen", "Melbourne", "VIC", 3_500, false, 42, 3, "Newer estate ground on the growth fringe — open, breezy, a young Power crowd.");
+GROUND_BY_CLUB_ID.nfnl_lower_plenty = g("Montmorency Park (upper oval)", "Para Road", "Montmorency", "Melbourne", "VIC", 3_000, false, 40, 3, "Bears share the Para Road green belt — Plenty River on one wing, gums on the other.");
+GROUND_BY_CLUB_ID.nfnl_macleod = g("De Winton Park", "De Winton", "Rosanna", "Melbourne", "VIC", 4_000, false, 44, 4, "Long-standing Rosanna home — tight boundary and a fiercely local terrace.");
+GROUND_BY_CLUB_ID.nfnl_mernda = g("Waterview Recreation Reserve", "Waterview", "Mernda", "Melbourne", "VIC", 3_500, false, 42, 3, "Growth-corridor reserve — open lakeside ground, fast-rising Demons support.");
+GROUND_BY_CLUB_ID.nfnl_montmorency = g("Montmorency Park", "Monty Park", "Montmorency", "Melbourne", "VIC", 4_000, false, 46, 4, "Monty's green-belt home between Para Road and the river — gum trees right on the fence.");
+GROUND_BY_CLUB_ID.nfnl_north_heidelberg = g("Shelley Reserve", "Shelley", "Heidelberg Heights", "Melbourne", "VIC", 3_500, false, 44, 4, "Bulldogs' tight Shelley Street deck — narrow ground, vocal crowd on top of you.");
+GROUND_BY_CLUB_ID.nfnl_northcote_park = g("Bill Lawry Oval", "Bill Lawry", "Northcote", "Melbourne", "VIC", 4_000, false, 46, 4, "Cougars' home by Merri Creek off Westgarth Street — inner-north terrace noise.");
+GROUND_BY_CLUB_ID.nfnl_old_eltham_collegian = g("Eltham College", "Eltham College", "Research", "Melbourne", "VIC", 2_500, false, 34, 3, "School-grounds home of the Turtles — modest fences, tight-knit old-collegian crowd."); // approx (school venue, exact senior oval unconfirmed)
+GROUND_BY_CLUB_ID.nfnl_old_paradians = g("Garvey Oval", "Garvey", "Bundoora", "Melbourne", "VIC", 3_000, false, 36, 3, "Parade College oval — old-boys' home, manicured turf and a partisan pocket.");
+GROUND_BY_CLUB_ID.nfnl_panton_hill = g("Panton Hill Recreation Reserve", "Panton Hill", "Panton Hill", "Melbourne", "VIC", 2_500, false, 40, 4, "Rural bush ground in the hills — gum-lined, remote, the Redbacks love the trek.");
+GROUND_BY_CLUB_ID.nfnl_reservoir = g("Crispe Park", "Crispe", "Reservoir", "Melbourne", "VIC", 3_500, false, 42, 4, "Mustangs' long-time home off Gloucester Street — flat, fast, fence-side faithful.");
+GROUND_BY_CLUB_ID.nfnl_south_morang = g("Mill Park Lakes Recreation Reserve", "Mill Park Lakes", "South Morang", "Melbourne", "VIC", 3_500, false, 42, 3, "Lakeside estate reserve — twin ovals, lights, an up-and-coming Lions crowd.");
+GROUND_BY_CLUB_ID.nfnl_st_mary_s = g("Whatmough Park", "Whatmough", "Greensborough", "Melbourne", "VIC", 3_000, false, 38, 3, "Family club's hillside reserve off Kalparrin Avenue — small, friendly, loud."); // approx (exact senior ground unconfirmed)
+GROUND_BY_CLUB_ID.nfnl_thomastown = g("Main Street Reserve", "Main Street", "Thomastown", "Melbourne", "VIC", 3_000, false, 40, 3, "Classic flat northern reserve on Main Street — chips, kelpies and a one-eyed pocket.");
+GROUND_BY_CLUB_ID.nfnl_wallan = g("Greenhill Reserve", "Greenhill", "Wallan", "Wallan", "VIC", 3_500, false, 42, 4, "Country home off the Northern Highway — open, cold, a long haul for city sides.");
+GROUND_BY_CLUB_ID.nfnl_watsonia = g("Binnak Park", "Binnak", "Watsonia", "Melbourne", "VIC", 3_500, false, 42, 4, "Saints' revamped reserve — new pavilion, electronic board, tight home terrace.");
+GROUND_BY_CLUB_ID.nfnl_west_preston_lakesid = g("J.E. Moore Park", "J.E. Moore", "Reservoir", "Melbourne", "VIC", 3_500, false, 42, 4, "Roosters' home off Tyler Street — flat northern deck, raucous fence-side support.");
+GROUND_BY_CLUB_ID.nfnl_whittlesea = g("Whittlesea Showgrounds", "Showgrounds", "Whittlesea", "Whittlesea", "VIC", 4_000, false, 44, 4, "Town showgrounds oval at the ranges' foot — Eagles fly on a long away trip.");
+
 const GROUND_SUFFIXES = [
   "Oval",
   "Reserve",
