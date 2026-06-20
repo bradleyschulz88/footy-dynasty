@@ -273,6 +273,8 @@ export const GlobalStyle = () => (
     .dirB select { color:var(--B-text); background:var(--B-panel); border:1px solid var(--B-line-2); border-radius:10px; }
     .dirS select option { background:var(--A-panel); color:var(--A-text); }
     .dirS select { color:var(--A-text); background:var(--A-panel); border:1px solid var(--A-line); border-radius:8px; }
+    .dirV4 select option { background:var(--V4-panel); color:var(--V4-text); }
+    .dirV4 select { color:var(--V4-text); background:var(--V4-panel); border:1px solid var(--V4-line-2); border-radius:10px; }
     input[type=color] { padding:2px; cursor:pointer; border-radius:6px; }
     button:disabled { opacity:0.4; cursor:not-allowed; }
     /* Accessible focus rings — accent-tinted, theme-adaptive, only on keyboard focus. */

@@ -232,29 +232,15 @@ export default function SettingsScreen({
       <div className={`${css.panel} p-5 space-y-4`}>
         <h3 className={`${css.h1} text-2xl`}>DISPLAY</h3>
 
-        {/* Theme */}
+        {/* Theme — Tactician Dark is the single shipped identity. */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="font-bold text-sm">Colour theme</div>
-            <div className="text-[11px] text-atext-dim">Dark: Midnight Stadium (teal on navy). Light: Daylight (clean white).</div>
+            <div className="text-[11px] text-atext-dim">Tactician Dark — midnight navy with cyan & amber.</div>
           </div>
-          <div className="flex rounded-lg overflow-hidden border border-aline">
-            {([
-              { id: 'dark',  label: '🌙 Dark'  },
-              { id: 'light', label: '☀️ Light' },
-            ]).map(({ id, label }) => {
-              const active = (opts.theme ?? 'dark') === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => patchOpts({ theme: id })}
-                  className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition ${active ? 'bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]' : 'bg-apanel-2 text-atext-dim'}`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-aline bg-apanel-2">
+            <span className="w-3 h-3 rounded-full" style={{ background: 'var(--A-accent)' }} />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-atext">Tactician Dark</span>
           </div>
         </div>
 

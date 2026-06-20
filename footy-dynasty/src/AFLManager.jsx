@@ -118,19 +118,15 @@ import { injectClubTheme, clearClubTheme } from './lib/clubColors.js';
 
 const THEME_STORAGE_KEY = 'fd-theme';
 
-function resolveThemeClass(career) {
-  try {
-    const pref = career?.options?.theme ?? localStorage.getItem(THEME_STORAGE_KEY) ?? 'stitch';
-    if (pref === 'light') return 'dirA';
-    if (pref === 'dark') return 'dirB';
-    return 'dirS';
-  } catch {
-    return 'dirS';
-  }
+// The game ships a single "Tactician Dark" (V4) identity across every screen.
+// Older light/dark/stitch themes were retired — the theme resolver always
+// returns dirV4 regardless of any legacy stored preference.
+function resolveThemeClass() {
+  return 'dirV4';
 }
 
-function persistTheme(theme) {
-  try { localStorage.setItem(THEME_STORAGE_KEY, theme ?? 'stitch'); } catch { /* ignore */ }
+function persistTheme() {
+  try { localStorage.setItem(THEME_STORAGE_KEY, 'tactician'); } catch { /* ignore */ }
 }
 
 function AppMotionConfig({ reducedMotion, children }) {
