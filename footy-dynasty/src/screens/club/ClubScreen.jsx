@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar as ReBar,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
 import {
   Trophy, Users, DollarSign, Dumbbell, Building2, Handshake, Shirt,
@@ -732,6 +732,58 @@ function HonoursTab({ club: _club }) {
             <div className="text-[11px] text-atext-mute mb-3">
               Career: {cs.totalWins ?? 0}W {cs.totalLosses ?? 0}L {cs.totalDraws ?? 0}D · {cs.seasonsManaged ?? 0} seasons{(cs.premierships ?? 0) > 0 ? ` · ${cs.premierships} Premiership${cs.premierships > 1 ? 's' : ''}` : ''}
             </div>
+            {(career.history || []).length >= 2 && (() => {
+              const posData = [...career.history].map(h => ({
+                label: `'${String(h.season).slice(-2)}`,
+                pos: h.position ?? null,
+                champion: h.champion,
+              }));
+              const maxPos = Math.max(...posData.map(d => d.pos ?? 1), 8);
+              return (
+                <div className="mb-3">
+                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-atext-mute mb-1">Ladder position by season</div>
+                  <ResponsiveContainer width="100%" height={90}>
+                    <LineChart data={posData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--A-line)" strokeOpacity={0.4} vertical={false} />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 9, fill: 'var(--A-text-mute)' }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        reversed
+                        domain={[1, maxPos]}
+                        ticks={[1, Math.round(maxPos / 2), maxPos]}
+                        tick={{ fontSize: 9, fill: 'var(--A-text-mute)' }}
+                        tickLine={false}
+                        axisLine={false}
+                        width={18}
+                        tickFormatter={v => `#${v}`}
+                      />
+                      <Tooltip
+                        contentStyle={{ background: 'var(--A-panel)', border: '1px solid var(--A-line)', borderRadius: 8, fontSize: 11 }}
+                        labelStyle={{ color: 'var(--A-text-mute)' }}
+                        formatter={(v, _n, { payload }) => [`#${v}${payload.champion ? ' 🏆' : ''}`, 'Position']}
+                      />
+                      <ReferenceLine y={1} stroke="rgba(234,179,8,0.4)" strokeDasharray="4 3" strokeWidth={1} />
+                      <Line
+                        type="monotone"
+                        dataKey="pos"
+                        stroke="var(--A-accent)"
+                        strokeWidth={2}
+                        dot={(p) => p.payload.champion
+                          ? <circle key={p.key} cx={p.cx} cy={p.cy} r={5} fill="#EAB308" stroke="var(--A-bg)" strokeWidth={1.5} />
+                          : <circle key={p.key} cx={p.cx} cy={p.cy} r={3} fill="var(--A-accent)" />
+                        }
+                        activeDot={{ r: 4 }}
+                        connectNulls
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              );
+            })()}
             {(career.history || []).length > 0 && (
               <div className="space-y-0.5">
                 {[...career.history].reverse().map(h => (

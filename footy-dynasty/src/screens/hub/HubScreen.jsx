@@ -1,4 +1,5 @@
 import React from "react";
+import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { motion } from "motion/react";
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import {
@@ -832,6 +833,55 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
           <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="var(--A-accent)" icon={Handshake} />
           <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.W ?? 0}W / ${myRow?.L ?? 0}L`} accent={posColor} icon={Trophy} />
       </motion.div>
+
+      {/* Cash sparkline — shows at-a-glance financial trajectory */}
+      {(career.weeklyHistory?.length ?? 0) >= 3 && (() => {
+        const sparkData = (career.weeklyHistory || []).slice(-12).map((w, i) => ({
+          i,
+          cash: Math.round((w.cash ?? 0) / 1000),
+        }));
+        const first = sparkData[0]?.cash ?? 0;
+        const last = sparkData[sparkData.length - 1]?.cash ?? 0;
+        const trend = last > first ? 'up' : last < first ? 'down' : 'flat';
+        const trendColor = trend === 'up' ? 'var(--A-pos)' : trend === 'down' ? 'var(--A-neg)' : 'var(--A-text-mute)';
+        const trendArrow = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
+        return (
+          <motion.div variants={hubItem}
+            className="rounded-xl px-3 py-2 flex items-center gap-3"
+            style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}
+          >
+            <div className="flex-shrink-0">
+              <div className="text-[9px] font-black uppercase tracking-widest font-mono text-atext-mute">Cash trend</div>
+              <div className="text-[13px] font-black mt-0.5" style={{ color: trendColor }}>{trendArrow} {fmtK(last - first)}</div>
+            </div>
+            <div style={{ flex: 1, height: 36 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={sparkData} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+                  <defs>
+                    <linearGradient id="hubCashGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={trendColor} stopOpacity={0.35} />
+                      <stop offset="95%" stopColor={trendColor} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <Area
+                    type="monotone"
+                    dataKey="cash"
+                    stroke={trendColor}
+                    strokeWidth={1.5}
+                    fill="url(#hubCashGrad)"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex-shrink-0 text-right">
+              <div className="text-[9px] font-mono text-atext-mute uppercase tracking-widest">Now</div>
+              <div className="text-[13px] font-black text-atext">{fmtK(career.finance.cash)}</div>
+            </div>
+          </motion.div>
+        );
+      })()}
 
       <motion.div variants={hubItem} className="grid md:grid-cols-5 gap-5">
         {/* Ladder */}
