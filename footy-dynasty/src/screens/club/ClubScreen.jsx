@@ -957,8 +957,8 @@ function HonoursTab({ club: _club }) {
           })()}
 
           {/* Full season-by-season table */}
-          <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
-            <div className="overflow-x-auto">
+          <div className="rounded-2xl overflow-x-auto" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
+            <div>
             <div className="grid gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b min-w-[760px]"
               style={{gridTemplateColumns:"5rem 1fr 4rem 4rem 4rem 4rem 4rem 4rem 1fr 1fr",borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
               <div>Season</div>
