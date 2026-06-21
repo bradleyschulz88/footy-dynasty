@@ -142,6 +142,45 @@ CORRECTIONS = {
     "nfnl_heidelberg":            ["#FFD200", "#000000", "#FFD200"],
 
     # ── EFNL ─────────────────────────────────────────────────────────────────
+    # Beaconsfield – yellow, white and blue (confirmed)
+    "efnl_beaconsfield":          ["#FFD200", "#FFFFFF", "#003087"],
+    # Chirnside Park – black, white and gold
+    "efnl_chirnside_park":        ["#000000", "#FFFFFF", "#FFD200"],
+    # Doncaster East – navy with maroon and gold hoops
+    "efnl_doncaster_east":        ["#002B5C", "#7B1D41", "#FFD200"],
+    # East Ringwood – royal blue and white
+    "efnl_east_ringwood":         ["#003087", "#FFFFFF", "#003087"],
+    # Fairpark – green and gold (Lions — no confirmed source, omit specific color)
+    # Forest Hill – green and white vertical stripes
+    "efnl_forest_hill":           ["#006633", "#FFFFFF", "#006633"],
+    # Heathmont – royal blue with gold and white V
+    "efnl_heathmont":             ["#003087", "#FFD200", "#FFFFFF"],
+    # Kilsyth – black with red sash (NOT Hawks)
+    "efnl_kilsyth":               ["#000000", "#CC2031", "#000000"],
+    # Lilydale – royal blue with gold sash
+    "efnl_lilydale":              ["#003087", "#FFD200", "#FFFFFF"],
+    # Mooroolbark – dark green and gold
+    "efnl_mooroolbark":           ["#006633", "#FFD200", "#FFFFFF"],
+    # North Ringwood – red, black and white panels
+    "efnl_north_ringwood":        ["#CC2031", "#000000", "#FFFFFF"],
+    # Norwood (EFNL) – red and black (different from SANFL Norwood)
+    "efnl_norwood":               ["#CC2031", "#000000", "#FFFFFF"],
+    # Oakleigh District – black with white sash
+    "efnl_oakleigh_district":     ["#000000", "#FFFFFF", "#000000"],
+    # Park Orchards – black with red and white bands
+    "efnl_park_orchards":         ["#000000", "#CC2031", "#FFFFFF"],
+    # Rowville – white and gold (Hawks)
+    "efnl_rowville":              ["#FFFFFF", "#FFD200", "#FFFFFF"],
+    # Scoresby – black and white vertical stripes
+    "efnl_scoresby":              ["#000000", "#FFFFFF", "#000000"],
+    # South Croydon – royal blue with red and white bands
+    "efnl_south_croydon":         ["#003087", "#CC2031", "#FFFFFF"],
+    # Vermont – purple and gold (confirmed)
+    "efnl_vermont":               ["#660066", "#FFD200", "#FFFFFF"],
+    # Warrandyte – red and white (Bloods)
+    "efnl_warrandyte":            ["#CC2031", "#FFFFFF", "#CC2031"],
+    # Whitehorse Pioneers – maroon with white side panels
+    "efnl_whitehorse_pioneers":   ["#7B1D41", "#FFFFFF", "#7B1D41"],
     # All Hawks clubs — brown and gold (Hawthorn tradition)
     "efnl_blackburn":             ["#4D2004", "#FBBF15", "#FFFFFF"],
     "efnl_boronia":               ["#4D2004", "#FBBF15", "#FFFFFF"],
@@ -157,10 +196,18 @@ CORRECTIONS = {
     "efnl_east_burwood":          ["#002B5C", "#FFD200", "#FFFFFF"],
 
     # ── EDFL ─────────────────────────────────────────────────────────────────
+    # Glenroy – red with white sash
+    "edfl_glenroy":               ["#CC2031", "#FFFFFF", "#CC2031"],
     # Essendon Doutta Stars – red and black (Essendon-affiliated)
     "edfl_essendon_doutta_star":  ["#CC2031", "#000000", "#CC2031"],
-    # Aberfeldie – navy blue and white
-    "edfl_aberfeldie":            ["#002B5C", "#FFFFFF", "#FFD200"],
+    # Aberfeldie – sky blue with navy blue yoke (confirmed)
+    "edfl_aberfeldie":            ["#0099CC", "#002B5C", "#FFFFFF"],
+
+    # ── WFNL ─────────────────────────────────────────────────────────────────
+    # Altona – purple and gold
+    "wfnl_altona":                ["#660066", "#FFD200", "#FFFFFF"],
+    # Braybrook – black with red sash
+    "wfnl_braybrook":             ["#000000", "#CC2031", "#000000"],
 
     # ── SFNL ─────────────────────────────────────────────────────────────────
     # East Brighton Vampires – red and black
@@ -181,8 +228,22 @@ CORRECTIONS = {
     "mpfnl_langwarrin":           ["#003087", "#FFD200", "#FFFFFF"],
 
     # ── OuterEastFNL ─────────────────────────────────────────────────────────
-    # Belgrave Hawks – brown and gold
-    "outereastfnl_belgrave":      ["#4D2004", "#FBBF15", "#FFFFFF"],
+    # Belgrave Magpies – black and white
+    "outereastfnl_belgrave":      ["#000000", "#FFFFFF", "#000000"],
+    # Emerald Bombers – red and black (Essendon tradition)
+    "outereastfnl_emerald":       ["#CC2031", "#000000", "#FFFFFF"],
+    # Kinglake Lakers – yellow and green
+    "outereastfnl_kinglake":      ["#FFD200", "#006633", "#FFFFFF"],
+    # Thornton-Eildon Shinboners – North Melbourne blue and white
+    "outereastfnl_thornton_eildon": ["#003F87", "#FFFFFF", "#CC2031"],
+    # Upwey-Tecoma Tigers – yellow and black (Richmond tradition)
+    "outereastfnl_upwey_tecoma":  ["#FFD200", "#000000", "#FFD200"],
+    # Warburton-Millgrove – blue with white trim
+    "outereastfnl_warburton_millgrove": ["#003087", "#FFFFFF", "#003087"],
+    # Yarra Junction Eagles – yellow and green
+    "outereastfnl_yarra_junction": ["#FFD200", "#006633", "#FFD200"],
+    # Yea Tigers – yellow and black (Richmond tradition)
+    "outereastfnl_yea":           ["#FFD200", "#000000", "#FFD200"],
 
     # ── VAFA ─────────────────────────────────────────────────────────────────
     # University Blues – royal blue and gold (Melbourne University)
@@ -306,6 +367,32 @@ CORRECTIONS = {
     "aflhcc_newcastle_city":              ["#002B5C", "#FFD200", "#FFFFFF"],
 
     # ── Adelaide FL ───────────────────────────────────────────────────────────
+    # CBC OC – purple and white (Christian Brothers College Old Collegians)
+    "adelfl_cbc_oc":              ["#660066", "#FFFFFF", "#660066"],
+    # Kenilworth – chocolate brown and royal blue
+    "adelfl_kenilworth":          ["#6B4423", "#003087", "#FFFFFF"],
+    # Lockleys – navy blue and red
+    "adelfl_lockleys":            ["#002B5C", "#CC2031", "#FFFFFF"],
+    # Modbury – brown and gold
+    "adelfl_modbury":             ["#6B4423", "#FFD200", "#FFFFFF"],
+    # Morphettville Park – red and gold
+    "adelfl_morphettville_park":  ["#CC2031", "#FFD200", "#FFFFFF"],
+    # Payneham NU – black and white
+    "adelfl_payneham_nu":         ["#000000", "#FFFFFF", "#000000"],
+    # Pembroke OS – maroon and white (Pembroke School Old Scholars)
+    "adelfl_pembroke_os":         ["#7B1D41", "#FFFFFF", "#7B1D41"],
+    # Plympton – red and black
+    "adelfl_plympton":            ["#CC2031", "#000000", "#FFFFFF"],
+    # Pulteney – navy blue (Pulteney Grammar Old Boys)
+    "adelfl_pulteney":            ["#002B5C", "#FFFFFF", "#002B5C"],
+    # Seaton Ramblers – green and white
+    "adelfl_seaton_ramblers":     ["#006633", "#FFFFFF", "#006633"],
+    # Tea Tree Gully – red and black
+    "adelfl_tea_tree_gully":      ["#CC2031", "#000000", "#FFFFFF"],
+    # Unley Mercedes – navy blue and black
+    "adelfl_unley_mercedes":      ["#002B5C", "#000000", "#FFFFFF"],
+    # Westminster OS – dark green and gold (Westminster School Old Scholars)
+    "adelfl_westminster_os":      ["#006633", "#FFD200", "#006633"],
     # Rostrevor OC – maroon and gold (Rostrevor College)
     "adelfl_rostrevor_oc":               ["#7B1D41", "#FFD200", "#FFFFFF"],
     # Sacred Heart OC – green and white (Sacred Heart College)
@@ -322,6 +409,70 @@ CORRECTIONS = {
     "adelfl_scotch_oc":                  ["#002B5C", "#FFFFFF", "#FFD200"],
     # Flinders University – navy and gold (FU colors)
     "adelfl_flinders_university":        ["#002B5C", "#FFD200", "#FFFFFF"],
+
+    # ── SFNL ─────────────────────────────────────────────────────────────────
+    # Bentleigh Demons – red and blue
+    "sfnl_bentleigh":             ["#CC2031", "#003087", "#FFFFFF"],
+    # Berwick Springs – blue and green
+    "sfnl_berwick_springs":       ["#003087", "#006633", "#FFFFFF"],
+    # Black Rock – black and red
+    "sfnl_black_rock":            ["#000000", "#CC2031", "#FFFFFF"],
+    # Carrum Patterson Lakes – maroon and blue
+    "sfnl_carrum_patterson_lak":  ["#7B1D41", "#003087", "#FFFFFF"],
+    # East Brighton Vampires – red and white (NOT red/black; correcting earlier entry)
+    "sfnl_east_brighton":         ["#CC2031", "#FFFFFF", "#CC2031"],
+    # Highett – red and black
+    "sfnl_highett":               ["#CC2031", "#000000", "#FFFFFF"],
+    # Keysborough – red, white and blue
+    "sfnl_keysborough":           ["#CC2031", "#FFFFFF", "#003087"],
+    # Mordialloc – red and blue
+    "sfnl_mordialloc":            ["#CC2031", "#003087", "#FFFFFF"],
+    # St Paul's McKinnon – royal/sky/red/white (four-colour club)
+    "sfnl_st_paul_s_mckinnon":    ["#003087", "#0099CC", "#CC2031"],
+
+    # ── NFNL (additional) ────────────────────────────────────────────────────
+    # Eltham – red and black
+    "nfnl_eltham":                ["#CC2031", "#000000", "#FFFFFF"],
+    # Greensborough – green and white
+    "nfnl_greensborough":         ["#006633", "#FFFFFF", "#006633"],
+    # Heidelberg West – yellow and black
+    "nfnl_heidelberg_west":       ["#FFD200", "#000000", "#FFD200"],
+    # Hurstbridge – royal blue and gold
+    "nfnl_hurstbridge":           ["#003087", "#FFD200", "#FFFFFF"],
+    # Kilmore – blue and white
+    "nfnl_kilmore":               ["#003087", "#FFFFFF", "#003087"],
+    # Macleod – royal blue, white and gold
+    "nfnl_macleod":               ["#003087", "#FFFFFF", "#FFD200"],
+    # Panton Hill – black and red
+    "nfnl_panton_hill":           ["#000000", "#CC2031", "#000000"],
+    # Wallan – black and white (Magpies tradition)
+    "nfnl_wallan":                ["#000000", "#FFFFFF", "#000000"],
+    # Watsonia – red, white and black
+    "nfnl_watsonia":              ["#CC2031", "#FFFFFF", "#000000"],
+    # Whittlesea – dark blue and gold
+    "nfnl_whittlesea":            ["#002B5C", "#FFD200", "#FFFFFF"],
+
+    # ── AFL Canberra (additional) ─────────────────────────────────────────────
+    # Eastlake Demons – royal blue and white
+    "aflcanberra_eastlake":       ["#003087", "#FFFFFF", "#003087"],
+    # Gungahlin Jets – teal, black and white
+    "aflcanberra_gungahlin":      ["#008B8B", "#000000", "#FFFFFF"],
+
+    # ── AFL Sydney (additional) ───────────────────────────────────────────────
+    # Manly Warringah Wolves – maroon and white
+    "aflsyd_manly_warringah_wolv": ["#7B1D41", "#FFFFFF", "#7B1D41"],
+
+    # ── AFLHCC (additional) ───────────────────────────────────────────────────
+    # Lake Macquarie Dockers – purple and white (Fremantle-style)
+    "aflhcc_lake_macquarie":      ["#4F0082", "#FFFFFF", "#4F0082"],
+    # Maitland Saints – red, black and white (St Kilda-style)
+    "aflhcc_maitland":            ["#ED1B2F", "#000000", "#FFFFFF"],
+    # Singleton Roosters – red and white
+    "aflhcc_singleton":           ["#CC2031", "#FFFFFF", "#CC2031"],
+    # Wyong Lakes Magpies – black and white
+    "aflhcc_wyong_lakes":         ["#000000", "#FFFFFF", "#000000"],
+    # University of Newcastle Seahorses – light blue, black and white
+    "aflhcc_university_of_newcas": ["#6CB4E4", "#000000", "#FFFFFF"],
 
     # ── Perth Football League ─────────────────────────────────────────────────
     # East Fremantle (PFL) – dark blue and white (same as WAFL)
