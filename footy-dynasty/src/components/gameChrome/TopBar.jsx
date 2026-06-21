@@ -12,8 +12,15 @@ import { useStatTrend, trendGlyph, trendColor } from "./useStatTrend.js";
 import { useCareer } from "../../lib/careerStore.js";
 
 const tickEase = [0.22, 1, 0.36, 1];
-const LIME = "#C8FF3D";
-const LIME_ON = "#0A0D0C";
+// Theme-driven accent (resolves to the active theme's --A-accent — teal in
+// the light "Daylight" theme). Text colour to sit on top of the accent fill.
+const ACCENT = "var(--A-accent)";
+const ACCENT_ON = "var(--fd-on-accent)";
+
+// Health colours for the board/fan bars — readable on both light and dark.
+const HEALTH_GOOD = "var(--A-pos)";
+const HEALTH_WARN = "#d97706";
+const HEALTH_BAD = "var(--A-neg)";
 
 function barStatPct(raw) {
   const n = Number(raw);
@@ -21,29 +28,23 @@ function barStatPct(raw) {
   return Math.max(0, Math.min(100, Math.round(n)));
 }
 
-/** Returns a gradient stop pair based on value threshold for bar fills */
-function barGradient(value, color) {
-  // threshold-based gradient: green-ish above 60, amber 30-60, red below 30
-  if (color === "#86CEFF" || color === "#A78BFA") {
-    // board confidence / fan happiness — green > amber > red
-    if (value >= 60) {
-      return `linear-gradient(90deg, ${color}55, ${color}CC, ${color})`;
-    } else if (value >= 30) {
-      return `linear-gradient(90deg, #FF9A3C55, #FF9A3CCC, #FF9A3C)`;
-    } else {
-      return `linear-gradient(90deg, #FF5A7C55, #FF5A7CCC, #FF5A7C)`;
-    }
+/** Returns a gradient stop pair based on value threshold for bar fills.
+ *  `semantic` bars (board/fans) shift green → amber → red with health;
+ *  non-semantic bars (cash/budget) keep their own accent colour. */
+function barGradient(value, color, semantic) {
+  if (semantic) {
+    const c = value >= 60 ? HEALTH_GOOD : value >= 30 ? HEALTH_WARN : HEALTH_BAD;
+    return `linear-gradient(90deg, color-mix(in srgb, ${c} 35%, transparent), color-mix(in srgb, ${c} 80%, transparent), ${c})`;
   }
-  // cash / budget — always their accent colour
-  return `linear-gradient(90deg, ${color}55, ${color}CC, ${color})`;
+  return `linear-gradient(90deg, color-mix(in srgb, ${color} 35%, transparent), color-mix(in srgb, ${color} 80%, transparent), ${color})`;
 }
 
-/** Returns glow color for active bar */
-function barGlowColor(value, color) {
-  if (color === "#86CEFF" || color === "#A78BFA") {
-    if (value >= 60) return color;
-    if (value >= 30) return "#FF9A3C";
-    return "#FF5A7C";
+/** Returns glow/text colour for active bar */
+function barGlowColor(value, color, semantic) {
+  if (semantic) {
+    if (value >= 60) return HEALTH_GOOD;
+    if (value >= 30) return HEALTH_WARN;
+    return HEALTH_BAD;
   }
   return color;
 }
@@ -69,7 +70,7 @@ export function TopBar({
   const fansTrend = useStatTrend(barStatPct(career.finance.fanHappiness), timeTick);
   const blockedToBell = advanceDisabled && !!onBlockedAdvance;
   const nextEv = (career.eventQueue || []).find(e => !e.completed);
-  const phaseColors = { preseason: LIME, season: "#86CEFF", finals: "#FF5A7C", offseason: "#A78BFA" };
+  const phaseColors = { preseason: "var(--A-accent)", season: "var(--A-accent-2)", finals: "var(--A-neg)", offseason: "#7c3aed" };
   const phaseLabel = { preseason: "PRE-SEASON", season: "SEASON", finals: "FINALS", offseason: "OFF-SEASON" };
   const phase = career.inFinals ? "finals" : (career.phase || "preseason");
 
@@ -119,19 +120,19 @@ export function TopBar({
     <header
       className="sticky top-0 z-40"
       style={{
-        background: "rgba(13, 17, 16, 0.95)",
+        background: "color-mix(in srgb, var(--A-panel) 88%, transparent)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        borderBottom: "1px solid rgba(200,255,61,0.15)",
-        boxShadow: "0 1px 0 rgba(200,255,61,0.06)",
+        borderBottom: "1px solid var(--A-line)",
+        boxShadow: "0 1px 2px rgba(12, 28, 52, 0.04)",
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
-      {/* Lime progress flash on advance */}
+      {/* Accent progress flash on advance */}
       <motion.div
         key={timeTick}
         className="h-0.5 origin-left"
-        style={{ background: `linear-gradient(90deg, ${LIME}, rgba(200,255,61,0.3), transparent)` }}
+        style={{ background: `linear-gradient(90deg, ${ACCENT}, color-mix(in srgb, ${ACCENT} 30%, transparent), transparent)` }}
         initial={{ scaleX: 0, opacity: 1 }}
         animate={{ scaleX: 1, opacity: 0 }}
         transition={{ duration: 0.55, ease: tickEase }}
@@ -145,7 +146,7 @@ export function TopBar({
             {/* Date + phase block */}
             <div
               className="pr-3 mr-3 flex-shrink-0"
-              style={{ borderRight: "1px solid rgba(255,255,255,0.08)" }}
+              style={{ borderRight: "1px solid var(--A-line)" }}
             >
               <motion.div
                 key={timeTick}
@@ -170,7 +171,7 @@ export function TopBar({
                     fontFamily: "'Bebas Neue', Oswald, sans-serif",
                     fontSize: 18,
                     lineHeight: 1.1,
-                    color: "#F7FAF8",
+                    color: "var(--A-text)",
                     letterSpacing: "0.03em",
                   }}
                 >
@@ -181,21 +182,21 @@ export function TopBar({
 
             {/* Finance stats */}
             {[
-              { label: "Cash",   value: fmtK(career.finance.cash),           color: "#5EFFA8",  hideBelow: "sm" },
-              { label: "Budget", value: fmtK(career.finance.transferBudget), color: LIME,       hideBelow: "lg" },
-              { label: "Board",  value: board,  color: "#86CEFF", bar: true, hideBelow: "md", trend: boardTrend },
-              { label: "Fans",   value: fans,   color: "#A78BFA", bar: true, hideBelow: "lg", trend: fansTrend },
-            ].map(({ label, value, color, bar, hideBelow, trend }) => {
+              { label: "Cash",   value: fmtK(career.finance.cash),           color: "var(--A-pos)",      hideBelow: "sm" },
+              { label: "Budget", value: fmtK(career.finance.transferBudget), color: "var(--A-accent)",   hideBelow: "lg" },
+              { label: "Board",  value: board,  color: "var(--A-accent-2)", bar: true, semantic: true, hideBelow: "md", trend: boardTrend },
+              { label: "Fans",   value: fans,   color: "#7c3aed",           bar: true, semantic: true, hideBelow: "lg", trend: fansTrend },
+            ].map(({ label, value, color, bar, semantic, hideBelow, trend }) => {
               const cls =
                 hideBelow === "lg" ? "hidden lg:flex" :
                 hideBelow === "md" ? "hidden md:flex" :
                 hideBelow === "sm" ? "hidden sm:flex" : "flex";
-              const glowColor = bar ? barGlowColor(value, color) : color;
+              const glowColor = bar ? barGlowColor(value, color, semantic) : color;
               return (
                 <motion.div
                   key={`${timeTick}-${label}`}
                   className={`${cls} items-center px-3 md:px-4 h-full flex-shrink-0`}
-                  style={{ borderRight: "1px solid rgba(255,255,255,0.07)" }}
+                  style={{ borderRight: "1px solid var(--A-line)" }}
                   initial={{ opacity: 0.45, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.26, ease: tickEase }}
@@ -209,7 +210,7 @@ export function TopBar({
                         letterSpacing: "0.18em",
                         fontWeight: 700,
                         textTransform: "uppercase",
-                        color: "#5C6962",
+                        color: "var(--A-text-mute)",
                         marginBottom: 1,
                       }}
                     >
@@ -242,8 +243,8 @@ export function TopBar({
                             width: 52,
                             height: 4,
                             borderRadius: 9999,
-                            background: "rgba(255,255,255,0.07)",
-                            border: "1px solid rgba(255,255,255,0.05)",
+                            background: "var(--A-bg-2)",
+                            border: "1px solid var(--A-line)",
                             overflow: "hidden",
                             position: "relative",
                           }}
@@ -253,8 +254,8 @@ export function TopBar({
                               height: "100%",
                               width: `${value}%`,
                               borderRadius: 9999,
-                              background: barGradient(value, color),
-                              boxShadow: `0 0 6px ${glowColor}88`,
+                              background: barGradient(value, color, semantic),
+                              boxShadow: `0 0 6px color-mix(in srgb, ${glowColor} 55%, transparent)`,
                               transition: "width 0.4s ease",
                             }}
                           />
@@ -287,7 +288,7 @@ export function TopBar({
             className="flex items-center gap-2 md:gap-3 flex-shrink-0"
             style={{
               paddingLeft: 12,
-              borderLeft: "1px solid rgba(255,255,255,0.07)",
+              borderLeft: "1px solid var(--A-line)",
             }}
           >
             <NotificationBell onAction={onNotificationAction} open={notifOpen} onOpenChange={onNotifOpenChange} />
@@ -300,7 +301,7 @@ export function TopBar({
                   letterSpacing: "0.22em",
                   fontWeight: 700,
                   textTransform: "uppercase",
-                  color: "#5C6962",
+                  color: "var(--A-text-mute)",
                 }}
               >
                 Next
@@ -311,7 +312,7 @@ export function TopBar({
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.26, ease: tickEase }}
                 className="text-sm font-semibold truncate"
-                style={{ color: "#9CA89F" }}
+                style={{ color: "var(--A-text-dim)" }}
                 title={ctx.detail}
               >
                 {headerNextLabel}
@@ -336,27 +337,27 @@ export function TopBar({
                 letterSpacing: "0.16em",
                 textTransform: "uppercase",
                 background: blockedToBell
-                  ? "rgba(255,90,124,0.15)"
+                  ? "color-mix(in srgb, var(--A-neg) 15%, transparent)"
                   : advanceDisabled
-                  ? "rgba(60,60,60,0.4)"
-                  : LIME,
+                  ? "var(--A-bg-2)"
+                  : ACCENT,
                 color: blockedToBell
-                  ? "#FF5A7C"
+                  ? "var(--A-neg)"
                   : advanceDisabled
-                  ? "#5C6962"
-                  : LIME_ON,
+                  ? "var(--A-text-mute)"
+                  : ACCENT_ON,
                 border: blockedToBell
-                  ? "1px solid rgba(255,90,124,0.4)"
+                  ? "1px solid color-mix(in srgb, var(--A-neg) 40%, transparent)"
                   : advanceDisabled
-                  ? "1px solid rgba(255,255,255,0.1)"
+                  ? "1px solid var(--A-line-2)"
                   : "none",
                 boxShadow: blockedToBell
                   ? "none"
                   : advanceDisabled
                   ? "none"
-                  : `0 4px 20px rgba(200,255,61,0.35)`,
+                  : `0 4px 20px color-mix(in srgb, var(--A-accent) 35%, transparent)`,
                 opacity: advanceDisabled && !blockedToBell ? 0.5 : 1,
-                outline: tutorialSpotlightAdvance ? `2px solid ${LIME}` : "none",
+                outline: tutorialSpotlightAdvance ? `2px solid ${ACCENT}` : "none",
                 outlineOffset: 2,
                 marginLeft: 4,
               }}
@@ -370,9 +371,9 @@ export function TopBar({
                     minWidth: 18, height: 18,
                     padding: "0 4px",
                     borderRadius: 9999,
-                    background: "rgba(255,90,124,0.25)",
-                    color: "#FF5A7C",
-                    border: "1px solid rgba(255,90,124,0.4)",
+                    background: "color-mix(in srgb, var(--A-neg) 22%, transparent)",
+                    color: "var(--A-neg)",
+                    border: "1px solid color-mix(in srgb, var(--A-neg) 40%, transparent)",
                     fontSize: 9,
                     fontWeight: 700,
                     marginLeft: 2,
