@@ -1133,7 +1133,7 @@ export const PYRAMID = {
       { id: "perthfootballleague_whitford", name: "Whitford", short: "WHI", state: "WA", colors: ["#003366", "#FFD200", "#000000"] , division: 2},
       { id: "perthfootballleague_warnbro_swans", name: "Warnbro Swans", short: "WSW", state: "WA", colors: ["#ED1B2F", "#FFFFFF", "#ED1B2F"] , division: 3},
       { id: "perthfootballleague_applecross", name: "Applecross", short: "APP", state: "WA", colors: ["#006633", "#FFD200", "#FFFFFF"] , division: 3},
-      { id: "perthfootballleague_coastal_titans", name: "Coastal Titans", short: "CT", state: "WA", colors: ["#003366", "#00A99D", "#FFFFFF"] , division: 4},
+      { id: "perthfootballleague_west_coast", name: "West Coast", short: "WCA", state: "WA", colors: ["#002060", "#FFD200", "#FFFFFF"] , division: 1},
       { id: "perthfootballleague_melville", name: "Melville", short: "MEL", state: "WA", colors: ["#000080", "#FFFFFF", "#CC2031"] , division: 3},
       { id: "perthfootballleague_north_fremantle", name: "North Fremantle", short: "NF", state: "WA", colors: ["#8B0000", "#000000", "#FFFFFF"] , division: 4},
       { id: "perthfootballleague_quinns_district", name: "Quinns District", short: "QD", state: "WA", colors: ["#660066", "#FFD200", "#FFFFFF"] , division: 4},
