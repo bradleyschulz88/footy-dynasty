@@ -29,8 +29,10 @@ const MORE = [
   { key: "settings", label: "Settings",    icon: Settings,  desc: "Save slots & preferences" },
 ];
 
-const LIME = "#C8FF3D";
-const LIME_ON = "#0A0D0C";
+// Theme-driven accent — resolves to the active theme's --A-accent (teal in
+// the light "Daylight" theme) so the nav matches the rest of the app shell.
+const ACCENT = "var(--A-accent)";
+const ACCENT_ON = "var(--fd-on-accent)";
 
 export function BottomNav({
   screen,
@@ -70,18 +72,19 @@ export function BottomNav({
           <div
             className="absolute inset-x-0 bottom-0 rounded-t-2xl p-4"
             style={{
-              background: "rgba(17, 21, 20, 0.97)",
+              background: "var(--A-panel)",
               backdropFilter: "blur(24px)",
               WebkitBackdropFilter: "blur(24px)",
-              borderTop: `1px solid rgba(200,255,61,0.2)`,
+              borderTop: `1px solid var(--A-line)`,
+              boxShadow: "0 -8px 30px rgba(12, 28, 52, 0.12)",
               paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)",
             }}
           >
             <div className="flex items-center justify-between px-1 py-1 mb-3">
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.24em", color: "#5C6962", textTransform: "uppercase", fontWeight: 700 }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.24em", color: "var(--A-text-mute)", textTransform: "uppercase", fontWeight: 700 }}>
                 More
               </span>
-              <button type="button" onClick={() => setSheetOpen(false)} aria-label="Close" style={{ color: "#5C6962", padding: 4 }}>
+              <button type="button" onClick={() => setSheetOpen(false)} aria-label="Close" style={{ color: "var(--A-text-mute)", padding: 4 }}>
                 <X size={18} />
               </button>
             </div>
@@ -99,19 +102,19 @@ export function BottomNav({
                     className="flex items-center gap-3 p-3 rounded-xl text-left transition-all"
                     style={{
                       opacity: locked ? 0.35 : 1,
-                      background: active ? "rgba(200,255,61,0.08)" : "rgba(255,255,255,0.04)",
-                      border: active ? `1px solid rgba(200,255,61,0.4)` : "1px solid rgba(255,255,255,0.08)",
+                      background: active ? "color-mix(in srgb, var(--A-accent) 8%, transparent)" : "var(--A-panel-2)",
+                      border: active ? `1px solid color-mix(in srgb, var(--A-accent) 40%, transparent)` : "1px solid var(--A-line)",
                     }}
                   >
                     <div
                       className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: active ? "rgba(200,255,61,0.12)" : "rgba(255,255,255,0.06)", color: active ? LIME : "#9CA89F" }}
+                      style={{ background: active ? "color-mix(in srgb, var(--A-accent) 12%, transparent)" : "var(--A-bg-2)", color: active ? ACCENT : "var(--A-text-dim)" }}
                     >
                       <Icon size={18} />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-bold leading-tight" style={{ color: active ? LIME : "#F7FAF8" }}>{item.label}</div>
-                      <div className="text-[10px] truncate" style={{ color: "#5C6962" }}>{item.desc}</div>
+                      <div className="text-sm font-bold leading-tight" style={{ color: active ? ACCENT : "var(--A-text)" }}>{item.label}</div>
+                      <div className="text-[10px] truncate" style={{ color: "var(--A-text-mute)" }}>{item.desc}</div>
                     </div>
                   </button>
                 );
@@ -124,28 +127,28 @@ export function BottomNav({
       <nav
         className="md:hidden fixed inset-x-0 bottom-0 z-30"
         style={{
-          background: "rgba(10, 13, 12, 0.97)",
+          background: "color-mix(in srgb, var(--A-panel) 92%, transparent)",
           backdropFilter: "blur(28px)",
           WebkitBackdropFilter: "blur(28px)",
-          borderTop: "1px solid rgba(200,255,61,0.18)",
-          boxShadow: "0 -4px 24px rgba(0,0,0,0.5), 0 -1px 0 rgba(200,255,61,0.08)",
+          borderTop: "1px solid var(--A-line)",
+          boxShadow: "0 -4px 24px rgba(12, 28, 52, 0.10), 0 -1px 0 var(--A-line)",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
         {/* Next-event hint strip */}
         <div
           className="flex items-center justify-center gap-1.5 h-[22px] border-b"
-          style={{ borderColor: "rgba(200,255,61,0.08)", overflow: "hidden" }}
+          style={{ borderColor: "var(--A-line)", overflow: "hidden" }}
         >
           {advanceDisabled && advanceDisabledReason ? (
             <>
-              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.22em", color: "#FF5A7C", textTransform: "uppercase", fontWeight: 700 }}>Hold</span>
-              <span style={{ fontSize: 10, color: "#FF5A7C", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "72vw" }}>{advanceDisabledReason}</span>
+              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.22em", color: "var(--A-neg)", textTransform: "uppercase", fontWeight: 700 }}>Hold</span>
+              <span style={{ fontSize: 10, color: "var(--A-neg)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "72vw" }}>{advanceDisabledReason}</span>
             </>
           ) : (
             <>
-              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.22em", color: "#5C6962", textTransform: "uppercase", fontWeight: 700 }}>Next</span>
-              <span style={{ fontSize: 10, color: "#9CA89F", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "60vw" }}>
+              <span style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 9, letterSpacing: "0.22em", color: "var(--A-text-mute)", textTransform: "uppercase", fontWeight: 700 }}>Next</span>
+              <span style={{ fontSize: 10, color: "var(--A-text-dim)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "60vw" }}>
                 {ctx.nextEventShort}{ctx.mode === "finals" ? " 🏆" : ""}
               </span>
             </>
@@ -173,15 +176,15 @@ export function BottomNav({
                       background: blockedToBell
                         ? "linear-gradient(135deg,#FF5A7C,#a32a47)"
                         : advanceDisabled
-                        ? "rgba(60,60,60,0.6)"
-                        : LIME,
-                      color: advanceDisabled && !blockedToBell ? "#5C6962" : blockedToBell ? "#fff" : LIME_ON,
+                        ? "var(--A-bg-2)"
+                        : ACCENT,
+                      color: advanceDisabled && !blockedToBell ? "var(--A-text-mute)" : blockedToBell ? "#fff" : ACCENT_ON,
                       boxShadow: blockedToBell
                         ? "0 6px 20px rgba(255,90,124,0.45)"
                         : advanceDisabled
                         ? "none"
-                        : `0 6px 24px rgba(200,255,61,0.5), 0 0 0 2px rgba(200,255,61,0.2)`,
-                      border: advanceDisabled && !blockedToBell ? "1px solid rgba(255,255,255,0.1)" : "none",
+                        : `0 6px 24px color-mix(in srgb, var(--A-accent) 45%, transparent), 0 0 0 2px color-mix(in srgb, var(--A-accent) 20%, transparent)`,
+                      border: advanceDisabled && !blockedToBell ? "1px solid var(--A-line-2)" : "none",
                     }}
                   >
                     {blockedToBell ? <Bell size={22} /> : <Play size={22} fill="currentColor" />}
@@ -198,7 +201,7 @@ export function BottomNav({
                           fontSize: 9,
                           fontFamily: "'JetBrains Mono',monospace",
                           fontWeight: 700,
-                          border: "2px solid #0D1110",
+                          border: "2px solid var(--A-panel)",
                         }}
                       >
                         {advanceAgendaCount}
@@ -227,7 +230,7 @@ export function BottomNav({
                     aria-haspopup="dialog"
                     aria-expanded={sheetOpen}
                     className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative"
-                    style={{ color: moreActive || sheetOpen ? LIME : "#5C6962" }}
+                    style={{ color: moreActive || sheetOpen ? ACCENT : "var(--A-text-mute)" }}
                   >
                     {(moreActive || sheetOpen) && (
                       <motion.span
@@ -236,8 +239,8 @@ export function BottomNav({
                         style={{
                           top: 0,
                           height: 3,
-                          background: LIME,
-                          boxShadow: `0 0 10px ${LIME}CC`,
+                          background: ACCENT,
+                          boxShadow: `0 0 10px color-mix(in srgb, var(--A-accent) 80%, transparent)`,
                         }}
                         transition={{ type: "spring", stiffness: 480, damping: 36 }}
                       />
@@ -275,7 +278,7 @@ function TabCell({ item, active, locked, onPress }) {
       disabled={locked}
       aria-current={active ? "page" : undefined}
       className="flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative"
-      style={{ opacity: locked ? 0.35 : 1, color: active ? LIME : "#5C6962" }}
+      style={{ opacity: locked ? 0.35 : 1, color: active ? ACCENT : "var(--A-text-mute)" }}
     >
       {active && (
         <motion.span
@@ -284,8 +287,8 @@ function TabCell({ item, active, locked, onPress }) {
           style={{
             top: 0,
             height: 3,
-            background: LIME,
-            boxShadow: `0 0 10px ${LIME}CC`,
+            background: ACCENT,
+            boxShadow: `0 0 10px color-mix(in srgb, var(--A-accent) 80%, transparent)`,
           }}
           transition={{ type: "spring", stiffness: 480, damping: 36 }}
         />
@@ -296,7 +299,7 @@ function TabCell({ item, active, locked, onPress }) {
           className="absolute inset-x-0 bottom-0 rounded-lg"
           style={{
             top: 4,
-            background: "radial-gradient(ellipse 60% 70% at 50% 0%, rgba(200,255,61,0.10), transparent 80%)",
+            background: "radial-gradient(ellipse 60% 70% at 50% 0%, color-mix(in srgb, var(--A-accent) 12%, transparent), transparent 80%)",
             pointerEvents: "none",
           }}
         />

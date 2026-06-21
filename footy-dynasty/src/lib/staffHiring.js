@@ -152,8 +152,11 @@ export function generateStaffMarket(career, league) {
     const current = (career.staff || []).find(s => s.id === id);
     // Use a local deterministic hash rather than reseeding the shared RNG,
     // which would corrupt all downstream randomness in the same finishSeason call.
-    const h = ((career.season ?? 1) * 1000 + id.charCodeAt(1) * 37 + i * 13) | 0;
-    const localRng = () => { const x = Math.sin(h + i * 997) * 43758.5453; return x - Math.floor(x); };
+    // Stateful local PRNG: advance the seed each call so the upgrade amount and
+    // the two name indices are independent draws (a stateless Math.sin(h) would
+    // return the same value every call, locking names to the rating).
+    let seed = ((career.season ?? 1) * 1000 + id.charCodeAt(1) * 37 + i * 13) | 0;
+    const localRng = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     const upgradeAmount = 6 + Math.floor(localRng() * 15);
     const newRating = Math.min(95, (current?.rating ?? 60) + upgradeAmount);
     const wageMult = 1 + (newRating - (current?.rating ?? 60)) * 0.025;

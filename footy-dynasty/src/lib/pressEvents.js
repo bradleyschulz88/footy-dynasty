@@ -4,7 +4,7 @@ const PRESS_MOMENTS = [
   {
     id: 'pre_finals',
     label: 'Finals Countdown',
-    eligible: (c) => c.finalsQualified && !c.finalsEliminated && c.pressFiredThisSeason?.includes?.('pre_finals') === false,
+    eligible: (c) => (c.finalsFinalists || []).includes(c.clubId) && !c.finalsEliminated && !(c.pressFiredThisSeason || []).includes('pre_finals'),
     prompt: '"The finals are a week away. What\'s the message to your players?"',
     responses: [
       { id: 'inspire',  label: 'Fire them up — this is what we trained for.', effect: { moraleAll: +4, pressRelations: +1 } },
@@ -16,8 +16,8 @@ const PRESS_MOMENTS = [
     id: 'heavy_loss_heat',
     label: 'Post-loss Heat',
     eligible: (c) => {
-      const lastResult = (c.news || []).find(n => n.type === 'match');
-      return lastResult?.text?.includes?.('lost') && (c.finance?.boardConfidence ?? 70) < 55;
+      const lost = c.lastMatchSummary?.result === 'LOSS';
+      return lost && (c.finance?.boardConfidence ?? 70) < 55 && !(c.pressFiredThisSeason || []).includes('heavy_loss_heat');
     },
     prompt: '"You lost by 8 goals. The board is watching. What do you say?"',
     responses: [
@@ -29,7 +29,7 @@ const PRESS_MOMENTS = [
   {
     id: 'trade_deadline',
     label: 'Trade Deadline Buzz',
-    eligible: (c) => c.phase === 'trade_period' && !c.pressFiredThisSeason?.includes?.('trade_deadline'),
+    eligible: (c) => c.postSeasonPhase === 'trade_period' && c.inTradePeriod && !(c.pressFiredThisSeason || []).includes('trade_deadline'),
     prompt: '"Rumours are swirling about your intentions at the trade table."',
     responses: [
       { id: 'coy',       label: 'We\'re always open to conversations that improve the club.', effect: { pressRelations: +1 } },
