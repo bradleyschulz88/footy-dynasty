@@ -138,8 +138,8 @@ CORRECTIONS = {
     "nfnl_montmorency":           ["#000000", "#FFFFFF", "#000000"],
     # Northcote Park Reds  – red and white
     "nfnl_northcote_park":        ["#CC2031", "#FFFFFF", "#CC2031"],
-    # Heidelberg Warriors  – royal blue and red
-    "nfnl_heidelberg":            ["#003087", "#CC2031", "#FFFFFF"],
+    # Heidelberg Warriors  – yellow and black (the "Bumblebees"; NOT blue/red)
+    "nfnl_heidelberg":            ["#FFD200", "#000000", "#FFD200"],
 
     # ── EFNL ─────────────────────────────────────────────────────────────────
     # All Hawks clubs — brown and gold (Hawthorn tradition)
@@ -191,6 +191,76 @@ CORRECTIONS = {
     "vafa_university_blacks":     ["#000000", "#FFD200", "#FFFFFF"],
     # Old Scotch – royal blue and white (Scotch College Melbourne)
     "vafa_old_scotch":            ["#003087", "#FFFFFF", "#003087"],
+    # Ajax – red, black, white (adopted St Kilda colors 1957)
+    "vafa_ajax":                  ["#ED1B2F", "#000000", "#FFFFFF"],
+    # Old Melburnians – navy and red (Redlegs, Melbourne Grammar OC)
+    "vafa_old_melburnians":       ["#002B5C", "#CC2031", "#FFFFFF"],
+    # Ormond – brown and blue (brown with royal blue V-yoke)
+    "vafa_ormond":                ["#4D2004", "#003087", "#FFFFFF"],
+    # Fitzroy – red, royal blue, gold (red with blue saddle and gold)
+    "vafa_fitzroy":               ["#CC2031", "#003087", "#FFD200"],
+    # Brunswick – purple, white, royal blue (vertical stripes)
+    "vafa_brunswick":             ["#660066", "#FFFFFF", "#003087"],
+    # Elsternwick – black and red (black guernsey with red sash)
+    "vafa_elsternwick":           ["#000000", "#CC2031", "#000000"],
+    # St Kevin's Old Boys – red and white (real club color)
+    "vafa_st_kevin_s":            ["#ED1B2F", "#FFFFFF", "#ED1B2F"],
+    # Collegians – purple and gold (Wesley College, since 1902)
+    "vafa_collegians":            ["#660066", "#FFD200", "#FFFFFF"],
+    # Canterbury – red, black, gold (Cobras, 130+ year tradition)
+    "vafa_canterbury":            ["#CC2031", "#000000", "#FFD200"],
+    # Prahran – royal blue and sky blue (Two Blues)
+    "vafa_prahran":               ["#003087", "#0099CC", "#FFFFFF"],
+    # Williamstown CYMS – gold and royal blue
+    "vafa_williamstown_cyms":     ["#FFD200", "#003087", "#FFFFFF"],
+    # South Melbourne Districts – red and white (Bloods)
+    "vafa_south_melbourne_dist":  ["#CC2031", "#FFFFFF", "#CC2031"],
+    # Old Carey – black and gold (Carey Grammar OC)
+    "vafa_old_carey":             ["#000000", "#FFD200", "#000000"],
+    # Wattle Park – navy and sky blue vertical stripes
+    "vafa_wattle_park":           ["#002B5C", "#0099CC", "#FFFFFF"],
+    # Mazenod OC – black, royal blue, white panels
+    "vafa_mazenod":               ["#000000", "#003087", "#FFFFFF"],
+    # Old Xaverians – red and black (Xavier College OB tradition, confirmed)
+    "vafa_old_xaverians":         ["#CC2031", "#000000", "#FFFFFF"],
+    # Old Ivanhoe Grammarians – brown and white (Ivanhoe Grammar OB)
+    "vafa_old_ivanhoe":           ["#6B4423", "#FFFFFF", "#6B4423"],
+    # UHS-VU – green and brown (University High School + VU alliance)
+    "vafa_uhs_vu":                ["#006633", "#6B4423", "#FFFFFF"],
+    # Richmond Central – yellow and black (follows Richmond Tigers tradition)
+    "vafa_richmond_central":      ["#FFD200", "#000000", "#FFD200"],
+    # Old Geelong – navy and white (Geelong College OB, hoops tradition)
+    "vafa_old_geelong":           ["#002B5C", "#FFFFFF", "#002B5C"],
+    # Old Brighton – navy and red (Brighton Grammar OB, red V-yoke)
+    "vafa_old_brighton":          ["#002B5C", "#CC2031", "#FFFFFF"],
+    # Old Camberwell – navy and royal blue (Camberwell Grammar OB, two-tone blue)
+    "vafa_old_camberwell":        ["#002B5C", "#003087", "#FFFFFF"],
+    # Old Peninsula – royal blue and tan (Peninsula Grammar OB)
+    "vafa_old_peninsula":         ["#003087", "#C4A35A", "#FFFFFF"],
+    # Aquinas OC – red, black, and green vertical panels
+    "vafa_aquinas":               ["#CC2031", "#000000", "#006633"],
+    # Marcellin OC – maroon and gold (Marcellin College OB)
+    "vafa_marcellin":             ["#7B1D41", "#FFD200", "#FFFFFF"],
+    # Oakleigh – royal blue, white and red
+    "vafa_oakleigh":              ["#003087", "#FFFFFF", "#CC2031"],
+    # De La Salle OC – blue, red and gold (De La Salle Brothers tradition)
+    "vafa_de_la_salle":           ["#003087", "#CC2031", "#FFD200"],
+    # Beaumaris – royal blue and gold (the Sharks)
+    "vafa_beaumaris":             ["#003087", "#FFD200", "#FFFFFF"],
+    # Old Yarra Cobras – black, red and gold
+    "vafa_old_yarra_cobras":      ["#000000", "#CC2031", "#FFD200"],
+    # PEGS – maroon and navy (Penleigh & Essendon Grammar)
+    "vafa_pegs":                  ["#7B1D41", "#002B5C", "#FFFFFF"],
+    # Parkdale Vultures – red, royal blue and gold
+    "vafa_parkdale_vultures":     ["#CC2031", "#003087", "#FFD200"],
+    # Preston Bullants – red and white
+    "vafa_preston_bullants":      ["#CC2031", "#FFFFFF", "#CC2031"],
+    # St Mary's Salesian – gold and black (Salesian College OB)
+    "vafa_st_mary_s_salesian":    ["#FFD200", "#000000", "#FFFFFF"],
+    # Therry Penola – burgundy, navy and gold V
+    "vafa_therry_penola":         ["#800020", "#002B5C", "#FFD200"],
+    # North Brunswick – green with gold vertical stripes
+    "vafa_north_brunswick":       ["#006633", "#FFD200", "#FFFFFF"],
 
     # ── AFL Canberra ──────────────────────────────────────────────────────────
     # Ainslie Tricolours – blue, white, red (the name says it all)

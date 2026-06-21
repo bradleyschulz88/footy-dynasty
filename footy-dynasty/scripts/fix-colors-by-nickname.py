@@ -120,6 +120,12 @@ EXCEPTIONS = {
     # WFNL Sunshine / North Sunshine are suburb names, not Suns clubs
     "wfnl_sunshine",
     "wfnl_north_sunshine",
+    # VAFA Hampton Rovers — green/gold IS their real color (not a placeholder)
+    "vafa_hampton_rovers",
+    # VAFA Collegians — purple/gold IS their real Wesley College color
+    "vafa_collegians",
+    # VAFA Old Xaverians — red/black IS their real Xavier College color
+    "vafa_old_xaverians",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
