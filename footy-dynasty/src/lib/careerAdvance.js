@@ -1611,13 +1611,12 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       c.news = [{ week: c.week, type: 'win', text: `🤝 Community grant approved: +$${grant.toLocaleString()}. The council came through.` }, ...(c.news || [])].slice(0, 25);
     }
 
+    // gains is keyed by attribute name → total gain across the lineup
+    // (see calendar.js applyTraining), e.g. { kicking: 5, marking: 3 }.
     const notableGains = Object.entries(gains || {})
-      .filter(([, g]) => g.delta >= 2)
-      .map(([pid, g]) => {
-        const p = c.squad.find((pl) => pl.id === pid);
-        const name = p?.firstName ? `${p.firstName[0]}. ${p.lastName}` : (p?.name || 'Player');
-        return `${name} +${g.delta} ${g.attr}`;
-      });
+      .filter(([, total]) => total >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .map(([attr, total]) => `+${total} ${attr}`);
     if (notableGains.length > 0) {
       c.news = [{ week: c.week, type: 'info', text: `🏋️ Training boost: ${notableGains.slice(0, 3).join(', ')}` }, ...(c.news || [])].slice(0, 40);
     }
