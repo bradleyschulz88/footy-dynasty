@@ -1001,6 +1001,46 @@ CORRECTIONS = {
     "adelfl_salisbury_north":     ["#5A2D0A", "#F0A030", "#FFFFFF"],
     # West Croydon Hawks – brown and gold (non-placeholder shade)
     "adelfl_west_croydon":        ["#5A2D0A", "#F0A030", "#FFFFFF"],
+    # Plympton Bulldogs – red and black (confirmed)
+    "adelfl_plympton":            ["#CC0000", "#000000", "#FFFFFF"],
+    # Tea Tree Gully – red and black (confirmed)
+    "adelfl_tea_tree_gully":      ["#CC0000", "#000000", "#FFFFFF"],
+
+    # ── North Central FL remaining ────────────────────────────────────────────
+    # Boort Magpies – black and white
+    "northcentralfl_boort":       ["#000000", "#FFFFFF", "#000000"],
+    # Donald Royal Blues – royal blue and white
+    "northcentralfl_donald":      ["#4169E1", "#FFFFFF", "#4169E1"],
+
+    # ── East Gippsland FNL remaining ─────────────────────────────────────────
+    # Lindenow – brown and gold (EGFNL historical; non-placeholder shade)
+    "eastgippslandfnl_lindenow":  ["#4E2D1A", "#FFD700", "#FFFFFF"],
+
+    # ── Maryborough Castlemaine DFL remaining ─────────────────────────────────
+    # Avoca Bulldogs – red, white and blue
+    "maryboroughcastlemainedfl_avoca":["#CC0000", "#FFFFFF", "#003399"],
+    # Maryborough Rovers – black and white (Magpies)
+    "maryboroughcastlemainedfl_marybo":["#000000", "#FFFFFF", "#000000"],
+
+    # ── South West DFL remaining ──────────────────────────────────────────────
+    # Branxholme-Wallacedale Saints – red and blue (Saints/Wallacedale heritage)
+    "southwestdfl_branxholme_wallaced":["#CC0000", "#003399", "#FFFFFF"],
+
+    # ── Riddell District FNL remaining ────────────────────────────────────────
+    # Melton South Panthers – navy and white (confirmed 1972 founding)
+    "riddelldfnl_melton_south":   ["#002868", "#FFFFFF", "#002868"],
+
+    # ── Sunraysia FL remaining ────────────────────────────────────────────────
+    # Irymple – blue and gold
+    "sunraysiafl_irymple":        ["#003DA5", "#FFD700", "#FFFFFF"],
+
+    # ── Warrnambool District FL remaining ─────────────────────────────────────
+    # Old Collegians Warriors – green and gold (confirmed Footypedia)
+    "warrnambooldistrictfl_old_colleg":["#006400", "#FFD700", "#FFFFFF"],
+
+    # ── East Kimberley FL remaining ───────────────────────────────────────────
+    # Halls Creek Hawks – brown and gold (Hawks nickname; non-placeholder shade)
+    "eastkimberleyfl_halls_creek": ["#5A2D0A", "#F0A030", "#FFFFFF"],
 
     # ── Farrer FL (NSW) remaining ─────────────────────────────────────────────
     # Collingullie-Kapooka Demons – red and white (Demons branding)
