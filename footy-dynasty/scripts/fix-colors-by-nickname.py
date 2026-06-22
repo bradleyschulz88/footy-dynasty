@@ -126,6 +126,16 @@ EXCEPTIONS = {
     "vafa_collegians",
     # VAFA Old Xaverians — red/black IS their real Xavier College color
     "vafa_old_xaverians",
+    # NFNL Eltham Wildcats — red/black IS their real color
+    "nfnl_eltham",
+    # EDFL Moonee Valley Knights — orange/black IS their real color
+    "edfl_moonee_valley",
+    # AFL Sydney North Shore Bombers — red/black IS their real color
+    "aflsyd_north_shore",
+    # Perth FL Belmont Districts — red/black IS their real color
+    "perthfootballleague_belmont_dist",
+    # Outer East Emerald Bombers — red/black IS their real color (slight shade diff but treat as correct)
+    "outereastfnl_emerald",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
