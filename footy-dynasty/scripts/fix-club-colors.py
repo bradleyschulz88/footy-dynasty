@@ -367,6 +367,20 @@ CORRECTIONS = {
     "aflhcc_newcastle_city":              ["#002B5C", "#FFD200", "#FFFFFF"],
 
     # ── Adelaide FL ───────────────────────────────────────────────────────────
+    # Athelstone – royal blue and white (the Raggies)
+    "adelfl_athelstone":          ["#003087", "#FFFFFF", "#003087"],
+    # Brahma Lodge – yellow and black (Tigers/"Tigerland")
+    "adelfl_brahma_lodge":        ["#FFD200", "#000000", "#FFD200"],
+    # Brighton Bombers – black, gold and white
+    "adelfl_brighton":            ["#000000", "#FFD200", "#FFFFFF"],
+    # Fitzroy (AdelFL) – red, blue and gold (traditional Fitzroy colours)
+    "adelfl_fitzroy":             ["#CC2031", "#003087", "#FFD200"],
+    # Gepps Cross Rams – red, white and blue
+    "adelfl_gepps_cross":         ["#CC2031", "#FFFFFF", "#003087"],
+    # Golden Grove Kookaburras – green, blue and gold
+    "adelfl_golden_grove":        ["#006633", "#003087", "#FFD200"],
+    # Walkerville Cats – navy blue and white hoops
+    "adelfl_walkerville":         ["#002B5C", "#FFFFFF", "#002B5C"],
     # CBC OC – purple and white (Christian Brothers College Old Collegians)
     "adelfl_cbc_oc":              ["#660066", "#FFFFFF", "#660066"],
     # Kenilworth – chocolate brown and royal blue
@@ -474,7 +488,43 @@ CORRECTIONS = {
     # University of Newcastle Seahorses – light blue, black and white
     "aflhcc_university_of_newcas": ["#6CB4E4", "#000000", "#FFFFFF"],
 
-    # ── Perth Football League ─────────────────────────────────────────────────
+    # ── Ballarat FNL ─────────────────────────────────────────────────────────
+    # Bacchus Marsh Cobras – black with red and yellow V stripes
+    "ballaratfnl_bacchus_marsh":  ["#000000", "#CC2031", "#FFD200"],
+    # Ballarat Swans – white with red V
+    "ballaratfnl_ballarat":       ["#FFFFFF", "#CC2031", "#FFFFFF"],
+    # Darley Devils – black and white stripes
+    "ballaratfnl_darley":         ["#000000", "#FFFFFF", "#000000"],
+    # East Point Kangaroos – red, white and blue
+    "ballaratfnl_east_point":     ["#CC2031", "#FFFFFF", "#003087"],
+    # Melton South Panthers – navy blue with white yoke
+    "ballaratfnl_melton_south":   ["#002B5C", "#FFFFFF", "#002B5C"],
+    # Sebastopol Burras – blue and gold
+    "ballaratfnl_sebastopol":     ["#003087", "#FFD200", "#FFFFFF"],
+
+    # ── Bendigo FNL ──────────────────────────────────────────────────────────
+    # Gisborne Bulldogs – red, white and blue (Footscray tradition since 1946)
+    "bendigofnl_gisborne":        ["#003087", "#CC2031", "#FFFFFF"],
+    # Golden Square Bulldogs – blue and gold
+    "bendigofnl_golden_square":   ["#003087", "#FFD200", "#FFFFFF"],
+    # Kyneton Tigers – black and gold
+    "bendigofnl_kyneton":         ["#000000", "#FFD200", "#000000"],
+    # Maryborough Magpies – black, white and teal (Port Adelaide-style)
+    "bendigofnl_maryborough":     ["#000000", "#FFFFFF", "#008B8B"],
+    # South Bendigo Bloods – red and white (South Melbourne tradition)
+    "bendigofnl_south_bendigo":   ["#CC2031", "#FFFFFF", "#CC2031"],
+    # Strathfieldsaye Storm – blue and white hoops (Geelong-style)
+    "bendigofnl_strathfieldsaye": ["#003087", "#FFFFFF", "#003087"],
+
+
+    # Bassendean – black and white (Swans, vertical stripes)
+    "perthfootballleague_bassendean":  ["#000000", "#FFFFFF", "#000000"],
+    # Bayswater Blues – royal blue and white
+    "perthfootballleague_bayswater":   ["#003087", "#FFFFFF", "#003087"],
+    # Hamersley Carine Hawks – maroon, gold and white
+    "perthfootballleague_hamersley_ca": ["#7B1D41", "#FFD200", "#FFFFFF"],
+    # Osborne Park Saints – red, white and black
+    "perthfootballleague_osborne_park": ["#CC2031", "#FFFFFF", "#000000"],
     # East Fremantle (PFL) – dark blue and white (same as WAFL)
     "perthfootballleague_east_fremant":  ["#002B5C", "#FFFFFF", "#002B5C"],
     # University of WA – royal blue and gold
