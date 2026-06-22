@@ -1042,6 +1042,40 @@ CORRECTIONS = {
     # Halls Creek Hawks – brown and gold (Hawks nickname; non-placeholder shade)
     "eastkimberleyfl_halls_creek": ["#5A2D0A", "#F0A030", "#FFFFFF"],
 
+    # ── Ellinbank District FNL remaining ──────────────────────────────────────
+    # Lang Lang Tigers – black and gold
+    "ellinbankdistrictfnl_lang_lang":  ["#000000", "#FFD700", "#000000"],
+    # Nilma-Darnum Bombers – red and black
+    "ellinbankdistrictfnl_nilma_darnu":["#CC0000", "#000000", "#FFFFFF"],
+
+    # ── Omeo District FL remaining ────────────────────────────────────────────
+    # Bruthen Bulldogs – blue, red and white (Western Bulldogs style)
+    "omeodistrictfl_bruthen":          ["#003087", "#CC0000", "#FFFFFF"],
+    # Swan Reach Swans – maroon and white
+    "omeodistrictfl_swan_reach":       ["#800000", "#FFFFFF", "#800000"],
+
+    # ── Golden Rivers FL remaining ────────────────────────────────────────────
+    # Hay Lions – navy and gold
+    "goldenriversfl_hay":              ["#003087", "#FFD700", "#FFFFFF"],
+    # Murrabit Blues – blue and white (confirmed since 1945)
+    "goldenriversfl_murrabit":         ["#0000CD", "#FFFFFF", "#0000CD"],
+    # Quambatook Saints – red, black and white (confirmed "tri colours")
+    "goldenriversfl_quambatook":       ["#CC0000", "#000000", "#FFFFFF"],
+    # Ultima Roos – blue and white (confirmed)
+    "goldenriversfl_ultima":           ["#0057A8", "#FFFFFF", "#0057A8"],
+    # Wandella Bombers – red and black (non-placeholder shade)
+    "goldenriversfl_wandella":         ["#CC0000", "#000000", "#FFFFFF"],
+
+    # ── Horsham District FL remaining ─────────────────────────────────────────
+    # Laharum Demons – red and blue (Melbourne-style, confirmed 1986)
+    "horshamdistrictfl_laharum":       ["#CC0000", "#003087", "#FFFFFF"],
+    # Natimuk United Rams – blue and yellow (confirmed "blue guernsey with yellow vee")
+    "horshamdistrictfl_natimuk_united":["#0057A8", "#FFD700", "#FFFFFF"],
+
+    # ── Loddon Valley FL remaining ────────────────────────────────────────────
+    # Mitiamo Superoos – maroon and gold
+    "loddonvalleyfl_mitiamo":          ["#800000", "#FFD700", "#FFFFFF"],
+
     # ── Farrer FL (NSW) remaining ─────────────────────────────────────────────
     # Collingullie-Kapooka Demons – red and white (Demons branding)
     "farrerfl_collingullie_kapooka":["#CC0000", "#FFFFFF", "#CC0000"],
@@ -1083,6 +1117,54 @@ CORRECTIONS = {
     # ── Geelong FNL remaining ─────────────────────────────────────────────────
     # St Joseph's Joeys – red and black
     "geelongfnl_st_joseph_s":      ["#CC0000", "#000000", "#FFFFFF"],
+
+    # ── Central Wheatbelt FL (WA) remaining ──────────────────────────────────
+    # Beacon – royal blue, gold, white (confirmed)
+    "centralwheatbeltfl_beacon":       ["#4169E1", "#FFD700", "#FFFFFF"],
+
+    # ── Eastern Districts FL (WA) remaining ──────────────────────────────────
+    # Narembeen Hawks – maroon and gold (confirmed)
+    "easterndistrictsfl_narembeen":    ["#800000", "#FFD700", "#FFFFFF"],
+    # Southern Cross Bombers – red and black (Bombers nickname)
+    "easterndistrictsfl_southern_cross":["#CC0000", "#000000", "#FFFFFF"],
+
+    # ── Mortlock Football League (WA) remaining ───────────────────────────────
+    # Dalwallinu Bulldogs – red, white and blue (confirmed)
+    "mortlockfootballleague_dalwallinu":["#CC0000", "#FFFFFF", "#003399"],
+    # Wongan-Ballidu Boomers – navy and white (Wongan Hills historical blue/white)
+    "mortlockfootballleague_wongan_ballidu":["#003087", "#FFFFFF", "#003087"],
+
+    # ── Upper Great Southern FL (WA) remaining ────────────────────────────────
+    # Narrogin Hawks – blue, maroon and gold (confirmed 2004 merger)
+    "uppergreatsouthernfl_narrogin":   ["#003399", "#800000", "#FFD700"],
+    # Wickepin Warriors – maroon and gold (Warriors; common WA scheme)
+    "uppergreatsouthernfl_wickepin":   ["#800000", "#FFD700", "#FFFFFF"],
+
+    # ── Great Northern Football League (WA) remaining ─────────────────────────
+    # Brigades Hawks – brown and gold (Hawks nickname; Geraldton)
+    "greatnorthernfootballleague_brigades":["#5A2D0A", "#F0A030", "#FFFFFF"],
+
+    # ── West Kimberley FL (WA) remaining ─────────────────────────────────────
+    # Peninsula Bombers – red and black (confirmed)
+    "westkimberleyfl_peninsula":       ["#CC0000", "#000000", "#FFFFFF"],
+
+    # ── Ongerup Football Association (WA) remaining ───────────────────────────
+    # Boxwood Hill Bombers – red and black (Bombers nickname)
+    "ongerupfootballassociation_boxwood_hill":   ["#CC0000", "#000000", "#FFFFFF"],
+    # Lake Grace-Pingrup Bombers – red and black (Bombers nickname)
+    "ongerupfootballassociation_lake_grace_pingrup":["#CC0000", "#000000", "#FFFFFF"],
+
+    # ── Western Eyre FL (SA) remaining ───────────────────────────────────────
+    # West Coast Hawks (Streaky Bay) – dark blue and gold (confirmed)
+    "westerneyrefl_streaky_bay":       ["#003366", "#FFD700", "#FFFFFF"],
+
+    # ── Hills Football League SA remaining ────────────────────────────────────
+    # Bridgewater – use maroon and white (common SA hills scheme)
+    "hillsfootballleaguesa_bridgewater":["#800020", "#FFFFFF", "#800020"],
+
+    # ── Kyabram District FL remaining ─────────────────────────────────────────
+    # Murchison-Toolamba Grasshoppers – bottle green and gold (since 1910; confirmed)
+    "kyabramdistrictfl_murchison":     ["#006400", "#FFD700", "#FFFFFF"],
 
     # ── False-positive clubs: real color = placeholder shade; use slight variant ──
     # NFNL Eltham Wildcats – red and black (real club color, non-placeholder red)
