@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { Landmark, Scale } from "lucide-react";
 import { css } from "../components/primitives.jsx";
 import { rollVoteOfConfidenceSurvival, voteOfConfidenceSurvivalChance } from "../lib/board.js";
+import { useCareer } from "../lib/careerStore.js";
 
 const PITCHES = [
   { id: "humble", label: "Own the slide and present a clear, week-by-week fix.", bonus: 10 },
@@ -12,7 +13,8 @@ const PITCHES = [
   { id: "fight", label: "Push back: the board must back the long-term plan in public.", bonus: -7 },
 ];
 
-export default function VoteOfConfidenceFlow({ career, club, league, onComplete }) {
+export default function VoteOfConfidenceFlow({ club, league, onComplete }) {
+  const career = useCareer();
   const [phase, setPhase] = useState(0);
   const [pitchBonus, setPitchBonus] = useState(PITCHES[0].bonus);
   const [survived, setSurvived] = useState(null);
@@ -35,7 +37,7 @@ export default function VoteOfConfidenceFlow({ career, club, league, onComplete 
   const finish = () => onComplete({ survived, pitchBonus });
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, #07101F 0%, #1E293B 100%)" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
       <div className="px-6 py-4 flex items-center justify-center gap-2">
         <Landmark className="w-4 h-4 text-aaccent" />
         <span className="text-[11px] font-mono uppercase tracking-[0.25em] text-atext-mute">{sessionLabel}</span>

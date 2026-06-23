@@ -7,6 +7,7 @@ import { syncRecruitPhaseInboxRows } from './inbox.js';
 import { LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 import { draftPickPositionForClub } from './draftSeed.js';
 import { clubFinalsGrudgeTowardPlayer } from './finalsRivalry.js';
+import { squadPositionNeeds } from './draftEngine.js';
 
 /** Rich snapshot for trade offers / UI (attrs, status, career log). */
 export function tradePlayerSnapshot(p) {
@@ -70,7 +71,20 @@ export const FREE_AGENCY_END_DAY = 8;
 export const POST_TRADE_DRAFT_COUNTDOWN_DAYS = 7;
 
 /** AI trade offers use the same shape as pre-season pendingTradeOffers. */
+// Convert squadPositionNeeds (object of {pos: boostAmount}) into a Set of
+// position strings for the trade-targeting check. Returns an empty Set when
+// the squad is uninitialised so that gaps.size === 0 and seedAiTradeOffers
+// falls back to random targeting rather than flagging every position as a gap.
+function aiSquadPositionGaps(aiSq) {
+  if (!aiSq || aiSq.length === 0) return new Set();
+  return new Set(Object.keys(squadPositionNeeds(aiSq)));
+}
+
 function seedAiTradeOffers(c, league) {
+  // Tier 3 is local/community footy — there's no trade market. Players come and
+  // go by word of mouth (see the tier-3 recruitment notifications), so no rival
+  // club ever tables a formal trade offer.
+  if ((league?.tier ?? 1) === 3) return;
   const fieldIds = new Set(
     (c.lineup || [])
       .slice(0, LINEUP_FIELD_COUNT)
@@ -89,18 +103,46 @@ function seedAiTradeOffers(c, league) {
   const offerClubs = (pool.length ? pool : (league.clubs || [])).filter((cl) => cl.id !== c.clubId);
   const offers = [];
   for (let i = 0; i < offerCount; i++) {
-    const targetPlayer = pick(tradableSquad);
     const offeringClub = pick(offerClubs);
-    if (!targetPlayer || !offeringClub || offers.find((o) => o.targetPlayerId === targetPlayer.id)) continue;
+    if (!offeringClub) continue;
+
+    // AI REALISM: The offering club should prioritise players who fill its own
+    // positional gaps rather than picking completely at random.
+    const aiSq = c.aiSquads?.[offeringClub.id] || [];
+    const gaps = aiSquadPositionGaps(aiSq);
+
+    // Split tradable players into those who fill a gap vs the rest.
+    const fillsGap = tradableSquad.filter((p) => gaps.has(p.position));
+    const others = tradableSquad.filter((p) => !gaps.has(p.position));
+    // 70% chance to target a gap-filling player when the club has clear needs.
+    const targetPool = gaps.size > 0 && fillsGap.length > 0 && rng() < 0.70
+      ? fillsGap
+      : (others.length ? others : tradableSquad);
+    const targetPlayer = pick(targetPool);
+
+    if (!targetPlayer || offers.find((o) => o.targetPlayerId === targetPlayer.id)) continue;
+
     const grudge = clubFinalsGrudgeTowardPlayer(c, offeringClub.id);
     if (grudge > 0 && rng() < 0.22 + Math.min(3, grudge) * 0.11) continue;
-    const aiSq = c.aiSquads?.[offeringClub.id] || [];
+
+    // AI REALISM: Swap candidates should ideally come from positions where the
+    // player club has surplus (player wants what we have too many of), not just
+    // any player within an overall range.
     const swapCandidates = aiSq.filter((ap) => Math.abs(ap.overall - targetPlayer.overall) <= 12).slice(0, 8);
     const swapPlayer = swapCandidates.length ? pick(swapCandidates) : null;
     let cashOffer = Math.round(targetPlayer.value * (0.35 + rng() * 0.65));
     if (grudge > 0) cashOffer = Math.round(cashOffer * (1 - 0.09 * Math.min(grudge, 2)));
     if (swapPlayer && rng() < 0.38) cashOffer = rng() < 0.45 ? 0 : Math.round(targetPlayer.value * (0.08 + rng() * 0.15));
     cashOffer = Math.max(0, cashOffer);
+    // High-value targets: 30% chance AI sweetens the deal with a future pick
+    const targetVal = targetPlayer.value ?? Math.round(targetPlayer.overall * 1500);
+    const offeredPick = targetVal > 400000 && rng() < 0.30
+      ? { season: (c.season ?? 2026) + 1, round: rand(1, 3) }
+      : null;
+    // Bidding war: 35% chance a second club is also circling this player.
+    // Stored as metadata on the offer — escalates on reject.
+    const rivalClubs = offerClubs.filter(cl => cl.id !== offeringClub.id);
+    const rival = targetVal > 200_000 && rng() < 0.35 && rivalClubs.length > 0 ? pick(rivalClubs) : null;
     offers.push({
       id: `tp_offer_${Date.now()}_${i}`,
       fromClubId: offeringClub.id,
@@ -109,9 +151,14 @@ function seedAiTradeOffers(c, league) {
       offerCash: cashOffer,
       offerPlayerId: swapPlayer?.id || null,
       offerPlayerSnapshot: swapPlayer ? tradePlayerSnapshot(swapPlayer) : null,
+      offeredPick,
       status: 'pending',
       createdAt: `postseason-${c.tradePeriodDay}`,
       tradePeriod: true,
+      // Bidding war metadata
+      rivalClubId:   rival?.id   ?? null,
+      rivalClubName: rival?.name ?? null,
+      bidRound: 1,
     });
   }
   if (offers.length) {
@@ -231,7 +278,8 @@ export function beginPostSeasonTradePeriod(c, league, leagueKey) {
   c.freeAgencyOpen = true;
   c.freeAgentBalance = { gained: 0, lost: 0 };
   c.tradeHistory = c.tradeHistory || [];
-  c.draftPickBank = buildDraftPickBank(c, league);
+  // Draft pick capital only exists at AFL level — the national draft is tier-1 only.
+  c.draftPickBank = league?.tier === 1 ? buildDraftPickBank(c, league) : null;
   c.offSeasonFreeAgents = buildOffSeasonFreeAgents(c);
   seedRng(c.season * 911 + 3);
   c.tradePool = generateTradePool(leagueKey, c.season);
@@ -293,7 +341,7 @@ export function closeTradePeriodStartDraftCountdown(c) {
     {
       week: c.week,
       type: 'info',
-      text: `✅ Trade Period closed. National Draft / list reset in ${POST_TRADE_DRAFT_COUNTDOWN_DAYS} steps — keep advancing from the Hub.`,
+      text: `✅ Trade Period closed. ${c.draftPickBank ? 'National Draft / list reset' : 'List reset'} in ${POST_TRADE_DRAFT_COUNTDOWN_DAYS} steps — keep advancing from the Hub.`,
     },
     ...(c.news || []),
   ].slice(0, 20);
@@ -318,6 +366,12 @@ export function advanceTradePeriodDay(c, league, _leagueKey) {
       { week: c.week, type: 'info', text: '⏳ Trade Period: 3 steps left to complete deals.' },
       ...(c.news || []),
     ].slice(0, 20);
+  }
+  if (day === TRADE_PERIOD_DAYS) {
+    c.news = [
+      { week: c.week ?? 0, type: 'warning', text: '🚨 DEADLINE DAY — the trade window closes tonight. Act fast or lose your targets.' },
+      ...(c.news ?? [])
+    ].slice(0, 25);
   }
   if (day >= TRADE_PERIOD_DAYS) {
     closeTradePeriodStartDraftCountdown(c);

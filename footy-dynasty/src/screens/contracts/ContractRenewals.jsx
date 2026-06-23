@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AlertCircle, FileText } from "lucide-react";
 import { PYRAMID, findClub } from "../../data/pyramid.js";
 import { fmtK } from "../../lib/format.js";
@@ -18,8 +19,11 @@ import {
   recalcBoardConfidence,
 } from "../../lib/board.js";
 import { css, RatingDot, Stat } from "../../components/primitives.jsx";
+import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
 
-export function StaffRenewalsPanel({ career, updateCareer, leagueTier, showHeading = true }) {
+export function StaffRenewalsPanel({ leagueTier, showHeading = true }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const queue = (career.pendingStaffRenewals || []).filter((r) => !r._handled);
   const closed = career.renewalsClosed;
   const accept = (proposal) => {
@@ -91,7 +95,8 @@ export function StaffRenewalsPanel({ career, updateCareer, leagueTier, showHeadi
   );
 }
 
-export function ContractsTab({ career, updateCareer }) {
+export function ContractsTab() {
+  const career = useCareer();
   const leagueTier = PYRAMID[career.leagueKey]?.tier ?? 1;
   return (
     <div className="space-y-8">
@@ -102,19 +107,111 @@ export function ContractsTab({ career, updateCareer }) {
           In pre-season, resolve these before the first home-and-away round — the window locks when the season starts.
         </div>
       </div>
-      <RenewalsTab career={career} updateCareer={updateCareer} />
-      <StaffRenewalsPanel career={career} updateCareer={updateCareer} leagueTier={leagueTier} />
+      <ExpiringContractsList />
+      <RenewalsTab />
+      <StaffRenewalsPanel leagueTier={leagueTier} />
     </div>
   );
 }
 
-export function RenewalsTab({ career, updateCareer }) {
+/**
+ * Always-visible roster of players whose deals are running out — including those
+ * already OUT OF CONTRACT (contract <= 0), who can walk for nothing. Unlike the
+ * renewal queue (pre-season only), this is shown year-round so an expiring deal
+ * is never a surprise.
+ */
+export function ExpiringContractsList() {
+  const career = useCareer();
+  const expiring = (career.squad || [])
+    .filter((p) => (p.contract ?? 99) <= 1)
+    .sort((a, b) => (a.contract ?? 0) - (b.contract ?? 0));
+  const outCount = expiring.filter((p) => (p.contract ?? 0) <= 0).length;
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className={`${css.h1} text-2xl`}>EXPIRING & OUT OF CONTRACT</div>
+        {expiring.length > 0 && (
+          <Stat label="Out of contract" value={outCount} accent={outCount > 0 ? 'var(--A-neg)' : 'var(--A-text-mute)'} />
+        )}
+      </div>
+      <div className="text-xs text-atext-dim max-w-2xl leading-relaxed">
+        Players in the final year of their deal, or already out of contract. Out-of-contract players can leave for nothing — renew them in pre-season (Squad → Renewals) or extend from their player card.
+      </div>
+      {expiring.length === 0 ? (
+        <div className={`${css.panel} p-8 text-center text-sm text-atext-dim`}>
+          Every player is signed for at least one more season. Nothing expiring right now.
+        </div>
+      ) : (
+        <div className="rounded-2xl overflow-hidden border border-aline" style={{ background: 'var(--A-panel)' }}>
+          {expiring.map((p) => {
+            const out = (p.contract ?? 0) <= 0;
+            const name = p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player');
+            return (
+              <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center border-b border-aline/70 last:border-b-0">
+                <div className="col-span-6 sm:col-span-5 min-w-0">
+                  <div className="font-semibold text-sm truncate">{name}</div>
+                  <div className="text-[11px] text-atext-dim">{p.position} · age {p.age} · OVR {p.overall}</div>
+                </div>
+                <div className="col-span-3 sm:col-span-3 text-xs font-mono text-atext-dim">{fmtK(p.wage)}/yr</div>
+                <div className="col-span-3 sm:col-span-4 text-right">
+                  <span
+                    className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md whitespace-nowrap"
+                    style={out
+                      ? { background: 'rgba(232,74,111,0.16)', color: '#E84A6F', border: '1px solid rgba(232,74,111,0.4)' }
+                      : { background: 'rgba(255,179,71,0.14)', color: '#FFB347', border: '1px solid rgba(255,179,71,0.4)' }}
+                  >
+                    {out ? 'Out of contract' : '1 year left'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function RenewalsTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
+  const [counter, setCounter] = useState(null); // { proposal, wage } or null
   const queue = (career.pendingRenewals || []).filter(r => !r._handled);
   const renewalsLeague = PYRAMID[career.leagueKey];
   const capLimit = effectiveWageCap(career);
   const wageBillAnnual = annualWageBill(career);
   const headroom = capHeadroom(career);
   const closed = career.renewalsClosed;
+  const sendCounter = (proposal, offeredWage) => {
+    if (closed) return;
+    const ratio = offeredWage / (proposal.proposedWage || offeredWage);
+    // Acceptance probability: 100% at demand, 0% at 70%
+    const acceptProb = Math.max(0, (ratio - 0.70) / 0.30);
+    const roll = Math.random(); // intentionally non-seeded — fresh each time
+    const accepted = roll < acceptProb;
+    setCounter(null);
+    if (accepted) {
+      const counterProposal = { ...proposal, proposedWage: offeredWage };
+      if (!canAffordRenewal(career, counterProposal)) {
+        updateCareer({ news: [{ week: career.week, type: 'loss', text: `⚖️ Cannot afford counter for ${proposal.name} — over salary cap` }, ...(career.news || [])].slice(0, 25) });
+        return;
+      }
+      const patch = applyRenewal(career, counterProposal);
+      updateCareer({
+        ...patch,
+        pendingRenewals: (career.pendingRenewals || []).map(r2 => r2.playerId === proposal.playerId ? { ...r2, _handled: 'accepted' } : r2),
+        news: [{ week: career.week, type: 'win', text: `✍️ Counter accepted: ${proposal.name} signed for ${proposal.proposedYears}y @ ${fmtK(offeredWage)}/yr` }, ...(career.news || [])].slice(0, 25),
+      });
+    } else {
+      const lines = [
+        `${proposal.name} rejected the counter — they want ${fmtK(proposal.proposedWage)}/yr or they walk.`,
+        `${proposal.name} isn't budging — the ${fmtK(proposal.proposedWage)}/yr demand stands.`,
+        `${proposal.name}'s agent called back: the original terms are the final offer.`,
+      ];
+      const text = lines[Math.floor(Math.random() * lines.length)];
+      updateCareer({ news: [{ week: career.week, type: 'loss', text: `❌ Counter rejected: ${text}` }, ...(career.news || [])].slice(0, 25) });
+    }
+  };
   const accept = (proposal) => {
     if (closed) return;
     if (!canAffordRenewal(career, proposal)) {
@@ -201,33 +298,78 @@ export function RenewalsTab({ career, updateCareer }) {
             const canAfford = canAffordRenewal(career, r);
             const formColor = (player.form ?? 70) >= 80 ? 'var(--A-pos)' : (player.form ?? 70) >= 60 ? 'var(--A-accent)' : 'var(--A-neg)';
             return (
-              <div key={r.playerId} className={`${css.panel} p-4`}>
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className="font-bold text-base">{r.name}</div>
-                    <div className="text-[10px] text-atext-dim uppercase tracking-widest font-mono">{r.position} · age {r.age} · OVR {r.overall}</div>
+              <div key={r.playerId}>
+                <div className={`${css.panel} p-4`}>
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <div className="font-bold text-base">{r.name}</div>
+                      <div className="text-[10px] text-atext-dim uppercase tracking-widest font-mono">{r.position} · age {r.age} · OVR {r.overall}</div>
+                    </div>
+                    <RatingDot value={r.overall} size="sm" />
                   </div>
-                  <RatingDot value={r.overall} size="sm" />
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
-                  <div className="text-atext-mute">Current</div>
-                  <div className="text-atext text-right font-mono">{fmtK(r.currentWage)}/yr</div>
-                  <div className="text-atext-mute">Demand</div>
-                  <div className="text-right font-mono font-bold" style={{ color: wageDelta >= 0 ? '#FFB347' : 'var(--A-pos)' }}>
-                    {fmtK(r.proposedWage)}/yr <span className="text-atext-mute font-normal">({wageDelta >= 0 ? '+' : ''}{fmtK(wageDelta)})</span>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
+                    <div className="text-atext-mute">Current</div>
+                    <div className="text-atext text-right font-mono">{fmtK(r.currentWage)}/yr</div>
+                    <div className="text-atext-mute">Demand</div>
+                    <div className="text-right font-mono font-bold" style={{ color: wageDelta >= 0 ? '#FFB347' : 'var(--A-pos)' }}>
+                      {fmtK(r.proposedWage)}/yr <span className="text-atext-mute font-normal">({wageDelta >= 0 ? '+' : ''}{fmtK(wageDelta)})</span>
+                    </div>
+                    <div className="text-atext-mute">Years</div>
+                    <div className="text-atext text-right font-mono">{r.proposedYears}y</div>
+                    <div className="text-atext-mute">Form factor</div>
+                    <div className="text-right font-mono" style={{ color: formColor }}>{(r.formMult ?? 1).toFixed(2)}×</div>
                   </div>
-                  <div className="text-atext-mute">Years</div>
-                  <div className="text-atext text-right font-mono">{r.proposedYears}y</div>
-                  <div className="text-atext-mute">Form factor</div>
-                  <div className="text-right font-mono" style={{ color: formColor }}>{(r.formMult ?? 1).toFixed(2)}×</div>
+                  {!canAfford && (
+                    <div className="text-[10px] text-aneg mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Over salary cap</div>
+                  )}
+                  <div className="flex gap-2 justify-end">
+                    <button type="button" onClick={() => reject(r)} disabled={closed} className={closed ? 'text-xs px-3 py-2 text-atext-mute' : 'text-xs px-3 py-2 rounded-lg text-aneg hover:bg-aneg/10'}>Let Walk</button>
+                    {!counter || counter.proposal.playerId !== r.playerId ? (
+                      <button
+                        type="button"
+                        onClick={() => setCounter({ proposal: r, wage: Math.round(r.proposedWage * 0.88) })}
+                        disabled={closed}
+                        className="text-xs px-3 py-2 rounded-lg font-bold"
+                        style={{ background: 'rgba(255,179,71,0.10)', color: '#FFB347', border: '1px solid rgba(255,179,71,0.30)' }}
+                      >
+                        Counter
+                      </button>
+                    ) : null}
+                    <button type="button" onClick={() => accept(r)} disabled={closed || !canAfford} className={canAfford && !closed ? `${css.btnPrimary} text-xs px-3 py-2` : "px-3 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>Re-Sign</button>
+                  </div>
                 </div>
-                {!canAfford && (
-                  <div className="text-[10px] text-aneg mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Over salary cap</div>
+                {counter?.proposal?.playerId === r.playerId && !closed && (
+                  <div className="mx-2 mb-3 rounded-xl p-4" style={{ background: 'color-mix(in srgb, #FFB347 8%, transparent)', border: '1px solid rgba(255,179,71,0.30)' }}>
+                    <div className="text-xs font-bold mb-3" style={{ color: '#FFB347' }}>📋 Counter offer to {r.name}</div>
+                    <div className="mb-3">
+                      <label className="block text-[10px] text-atext-dim mb-1 uppercase tracking-wide">Your wage offer (player demands {fmtK(r.proposedWage)}/yr)</label>
+                      <input
+                        type="range"
+                        min={Math.round(r.proposedWage * 0.70)}
+                        max={r.proposedWage}
+                        step={5000}
+                        value={counter.wage}
+                        onChange={(e) => setCounter({ ...counter, wage: Number(e.target.value) })}
+                        className="w-full"
+                      />
+                      <div className="flex justify-between text-[10px] text-atext-dim mt-1">
+                        <span>{fmtK(Math.round(r.proposedWage * 0.70))} (70%)</span>
+                        <span className="font-bold text-atext">{fmtK(counter.wage)}/yr</span>
+                        <span>{fmtK(r.proposedWage)} (demand)</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <button type="button" onClick={() => setCounter(null)} className="text-xs px-3 py-2 rounded-lg text-atext-mute hover:text-atext">Cancel</button>
+                      <button
+                        type="button"
+                        onClick={() => sendCounter(r, counter.wage)}
+                        className={`${css.btnPrimary} text-xs px-4 py-2`}
+                      >
+                        Send Counter ({fmtK(counter.wage)}/yr)
+                      </button>
+                    </div>
+                  </div>
                 )}
-                <div className="flex gap-2 justify-end">
-                  <button type="button" onClick={() => reject(r)} disabled={closed} className={closed ? 'text-xs px-3 py-2 text-atext-mute' : 'text-xs px-3 py-2 rounded-lg text-aneg hover:bg-aneg/10'}>Let Walk</button>
-                  <button type="button" onClick={() => accept(r)} disabled={closed || !canAfford} className={canAfford && !closed ? `${css.btnPrimary} text-xs px-3 py-2` : "px-3 py-2 rounded-lg text-xs bg-apanel-2 text-atext-mute"}>Re-Sign</button>
-                </div>
               </div>
             );
           })}

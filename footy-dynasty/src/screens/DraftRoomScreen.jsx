@@ -6,6 +6,7 @@ import { fmtK } from "../lib/format.js";
 import { formatDate } from "../lib/calendar.js";
 import { css, RatingDot, Stat } from "../components/primitives.jsx";
 import { ClubBadge } from "../components/ClubBadge.jsx";
+import { canMatchBid } from "../lib/academyZones.js";
 import {
   COMBINE_SCOUT_COST,
   displayDraftOverall,
@@ -33,10 +34,14 @@ import {
   draftProspectOnClock,
   startDraftSessionPatch,
 } from "../lib/draftEngine.js";
+import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 
-export default function DraftRoomScreen({ career, club, league, updateCareer, onExit }) {
+export default function DraftRoomScreen({ club, league, onExit }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [posFilter, setPosFilter] = useState("ALL");
   const [poolSort, setPoolSort] = useState("overall");
+  const [pendingMatchBid, setPendingMatchBid] = useState(null);
   const dTier = leagueTierOf(career);
 
   useEffect(() => {
@@ -95,8 +100,32 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
   };
 
   const nextPick = () => {
+    const poolBefore = career.draftPool || [];
+    const onClockBefore = getOnClockPick(career);
     const patch = resolveNextPick(career);
-    if (patch) updateCareer(patch);
+    if (!patch) return;
+
+    // Check if the AI pick consumed a zone prospect the player can match
+    const poolAfter = patch.draftPool || [];
+    if (onClockBefore && onClockBefore.clubId !== career.clubId) {
+      const removedProspects = poolBefore.filter(
+        (p) => !poolAfter.some((q) => q.id === p.id)
+      );
+      const zoneMatch = removedProspects.find((p) => canMatchBid(career.clubId, p));
+      if (zoneMatch) {
+        const aiClubName = findClub(onClockBefore.clubId)?.name || onClockBefore.clubId;
+        setPendingMatchBid({
+          prospect: zoneMatch,
+          aiClubId: onClockBefore.clubId,
+          aiClub: aiClubName,
+          pick: onClockBefore.pick,
+          patch, // stash the patch so we can apply it either way
+        });
+        return; // Don't apply patch yet — wait for player's match/pass decision
+      }
+    }
+
+    updateCareer(patch);
   };
 
   const passPick = () => {
@@ -120,6 +149,37 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
     if (result.error) return;
     updateCareer(result.patch);
   };
+
+  const onMatchBidAccepted = (matchBid) => {
+    const { prospect, patch: aiPatch } = matchBid;
+    const newSquadPlayer = { ...prospect, receivedInTrade: career.season };
+    // Apply the AI pick patch (updates draftOrder, aiSquads, history, etc.)
+    // but override: give the prospect to the player's squad instead of the AI club
+    const aiClubId = matchBid.aiClubId;
+    const correctedAiSquads = { ...aiPatch.aiSquads };
+    // Remove the prospect from the AI club's squad (it was added in the patch)
+    if (correctedAiSquads[aiClubId]) {
+      correctedAiSquads[aiClubId] = correctedAiSquads[aiClubId].filter(
+        (p) => p.id !== prospect.id
+      );
+    }
+    const matchNews = {
+      week: career.week,
+      type: "info",
+      text: `🏠 Zone rights exercised — ${prospect.firstName} ${prospect.lastName} joins via academy match.`,
+    };
+    updateCareer({
+      ...aiPatch,
+      aiSquads: correctedAiSquads,
+      squad: [...(career.squad || []), newSquadPlayer],
+      news: [matchNews, ...(aiPatch.news ? aiPatch.news : career.news || [])].slice(0, 20),
+    });
+  };
+
+  const zoneProspects = useMemo(
+    () => (career.draftPool || []).filter((p) => canMatchBid(career.clubId, p)),
+    [career.draftPool, career.clubId]
+  );
 
   if (needsDraftSeed(career) && !draftOrder.length) {
     return (
@@ -145,7 +205,10 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
     <div className="anim-in space-y-4 touch-manipulation">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>DRAFT ROOM</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>DRAFT ROOM</div>
+          </div>
           <p className="text-xs text-atext-dim mt-1">
             {draftComplete
               ? "Draft complete — review results or return to recruit."
@@ -171,7 +234,7 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
       </div>
 
       {scoutingPhase && (
-        <div className="rounded-2xl p-4 border border-aaccent/40" style={{ background: "rgba(0,224,255,0.06)" }}>
+        <div className="rounded-2xl p-4 border border-aaccent/40" style={{ background: "color-mix(in srgb, var(--A-accent) 6%, transparent)" }}>
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-aaccent mb-1">Scouting window</div>
           <div className="text-sm text-atext">Picks are locked until <span className="font-semibold">{draftDayLabel}</span>. Run combine scouting to reveal ratings, then advance to National Draft Day.</div>
         </div>
@@ -181,15 +244,19 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
       {draftLive && !draftComplete && onClock && (
         <div
           className={`rounded-2xl p-4 border-2 flex flex-wrap items-center justify-between gap-4 ${isMyTurn ? "border-aaccent" : "border-aline"}`}
-          style={{ background: isMyTurn ? "rgba(0,224,255,0.08)" : "var(--A-panel-2)" }}
+          style={{
+            background: isMyTurn ? "color-mix(in srgb, var(--A-accent) 8%, transparent)" : "var(--A-panel-2)",
+            boxShadow: isMyTurn ? "0 0 24px color-mix(in srgb,var(--A-accent) 25%,transparent), inset 0 1px 0 rgba(255,255,255,0.08)" : undefined,
+          }}
         >
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isMyTurn ? "bg-aaccent/20" : "bg-apanel"}`}>
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isMyTurn ? "bg-aaccent/20" : "bg-apanel"}`}
+              style={isMyTurn ? {animation:'fdBreathe 3.5s ease-in-out infinite'} : undefined}>
               <Clock className={`w-6 h-6 ${isMyTurn ? "text-aaccent" : "text-atext-dim"}`} />
             </div>
             <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute">
-                {isMyTurn ? "On the clock" : "On the clock"}
+              <div className="text-[10px] font-black uppercase tracking-[0.2em]" style={{color: isMyTurn ? 'var(--A-accent)' : 'var(--A-text-mute)'}}>
+                {isMyTurn ? "Your turn — on the clock" : "On the clock"}
               </div>
               <div className="font-display text-2xl text-atext flex items-center gap-2">
                 {onClockClub ? <ClubBadge club={onClockClub} size="sm" /> : null}
@@ -214,6 +281,17 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
         </div>
       )}
 
+      {zoneProspects.length > 0 && (
+        <div className="rounded-xl px-3 py-2 mb-1 flex items-center gap-2"
+          style={{ background: 'color-mix(in srgb, var(--A-accent) 10%, var(--A-panel))', border: '1px solid var(--A-accent)' }}>
+          <span className="text-aaccent font-bold text-[12px]">🏠</span>
+          <span className="text-[12px] text-atext">
+            {zoneProspects.length} zone player{zoneProspects.length > 1 ? 's' : ''} in the pool —
+            you can match any bid on: {zoneProspects.map(p => p.lastName).join(', ')}
+          </span>
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-[1fr_280px] gap-4 items-start">
         <div className="space-y-4 min-w-0">
           <div className="flex flex-wrap gap-2 items-center">
@@ -232,7 +310,7 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
                 key={pos}
                 type="button"
                 onClick={() => setPosFilter(pos)}
-                className={`px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold ${posFilter === pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim"}`}
+                className={`px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold ${posFilter === pos ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : "bg-apanel-2 text-atext-dim"}`}
               >
                 {pos}
               </button>
@@ -263,12 +341,20 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
                   >
                     <div className="min-w-0">
                       <div className="text-[10px] text-aaccent font-bold">#{i + 1}</div>
-                      <div className="font-semibold text-atext">{p.firstName} {p.lastName}</div>
+                      <div className="font-semibold text-atext flex items-center gap-1.5">
+                        {p.firstName} {p.lastName}
+                        {canMatchBid(career.clubId, p) && (
+                          <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md"
+                            style={{ background: 'color-mix(in srgb, var(--A-accent) 18%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 40%, transparent)' }}>
+                            🏠 Zone
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-atext-dim mt-0.5">{formatPositionSlash(p)} · age {p.age}</div>
                     </div>
                     <div className="flex items-center gap-3">
                       {st >= 3 ? <RatingDot value={p.overall} size="sm" /> : <span className="font-bold">{oDisp.label}</span>}
-                      <span className="text-xs text-[#4AE89A]">Pot {st >= 3 ? p.potential : potDisp.label}</span>
+                      <span className="text-xs text-[#4AE89A]">Pot {st >= 3 ? p.potential : potDisp.label}{st >= 3 && p.potential > p.overall && (<span className="ml-1 text-[9px] font-black">+{p.potential - p.overall}↑</span>)}</span>
                       <span className="text-xs font-mono" style={{ color: capOk ? "#4AE89A" : "#E84A6F" }}>{wageDisp.label}</span>
                       {draftLive && isMyTurn && (
                         <button type="button" onClick={() => pickProspect(p)} className={`${css.btnPrimary} text-xs px-3 py-2 min-h-[40px]`}>
@@ -318,13 +404,15 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
                     key={d.pick}
                     className="flex-shrink-0 px-2 py-2 rounded-lg text-xs"
                     style={{
-                      background: d.clubId === career.clubId ? "rgba(0,224,255,0.12)" : "var(--A-panel-2)",
+                      background: d.clubId === career.clubId ? "color-mix(in srgb, var(--A-accent) 12%, transparent)" : "var(--A-panel-2)",
                       border: `1px solid ${clock ? "var(--A-accent)" : "var(--A-line)"}`,
                       minWidth: 88,
+                      boxShadow: clock ? '0 0 8px color-mix(in srgb,var(--A-accent) 35%,transparent)' : undefined,
                     }}
                   >
                     <div className="font-mono text-[9px] text-atext-mute">#{d.pick} R{d.round || 1}</div>
-                    <div className="font-display text-sm">{c?.short || d.clubId}</div>
+                    <div className={`font-display text-sm ${d.clubId === career.clubId ? 'text-aaccent' : ''}`}>{c?.short || d.clubId}</div>
+                    {clock && <div className="text-[8px] font-black uppercase tracking-wider mt-0.5" style={{color:'var(--A-accent)'}}>On clock</div>}
                   </div>
                 );
               })}
@@ -332,6 +420,49 @@ export default function DraftRoomScreen({ career, club, league, updateCareer, on
           </div>
         </div>
       </div>
+
+      {pendingMatchBid && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="max-w-md w-full mx-4 rounded-2xl p-6" style={{ background: 'var(--A-panel)', border: '1px solid var(--A-accent)' }}>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-2">Academy Zone Rights</div>
+            <h3 className="font-display text-2xl text-atext mb-3">MATCH THE BID?</h3>
+            <p className="text-sm text-atext-mute mb-4">
+              {pendingMatchBid.aiClub} just selected your academy zone player{' '}
+              <span className="text-atext font-semibold">{pendingMatchBid.prospect.firstName} {pendingMatchBid.prospect.lastName}</span>{' '}
+              (Pick #{pendingMatchBid.pick}). Exercise your zone rights to match?
+            </p>
+            <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--A-panel-2)' }}>
+              <div className="text-[12px] text-atext">OVR {pendingMatchBid.prospect.overall} · {pendingMatchBid.prospect.position} · Age {pendingMatchBid.prospect.age}</div>
+              <div className="text-[11px] text-atext-mute mt-1">Potential: {pendingMatchBid.prospect.potential}</div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  onMatchBidAccepted(pendingMatchBid);
+                  setPendingMatchBid(null);
+                }}
+                className="flex-1 py-2 rounded-xl font-semibold text-sm"
+                style={{ background: 'var(--A-accent)', color: '#000' }}
+              >
+                Match the bid ✓
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  // Let the AI pick stand — apply the stashed patch
+                  updateCareer(pendingMatchBid.patch);
+                  setPendingMatchBid(null);
+                }}
+                className="flex-1 py-2 rounded-xl text-sm"
+                style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)', color: 'var(--A-text-mute)' }}
+              >
+                Pass — let them go
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,19 +2,46 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Australian rules football dynasty manager — climb the pyramid, run your club, and chase premierships." />
-    <meta name="theme-color" content="#0b1220" />
+    <meta name="theme-color" content="#0B0E14" />
     <meta property="og:title" content="Footy Dynasty" />
     <meta property="og:description" content="Australian rules football dynasty manager — squad, finances, board pressure, and the climb through the pyramid." />
     <meta property="og:type" content="website" />
     <title>Footy Dynasty</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Oswald:wght@400;600;700&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Oswald:wght@400;600;700&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
+    <script>
+    (function(){
+      // If React hasn't mounted after 5s, the SW is likely serving stale chunks.
+      // Unregister all service workers, clear all caches, and hard-reload.
+      setTimeout(function(){
+        var root=document.getElementById('root');
+        if(root&&root.children.length===0){
+          if('serviceWorker' in navigator){
+            navigator.serviceWorker.getRegistrations().then(function(regs){
+              var p=regs.map(function(r){return r.unregister();});
+              Promise.all(p).then(function(){
+                if(window.caches){
+                  caches.keys().then(function(keys){
+                    Promise.all(keys.map(function(k){return caches.delete(k);})).then(function(){
+                      window.location.reload(true);
+                    });
+                  });
+                } else {
+                  window.location.reload(true);
+                }
+              });
+            }).catch(function(){window.location.reload(true);});
+          }
+        }
+      },5000);
+    })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

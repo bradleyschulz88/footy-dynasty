@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import {
   Repeat, Target, ArrowRight,
   Sprout, Newspaper, GraduationCap,
-  Map, Plane, Award, FileText, UserPlus,
+  Map, Plane, Award, FileText, UserPlus, Send,
 } from "lucide-react";
 import { seedRng, rand, rng } from '../../lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, findClub, findLeagueOf } from '../../data/pyramid.js';
@@ -13,7 +13,9 @@ import { formatDate } from '../../lib/calendar.js';
 import {
   playerBlockedFromTrade,
   playerFromTradeSnapshot,
+  TRADE_PERIOD_DAYS,
 } from '../../lib/tradePeriod.js';
+import DeadlineDayBanner from '../../components/DeadlineDayBanner.jsx';
 import RecruitPlayerProfile from '../../components/RecruitPlayerProfile.jsx';
 import { css, Bar, RatingDot, Pill, Stat } from '../../components/primitives.jsx';
 import TabNav from '../../components/TabNav.jsx';
@@ -41,6 +43,7 @@ import {
   displayDraftWageEstimate,
   applyCombineScoutingRound,
   scoutRevealTier,
+  regionalScoutQuality,
 } from '../../lib/draftScouting.js';
 import { findClubByShort } from '../../data/pyramid.js';
 import {
@@ -54,11 +57,23 @@ import {
   getPlayerNextPick,
   startDraftSessionPatch,
 } from '../../lib/draftEngine.js';
+import { useCareer, useUpdateCareer } from '../../lib/careerStore.js';
+import { gameToast } from '../../lib/toast.js';
+
+// ── Position badge style helper ─────────────────────────────────────────────
+function posBadgeStyle(pos) {
+  if (pos === 'KF' || pos === 'HF') return {background:'color-mix(in srgb,#E84A6F 14%,transparent)',color:'#E84A6F',border:'1px solid color-mix(in srgb,#E84A6F 30%,transparent)'};
+  if (pos === 'HB' || pos === 'KB') return {background:'color-mix(in srgb,#60A5FA 14%,transparent)',color:'#60A5FA',border:'1px solid color-mix(in srgb,#60A5FA 30%,transparent)'};
+  if (pos === 'RU') return {background:'color-mix(in srgb,#A78BFA 14%,transparent)',color:'#A78BFA',border:'1px solid color-mix(in srgb,#A78BFA 30%,transparent)'};
+  if (pos === 'C' || pos === 'R' || pos === 'WG') return {background:'color-mix(in srgb,var(--A-accent) 14%,transparent)',color:'var(--A-accent)',border:'1px solid color-mix(in srgb,var(--A-accent) 30%,transparent)'};
+  return {background:'color-mix(in srgb,#9CA3AF 14%,transparent)',color:'#9CA3AF',border:'1px solid color-mix(in srgb,#9CA3AF 30%,transparent)'};
+}
 
 // ============================================================================
 // RECRUIT SCREEN — Trade / Draft / Youth / Local
 // ============================================================================
-function RecruitOffSeasonStrip({ career }) {
+function RecruitOffSeasonStrip() {
+  const career = useCareer();
   const tradeLive = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
   const draftPoolReady = isDraftScoutingPhase(career) || isDraftLive(career);
   if (!tradeLive && !draftPoolReady) return null;
@@ -96,10 +111,14 @@ function RecruitOffSeasonStrip({ career }) {
   );
 }
 
-export default function RecruitScreen({ career, club, updateCareer, tab, setTab, league, onOpenDraftRoom }) {
+export default function RecruitScreen({ club, tab, setTab, league, onOpenDraftRoom }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const offerCount = (career.pendingTradeOffers || []).filter(o => o.status === 'pending').length;
   const inTradePeriod = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
-  const showPicks = !!career.draftPickBank;
+  // National draft + youth academy are AFL (tier 1) institutions; local football scouting is for everyone.
+  const isTopTier = (league?.tier ?? 1) === 1;
+  const showPicks = isTopTier && !!career.draftPickBank;
   const t = tab || (offerCount > 0 ? "offers" : "trade");
 
   useEffect(() => {
@@ -123,30 +142,35 @@ export default function RecruitScreen({ career, club, updateCareer, tab, setTab,
     ...(inTradePeriod ? [{ key: "freeagents", label: career.freeAgencyOpen ? "Free agents" : "Free agents (closed)", icon: UserPlus }] : []),
     ...(showPicks ? [{ key: "picks", label: "Draft picks", icon: FileText }] : []),
     { key: "trade", label: inTradePeriod ? "Player market" : "Trades", icon: Repeat },
-    { key: "draft", label: "Draft", icon: Award },
-    { key: "youth", label: "Youth Academy", icon: GraduationCap },
+    ...(isTopTier ? [{ key: "draft", label: "Draft", icon: Award }] : []),
+    ...(isTopTier ? [{ key: "youth", label: "Youth Academy", icon: GraduationCap }] : []),
     { key: "local", label: "Local Football", icon: Map },
   ];
   return (
     <div className="anim-in touch-manipulation">
-      <RecruitOffSeasonStrip career={career} />
+      <RecruitOffSeasonStrip />
       <TabNav tabs={tabs} active={t} onChange={setTab} />
-      {t === "offers" && <OffersTab career={career} club={club} updateCareer={updateCareer} />}
-      {t === "freeagents" && (inTradePeriod ? <FreeAgentsTab career={career} club={club} updateCareer={updateCareer} /> : (
+      {t === "offers" && <OffersTab />}
+      {t === "freeagents" && (inTradePeriod ? <FreeAgentsTab /> : (
         <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Free agency runs during the post-season Trade Period (after the grand final).</div>
       ))}
-      {t === "picks" && (showPicks ? <DraftPickBankTab career={career} /> : (
+      {t === "picks" && (showPicks ? <DraftPickBankTab /> : (
         <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Draft capital is prepared when the Trade Period opens.</div>
       ))}
-      {t === "trade" && <TradeTab career={career} updateCareer={updateCareer} />}
-      {t === "draft" && <DraftTab career={career} club={club} league={league} updateCareer={updateCareer} onOpenDraftRoom={onOpenDraftRoom} />}
-      {t === "youth" && <YouthTab career={career} club={club} updateCareer={updateCareer} />}
-      {t === "local" && <LocalTab career={career} club={club} updateCareer={updateCareer} />}
+      {t === "trade" && <TradeTab />}
+      {t === "draft" && (isTopTier ? <DraftTab club={club} league={league} onOpenDraftRoom={onOpenDraftRoom} /> : (
+        <div className={`${css.panel} p-8 text-sm text-atext-dim`}>The National Draft is for AFL clubs only. Recruit through Local Football and trades at this level.</div>
+      ))}
+      {t === "youth" && (isTopTier ? <YouthTab club={club} /> : (
+        <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Youth academies are run by AFL clubs. Develop talent through Local Football scouting at this level.</div>
+      ))}
+      {t === "local" && <LocalTab club={club} />}
     </div>
   );
 }
 
-function DraftPickBankTab({ career }) {
+function DraftPickBankTab() {
+  const career = useCareer();
   const bank = career.draftPickBank || {};
   const years = Object.keys(bank).sort();
   return (
@@ -176,7 +200,9 @@ function DraftPickBankTab({ career }) {
   );
 }
 
-function FreeAgentsTab({ career, updateCareer }) {
+function FreeAgentsTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const pool = career.offSeasonFreeAgents || [];
   const wageCap = effectiveWageCap(career);
   const sign = (fa) => {
@@ -224,12 +250,16 @@ function FreeAgentsTab({ career, updateCareer }) {
       freeAgentBalance: bal,
       news: [{ week: career.week, type: 'win', text: `✍️ Free agency: signed ${fa.firstName} ${fa.lastName} — ${fa.contractYearsAsk}yr @ ${fmtK(fa.wageAsk)}/yr` }, ...(career.news || [])].slice(0, 20),
     });
+    gameToast.signing(`Signed ${fa.firstName} ${fa.lastName} to ${findClub(career.clubId)?.name || 'your club'}`);
   };
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>FREE AGENTS</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>FREE AGENTS</div>
+          </div>
           <div className="text-xs text-atext-dim">Out-of-contract players movement through Day 7 of the Trade Period.</div>
         </div>
         {!career.freeAgencyOpen && (
@@ -256,7 +286,7 @@ function FreeAgentsTab({ career, updateCareer }) {
                 <div className="font-semibold">{fa.firstName} {fa.lastName}</div>
                 <div className="text-[10px] text-atext-dim">{fa.freeAgentType || 'UFA'} · age {fa.age}</div>
               </div>
-              <div className="col-span-2"><Pill color="var(--A-accent)">{fa.position}</Pill></div>
+              <div className="col-span-2"><span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap" style={posBadgeStyle(fa.position)}>{fa.position}</span></div>
               <div className="col-span-2"><RatingDot value={fa.overall} /></div>
               <div className="col-span-2 text-right font-mono text-xs">{fmtK(fa.wageAsk)}/yr · {fa.contractYearsAsk}y</div>
               <div className="col-span-2 text-right">
@@ -277,7 +307,233 @@ function FreeAgentsTab({ career, updateCareer }) {
   );
 }
 
-function OffersTab({ career, club: _club, updateCareer }) {
+function ProposeTradePanel() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
+  const [targetClubId, setTargetClubId] = useState('');
+  const [theirPlayerId, setTheirPlayerId] = useState('');
+  const [ourPlayerId, setOurPlayerId] = useState('');
+  const [cashOffer, setCashOffer] = useState(0);
+  const [offeredPicks, setOfferedPicks] = useState([]);
+  const [result, setResult] = useState(null);
+
+  // Reset result when selections change
+  useEffect(() => { setResult(null); }, [targetClubId, theirPlayerId, ourPlayerId]);
+
+  const clubs = Object.keys(career.aiSquads || {})
+    .filter(id => (career.aiSquads[id]?.length ?? 0) > 0)
+    .map(id => ({ id, club: findClub(id), squad: career.aiSquads[id] }))
+    .sort((a, b) => (a.club?.short ?? a.id).localeCompare(b.club?.short ?? b.id));
+
+  const theirSquad = [...(career.aiSquads?.[targetClubId] || [])].sort((a, b) => b.overall - a.overall);
+  const ourSquad = [...career.squad.filter(p => p.contract > 0)].sort((a, b) => b.overall - a.overall);
+  const theirPlayer = theirSquad.find(p => p.id === theirPlayerId);
+  const ourPlayer = ourSquad.find(p => p.id === ourPlayerId);
+
+  const sendProposal = () => {
+    if (!theirPlayer || !ourPlayer) {
+      setResult('Select a player from each side');
+      return;
+    }
+    if ((career.finance?.cash ?? 0) < cashOffer) {
+      setResult('Not enough cash for the cash component');
+      return;
+    }
+    const picksToOffer = offeredPicks.map(i => (career.draftPickBank || [])[i]).filter(Boolean);
+    // Estimate pick value: R1 ~ 120000, R2 ~ 60000, R3+ ~ 30000
+    const pickValue = picksToOffer.reduce((sum, pk) => sum + (pk.round === 1 ? 120000 : pk.round === 2 ? 60000 : 30000), 0);
+    const theirValue = theirPlayer.value ?? Math.round(theirPlayer.overall * 1500);
+    const offerValue = (ourPlayer.value ?? Math.round(ourPlayer.overall * 1500)) + cashOffer + pickValue;
+    const ratio = offerValue / theirValue;
+    let acceptChance = 0;
+    if (ratio >= 0.88) acceptChance = 0.90;
+    else if (ratio >= 0.72) acceptChance = 0.55;
+    else if (ratio >= 0.55) acceptChance = 0.20;
+    const accepted = rng() < acceptChance;
+    const targetClubShort = findClub(targetClubId)?.short ?? targetClubId;
+    if (accepted) {
+      const wageDelta = (theirPlayer.wage ?? 0) - (ourPlayer.wage ?? 0);
+      if (!canAffordSigning(career, wageDelta)) {
+        setResult("Cap check failed — their player's wage would breach your salary cap.");
+        return;
+      }
+      const newPlayer = {
+        ...theirPlayer,
+        id: 'trade_' + Date.now() + '_' + Math.floor(Math.random() * 1e6),
+        receivedInTrade: career.season,
+        seasonsAtClub: 0,
+      };
+      const picksSuffix = picksToOffer.length > 0
+        ? ' + ' + picksToOffer.map(pk => `${pk.season} R${pk.round}`).join(', ')
+        : '';
+      const newsText = `🤝 Trade proposal accepted: ${ourPlayer.firstName} ${ourPlayer.lastName} → ${targetClubShort} for ${theirPlayer.firstName} ${theirPlayer.lastName}${cashOffer > 0 ? ' + ' + fmtK(cashOffer) + ' cash' : ''}${picksSuffix}`;
+      // Remove traded picks from draftPickBank (array form)
+      const remainingBank = (career.draftPickBank || []).filter((_, i) => !offeredPicks.includes(i));
+      updateCareer({
+        squad: [...career.squad.filter(p => p.id !== ourPlayerId), newPlayer],
+        aiSquads: {
+          ...career.aiSquads,
+          [targetClubId]: [...career.aiSquads[targetClubId].filter(p => p.id !== theirPlayerId), ourPlayer],
+        },
+        lineup: (career.lineup || []).filter(id => id !== ourPlayerId),
+        finance: {
+          ...career.finance,
+          cash: career.finance.cash - cashOffer,
+        },
+        draftPickBank: remainingBank,
+        news: [{ week: career.week, type: 'win', text: newsText }, ...(career.news || [])].slice(0, 20),
+        pendingTradeOffers: (career.pendingTradeOffers || []).map(o =>
+          o.fromClubId === targetClubId && o.targetPlayerId === ourPlayerId && o.status === 'pending'
+            ? { ...o, status: 'expired' }
+            : o
+        ),
+      });
+      setOfferedPicks([]);
+      setResult('accepted');
+      gameToast.trade(`Trade done: ${theirPlayer.firstName} ${theirPlayer.lastName} joins from ${targetClubShort}`);
+    } else {
+      const flavors = [
+        `${targetClubShort} reviewed the offer but want more value — their recruiting panel passed.`,
+        `${targetClubShort} declined. Their list managers don't see a fit at this time.`,
+        `${targetClubShort} held firm — they aren't moving ${theirPlayer.firstName} ${theirPlayer.lastName} for this package.`,
+      ];
+      const flavor = flavors[Math.floor(rng() * flavors.length)];
+      updateCareer({
+        news: [{ week: career.week, type: 'info', text: `📵 Trade proposal rejected: ${flavor}` }, ...(career.news || [])].slice(0, 20),
+      });
+      setResult('rejected:' + flavor);
+    }
+  };
+
+  return (
+    <div className={`${css.panel} p-5 mt-6`}>
+      <div className="flex items-center gap-2 mb-1">
+        <Send className="w-4 h-4" style={{ color: 'var(--A-accent)' }} />
+        <div className={`${css.h1} text-xl`}>INITIATE A TRADE</div>
+      </div>
+      <div className="text-xs mb-4" style={{ color: 'var(--A-text-dim)' }}>Make the first move — propose a swap to a rival club.</div>
+
+      <div className="flex flex-wrap gap-3 mb-3">
+        <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
+          <label className={`${css.label} text-[11px]`}>Target Club</label>
+          <select
+            value={targetClubId}
+            onChange={e => { setTargetClubId(e.target.value); setTheirPlayerId(''); }}
+            className="bg-apanel-2 border border-aline rounded-xl px-3 py-2 text-xs text-atext"
+          >
+            <option value="">Pick a club</option>
+            {clubs.map(({ id, club }) => (
+              <option key={id} value={id}>{club?.short ?? id}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
+          <label className={`${css.label} text-[11px]`}>Their Player</label>
+          <select
+            value={theirPlayerId}
+            onChange={e => setTheirPlayerId(e.target.value)}
+            disabled={!targetClubId}
+            className="bg-apanel-2 border border-aline rounded-xl px-3 py-2 text-xs text-atext disabled:opacity-50"
+          >
+            <option value="">Pick their player</option>
+            {theirSquad.map(p => (
+              <option key={p.id} value={p.id}>{p.firstName} {p.lastName} ({p.overall} {p.position} {p.age}A)</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
+          <label className={`${css.label} text-[11px]`}>Your Player</label>
+          <select
+            value={ourPlayerId}
+            onChange={e => setOurPlayerId(e.target.value)}
+            className="bg-apanel-2 border border-aline rounded-xl px-3 py-2 text-xs text-atext"
+          >
+            <option value="">Pick your player</option>
+            {ourSquad.map(p => (
+              <option key={p.id} value={p.id}>{p.firstName} {p.lastName} ({p.overall} {p.position} {p.age}A)</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="flex flex-col gap-1">
+          <label className={`${css.label} text-[11px]`}>Add cash (optional)</label>
+          <input
+            type="number"
+            min={0}
+            step={10000}
+            value={cashOffer}
+            placeholder="$0"
+            onChange={e => setCashOffer(Math.max(0, Number(e.target.value)))}
+            className="bg-apanel-2 border border-aline rounded-xl px-3 py-2 text-xs text-atext w-36"
+          />
+        </div>
+        <div className="text-xs self-end pb-2" style={{ color: 'var(--A-text-dim)' }}>
+          Available: {fmtK(career.finance?.cash ?? 0)}
+        </div>
+      </div>
+
+      {/* Draft picks */}
+      <div className="mt-2 mb-4">
+        <div className="text-[11px] font-mono uppercase text-atext-mute mb-2">Include draft picks</div>
+        {(career.draftPickBank || []).length === 0 && (
+          <div className="text-[11px] text-atext-dim">No picks in bank</div>
+        )}
+        {(career.draftPickBank || []).map((pick, idx) => {
+          const key = `${pick.season}-R${pick.round}`;
+          const selected = offeredPicks.includes(idx);
+          return (
+            <button
+              key={key + idx}
+              type="button"
+              onClick={() => setOfferedPicks(prev => selected ? prev.filter(i => i !== idx) : [...prev, idx])}
+              className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded mr-1 mb-1 transition"
+              style={{
+                background: selected ? 'var(--A-accent)' : 'var(--A-panel-2)',
+                color: selected ? '#000' : 'var(--A-text-mute)',
+                border: '1px solid var(--A-line)',
+              }}
+            >
+              {pick.season} R{pick.round}{pick.note ? ` (${pick.note})` : ''}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={sendProposal}
+        disabled={!theirPlayerId || !ourPlayerId || result === 'accepted'}
+        className={`${css.btnPrimary} text-sm px-5 py-2.5 min-h-[44px] disabled:opacity-40`}
+      >
+        Make Offer
+      </button>
+
+      {result && (
+        <div className="mt-4 rounded-xl px-4 py-3 text-sm" style={{
+          background: result === 'accepted'
+            ? 'color-mix(in srgb, var(--A-pos) 12%, transparent)'
+            : result.startsWith('rejected:')
+              ? 'color-mix(in srgb, var(--A-neg) 10%, transparent)'
+              : 'color-mix(in srgb, var(--A-accent) 8%, transparent)',
+          border: `1px solid ${result === 'accepted' ? 'color-mix(in srgb, var(--A-pos) 30%, transparent)' : result.startsWith('rejected:') ? 'color-mix(in srgb, var(--A-neg) 25%, transparent)' : 'color-mix(in srgb, var(--A-accent) 25%, transparent)'}`,
+          color: result === 'accepted' ? 'var(--A-pos)' : result.startsWith('rejected:') ? 'var(--A-neg)' : 'var(--A-accent)',
+        }}>
+          {result === 'accepted'
+            ? 'Deal done! Check your squad.'
+            : result.startsWith('rejected:')
+              ? result.slice('rejected:'.length)
+              : result}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OffersTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const offers = (career.pendingTradeOffers || []).filter(o => o.status === 'pending');
   const finance = career.finance;
   const [inspectOffer, setInspectOffer] = useState(null);
@@ -302,16 +558,34 @@ function OffersTab({ career, club: _club, updateCareer }) {
     });
   };
 
+  // Mark an offer no longer doable and drop it from the pending list, always
+  // with a visible reason so an accept never just silently does nothing.
+  const expireOffer = (offer, text) => {
+    updateCareer({
+      pendingTradeOffers: (career.pendingTradeOffers || []).map(o => o.id === offer.id ? { ...o, status: 'expired' } : o),
+      news: [{ week: career.week, type: 'loss', text }, ...(career.news || [])].slice(0, 20),
+    });
+    setInspectOffer(null);
+  };
+
   const acceptOffer = (offer) => {
     const targetPlayer = career.squad.find(p => p.id === offer.targetPlayerId);
-    if (!targetPlayer) return;
+    if (!targetPlayer) {
+      expireOffer(offer, `⌛ That trade lapsed — the player involved is no longer on your list.`);
+      return;
+    }
     if (playerBlockedFromTrade(targetPlayer, career.season)) {
       updateCareer({ news: [{ week: career.week, type: 'loss', text: `⛔ ${targetPlayer.firstName} ${targetPlayer.lastName} can't be traded until next season (recently arrived).` }, ...(career.news || [])].slice(0, 20) });
       return;
     }
-    const incomingPlayer = offer.offerPlayerSnapshot || offer.offerPlayerId
-      ? resolveIncomingPlayer(offer)
-      : null;
+    const swapPromised = !!(offer.offerPlayerId || offer.offerPlayerSnapshot);
+    const incomingPlayer = swapPromised ? resolveIncomingPlayer(offer) : null;
+    // A swap was promised but the player they offered has since moved on — don't
+    // silently complete this as a cash-only deal (which would rob the user).
+    if (swapPromised && !incomingPlayer) {
+      expireOffer(offer, `⌛ ${offer.fromClubName} pulled the player from the deal — offer withdrawn.`);
+      return;
+    }
     // Cap check: if a swap player is incoming, ensure their wage fits after target leaves
     if (incomingPlayer) {
       const wageDelta = Number(incomingPlayer.wage ?? 0) - Number(targetPlayer.wage ?? 0);
@@ -329,19 +603,32 @@ function OffersTab({ career, club: _club, updateCareer }) {
       // Add the player we sold to their squad
       newAiSquads[offer.fromClubId] = [...newAiSquads[offer.fromClubId], targetPlayer];
     }
+    const acceptNews = [{
+      week: career.week,
+      type: 'info',
+      text: `🤝 Trade complete: ${targetPlayer.firstName} ${targetPlayer.lastName} → ${offer.fromClubName} for ${fmtK(offer.offerCash)}${incomingPlayer ? ` + ${incomingPlayer.firstName} ${incomingPlayer.lastName}` : ''}`,
+    }];
+    if (offer.rivalClubId) {
+      acceptNews.push({
+        week: career.week,
+        type: 'info',
+        text: `👀 ${offer.rivalClubName} was also chasing ${targetPlayer.firstName} ${targetPlayer.lastName} — you got in first.`,
+      });
+    }
     updateCareer({
       squad: newSquad,
       lineup: career.lineup.filter(id => id !== offer.targetPlayerId),
       aiSquads: newAiSquads,
       finance: { ...finance, cash: finance.cash + offer.offerCash, transferBudget: finance.transferBudget + Math.round(offer.offerCash * 0.4) },
       pendingTradeOffers: (career.pendingTradeOffers || []).map(o => o.id === offer.id ? { ...o, status: 'accepted' } : o),
-      news: [{
-        week: career.week,
-        type: 'info',
-        text: `🤝 Trade complete: ${targetPlayer.firstName} ${targetPlayer.lastName} → ${offer.fromClubName} for ${fmtK(offer.offerCash)}${incomingPlayer ? ` + ${incomingPlayer.firstName} ${incomingPlayer.lastName}` : ''}`,
-      }, ...(career.news || [])].slice(0, 20),
+      news: [...acceptNews, ...(career.news || [])].slice(0, 20),
     });
     setInspectOffer(null);
+    gameToast.trade(
+      incomingPlayer
+        ? `Trade complete: ${incomingPlayer.firstName} ${incomingPlayer.lastName} in from ${offer.fromClubName}`
+        : `Trade complete: ${targetPlayer.firstName} ${targetPlayer.lastName} → ${offer.fromClubName} for ${fmtK(offer.offerCash)}`
+    );
   };
 
   const rejectOffer = (offer) => {
@@ -351,9 +638,41 @@ function OffersTab({ career, club: _club, updateCareer }) {
       `List managers at ${offer.fromClubName} wanted more movement — you held firm.`,
     ];
     const text = lines[Math.floor(rng() * lines.length)];
+    const updatedOffers = (career.pendingTradeOffers || []).map(o => o.id === offer.id ? { ...o, status: 'rejected' } : o);
+    const newsItems = [{ week: career.week, type: 'info', text: `📵 Trade declined: ${text}` }];
+
+    // Bidding war escalation: if a rival club was circling and this is bid round 1,
+    // the rival immediately submits a slightly sweeter counter-offer.
+    if (offer.rivalClubId && offer.bidRound === 1) {
+      const escalatedCash = Math.round((offer.offerCash || 0) * (1.12 + rng() * 0.18));
+      const counterId = `tp_counter_${Date.now()}`;
+      updatedOffers.push({
+        ...offer,
+        id: counterId,
+        fromClubId: offer.rivalClubId,
+        fromClubName: offer.rivalClubName,
+        offerCash: escalatedCash,
+        // No swap player — bidding war is cash-only escalation
+        offerPlayerId: null,
+        offerPlayerSnapshot: null,
+        status: 'pending',
+        createdAt: `postseason-${career.tradePeriodDay ?? 1}`,
+        tradePeriod: true,
+        rivalClubId: null,
+        rivalClubName: null,
+        bidRound: 2,
+        isCounter: true,
+      });
+      newsItems.push({
+        week: career.week,
+        type: 'info',
+        text: `⚡ ${offer.rivalClubName} pounced — they've tabled a counter-bid of ${fmtK(escalatedCash)} for the same player.`,
+      });
+    }
+
     updateCareer({
-      pendingTradeOffers: (career.pendingTradeOffers || []).map(o => o.id === offer.id ? { ...o, status: 'rejected' } : o),
-      news: [{ week: career.week, type: 'info', text: `📵 Trade declined: ${text}` }, ...(career.news || [])].slice(0, 20),
+      pendingTradeOffers: updatedOffers,
+      news: [...newsItems, ...(career.news || [])].slice(0, 20),
     });
   };
 
@@ -361,7 +680,10 @@ function OffersTab({ career, club: _club, updateCareer }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>TRADE OFFERS</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>TRADE OFFERS</div>
+          </div>
           <div className="text-xs text-atext-dim">Rival clubs are circling. Accept, reject — or let the window close.</div>
         </div>
         <Stat label="Pending" value={offers.length} accent="var(--A-accent-2)" />
@@ -370,7 +692,9 @@ function OffersTab({ career, club: _club, updateCareer }) {
       {offers.length === 0 ? (
         <div className={`${css.panel} p-12 text-center text-sm text-atext-dim`}>
           <Repeat className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          No active offers right now. Wait for the trade window or check back after key events.
+          {(PYRAMID[career.leagueKey]?.tier ?? 1) === 3
+            ? "Local footy has no trade market. Players come and go by word of mouth — recruit through the notifications bell (recommendations & walk-ups) and by developing your own in Training."
+            : "No active offers right now. Wait for the trade window or check back after key events."}
         </div>
       ) : (
         <div className="grid xl:grid-cols-[1fr_minmax(280px,360px)] gap-4 items-start">
@@ -388,10 +712,27 @@ function OffersTab({ career, club: _club, updateCareer }) {
               >
                 <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                   <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-aaccent">{offer.fromClubName} offers</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-aaccent">{offer.fromClubName} offers</div>
+                      {offer.rivalClubName && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                          style={{ background: 'rgba(251,191,36,0.2)', color: '#FBBF24' }}>
+                          ⚡ {offer.rivalClubName} also interested
+                        </span>
+                      )}
+                      {offer.isCounter && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                          style={{ background: 'rgba(239,68,68,0.2)', color: '#EF4444' }}>
+                          🔥 Counter-bid
+                        </span>
+                      )}
+                    </div>
                     <div className="font-display text-2xl text-atext mt-1">{fmtK(offer.offerCash)}{incomingPreview ? ` + ${incomingPreview.firstName} ${incomingPreview.lastName}` : ''}</div>
                     {incomingPreview && (
                       <div className="text-xs text-atext-dim mt-1">{incomingPreview.position} · {incomingPreview.overall} OVR · age {incomingPreview.age} · {incomingPreview.gamesPlayed ?? 0} gp</div>
+                    )}
+                    {offer.offeredPick && (
+                      <div className="text-[11px] text-aaccent mt-1">+ {offer.offeredPick.season} Round {offer.offeredPick.round} pick</div>
                     )}
                   </div>
                   <ArrowRight className="w-6 h-6 text-aaccent" />
@@ -431,11 +772,14 @@ function OffersTab({ career, club: _club, updateCareer }) {
           )}
         </div>
       )}
+      {career.inTradePeriod && <ProposeTradePanel />}
     </div>
   );
 }
 
-function TradeTab({ career, updateCareer }) {
+function TradeTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [filter, setFilter] = useState("ALL");
   const [sortBy, setSortBy] = useState("overall");
   /** off | listed | maxDemand — maxDemand uses upper-bound opening ask vs cap */
@@ -510,6 +854,7 @@ function TradeTab({ career, updateCareer }) {
       news: [{ week: career.week, type: "win", text: `🤝 Signed ${p.firstName} ${p.lastName} (${p.overall} OVR) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr` }, ...career.news].slice(0,15),
     });
     setNegotiating(null);
+    gameToast.signing(`Signed ${p.firstName} ${p.lastName} (${p.overall} OVR) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr`);
   };
 
   const counterOffer = (p) => {
@@ -526,9 +871,13 @@ function TradeTab({ career, updateCareer }) {
 
   return (
     <div className="space-y-4">
+      <DeadlineDayBanner tradePeriodDay={career.tradePeriodDay} totalDays={TRADE_PERIOD_DAYS} />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>TRADE MARKET</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>TRADE MARKET</div>
+          </div>
           <div className="text-xs text-atext-dim">Players currently available across the league pyramid.</div>
         </div>
         <div className="flex items-center flex-wrap gap-3">
@@ -541,7 +890,7 @@ function TradeTab({ career, updateCareer }) {
       <div className="flex gap-2 items-center flex-wrap">
         <span className="text-xs text-atext-dim uppercase tracking-wider">Position:</span>
         {["ALL", ...POSITIONS].map(pos => (
-          <button key={pos} type="button" onClick={()=>setFilter(pos)} className={`px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold touch-manipulation ${filter===pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
+          <button key={pos} type="button" onClick={()=>setFilter(pos)} className={`px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold touch-manipulation ${filter===pos ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
         ))}
         <label className="flex items-center gap-2 text-[11px] text-atext-dim ml-2">
           <span className="uppercase tracking-wider shrink-0">Cap:</span>
@@ -599,7 +948,7 @@ function TradeTab({ career, updateCareer }) {
             else capPill = <Pill color="var(--A-neg)" title={`Listed ${fmtK(lw)} · upper ask ~${fmtK(maxAsk)}/yr`}>No</Pill>;
             return (
               <div key={p.id}>
-                <div className={`gap-2 px-4 py-3 items-center transition-colors grid min-w-[720px] cursor-pointer ${selectedPlayer?.id === p.id ? 'bg-aaccent/10' : ''}`} style={{borderBottom: isNeg ? "none" : "1px solid var(--A-line)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}} onClick={() => setSelectedPlayer(p)} onMouseEnter={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="rgba(0,224,255,0.05)"; }} onMouseLeave={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="transparent"; }}>
+                <div className={`gap-2 px-4 py-3 items-center transition-colors grid min-w-[720px] cursor-pointer ${selectedPlayer?.id === p.id ? 'bg-aaccent/10' : ''}`} style={{borderBottom: isNeg ? "none" : "1px solid var(--A-line)", gridTemplateColumns:"minmax(120px,1.1fr) 2.5rem 2rem 2.5rem 2.5rem minmax(56px,0.7fr) minmax(64px,0.9fr) minmax(56px,0.7fr) 4rem 3.5rem"}} onClick={() => setSelectedPlayer(p)} onMouseEnter={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="color-mix(in srgb, var(--A-accent) 5%, transparent)"; }} onMouseLeave={e=>{ if (selectedPlayer?.id !== p.id) e.currentTarget.style.background="transparent"; }}>
                   <div>
                     <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
                     <div className="text-[10px] text-atext-dim">{p.gamesPlayed ?? 0} gp · Ask {fmtK(p.wage)}/yr</div>
@@ -786,9 +1135,13 @@ function TradeTab({ career, updateCareer }) {
   );
 }
 
-function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
+function DraftTab({ club, league, onOpenDraftRoom }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [posFilter, setPosFilter] = useState("ALL");
   const [poolSort, setPoolSort] = useState("overall");
+  const clubState = findClub(career.clubId)?.state ?? club?.state ?? null;
+  const baseScoutRating = career.staff?.find(s => s.id === 's3')?.rating ?? 70;
 
   useEffect(() => {
     if (!league) return;
@@ -865,7 +1218,7 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
   return (
     <div className="space-y-4">
 
-      <div className={`${css.panel} p-4 flex flex-wrap items-center justify-between gap-3`} style={{ background: 'rgba(0,224,255,0.06)' }}>
+      <div className={`${css.panel} p-4 flex flex-wrap items-center justify-between gap-3`} style={{ background: 'color-mix(in srgb, var(--A-accent) 6%, transparent)' }}>
         <div>
           <div className="font-display text-xl text-aaccent">Draft room</div>
           <p className="text-xs text-atext-dim mt-1">{scoutingPhase ? 'Scout the list before draft night.' : 'One pick at a time — on-the-clock banner in the draft room.'}</p>
@@ -876,7 +1229,10 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
       </div>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>NATIONAL DRAFT</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>NATIONAL DRAFT</div>
+          </div>
           <div className="text-xs text-atext-dim">{statusLine}</div>
         </div>
         <div className="flex items-center gap-3">
@@ -896,10 +1252,11 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
               return (
                 <div key={d.pick} className={`flex-shrink-0 px-2 py-2 rounded-lg text-xs touch-manipulation ${d.used ? 'opacity-40' : ''}`}
                   style={{
-                    background: isMe ? 'rgba(0,224,255,0.12)' : 'var(--A-panel-2)',
+                    background: isMe ? 'color-mix(in srgb, var(--A-accent) 12%, transparent)' : 'var(--A-panel-2)',
                     border: `1px solid ${onClock ? 'var(--A-accent)' : 'var(--A-line)'}`,
                     minWidth: 112,
                     minHeight: 76,
+                    boxShadow: onClock ? '0 0 10px color-mix(in srgb,var(--A-accent) 40%,transparent)' : undefined,
                   }}>
                   <div className="flex items-start gap-2">
                     {c ? <ClubBadge club={c} size="sm" /> : <div className="w-9 h-9 rounded-lg bg-apanel shrink-0" />}
@@ -909,6 +1266,7 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
                       {d.used && d.prospectName && <div className="text-[9px] text-atext-dim truncate mt-0.5 max-w-[7rem]">{d.prospectName} ({d.prospectOverall})</div>}
                     </div>
                   </div>
+                  {onClock && !d.used && <div className="text-[8px] font-black uppercase tracking-wider mt-0.5" style={{color:'var(--A-accent)'}}>On clock</div>}
                 </div>
               );
             })}
@@ -935,7 +1293,7 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
       <div className="flex flex-wrap gap-2 items-center">
         <span className="text-xs text-atext-dim uppercase tracking-wider">Position:</span>
         {["ALL", ...POSITIONS].map(pos => (
-          <button key={pos} type="button" onClick={() => setPosFilter(pos)} className={`px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold touch-manipulation ${posFilter === pos ? "bg-aaccent text-[#001520]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
+          <button key={pos} type="button" onClick={() => setPosFilter(pos)} className={`px-3 py-2 min-h-[40px] rounded-lg text-xs font-bold touch-manipulation ${posFilter === pos ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : "bg-apanel-2 text-atext-dim hover:text-atext"}`}>{pos}</button>
         ))}
         <span className="ml-3 text-xs text-atext-dim uppercase tracking-wider">Sort pool:</span>
         <select value={poolSort} onChange={e => setPoolSort(e.target.value)} className="bg-apanel-2 border border-aline rounded-lg px-3 py-1.5 text-xs text-atext">
@@ -948,7 +1306,10 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
       <div className="hidden xl:block rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
         <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
           <div className="col-span-1">#</div>
-          <div className="col-span-4">Prospect</div>
+          <div className="col-span-4 flex items-center gap-2">
+            <span>Prospect</span>
+            {clubState && <span className="text-[9px] font-normal normal-case tracking-normal text-atext-dim">🏠 Home state bonus active</span>}
+          </div>
           <div className="col-span-1">Pos</div>
           <div className="col-span-1">OVR</div>
           <div className="col-span-2">Potential</div>
@@ -960,12 +1321,13 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
             const st = scoutRevealTier(p);
             const rw = rookieDraftWage(p.overall, dTier);
             const capOk = canAffordSigning(career, rw);
-            const oDisp = displayDraftOverall(p);
-            const potDisp = displayDraftPotential(p);
+            const scoutQuality = regionalScoutQuality(baseScoutRating, clubState, p.state ?? 'VIC');
+            const oDisp = displayDraftOverall(p, scoutQuality);
+            const potDisp = displayDraftPotential(p, scoutQuality);
             const wageDisp = displayDraftWageEstimate(rw, st);
             const wageAccurate = st >= 2;
             return (
-              <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="rgba(0,224,255,0.05)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+              <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-colors" style={{borderBottom:"1px solid var(--A-line)"}} onMouseEnter={e=>e.currentTarget.style.background="color-mix(in srgb, var(--A-accent) 5%, transparent)"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                 <div className="col-span-1 font-bold text-aaccent">#{i+1}</div>
                 <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">(draft age ~17–19)</span></div>
                 <div className="col-span-1"><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>
@@ -981,6 +1343,11 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
                   {st >= 3 ? (
                     <div className="flex items-center gap-2">
                       <div className="font-bold text-apos">{p.potential}</div>
+                      {p.potential > p.overall && (
+                        <span className="text-[9px] font-black" style={{color:'var(--A-pos)'}}>
+                          +{p.potential - p.overall}↑
+                        </span>
+                      )}
                       <Bar value={p.potential} color="var(--A-pos)" small />
                     </div>
                   ) : (
@@ -1006,12 +1373,16 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
       </div>
 
       <div className="xl:hidden space-y-3">
+        {clubState && (
+          <div className="text-[10px] text-atext-dim px-1">🏠 Home state bonus active</div>
+        )}
         {basePool.slice(0, 50).map((p, i) => {
           const st = scoutRevealTier(p);
           const rw = rookieDraftWage(p.overall, dTier);
           const capOk = canAffordSigning(career, rw);
-          const oDisp = displayDraftOverall(p);
-          const potDisp = displayDraftPotential(p);
+          const scoutQuality = regionalScoutQuality(baseScoutRating, clubState, p.state ?? 'VIC');
+          const oDisp = displayDraftOverall(p, scoutQuality);
+          const potDisp = displayDraftPotential(p, scoutQuality);
           const wageDisp = displayDraftWageEstimate(rw, st);
           const wageAccurate = st >= 2;
           return (
@@ -1064,7 +1435,9 @@ function DraftTab({ career, club, league, updateCareer, onOpenDraftRoom }) {
   );
 }
 
-function YouthTab({ career, club, updateCareer }) {
+function YouthTab({ club }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const youth = career.youth;
   const [generated, setGenerated] = useState(youth.recruits || []);
 
@@ -1157,7 +1530,10 @@ function YouthTab({ career, club, updateCareer }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>YOUTH ACADEMY</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>YOUTH ACADEMY</div>
+          </div>
           <div className="text-xs text-atext-dim">Develop talent from the {club.state} zone. Build the next generation.</div>
         </div>
         <div className="flex items-center gap-3">
@@ -1235,12 +1611,40 @@ function YouthTab({ career, club, updateCareer }) {
   );
 }
 
-function LocalTab({ career, club, updateCareer }) {
+function LocalTab({ club }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [scoutedPlayers, setScoutedPlayers] = useState([]);
   const [scoutingLeague, setScoutingLeague] = useState(null);
   const homeState = club.state;
   const otherStates = useMemo(() => STATES.filter((s) => s !== homeState), [homeState]);
   const [interState, setInterState] = useState(() => otherStates[0] ?? 'VIC');
+
+  // ── Emergency trialists (tier 3, in-season, injury cover) ──────────────────
+  const localTierCheck = leagueTierOf(career);
+  const isInSeason = career.phase === 'season';
+  const injuredCount = (career.squad || []).filter((p) => (p.injured || 0) > 0).length;
+  const showEmergencyPool = localTierCheck === 3 && isInSeason;
+
+  const emergencyPool = useMemo(() => {
+    if (!showEmergencyPool) return [];
+    seedRng((career.season ?? 2026) * 1000 + (career.week ?? 1) * 7 + 3);
+    return Array.from({ length: 4 }, (_, i) => {
+      const p = generatePlayer(3, 99000 + i + (career.week ?? 1) * 13, { clubId: 'local', season: career.season });
+      return { ...p, id: `emerg_${career.season}_${career.week}_${i}`, fromLocal: club.state, fromClubId: null, emergencyFree: true };
+    });
+  }, [showEmergencyPool, career.season, career.week, club.state]);
+
+  const signEmergency = (p) => {
+    const wage = 18_000;
+    if ((career.squad || []).length >= 40) return;
+    if (!canAffordSigning(career, wage)) return;
+    const newPlayer = { ...p, id: `emerg_signed_${Date.now()}_${rand(1e6, 9e6)}`, wage, contract: 1 };
+    updateCareer({
+      squad: [...(career.squad || []), newPlayer],
+      news: [{ week: career.week, type: 'info', text: `🚨 Emergency signing: ${p.firstName} ${p.lastName} (${p.position}) — 1yr deal, ${(wage/1000).toFixed(0)}k/yr` }, ...(career.news || [])].slice(0, 15),
+    });
+  };
 
   useEffect(() => {
     const pool = STATES.filter((s) => s !== homeState);
@@ -1360,7 +1764,10 @@ function LocalTab({ career, club, updateCareer }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>LOCAL FOOTBALL</div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
+            <div className={`${css.h1} text-3xl`}>LOCAL FOOTBALL</div>
+          </div>
           <div className="text-xs text-atext-dim">Scout other {club.state} competitions (same tier or neighbouring levels). Interstate packs charge a scout-travel fee (Senior Scout rating + recruiting priority trim costs); reports gain a small accuracy bump vs local-only runs.</div>
         </div>
         <div className="flex items-center gap-3">
@@ -1368,6 +1775,37 @@ function LocalTab({ career, club, updateCareer }) {
           <Stat label="Walk-on" value="$0" sub="same wages" accent="var(--A-pos)" />
         </div>
       </div>
+
+      {showEmergencyPool && emergencyPool.length > 0 && (
+        <div className="rounded-2xl p-4 border" style={{ background: 'color-mix(in srgb, var(--A-neg) 8%, var(--A-panel))', borderColor: 'color-mix(in srgb, var(--A-neg) 40%, transparent)' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--A-neg) 20%, transparent)', color: 'var(--A-neg)' }}>Emergency Pool</span>
+            {injuredCount > 0 && <span className="text-[10px] text-atext-mute">{injuredCount} player{injuredCount !== 1 ? 's' : ''} injured</span>}
+          </div>
+          <div className="text-xs text-atext-dim mb-3">Players who've fronted up to training — available for immediate 1-year walk-on deals mid-season. Pool refreshes each round.</div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {emergencyPool.map((p) => {
+              const canSign = (career.squad || []).length < 40 && canAffordSigning(career, 18_000);
+              return (
+                <div key={p.id} className={`${css.panel} p-3 flex items-center gap-3`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-bold text-atext truncate">{p.firstName} {p.lastName}</div>
+                    <div className="text-[10px] text-atext-mute">{formatPositionSlash(p)} · Age {p.age} · OVR {p.overall}</div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!canSign}
+                    onClick={() => signEmergency(p)}
+                    className={`text-[10px] font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition ${canSign ? 'bg-aaccent text-[var(--fd-on-accent,#0A0D0C)] hover:opacity-90' : 'opacity-40 bg-apanel-2 text-atext-mute cursor-not-allowed'}`}
+                  >
+                    Sign
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-1 space-y-4">

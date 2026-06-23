@@ -1,4 +1,5 @@
 import React from "react";
+import { useCareer } from "../lib/careerStore.js";
 import { motion } from "motion/react";
 import { Pill } from "./primitives.jsx";
 import { getAdvanceContext } from "../lib/advanceContext.js";
@@ -6,7 +7,8 @@ import { effectiveWageCap, currentPlayerWageBill, capHeadroom } from "../lib/fin
 import { fmtK } from "../lib/format.js";
 import { tier3DivisionCount } from "../lib/leagueEngine.js";
 
-export default function SeasonStrip({ career, league, club, timeTick = "" }) {
+export default function SeasonStrip({ league, club, timeTick = "" }) {
+  const career = useCareer();
   const ctx = getAdvanceContext(career, league);
   const cap = effectiveWageCap(career);
   const bill = currentPlayerWageBill(career);
@@ -32,7 +34,7 @@ export default function SeasonStrip({ career, league, club, timeTick = "" }) {
     phaseColor = "#E84A6F";
   } else if (career.phase === "preseason") {
     phasePill = "Pre-season";
-    phaseColor = "#4ADBE8";
+    phaseColor = "var(--A-accent-2)";
   } else {
     phasePill = `Season · Rd ${career.week ?? "—"}`;
   }

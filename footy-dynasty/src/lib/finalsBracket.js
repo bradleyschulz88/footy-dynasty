@@ -8,16 +8,21 @@ export function finalsRoundLabel(aliveCount, tier = 1, weekIndex = null) {
   if (tier === 1 && weekIndex === 2) return 'Preliminary Final';
   if (tier === 1 && weekIndex === 1) return 'Semi Final';
   if (aliveCount <= 4) return tier === 1 ? 'Preliminary Final' : 'Semi Final';
+  if (aliveCount === 6 && tier !== 1) return 'Finals Week 1'; // 1v6, 2v5, 3v4
   if (aliveCount <= 6) return 'Semi Final';
   return tier === 1 ? 'Finals Week 1' : 'Elimination Final';
 }
 
-/** Per-match label (tier-1 opening week uses QF/EF). */
+/** Per-match label (tier-1 opening week uses QF/EF; final-6 week 1 likewise). */
 export function finalsMatchLabel(aliveCount, tier, slotIndex, _slotsInRound) {
   if (aliveCount <= 2) return 'Grand Final';
   if (tier === 1 && aliveCount === 8) {
     if (slotIndex < 2) return 'Qualifying Final';
     return 'Elimination Final';
+  }
+  // Final-6 opening week: 1v6 & 2v5 are qualifying finals, 3v4 the elimination.
+  if (aliveCount === 6 && tier !== 1) {
+    return slotIndex < 2 ? 'Qualifying Final' : 'Elimination Final';
   }
   return finalsRoundLabel(aliveCount, tier);
 }

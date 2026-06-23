@@ -4,15 +4,17 @@
 // own — they're pure presentational helpers.
 // ---------------------------------------------------------------------------
 import React from "react";
+import { ChevronDown } from "lucide-react";
+import { motion, useMotionValue, useSpring, useTransform } from "motion/react";
 
 export const css = {
   panel: "panel",
   panelHover: "panel card-hover cursor-pointer",
   inset: "panel-flat",
-  btn: "px-4 py-2.5 rounded-md font-semibold transition-all font-mono text-[11px] uppercase tracking-[0.18em]",
-  btnPrimary: "btn-primary text-xs px-5 py-2.5 font-mono font-bold uppercase tracking-[0.2em]",
-  btnGhost: "btn-ghost px-5 py-2.5",
-  btnDanger: "px-5 py-2.5 rounded-md font-semibold border border-aneg/40 text-aneg hover:bg-aneg/10 transition-all",
+  btn: "px-4 py-2.5 rounded-md font-semibold transition-all duration-150 active:scale-[0.98] font-mono text-[11px] uppercase tracking-[0.18em]",
+  btnPrimary: "btn-primary text-xs px-5 py-2.5 font-mono font-bold uppercase tracking-[0.2em] active:scale-[0.98]",
+  btnGhost: "btn-ghost px-5 py-2.5 active:scale-[0.98]",
+  btnDanger: "px-5 py-2.5 rounded-md font-semibold border border-aneg/40 text-aneg hover:bg-aneg/10 hover:border-aneg/70 active:scale-[0.98] transition-all duration-150",
   label: "label",
   h1: "display tracking-wider text-atext",
   num: "font-display tracking-wide text-atext",
@@ -51,16 +53,83 @@ export const Pill = ({ children, color = "#64748B" }) => (
   </span>
 );
 
-// KPI tile with accent strip + optional icon.
-export const Stat = ({ label, value, sub, accent = "var(--A-accent)", icon: Icon }) => (
-  <div className={`${css.panel} p-5 relative overflow-hidden`}>
-    <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{ background: accent }} />
-    {Icon && <Icon className="w-5 h-5 mb-2 opacity-60" style={{ color: accent }} />}
-    <div className={css.label}>{label}</div>
-    <div className={`${css.num} text-4xl mt-1.5 leading-none`} style={{ color: accent }}>{value}</div>
-    {sub && <div className="text-xs text-atext-dim mt-1.5 font-medium">{sub}</div>}
-  </div>
-);
+/**
+ * AnimatedNumber — smoothly counts to `value` whenever it changes. Built on
+ * motion/react's spring so it feels organic rather than linear. Falls back to
+ * rendering the raw value when `value` isn't a finite number (e.g. an em-dash
+ * placeholder or a pre-formatted string), so callers can stay simple.
+ *
+ * @param {number} value    target number to animate toward
+ * @param {(n:number)=>any} [format] formats the live number (default Math.round)
+ */
+export const AnimatedNumber = ({ value, format = Math.round, className, style }) => {
+  const isNumeric = typeof value === "number" && Number.isFinite(value);
+  // Start at the first value so the initial mount lands on the real number;
+  // subsequent changes animate. A spring tuned for a ~700ms ease-out feel.
+  const mv = useMotionValue(isNumeric ? value : 0);
+  const spring = useSpring(mv, { stiffness: 90, damping: 20, mass: 0.6 });
+  const text = useTransform(spring, (latest) => format(latest));
+
+  React.useEffect(() => {
+    if (isNumeric) mv.set(value);
+  }, [value, isNumeric, mv]);
+
+  if (!isNumeric) {
+    return <span className={className} style={style}>{value}</span>;
+  }
+  return <motion.span className={className} style={style}>{text}</motion.span>;
+};
+
+// Visual weight presets for Stat — establishes the dashboard numeric hierarchy.
+const STAT_VARIANTS = {
+  hero: {
+    padding: "p-6",
+    strip: "w-1.5",
+    numClass: "text-5xl mt-2 leading-none",
+    panelExtra: "card-hover",
+    glow: true,
+  },
+  primary: {
+    padding: "p-5",
+    strip: "w-1",
+    numClass: "text-4xl mt-1.5 leading-none",
+    panelExtra: "",
+    glow: false,
+  },
+  secondary: {
+    padding: "p-4",
+    strip: "w-0.5",
+    numClass: "text-2xl mt-1 leading-none",
+    panelExtra: "",
+    glow: false,
+  },
+};
+
+// KPI tile with accent strip + optional icon. `variant` drives numeric
+// hierarchy: 'hero' (largest, glowing), 'primary' (default), 'secondary'
+// (muted). When `value` is a finite number it counts up via AnimatedNumber;
+// strings (pre-formatted text, em-dashes) pass through unchanged.
+export const Stat = ({ label, value, sub, accent = "var(--A-accent)", icon: Icon, variant = "primary", format }) => {
+  const v = STAT_VARIANTS[variant] || STAT_VARIANTS.primary;
+  const isNumeric = typeof value === "number" && Number.isFinite(value);
+  const heroStyle = v.glow
+    ? {
+        border: `1px solid color-mix(in srgb, ${accent} 35%, var(--A-line))`,
+        boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 12%, transparent), 0 8px 28px color-mix(in srgb, ${accent} 14%, transparent)`,
+      }
+    : undefined;
+  return (
+    <div className={`${css.panel} ${v.padding} ${v.panelExtra} relative overflow-hidden`} style={heroStyle}>
+      <div className={`absolute top-0 left-0 ${v.strip} h-full rounded-l-2xl`} style={{ background: accent }} />
+      {Icon && <Icon className={`w-5 h-5 mb-2 ${variant === "secondary" ? "opacity-45" : "opacity-60"}`} style={{ color: accent }} />}
+      <div className={css.label} style={variant === "secondary" ? { color: "var(--A-text-mute)" } : undefined}>{label}</div>
+      <div className={`${css.num} ${v.numClass} tabular-nums`} style={{ color: accent, fontVariantNumeric: "tabular-nums" }}>
+        {isNumeric ? <AnimatedNumber value={value} format={format} /> : value}
+      </div>
+      {sub && <div className="text-xs text-atext-dim mt-1.5 font-medium">{sub}</div>}
+    </div>
+  );
+};
 
 // Inline SVG kit preview used by the Kits tab and squad selectors.
 export const Jersey = ({ kit, size = 64 }) => {
@@ -148,6 +217,42 @@ export function DataTable({ title, titleAction, columns, rows, rowKey, emptyLabe
   );
 }
 
+/**
+ * Collapsible panel for secondary dashboard sections. Open/closed state is
+ * remembered per `id` in localStorage so the hub stays as tidy as the player
+ * left it. An optional `right` node (e.g. a "view all" link) renders beside the
+ * title — kept outside the toggle button so it stays independently clickable.
+ */
+export function CollapsibleSection({ id, title, defaultOpen = false, right = null, children }) {
+  const storeKey = `fd_collapse_${id}`;
+  const [open, setOpen] = React.useState(() => {
+    try {
+      const v = localStorage.getItem(storeKey);
+      return v == null ? defaultOpen : v === "1";
+    } catch {
+      return defaultOpen;
+    }
+  });
+  const toggle = () =>
+    setOpen((o) => {
+      const next = !o;
+      try { localStorage.setItem(storeKey, next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  return (
+    <div className={`${css.panel} overflow-hidden`}>
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
+        <button type="button" onClick={toggle} aria-expanded={open} className="flex items-center gap-2 min-w-0 flex-1 text-left">
+          <ChevronDown className={`w-4 h-4 text-atext-mute transition-transform shrink-0 ${open ? "rotate-180" : ""}`} />
+          <span className="font-display text-base tracking-wide text-atext truncate">{title}</span>
+        </button>
+        {right}
+      </div>
+      {open && <div className="px-4 pb-4 anim-in">{children}</div>}
+    </div>
+  );
+}
+
 // Global app-wide style block — extracted so it's referenced from a single place.
 export const GlobalStyle = () => (
   <style>{`
@@ -158,18 +263,28 @@ export const GlobalStyle = () => (
     ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.22); }
     .no-scrollbar { scrollbar-width:none; -ms-overflow-style:none; }
     .no-scrollbar::-webkit-scrollbar { display:none; width:0; height:0; }
-    @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 rgba(255,90,31,0.18);}50%{box-shadow:0 0 14px 3px rgba(255,90,31,0.1);} }
+    @keyframes pulseGlow { 0%,100%{box-shadow:0 0 0 0 color-mix(in srgb, var(--A-accent) 18%, transparent);}50%{box-shadow:0 0 14px 3px color-mix(in srgb, var(--A-accent) 10%, transparent);} }
     .glow { animation: pulseGlow 2.5s ease-in-out infinite; }
     @keyframes slideIn { from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);} }
     .anim-in { animation: slideIn 0.2s ease-out; }
     .dirA select option { background:var(--A-panel); color:var(--A-text); }
-    .dirA select { color:var(--A-text); background:var(--A-panel); border:1px solid var(--A-line); border-radius:8px; }
+    .dirA select { color:var(--A-text); background:var(--A-panel); border:1px solid var(--A-line); border-radius:10px; }
     .dirB select option { background:var(--B-panel); color:var(--B-text); }
-    .dirB select { color:var(--B-text); background:var(--B-panel); border:1px solid var(--B-line-2); border-radius:4px; }
+    .dirB select { color:var(--B-text); background:var(--B-panel); border:1px solid var(--B-line-2); border-radius:10px; }
     .dirS select option { background:var(--A-panel); color:var(--A-text); }
     .dirS select { color:var(--A-text); background:var(--A-panel); border:1px solid var(--A-line); border-radius:8px; }
+    .dirV4 select option { background:var(--V4-panel); color:var(--V4-text); }
+    .dirV4 select { color:var(--V4-text); background:var(--V4-panel); border:1px solid var(--V4-line-2); border-radius:10px; }
     input[type=color] { padding:2px; cursor:pointer; border-radius:6px; }
     button:disabled { opacity:0.4; cursor:not-allowed; }
+    /* Accessible focus rings — accent-tinted, theme-adaptive, only on keyboard focus. */
+    button:focus-visible, a:focus-visible, [role="button"]:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--A-bg), 0 0 0 4px color-mix(in srgb, var(--A-accent) 70%, transparent);
+      border-radius: var(--radius-md);
+    }
+    /* Subtle tactile press feedback for tappable buttons. */
+    button:not(:disabled):active { transform: translateY(0.5px); }
     * { box-sizing:border-box; }
   `}</style>
 );

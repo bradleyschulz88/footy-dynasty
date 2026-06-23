@@ -5,6 +5,7 @@
 import { rng } from './rng.js';
 import { clamp } from './format.js';
 import { themedRoundForNumber } from './themedRounds.js';
+import { PLAYER_TRAITS } from './playerGen.js';
 
 export function addDays(dateStr, n) {
   const y = parseInt(dateStr.slice(0, 4), 10);
@@ -154,6 +155,13 @@ export function intensityScale(intensity) {
   return 1.2 + (i - 80) * 0.005;                   // 80→1.2, 100→1.3
 }
 
+const FACILITY_TRAINING_MAP = {
+  ball_drill: 'trainingGround',
+  run: 'trainingGround',
+  tactics: 'trainingGround',
+  gym: 'gym',
+};
+
 export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
   const info = TRAINING_INFO[subtype];
   if (!info || !lineup?.length) {
@@ -175,8 +183,17 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
   }
   const baseScale   = staffRating / 75;
 
+  const facilityKey = FACILITY_TRAINING_MAP[subtype];
+  const facilityLevel = facilityKey ? (opts.facilities?.[facilityKey]?.level ?? 1) : 1;
+  const facilityMult = 1 + (facilityLevel - 1) * 0.1;
+
   const gains    = {};
   const devNotes = [];
+
+  const TRAIT_TRAIN_MULT = { grinder: 1.20, hothead: 1.10, leader: 1.05, mentor: 1.0, drifter: 0.82 };
+
+  // First pass: compute gains for each player in the lineup
+  const playerGainsMap = new Map(); // playerId -> { attr -> gain }
 
   const newSquad = squad.map(p => {
     if (!lineup.includes(p.id)) return p;
@@ -192,18 +209,26 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
     const nearCap = overall >= potential - 3;
     const capScale = nearCap ? 0.5 : 1.0;
 
-    const scale = baseScale * ageScale * fitnessScale * capScale * intScale;
+    const scale = baseScale * ageScale * fitnessScale * capScale * intScale * facilityMult;
+
+    const trait = PLAYER_TRAITS[p.trait ?? 'grinder'];
+    const traitDevMod = trait?.devMod ?? 0;
+    const gainMultiplier = TRAIT_TRAIN_MULT[p.trait] ?? 1.0;
 
     const updated = { ...p, attrs: { ...p.attrs } };
+    const pGains = {};
     info.attrs.forEach(attr => {
       if (attr in updated.attrs) {
         const focusBoost = focusBoostFor(attr, focus);
-        const raw = Math.max(0, Math.round((rng() * 1.5 + 0.5) * scale * focusBoost));
+        const rawBase = Math.max(0, Math.round((rng() * 1.5 + 0.5) * scale * focusBoost));
+        const raw = Math.round(rawBase * (1 + traitDevMod) * gainMultiplier);
         const g   = Math.min(raw, Math.max(0, potential - updated.attrs[attr]));
         updated.attrs[attr] = Math.min(potential, updated.attrs[attr] + g);
         gains[attr] = (gains[attr] || 0) + g;
+        pGains[attr] = g;
       }
     });
+    playerGainsMap.set(p.id, { pGains, updated, age: age, potential: potential, lastName: p.lastName || p.name?.split(' ').slice(-1)[0] || 'Player', nearCap });
 
     const vals = Object.values(updated.attrs);
     updated.overall = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
@@ -214,6 +239,42 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
 
     return updated;
   });
+
+  // Mentor bonus: mentor players boost up to 2 younger lineup teammates by 15% of their raw gains
+  const mentorEntries = [];
+  playerGainsMap.forEach((data, pid) => {
+    const p = newSquad.find(x => x.id === pid);
+    if (p && p.trait === 'mentor') mentorEntries.push({ pid, age: data.age, pGains: data.pGains });
+  });
+  if (mentorEntries.length > 0) {
+    const squadById = new Map(newSquad.map(p => [p.id, p]));
+    mentorEntries.forEach(({ pid: mentorId, age: mentorAge, pGains: mentorGains }) => {
+      // Find up to 2 younger lineup players
+      const younger = lineup
+        .filter(id => id !== mentorId && playerGainsMap.has(id))
+        .map(id => ({ id, age: playerGainsMap.get(id).age }))
+        .filter(x => x.age < mentorAge)
+        .slice(0, 2);
+      younger.forEach(({ id: targetId }) => {
+        const targetData = playerGainsMap.get(targetId);
+        const targetPlayer = squadById.get(targetId);
+        if (!targetPlayer || !targetData) return;
+        info.attrs.forEach(attr => {
+          if (attr in targetPlayer.attrs) {
+            const bonus = Math.floor((mentorGains[attr] ?? 0) * 0.15);
+            if (bonus > 0) {
+              const potential = targetData.potential;
+              const capped = Math.min(bonus, Math.max(0, potential - targetPlayer.attrs[attr]));
+              targetPlayer.attrs[attr] = Math.min(potential, targetPlayer.attrs[attr] + capped);
+              gains[attr] = (gains[attr] || 0) + capped;
+            }
+          }
+        });
+        const vals = Object.values(targetPlayer.attrs);
+        targetPlayer.overall = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+      });
+    });
+  }
 
   if (focus && focus.recovery >= 35) {
     devNotes.push(`Recovery focus (${focus.recovery}%) — squad fitness boost`);
@@ -229,18 +290,21 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
 // Pre-season: Dec 1 of (season-1) through Feb 28 of season
 // Regular season: from Mar 21 of season, one round per week
 // ---------------------------------------------------------------------------
-export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId) {
+export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId, opts = {}) {
+  // National Draft Day is an AFL (tier 1) event — pass { nationalDraft: false } for lower tiers.
+  const { nationalDraft = true } = opts;
   const events = [];
   let counter  = 0;
   const eid    = () => `ev_${++counter}`;
 
-  const preseasonStart = `${season - 1}-12-01`;
-  const preseasonEnd   = `${season}-02-28`;
+  // Pre-season training: Mon/Wed/Fri from Dec 1 through Feb 28
+  // (Trade period and draft happen in Nov before training camps begin)
+  const trainingStart  = `${season - 1}-12-01`;
+  const trainingEnd    = `${season}-02-28`;
 
-  // Training sessions — Mon/Wed/Fri during pre-season
-  let cursor  = preseasonStart;
+  let cursor  = trainingStart;
   let rotIdx  = 0;
-  while (cursor <= preseasonEnd) {
+  while (cursor <= trainingEnd) {
     const dow = getDayOfWeek(cursor); // 0=Sun
     if (dow === 1 || dow === 3 || dow === 5) {
       events.push({
@@ -257,23 +321,25 @@ export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId) {
     cursor = addDays(cursor, 1);
   }
 
-  // Key events
+  // Key events — AFL realistic timeline (prior-year Nov/Dec then pre-season Feb)
+  events.push({
+    id: eid(), date: `${season - 1}-11-10`, type: 'key_event',
+    name: 'Trade Period Opens',
+    description: 'The trade and free-agent market is now open. Approach players and negotiate deals before the draft.',
+    action: 'recruit', phase: 'preseason', completed: false,
+  });
+  if (nationalDraft) {
+    events.push({
+      id: eid(), date: `${season - 1}-11-20`, type: 'key_event',
+      name: 'National Draft Day',
+      description: 'Select the best young talent from this year\'s draft pool to build your future.',
+      action: 'recruit', phase: 'preseason', completed: false,
+    });
+  }
   events.push({
     id: eid(), date: `${season - 1}-12-15`, type: 'key_event',
-    name: 'Transfer Window Opens',
-    description: 'The trade and free-agent market is now open. Approach players and negotiate deals.',
-    action: 'recruit', phase: 'preseason', completed: false,
-  });
-  events.push({
-    id: eid(), date: `${season}-01-10`, type: 'key_event',
-    name: 'National Draft Day',
-    description: 'Select the best young talent from this year\'s draft pool to build your future.',
-    action: 'recruit', phase: 'preseason', completed: false,
-  });
-  events.push({
-    id: eid(), date: `${season}-02-15`, type: 'key_event',
-    name: 'Transfer Window Closes',
-    description: 'The final opportunity to sign or trade players before the season begins.',
+    name: 'Trade Period Closes',
+    description: 'Final chance to sign or trade players. Pre-season training camps begin.',
     action: 'recruit', phase: 'preseason', completed: false,
   });
 

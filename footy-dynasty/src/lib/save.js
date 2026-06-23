@@ -5,7 +5,7 @@
 import { PYRAMID, findClub } from '../data/pyramid.js';
 import { getClubGround } from '../data/grounds.js';
 
-import { migrateSaveBoardV8, migrateSaveBoardV9, migrateSaveBoardV10, migrateSaveBoardV11 } from './board.js';
+import { migrateSaveBoardV8, migrateSaveBoardV9, migrateSaveBoardV10, migrateSaveBoardV11, assignBoardPersonalities } from './board.js';
 import { migrateSaveGameDepthV12 } from './gameDepth.js';
 import { localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 import { migrateDraftPoolScouting } from './draftScouting.js';
@@ -391,6 +391,64 @@ export function migrate(save) {
   if (v < 27) {
     s.saveVersion = 27;
     s.finalsRivalryLog = s.finalsRivalryLog || [];
+  }
+
+  if (v < 28) {
+    s.saveVersion = 28;
+    // National draft became tier-1 only: scrub draft state + calendar event from lower-tier saves.
+    const tier = s.leagueKey ? PYRAMID[s.leagueKey]?.tier : null;
+    if (tier != null && tier !== 1) {
+      s.draftPool = [];
+      s.draftOrder = [];
+      s.draftPhase = 'complete';
+      s.draftPickBank = null;
+      if (Array.isArray(s.eventQueue)) {
+        s.eventQueue = s.eventQueue.filter(
+          (e) => !(e.type === 'key_event' && e.name === 'National Draft Day' && !e.completed),
+        );
+      }
+    }
+  }
+
+  if (v < 29) {
+    s.saveVersion = 29;
+    // Supporter base — tier-appropriate starting value for existing saves.
+    if (s.fanbase == null) {
+      const t = s.leagueKey ? PYRAMID[s.leagueKey]?.tier : null;
+      s.fanbase = t === 1 ? 5000 : t === 2 ? 500 : 100;
+    }
+    // Local rival club — assigned lazily at first round event.
+    if (s.rivalClubId === undefined) s.rivalClubId = null;
+  }
+
+  if (v < 30) {
+    s.saveVersion = 30;
+    // Consecutive Division-1 flags drive the tier-3 → tier-2 promotion playoff.
+    if (s.tier3Div1Titles == null) s.tier3Div1Titles = 0;
+    if (s.lastPromotionPlayoff === undefined) s.lastPromotionPlayoff = null;
+    if (!Array.isArray(s.inbox)) s.inbox = [];
+  }
+
+  if (v < 31) {
+    s.saveVersion = 31;
+    // Browse-and-apply Job Centre: cached listings + per-season application ledger.
+    if (s.jobMarketBrowse === undefined) s.jobMarketBrowse = null;
+    if (s.jobMarketBrowseSeason === undefined) s.jobMarketBrowseSeason = null;
+    if (s.jobApplications === undefined) s.jobApplications = null;
+  }
+
+  if (v < 32) {
+    s.saveVersion = 32;
+    // End-of-season job moves: the agreed offer that fires at the next rollover.
+    if (s.pendingJobOffer === undefined) s.pendingJobOffer = null;
+  }
+
+  if (v < 33) {
+    s.saveVersion = 33;
+    // Backfill board member personality archetypes onto existing saves.
+    if (s.board?.members) {
+      assignBoardPersonalities(s.board, s.clubId);
+    }
   }
 
   return s;

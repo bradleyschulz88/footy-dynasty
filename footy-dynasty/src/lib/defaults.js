@@ -31,23 +31,25 @@ export const DEFAULT_TRAINING = () => ({
   focus: { skills: 30, fitness: 25, tactics: 25, recovery: 20 },
 });
 
+// maxTier: highest tier number that can attract this sponsor.
+// Tier 1 = AFL (national brands only), tier 2 = state league, tier 3 = community clubs.
 const SPONSOR_POOL = [
-  { name: "Toyota",          category: "Auto",     baseValue: 1800000 },
-  { name: "Coopers Brewery", category: "Beverage", baseValue: 900000 },
-  { name: "Bunnings",        category: "Retail",   baseValue: 1500000 },
-  { name: "ANZ Bank",        category: "Finance",  baseValue: 2500000 },
-  { name: "Rip Curl",        category: "Apparel",  baseValue: 700000 },
-  { name: "JB Hi-Fi",        category: "Tech",     baseValue: 800000 },
-  { name: "Vegemite",        category: "Food",     baseValue: 600000 },
-  { name: "Optus",           category: "Telco",    baseValue: 2000000 },
-  { name: "Carlton Draught", category: "Beverage", baseValue: 1200000 },
-  { name: "Akubra",          category: "Apparel",  baseValue: 400000 },
-  { name: "Telstra",         category: "Telco",    baseValue: 1900000 },
-  { name: "Bendigo Bank",    category: "Finance",  baseValue: 800000 },
-  { name: "BCF",             category: "Retail",   baseValue: 500000 },
-  { name: "Mitre 10",        category: "Retail",   baseValue: 350000 },
-  { name: "Local Pub Co.",   category: "Beverage", baseValue: 80000 },
-  { name: "Servo & Smash",   category: "Auto",     baseValue: 40000 },
+  { name: "ANZ Bank",        category: "Finance",  baseValue: 2500000, maxTier: 1 },
+  { name: "Toyota",          category: "Auto",     baseValue: 1800000, maxTier: 1 },
+  { name: "Telstra",         category: "Telco",    baseValue: 1900000, maxTier: 1 },
+  { name: "Optus",           category: "Telco",    baseValue: 2000000, maxTier: 1 },
+  { name: "Carlton Draught", category: "Beverage", baseValue: 1200000, maxTier: 1 },
+  { name: "Bunnings",        category: "Retail",   baseValue: 1500000, maxTier: 2 },
+  { name: "Coopers Brewery", category: "Beverage", baseValue: 900000,  maxTier: 2 },
+  { name: "JB Hi-Fi",        category: "Tech",     baseValue: 800000,  maxTier: 2 },
+  { name: "Rip Curl",        category: "Apparel",  baseValue: 700000,  maxTier: 2 },
+  { name: "Bendigo Bank",    category: "Finance",  baseValue: 800000,  maxTier: 2 },
+  { name: "Vegemite",        category: "Food",     baseValue: 600000,  maxTier: 3 },
+  { name: "BCF",             category: "Retail",   baseValue: 500000,  maxTier: 3 },
+  { name: "Akubra",          category: "Apparel",  baseValue: 400000,  maxTier: 3 },
+  { name: "Mitre 10",        category: "Retail",   baseValue: 350000,  maxTier: 3 },
+  { name: "Local Pub Co.",   category: "Beverage", baseValue: 80000,   maxTier: 3 },
+  { name: "Servo & Smash",   category: "Auto",     baseValue: 40000,   maxTier: 3 },
 ];
 
 export function generateSponsors(tier) {
@@ -56,8 +58,11 @@ export function generateSponsors(tier) {
   const tierMult = tier === 1 ? 1 : tier === 2 ? 0.18 : 0.04;
   seedRng(SEED + 11);
   const count = rand(min, max);
+  // Only surface sponsors accessible at this tier — e.g. community clubs (tier 3) get local sponsors only.
+  const pool = SPONSOR_POOL.filter(s => tier <= (s.maxTier ?? 3));
+  const src = pool.length ? pool : SPONSOR_POOL;
   return Array.from({ length: count }, () => {
-    const s = pick(SPONSOR_POOL);
+    const s = pick(src);
     return {
       id: `sp_${rand(1000, 9999)}_${s.name}`,
       name: s.name,
@@ -185,22 +190,34 @@ export function enrichMarketPlayerCareer(p, season) {
       disposals: Math.round(games * (6 + rng() * 14)),
     });
   }
-  const gamesPlayed = careerLog.reduce((s, r) => s + r.games, 0);
+  const careerGames = careerLog.reduce((s, r) => s + r.games, 0);
   const lastSeason = careerLog[0];
   const goals = lastSeason ? Math.round(lastSeason.goals * (0.85 + rng() * 0.3)) : rand(0, 12);
   const disposals = lastSeason ? Math.round(lastSeason.disposals * (0.9 + rng() * 0.2)) : rand(50, 280);
   const marks = Math.round(disposals * (0.15 + rng() * 0.2));
   const tackles = Math.round(disposals * (0.08 + rng() * 0.12));
+  // Synthetic history is SCOUTING context only — it belongs in lastSeasonStats,
+  // not the live season counters. A player you sign starts this season on zero;
+  // the big numbers only ever come from games actually played for your club.
   return {
     ...p,
     fromClub,
     careerLog,
-    gamesPlayed,
-    goals,
-    behinds: Math.round(goals * (0.2 + rng() * 0.4)),
-    disposals,
-    marks,
-    tackles,
+    careerGames,
+    lastSeasonStats: {
+      games: lastSeason?.games ?? 0,
+      goals,
+      behinds: Math.round(goals * (0.2 + rng() * 0.4)),
+      disposals,
+      marks,
+      tackles,
+    },
+    gamesPlayed: 0,
+    goals: 0,
+    behinds: 0,
+    disposals: 0,
+    marks: 0,
+    tackles: 0,
   };
 }
 

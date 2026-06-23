@@ -254,7 +254,7 @@ describe('migrateLegacy', () => {
 });
 
 describe('SLOT_IDS', () => {
-  it('exposes A, B, C as slot ids', () => {
-    expect(SLOT_IDS).toEqual(['A', 'B', 'C']);
+  it('exposes A–H as slot ids', () => {
+    expect(SLOT_IDS).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
   });
 });

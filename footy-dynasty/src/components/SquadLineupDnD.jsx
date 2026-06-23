@@ -35,8 +35,17 @@ import {
 } from "../lib/lineupHelpers.js";
 import { RatingDot, css } from "./primitives.jsx";
 import { LineupOvalField } from "./LineupOvalField.jsx";
+import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 
 const BENCH_TRAY_ID = "bench-tray";
+
+function posBadgeStyle(pos) {
+  if (pos === 'KF' || pos === 'HF') return {background:'color-mix(in srgb,#E84A6F 14%,transparent)',color:'#E84A6F',border:'1px solid color-mix(in srgb,#E84A6F 30%,transparent)'};
+  if (pos === 'HB' || pos === 'KB') return {background:'color-mix(in srgb,#60A5FA 14%,transparent)',color:'#60A5FA',border:'1px solid color-mix(in srgb,#60A5FA 30%,transparent)'};
+  if (pos === 'RU') return {background:'color-mix(in srgb,#A78BFA 14%,transparent)',color:'#A78BFA',border:'1px solid color-mix(in srgb,#A78BFA 30%,transparent)'};
+  if (pos === 'C' || pos === 'R' || pos === 'WG') return {background:'color-mix(in srgb,var(--A-accent) 14%,transparent)',color:'var(--A-accent)',border:'1px solid color-mix(in srgb,var(--A-accent) 30%,transparent)'};
+  return {background:'color-mix(in srgb,#9CA3AF 14%,transparent)',color:'#9CA3AF',border:'1px solid color-mix(in srgb,#9CA3AF 30%,transparent)'};
+}
 
 function pName(p) {
   return p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || "Player");
@@ -142,7 +151,7 @@ function SortablePlayerRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="w-full flex items-center gap-1 px-2 py-2.5 min-h-[48px] rounded-xl border border-aline bg-apanel mb-1 touch-manipulation"
+      className="w-full flex items-center gap-1 px-2 py-2.5 min-h-[48px] rounded-xl border border-aline bg-apanel mb-1 touch-manipulation transition-all hover:border-[color-mix(in_srgb,var(--A-accent)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--A-accent)_4%,transparent)] hover:shadow-sm"
     >
       <button
         type="button"
@@ -159,7 +168,7 @@ function SortablePlayerRow({
           className="flex-1 flex items-center gap-2 min-w-0 text-left"
           onClick={() => onSelect(player)}
         >
-          <span className="text-[9px] px-1 py-0.5 bg-aline rounded font-bold text-center flex-shrink-0 max-w-[4rem] truncate">
+          <span className="text-[9px] px-1.5 py-0.5 rounded-md font-black text-center flex-shrink-0 uppercase tracking-wider" style={posBadgeStyle(player.position)}>
             {formatPositionSlash(player)}
           </span>
           <span className="text-sm font-semibold text-atext truncate">{pName(player)}</span>
@@ -168,7 +177,7 @@ function SortablePlayerRow({
         </button>
       ) : (
         <div className="flex-1 flex items-center gap-2 min-w-0">
-          <span className="text-[9px] px-1 py-0.5 bg-aline rounded font-bold text-center flex-shrink-0 max-w-[4rem] truncate">
+          <span className="text-[9px] px-1.5 py-0.5 rounded-md font-black text-center flex-shrink-0 uppercase tracking-wider" style={posBadgeStyle(player.position)}>
             {formatPositionSlash(player)}
           </span>
           <span className="text-sm font-semibold text-atext truncate">{pName(player)}</span>
@@ -248,7 +257,9 @@ function MobileBenchChip({ player, stitch, onSelect }) {
 /**
  * Bench ↔ match squad (18 + 5) builder for Squad → Players tab.
  */
-export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitch, onSelectPlayer }) {
+export function SquadLineupBuilder({ benchPlayerIds, stitch, onSelectPlayer }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const lineup = useMemo(() => career.lineup || [], [career.lineup]);
   const squad = useMemo(() => career.squad || [], [career.squad]);
   const benchPlayers = useMemo(
@@ -353,8 +364,14 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
   }
 
   const autoSelect = () => {
+    const eligible = [...squad].filter(p => !p.injured && !p.suspended);
+    const sorted = eligible.sort((a, b) => {
+      const fitA = Math.max(50, a.fitness ?? 85) / 100;
+      const fitB = Math.max(50, b.fitness ?? 85) / 100;
+      return (b.overall || 0) * fitB - (a.overall || 0) * fitA;
+    });
     updateCareer({
-      lineup: [...squad].sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map((p) => p.id),
+      lineup: sorted.slice(0, LINEUP_CAP).map(p => p.id),
     });
   };
 
@@ -483,7 +500,7 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
                 : `w-full ${css.btnGhost} text-xs py-2.5`
             }
           >
-            Auto-fill 23 (by rating)
+            Auto-select best 23
           </button>
         </aside>
       </div>
@@ -496,7 +513,9 @@ export function SquadLineupBuilder({ career, updateCareer, benchPlayerIds, stitc
 /**
  * Reorder-only sortable list for Tactics tab (same lineup order as career).
  */
-export function LineupSortablePanel({ career, updateCareer, stitch }) {
+export function LineupSortablePanel({ stitch }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const full = useMemo(() => career.lineup || [], [career.lineup]);
   const squad = useMemo(() => career.squad || [], [career.squad]);
   const lineupIds = useMemo(() => full.filter((id) => id != null && id !== ""), [full]);

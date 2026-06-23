@@ -15,11 +15,13 @@ import { finalsRoundLabel } from "../../lib/finalsBracket.js";
 import { turningPointRibbon } from "../../lib/gameDepth.js";
 import TabNav from "../../components/TabNav.jsx";
 import { css, Pill } from "../../components/primitives.jsx";
+import { useCareer } from "../../lib/careerStore.js";
 
 // ============================================================================
 // COMPETITION SCREEN — Ladder / Fixtures / Pyramid
 // ============================================================================
-export default function CompetitionScreen({ career, club, league, tab, setTab, onOpenCalendar }) {
+export default function CompetitionScreen({ club, league, tab, setTab, onOpenCalendar }) {
+  const career = useCareer();
   const t = tab || "ladder";
   const tabs = [
     { key: "ladder", label: "Ladder", icon: BarChart3 },
@@ -43,17 +45,44 @@ export default function CompetitionScreen({ career, club, league, tab, setTab, o
         )}
       </div>
       <TabNav tabs={tabs} active={t} onChange={setTab} />
-      {t === "ladder"   && <LadderTab career={career} club={club} league={league} />}
-      {t === "fixtures" && <FixturesTab career={career} club={club} league={league} />}
-      {t === "finals" && <FinalsTab career={career} league={league} />}
-      {t === "pyramid"  && <PyramidTab career={career} club={club} league={league} />}
+      {t === "ladder"   && <LadderTab club={club} league={league} />}
+      {t === "fixtures" && <FixturesTab club={club} league={league} />}
+      {t === "finals" && <FinalsTab league={league} />}
+      {t === "pyramid"  && <PyramidTab club={club} league={league} />}
     </div>
   );
 }
 
-function LadderTab({ career, club: _club, league }) {
+const FORM_COLORS = { W: '#22c55e', L: '#ef4444', D: '#f59e0b' };
+
+function FormDots({ form = [] }) {
+  // Always show 5 slots; pad unfilled ones on the left
+  const slots = Array(5).fill(null);
+  const offset = 5 - form.length;
+  form.forEach((r, i) => { slots[offset + i] = r; });
+  return (
+    <div className="flex gap-0.5 mx-2 flex-shrink-0">
+      {slots.map((r, i) => (
+        <div
+          key={i}
+          style={{
+            width: 7, height: 7,
+            borderRadius: 2,
+            background: r ? FORM_COLORS[r] : 'rgba(255,255,255,0.12)',
+            display: 'inline-flex',
+            flexShrink: 0,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function LadderTab({ club: _club, league }) {
+  const career = useCareer();
   const sorted = sortedLadder(career.ladder);
-  const promoCutoff = league.tier > 1 ? 1 : 8; // top 1 promoted; top 8 finals at tier 1
+  const finalsTeams = league.tier === 1 ? (career.league?.finalsTeams ?? 8) : 6;
+  const promoCutoff = league.tier > 1 ? 1 : finalsTeams; // top 1 promoted; top N finals at tier 1
   const relegCutoff = league.tier === 1 ? 999 : sorted.length; // bottom 1 relegated except tier 1
   return (
     <div className="space-y-4">
@@ -63,22 +92,19 @@ function LadderTab({ career, club: _club, league }) {
           <div className="text-xs text-atext-dim">Round {career.week} of {career.fixtures.length} · {league.name}</div>
         </div>
         <div className="flex items-center gap-3">
-          <Pill color="var(--A-pos)">{league.tier === 1 ? "Top 8 = Finals" : "Top 1 = Promoted"}</Pill>
+          <Pill color="var(--A-pos)">{league.tier === 1 ? `Top ${finalsTeams} = Finals` : "Top 1 = Promoted"}</Pill>
           {league.tier > 1 && <Pill color="var(--A-neg)">Bottom = Relegated</Pill>}
         </div>
       </div>
 
       <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
-        <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
-          <div className="col-span-1">#</div>
-          <div className="col-span-4">Club</div>
-          <div className="col-span-1 text-center">P</div>
-          <div className="col-span-1 text-center">W</div>
-          <div className="col-span-1 text-center">L</div>
-          <div className="col-span-1 text-center">D</div>
-          <div className="col-span-1 text-right">F</div>
-          <div className="col-span-1 text-right">A</div>
-          <div className="col-span-1 text-right">%</div>
+        <div className="grid gap-2 px-3 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{gridTemplateColumns:"1.5rem 1fr 1.8rem 1.8rem 1.8rem 2.5rem",borderColor:"var(--A-line)",background:"var(--A-panel-2)"}}>
+          <div>#</div>
+          <div>Club</div>
+          <div className="text-center">W</div>
+          <div className="text-center">L</div>
+          <div className="text-center">%</div>
+          <div className="text-right">Pts</div>
         </div>
         {sorted.map((row, i) => {
           const c = findClub(row.id);
@@ -86,32 +112,41 @@ function LadderTab({ career, club: _club, league }) {
           const pos = i + 1;
           const inPromo = pos <= promoCutoff;
           const inReleg = pos === relegCutoff && league.tier > 1;
-          const showFinalsLine = league.tier === 1 && pos === 8;
+          const inBottomTwo = league.tier > 1 && pos > sorted.length - 2;
+          const showFinalsLine = league.tier === 1 && pos === finalsTeams;
           const showPromoLine = league.tier > 1 && pos === promoCutoff;
           const showRelegLine = league.tier > 1 && pos === relegCutoff - 1;
+          const pct = row.A > 0 ? ((row.F/row.A)*100).toFixed(1) : "—";
+          const posColor = inPromo ? 'var(--A-pos)' : inBottomTwo ? 'var(--A-neg)' : 'var(--A-text-mute)';
           return (
             <React.Fragment key={row.id}>
-              <div className={`grid grid-cols-12 gap-2 px-4 py-2.5 items-center border-b border-aline ${isMe ? "bg-aaccent/10" : "hover:bg-aaccent/5"} transition`}>
-                <div className="col-span-1 flex items-center gap-1">
-                  <span className={`font-bold ${inPromo ? "text-apos" : inReleg ? "text-aneg" : "text-atext-dim"}`}>{pos}</span>
-                  {inPromo && <ArrowUp className="w-3 h-3 text-apos" />}
-                  {inReleg && <ArrowDown className="w-3 h-3 text-aneg" />}
+              <div
+                className="grid gap-2 px-3 py-2.5 items-center border-b border-aline transition"
+                style={{
+                  gridTemplateColumns:"1.5rem 1fr 1.8rem 1.8rem 2.5rem 2.5rem",
+                  background: isMe ? "color-mix(in srgb, var(--A-accent) 10%, transparent)" : undefined,
+                  borderLeft: isMe ? "3px solid var(--A-accent)" : "3px solid transparent",
+                }}
+              >
+                <div className="flex items-center gap-0.5">
+                  <span className="font-bold text-xs" style={{color: posColor}}>{pos}</span>
                 </div>
-                <div className="col-span-4 flex items-center gap-2">
-                  <div className="w-2 h-6 rounded-sm" style={{background: c?.colors[0] || "var(--A-line)"}} />
-                  <span className={isMe ? "font-bold text-aaccent" : "font-semibold"}>{c?.name || row.id}</span>
-                  {isMe && <Crown className="w-3 h-3 text-aaccent" />}
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-3 h-5 rounded-sm flex-shrink-0" style={{background: c?.colors ? `linear-gradient(180deg,${c.colors[0]},${c.colors[1]})` : "var(--A-line)"}} />
+                  <span className={`text-sm truncate ${isMe ? "font-bold text-aaccent" : "font-medium text-atext"}`}>{c?.short || row.id}</span>
+                  {isMe && <Crown className="w-3 h-3 text-aaccent flex-shrink-0" />}
+                  {!isMe && c?.name && <span className="text-xs text-atext-dim truncate hidden sm:inline">{c.name}</span>}
+                  <FormDots form={row.form} />
+                  {inPromo && <ArrowUp className="w-3 h-3 text-apos flex-shrink-0" />}
+                  {inReleg && <ArrowDown className="w-3 h-3 text-aneg flex-shrink-0" />}
                 </div>
-                <div className="col-span-1 text-center text-sm">{row.P}</div>
-                <div className="col-span-1 text-center text-sm font-bold text-apos">{row.W}</div>
-                <div className="col-span-1 text-center text-sm text-aneg">{row.L}</div>
-                <div className="col-span-1 text-center text-sm text-atext-dim">{row.D}</div>
-                <div className="col-span-1 text-right text-sm font-mono">{row.F}</div>
-                <div className="col-span-1 text-right text-sm font-mono text-atext-dim">{row.A}</div>
-                <div className="col-span-1 text-right text-sm font-mono font-bold">{row.A > 0 ? ((row.F/row.A)*100).toFixed(1) : "—"}</div>
+                <div className="text-center text-sm font-bold text-apos">{row.W}</div>
+                <div className="text-center text-sm text-aneg">{row.L}</div>
+                <div className="text-center text-xs font-mono text-atext-dim">{pct}</div>
+                <div className="text-right text-sm font-bold font-mono" style={{color: isMe ? 'var(--A-accent)' : 'var(--A-text)'}}>{row.pts ?? row.W * 4}</div>
               </div>
               {showFinalsLine && (
-                <div className="flex items-center gap-2 px-4 py-1" style={{background:"rgba(0,224,255,0.03)"}}>
+                <div className="flex items-center gap-2 px-4 py-1" style={{background:"color-mix(in srgb, var(--A-accent) 3%, transparent)"}}>
                   <div className="flex-1 border-t border-dashed border-aaccent/50" />
                   <span className="text-[9px] text-aaccent font-mono uppercase tracking-wider">Finals cutoff</span>
                   <div className="flex-1 border-t border-dashed border-aaccent/50" />
@@ -139,7 +174,8 @@ function LadderTab({ career, club: _club, league }) {
   );
 }
 
-function FixturesTab({ career, club: _club, league: _league }) {
+function FixturesTab({ club: _club, league: _league }) {
+  const career = useCareer();
   const { lastPlayedRoundIdx, nextRoundIdx } = useMemo(() => {
     let last = -1;
     for (const e of career.eventQueue || []) {
@@ -185,7 +221,7 @@ function FixturesTab({ career, club: _club, league: _league }) {
                   return (
                     <div key={mi} className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm ${myMatch ? "bg-aaccent/10 border border-aaccent/30" : "bg-apanel"}`}>
                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: home?.colors[0] || "var(--A-line)"}} />
+                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: home?.colors?.[0] || "var(--A-line)"}} />
                         <span className={`truncate ${myMatch && m.home === career.clubId ? "font-bold" : ""}`}>{home?.short || m.home}</span>
                       </div>
                       <div className="flex flex-col items-center gap-0.5 px-1 flex-shrink-0">
@@ -203,7 +239,7 @@ function FixturesTab({ career, club: _club, league: _league }) {
                       </div>
                       <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
                         <span className={`truncate ${myMatch && m.away === career.clubId ? "font-bold" : ""}`}>{away?.short || m.away}</span>
-                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: away?.colors[0] || "var(--A-line)"}} />
+                        <div className="w-1.5 h-4 rounded-sm flex-shrink-0" style={{background: away?.colors?.[0] || "var(--A-line)"}} />
                       </div>
                     </div>
                   );
@@ -217,7 +253,8 @@ function FixturesTab({ career, club: _club, league: _league }) {
   );
 }
 
-function FinalsTab({ career, league }) {
+function FinalsTab({ league }) {
+  const career = useCareer();
   const results = career.finalsResults || [];
   const alive = new Set(career.finalsAlive || []);
   const seeds = career.finalsBracket?.seeds || career.finalsFinalists || [];
@@ -278,7 +315,8 @@ function FinalsTab({ career, league }) {
   );
 }
 
-function PyramidTab({ career, club, league }) {
+function PyramidTab({ club, league }) {
+  const career = useCareer();
   const myState = club.state;
   // Group leagues by tier
   const byTier = { 1: [], 2: [], 3: [] };
@@ -313,7 +351,7 @@ function PyramidTab({ career, club, league }) {
               </div>
               <div className="flex flex-wrap gap-1 mt-2">
                 {l.clubs.map(c => (
-                  <div key={c.id} className={`px-2 py-1 rounded text-[10px] font-bold ${c.id === career.clubId ? "bg-aaccent text-[#001520]" : ""}`} style={c.id !== career.clubId ? {background: `${c.colors[0]}33`, color: c.colors[1] === "#FFFFFF" ? "var(--A-text)" : c.colors[1], border: `1px solid ${c.colors[0]}66`} : {}}>{c.short}</div>
+                  <div key={c.id} className={`px-2 py-1 rounded text-[10px] font-bold ${c.id === career.clubId ? "bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]" : ""}`} style={c.id !== career.clubId ? {background: `${c.colors?.[0] ?? '#334155'}33`, color: (c.colors?.[1] ?? '') === "#FFFFFF" ? "var(--A-text)" : (c.colors?.[1] ?? 'var(--A-text)'), border: `1px solid ${c.colors?.[0] ?? '#334155'}66`} : {}}>{c.short}</div>
                 ))}
               </div>
             </div>

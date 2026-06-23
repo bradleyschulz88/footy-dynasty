@@ -6,6 +6,7 @@ import { rand, rng, TIER_SCALE } from './rng.js';
 import { selectBalancedLineup } from './lineupBalance.js';
 import { competitionClubsForCareer } from './leagueEngine.js';
 import { LINEUP_CAP } from './lineupHelpers.js';
+import { classifySquadMode } from './draftEngine.js';
 
 const SQUAD_SIZE = 32;
 
@@ -35,11 +36,14 @@ export function aiClubRatingFromSquad(squad) {
   return avgOverall + (avgForm - 70) * 0.10 + (avgFitness - 90) * 0.06;
 }
 
+// Minimum playable squad size — below this, sign emergency walk-ons
+const MIN_SQUAD_SIZE = 22;
+
 // Light weekly tick — recover fitness, decay form, occasionally roll injury
-export function tickAiSquads(aiSquads) {
+export function tickAiSquads(aiSquads, season = 2026) {
   const out = {};
   for (const [id, squad] of Object.entries(aiSquads || {})) {
-    out[id] = squad.map(p => {
+    const updated = squad.map(p => {
       let fitness = Math.min(100, (p.fitness ?? 90) + rand(2, 6));
       let injured = Math.max(0, (p.injured ?? 0) - 1);
       const form = Math.max(40, Math.min(95, (p.form ?? 70) + rand(-3, 3)));
@@ -50,6 +54,20 @@ export function tickAiSquads(aiSquads) {
       }
       return { ...p, fitness, injured, form };
     });
+    // Emergency walk-on replacements when squad is dangerously thin
+    const availableCount = updated.filter(p => (p.injured ?? 0) === 0).length;
+    if (availableCount < MIN_SQUAD_SIZE) {
+      const needed = MIN_SQUAD_SIZE - availableCount;
+      // Use the first player that has a tier field — don't blindly take [0]
+      // which may lack the field if the squad predates the tier property.
+      const tier = updated.find(p => p.tier != null)?.tier ?? 2;
+      for (let i = 0; i < needed; i++) {
+        const slot = Math.floor(rng() * 1e6);
+        const p = generatePlayer(tier, slot, { clubId: id, season });
+        updated.push({ ...p, age: rand(18, 24), fitness: rand(75, 90), form: rand(50, 65), injured: 0 });
+      }
+    }
+    out[id] = updated;
   }
   return out;
 }
@@ -59,6 +77,9 @@ export function ageAiSquads(aiSquads, newLeagueTier, season = 2026) {
   const out = {};
   const tierScale = TIER_SCALE[newLeagueTier] || 1.0;
   for (const [id, squad] of Object.entries(aiSquads || {})) {
+    // AI REALISM: Classify the squad before ageing so mode-aware topup works.
+    const mode = classifySquadMode(squad);
+
     const aged = squad
       .map(p => {
         const newAge = (p.age ?? 24) + 1;
@@ -78,13 +99,30 @@ export function ageAiSquads(aiSquads, newLeagueTier, season = 2026) {
           goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0, injured: 0,
         };
       })
-      .filter(p => p.age <= 36 && p.contract > 0);
+      // Hard ceiling at age 37 (was 36, one extra year grace)
+      .filter(p => p.age <= 37 && p.contract > 0)
+      // AI REALISM: Probabilistic retirement for veterans 33+.
+      // Probability rises steeply with age so squads don't fill up with
+      // 36-year-olds after several seasons.  Threshold: ~20% at 33, ~50% at 35,
+      // ~80% at 37.  Compete-mode clubs hold on a little longer.
+      .filter(p => {
+        if (p.age < 33) return true;
+        const retireChance = Math.min(0.90, Math.max(0, (p.age - 32) * 0.22 - (mode === 'compete' ? 0.10 : 0)));
+        return rng() >= retireChance;
+      });
 
-    // Top up squad to SQUAD_SIZE with younger talent
+    // AI REALISM: Mode-aware topup ages — rebuild clubs sign 18-21-year-olds
+    // as priority; compete clubs add proven mid-20s players; develop is mixed.
+    const topupAgeRange =
+      mode === 'rebuild'  ? [18, 21] :
+      mode === 'compete'  ? [22, 27] :
+      /* develop */         [18, 25];
+
+    // Top up squad to SQUAD_SIZE with appropriately-aged talent
     while (aged.length < SQUAD_SIZE) {
       const slot = Math.floor(rng() * 1e6);
       const p = generatePlayer(newLeagueTier, slot, { clubId: id, season });
-      aged.push({ ...p, age: rand(18, 22) });
+      aged.push({ ...p, age: rand(topupAgeRange[0], topupAgeRange[1]) });
     }
     out[id] = aged;
   }

@@ -1,14 +1,21 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer,
+} from "recharts";
+import FloatingTooltip from '../../components/FloatingTooltip.jsx';
+import { Virtuoso } from 'react-virtuoso';
 import {
   Users, Dumbbell,
   Zap, Heart, Target, Activity, Flame,
   TrendingUp, X,
   ShieldCheck,
   FileText,
-  UserPlus, Wand2,
+  UserPlus, Wand2, ListFilter,
+  ChevronUp, ChevronDown, Search,
 } from "lucide-react";
 import { PYRAMID, findClub } from '../../data/pyramid.js';
-import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash } from '../../lib/playerGen.js';
+import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash, PLAYER_TRAITS } from '../../lib/playerGen.js';
+import { PLAYER_ROLES, roleFit } from '../../lib/playerRoles.js';
 import { fmtK, clamp } from '../../lib/format.js';
 import { TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
 import { css, RatingDot, Pill } from '../../components/primitives.jsx';
@@ -25,14 +32,76 @@ import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, r
 import { trainingStaffSupportLine } from '../../lib/staffModifiers.js';
 import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
 import { RenewalsTab } from "../contracts/ContractRenewals.jsx";
+import PlayerCard3D from "../../components/PlayerCard3D.jsx";
+import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
+import { moraleBand, moraleToneColor, promiseGameTime, backPlayer } from "../../lib/morale.js";
+import { cloneSerializable } from "../../lib/save.js";
+import PlayerContextMenu from "../../components/PlayerContextMenu.jsx";
+
+/** Small morale-state pill for the player card / rows. */
+function MoraleBandPill({ morale }) {
+  const band = moraleBand(morale);
+  return <Pill color={moraleToneColor(band.tone)}>{band.label}</Pill>;
+}
+
+function posBadgeStyle(pos) {
+  if (pos === 'KF' || pos === 'HF') return {background:'color-mix(in srgb,#E84A6F 14%,transparent)',color:'#E84A6F',border:'1px solid color-mix(in srgb,#E84A6F 30%,transparent)'};
+  if (pos === 'HB' || pos === 'KB') return {background:'color-mix(in srgb,#60A5FA 14%,transparent)',color:'#60A5FA',border:'1px solid color-mix(in srgb,#60A5FA 30%,transparent)'};
+  if (pos === 'RU') return {background:'color-mix(in srgb,#A78BFA 14%,transparent)',color:'#A78BFA',border:'1px solid color-mix(in srgb,#A78BFA 30%,transparent)'};
+  if (pos === 'C' || pos === 'R' || pos === 'WG') return {background:'color-mix(in srgb,var(--A-accent) 14%,transparent)',color:'var(--A-accent)',border:'1px solid color-mix(in srgb,var(--A-accent) 30%,transparent)'};
+  return {background:'color-mix(in srgb,#9CA3AF 14%,transparent)',color:'#9CA3AF',border:'1px solid color-mix(in srgb,#9CA3AF 30%,transparent)'};
+}
+
+function ContractChip({ years }) {
+  if (years == null) return null;
+  const color = years <= 0 ? 'var(--A-neg)' : years === 1 ? '#F59E0B' : 'var(--A-pos)';
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[9px] font-mono font-black px-1.5 py-0.5 rounded" style={{background:`color-mix(in srgb,${color} 14%,transparent)`,color,border:`1px solid color-mix(in srgb,${color} 30%,transparent)`}}>
+      {years <= 0 ? 'OOC' : `${years}y`}
+    </span>
+  );
+}
 
 // ============================================================================
 // SHARED TAB NAV
 // ============================================================================
+
+/** True on lg+ screens. Lets us show an inline side panel on desktop but pop a
+ *  modal on phones so a tapped player card appears immediately, not below. */
+function useIsLg() {
+  const [isLg, setIsLg] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches,
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onChange = () => setIsLg(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return isLg;
+}
+
+/** Phone/tablet bottom-sheet that pops the player card immediately on tap. */
+function PlayerCardModal({ player, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="relative w-full sm:max-w-md max-h-[88vh] overflow-y-auto bg-apanel rounded-t-2xl sm:rounded-2xl border border-aline anim-in"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        <PlayerDetail player={player} onClose={onClose} />
+      </div>
+    </div>
+  );
+}
+
 // ============================================================================
 // SQUAD SCREEN — players, tactics, training
 // ============================================================================
-export default function SquadScreen({ career, club, updateCareer, tab, setTab, tutorialActive, onOpenClubStaff, onNavigate }) {
+export default function SquadScreen({ club, tab, setTab, tutorialActive, onOpenClubStaff, onNavigate }) {
+  const career = useCareer();
   const playerRenewals = (career.pendingRenewals || []).filter(r => !r._handled).length;
   const staffRenewals = (career.pendingStaffRenewals || []).filter((r) => !r._handled).length;
   const renewalCount = playerRenewals + staffRenewals;
@@ -45,6 +114,7 @@ export default function SquadScreen({ career, club, updateCareer, tab, setTab, t
       : 'Renewals';
   const tabs = [
     { key: "players",  label: "Players",  icon: Users },
+    { key: "all",      label: "All Players", icon: ListFilter },
     { key: "tactics",  label: "Tactics",  icon: Target },
     { key: "training", label: "Training", icon: Dumbbell },
     { key: "recruit",  label: "Recruit",  icon: UserPlus },
@@ -74,10 +144,11 @@ export default function SquadScreen({ career, club, updateCareer, tab, setTab, t
         tutorialHighlightKey={squadTutorialTab}
         growButtons={false}
       />
-      {t === "players"  && <PlayersTab career={career} updateCareer={updateCareer} />}
-      {t === "tactics"  && <TacticsTab career={career} updateCareer={updateCareer} onOpenClubStaff={onOpenClubStaff} />}
-      {t === "training" && <TrainingTab career={career} updateCareer={updateCareer} onOpenClubStaff={onOpenClubStaff} />}
-      {t === "renewals" && <RenewalsTab career={career} updateCareer={updateCareer} />}
+      {t === "players"  && <PlayersTab onNavigate={onNavigate} />}
+      {t === "all"      && <AllPlayersTab />}
+      {t === "tactics"  && <TacticsTab onOpenClubStaff={onOpenClubStaff} />}
+      {t === "training" && <TrainingTab onOpenClubStaff={onOpenClubStaff} />}
+      {t === "renewals" && <RenewalsTab />}
     </div>
   );
 }
@@ -101,13 +172,89 @@ function FormSparkline({ history, current }) {
   );
 }
 
-function PlayersTab({ career, updateCareer }) {
+function buildContextActions(player, career, updateCareer, onNavigate) {
+  const inLineup = lineupHasPlayer(career.lineup, player.id);
+  const lineupFull = lineupPlayerCount(career.lineup) >= LINEUP_CAP;
+  const morale = player.morale ?? 70;
+
+  return [
+    {
+      id: 'lineup_toggle',
+      label: inLineup ? 'Remove from lineup' : 'Add to lineup',
+      icon: inLineup ? '−' : '+',
+      disabled: !inLineup && lineupFull,
+      onClick: () => {
+        if (inLineup) {
+          updateCareer({ lineup: removeIdFromLineup(career.lineup, player.id) });
+        } else {
+          updateCareer({ lineup: [...(career.lineup || []), player.id] });
+        }
+      },
+    },
+    {
+      id: 'promise_gametime',
+      label: 'Promise game time',
+      icon: '🤝',
+      disabled: morale >= 75,
+      onClick: () => {
+        const next = cloneSerializable(career);
+        const p = next.squad.find(sp => sp.id === player.id);
+        if (p) {
+          p.morale = Math.min(100, (p.morale ?? 70) + 10);
+          p.transferRequested = false;
+          p.unhappySince = null;
+          next.news = [{ week: next.week, type: 'info', text: `🤝 Promised game time to ${p.firstName} ${p.lastName} — morale boosted.` }, ...(next.news || [])].slice(0, 20);
+        }
+        updateCareer(next);
+      },
+    },
+    {
+      id: 'back_player',
+      label: 'Back player publicly',
+      icon: '📢',
+      disabled: morale >= 80,
+      onClick: () => {
+        const next = cloneSerializable(career);
+        const p = next.squad.find(sp => sp.id === player.id);
+        if (p) {
+          p.morale = Math.min(100, (p.morale ?? 70) + 6);
+          next.news = [{ week: next.week, type: 'info', text: `📢 Publicly backed ${p.firstName} ${p.lastName} — the dressing room noticed.` }, ...(next.news || [])].slice(0, 20);
+        }
+        updateCareer(next);
+      },
+    },
+    {
+      id: 'view_contract',
+      label: 'View contract',
+      icon: '📋',
+      onClick: () => onNavigate?.('squad'),
+    },
+    {
+      id: 'request_trade',
+      label: player.listTeam === career.clubId ? 'List for trade' : 'Offer to clubs',
+      icon: '↔',
+      disabled: career.phase !== 'trade_period' && career.phase !== 'pre_season',
+      onClick: () => onNavigate?.('recruit'),
+    },
+  ];
+}
+
+function PlayersTab({ onNavigate }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const [sort, setSort] = useState("overall");
   const [filterPos, setFilterPos] = useState("ALL");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selected, setSelected] = useState(null);
-  const rowHoverBg = 'rgba(13, 148, 136, 0.06)';
-  const rowSelectBg = 'rgba(13, 148, 136, 0.1)';
+  const [contextMenu, setContextMenu] = useState(null);
+  const isLg = useIsLg();
+  const rowHoverBg = 'color-mix(in srgb, var(--A-accent) 6%, transparent)';
+  const rowSelectBg = 'color-mix(in srgb, var(--A-accent) 10%, transparent)';
+
+  const handlePlayerRightClick = (e, player) => {
+    e.preventDefault();
+    setContextMenu({ player, pos: { x: e.clientX, y: e.clientY } });
+  };
   const name = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || ""));
 
   const sortedFullSquad = useMemo(() => {
@@ -144,7 +291,7 @@ function PlayersTab({ career, updateCareer }) {
 
   const filterChip = (active) =>
     active
-      ? "bg-[linear-gradient(135deg,var(--A-accent),#0099b0)] text-[#001520] border-transparent shadow-[0_1px_6px_rgba(0,224,255,0.2)]"
+      ? "border-transparent"
       : "bg-apanel border border-aline text-atext-dim hover:border-aaccent/35";
 
   return (
@@ -159,8 +306,6 @@ function PlayersTab({ career, updateCareer }) {
           </p>
         </div>
         <SquadLineupBuilder
-          career={career}
-          updateCareer={updateCareer}
           benchPlayerIds={benchPlayerIds}
           stitch={false}
           onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
@@ -184,16 +329,23 @@ function PlayersTab({ career, updateCareer }) {
             <div>
               <div className={`${css.label} mb-1.5`}>Position</div>
               <div className="flex flex-wrap gap-1.5">
-                {["ALL", ...POSITIONS].map((pos) => (
+                {["ALL", ...POSITIONS].map((pos) => {
+                  const active = filterPos === pos;
+                  return (
                   <button
                     key={pos}
                     type="button"
                     onClick={() => setFilterPos(pos)}
-                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(filterPos === pos)}`}
+                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(active)}`}
+                    style={active ? {
+                      background: "var(--A-accent)",
+                      color: "var(--fd-on-accent, #0A0D0C)",
+                      boxShadow: "0 1px 6px color-mix(in srgb, var(--A-accent) 30%, transparent)",
+                    } : {}}
                   >
                     {pos}
                   </button>
-                ))}
+                );})}
               </div>
             </div>
             <div>
@@ -205,16 +357,23 @@ function PlayersTab({ career, updateCareer }) {
                   { key: "bench", label: "Not in 23" },
                   { key: "injured", label: "Out" },
                   { key: "rookies", label: "Rookies" },
-                ].map(({ key, label }) => (
+                ].map(({ key, label }) => {
+                  const active = filterStatus === key;
+                  return (
                   <button
                     key={key}
                     type="button"
                     onClick={() => setFilterStatus(key)}
-                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(filterStatus === key)}`}
+                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(active)}`}
+                    style={active ? {
+                      background: "var(--A-accent)",
+                      color: "var(--fd-on-accent, #0A0D0C)",
+                      boxShadow: "0 1px 6px color-mix(in srgb, var(--A-accent) 30%, transparent)",
+                    } : {}}
                   >
                     {label}
                   </button>
-                ))}
+                );})}
               </div>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1 border-t border-aline/70">
@@ -239,126 +398,358 @@ function PlayersTab({ career, updateCareer }) {
     <div className="flex flex-col lg:flex-row gap-5 lg:gap-6">
       <div className="flex-1 min-w-0">
         <>
-        <div className="md:hidden space-y-2 max-h-[65vh] overflow-y-auto px-0.5 [scrollbar-width:thin]">
-          {players.map((p) => {
-            const inLineup = lineupHasPlayer(career.lineup, p.id);
-            const isSelected = selected?.id === p.id;
-            const formColor = p.form >= 75 ? "var(--A-pos)" : p.form >= 55 ? "var(--A-accent)" : "var(--A-neg)";
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setSelected(isSelected ? null : p)}
-                className="w-full text-left rounded-xl p-3 border transition-all touch-manipulation"
-                style={{
-                  borderColor: isSelected ? "var(--A-accent)" : "var(--A-line)",
-                  background: isSelected ? rowSelectBg : "var(--A-panel)",
-                }}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-atext truncate">{pName(p)}</div>
-                    <div className="text-[10px] text-atext-mute">{formatPositionSlash(p)} · age {p.age}</div>
+        <div className="md:hidden px-0.5">
+          <Virtuoso
+            style={{ height: '420px' }}
+            data={players}
+            itemContent={(_, p) => {
+              const inLineup = lineupHasPlayer(career.lineup, p.id);
+              const isSelected = selected?.id === p.id;
+              const formColor = p.form >= 75 ? "var(--A-pos)" : p.form >= 55 ? "var(--A-accent)" : "var(--A-neg)";
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSelected(isSelected ? null : p)}
+                  onContextMenu={(e) => handlePlayerRightClick(e, p)}
+                  className="w-full text-left rounded-xl p-3 border transition-all touch-manipulation mb-2"
+                  style={{
+                    borderColor: isSelected ? "var(--A-accent)" : "var(--A-line)",
+                    background: isSelected ? rowSelectBg : "var(--A-panel)",
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-atext truncate">{pName(p)}</div>
+                      <div className="text-[10px] text-atext-mute flex items-center gap-1.5 flex-wrap"><span className="inline-flex items-center text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span> · {POSITION_NAMES[p.position]} · age {p.age}</div>
+                    </div>
+                    <RatingDot value={p.overall} size="sm" />
                   </div>
-                  <RatingDot value={p.overall} size="sm" />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mt-2 text-[10px]">
-                  <span className="font-bold" style={{ color: formColor }}>Form {p.form}</span>
-                  {p.formHistory?.length > 0 && <FormSparkline history={p.formHistory} current={p.form} />}
-                  <span className="text-atext-mute">Fitness {p.fitness}</span>
-                  {inLineup && <Pill color="var(--A-pos)">23</Pill>}
-                  {p.injured > 0 && <Pill color="var(--A-neg)">{p.injured}w</Pill>}
-                </div>
-              </button>
-            );
-          })}
+                  <div className="flex flex-wrap items-center gap-2 mt-2 text-[10px]">
+                    <span className="font-bold" style={{ color: formColor }}>Form {p.form}</span>
+                    {p.formHistory?.length > 0 && <FormSparkline history={p.formHistory} current={p.form} />}
+                    <span className="text-atext-mute">Fitness {p.fitness}</span>
+                    {inLineup && <Pill color="var(--A-pos)">23</Pill>}
+                    {p.injured > 0 && <Pill color="var(--A-neg)">{p.injured}w</Pill>}
+                    {p.transferRequested
+                      ? <Pill color="var(--A-neg)">Trade request</Pill>
+                      : (p.morale ?? 75) < 45 && <Pill color={moraleToneColor(moraleBand(p.morale).tone)}>{moraleBand(p.morale).label}</Pill>}
+                  </div>
+                </button>
+              );
+            }}
+          />
         </div>
-        <div className="hidden md:block rounded-2xl overflow-hidden border border-aline shadow-sm">
-          <div className="overflow-x-auto">
-          <div className="grid px-4 py-3 min-w-[720px]" style={{gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
+        <div className="hidden md:block rounded-2xl overflow-x-auto border border-aline shadow-sm">
+          <div>
+          <div className="grid px-4 py-3 min-w-[820px]" style={{gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
             {["#","Player","Pos","Age","OVR","Form","Fitness","Wage","Status"].map((h,i)=>(
               <div key={h} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${i>1?"text-center":""} ${i===7?"text-right":""}`}>{h}</div>
             ))}
           </div>
-          <div className="max-h-[65vh] overflow-y-auto min-w-[820px] [scrollbar-width:thin]" style={{background:"var(--A-panel)"}}>
-            {players.map((p, i) => {
-              const inLineup = lineupHasPlayer(career.lineup, p.id);
-              const isSelected = selected?.id === p.id;
-              const formColor = p.form >= 75 ? "var(--A-pos)" : p.form >= 55 ? "var(--A-accent)" : "var(--A-neg)";
-              const fitColor  = p.fitness >= 80 ? "var(--A-pos)" : p.fitness >= 60 ? "var(--A-accent)" : "var(--A-neg)";
-              return (
-                <button key={p.id} onClick={()=>setSelected(isSelected ? null : p)}
-                  type="button"
-                  className="w-full grid px-4 py-3 transition-all text-left"
-                  style={{
-                    gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem",
-                    borderBottom:"1px solid var(--A-line)",
-                    background: isSelected ? rowSelectBg : "transparent",
-                    borderLeft: isSelected ? "3px solid var(--A-accent)" : "3px solid transparent",
-                  }}
-                  onMouseEnter={e=>{if(!isSelected) e.currentTarget.style.background=rowHoverBg;}}
-                  onMouseLeave={e=>{if(!isSelected) e.currentTarget.style.background="transparent";}}>
-                  <div className="text-atext-mute text-sm font-bold text-left">{i+1}</div>
-                  <div className="flex items-center gap-2 min-w-0 text-left">
-                    {p.injured > 0 && <Heart className="w-3 h-3 flex-shrink-0 text-aneg" />}
-                    {inLineup && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:"var(--A-pos)", boxShadow:"0 0 4px var(--A-pos)"}} />}
-                    <span className="truncate text-sm font-semibold text-atext">{pName(p)}</span>
-                    {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"color-mix(in srgb, var(--A-accent) 13%, transparent)",color:"var(--A-accent)"}}>R</span>}
-                  </div>
-                  <div className="text-center"><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>
-                  <div className="text-center text-sm text-atext-dim">{p.age}</div>
-                  <div className="text-center flex justify-center"><RatingDot value={p.overall} size="sm" /></div>
-                  <div className="flex items-center gap-1">
-                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
-                      <div className="h-full rounded-full" style={{width:`${p.form}%`, background:formColor}} />
+          <div className="min-w-[820px]" style={{background:"var(--A-panel)"}}>
+            <Virtuoso
+              style={{ height: '420px' }}
+              data={players}
+              itemContent={(i, p) => {
+                const inLineup = lineupHasPlayer(career.lineup, p.id);
+                const isSelected = selected?.id === p.id;
+                const formColor = p.form >= 75 ? "var(--A-pos)" : p.form >= 55 ? "var(--A-accent)" : "var(--A-neg)";
+                const fitColor  = p.fitness >= 80 ? "var(--A-pos)" : p.fitness >= 60 ? "var(--A-accent)" : "var(--A-neg)";
+                return (
+                  <button key={p.id} onClick={()=>setSelected(isSelected ? null : p)}
+                    onContextMenu={(e) => handlePlayerRightClick(e, p)}
+                    type="button"
+                    className="w-full grid px-4 py-3 transition-all text-left"
+                    style={{
+                      gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem",
+                      borderBottom:"1px solid var(--A-line)",
+                      background: isSelected ? rowSelectBg : "transparent",
+                      borderLeft: isSelected ? "3px solid var(--A-accent)" : "3px solid transparent",
+                    }}
+                    onMouseEnter={e=>{if(!isSelected){e.currentTarget.style.background=rowHoverBg; e.currentTarget.style.borderLeft='3px solid color-mix(in srgb,var(--A-accent) 45%,transparent)';}}}
+                    onMouseLeave={e=>{if(!isSelected){e.currentTarget.style.background='transparent'; e.currentTarget.style.borderLeft='3px solid transparent';}}}>
+                    <div className="text-atext-mute text-sm font-bold text-left">{i+1}</div>
+                    <div className="flex items-center gap-2 min-w-0 text-left">
+                      {p.injured > 0 && <Heart className="w-3 h-3 flex-shrink-0 text-aneg" />}
+                      {inLineup && <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:"var(--A-pos)", boxShadow:"0 0 4px var(--A-pos)"}} />}
+                      <span className="truncate text-sm font-semibold text-atext">{pName(p)}</span>
+                      <span title={PLAYER_TRAITS[p.trait ?? 'grinder']?.label} className="text-[10px] flex-shrink-0">{PLAYER_TRAITS[p.trait ?? 'grinder']?.emoji}</span>
+                      {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{background:"color-mix(in srgb, var(--A-accent) 13%, transparent)",color:"var(--A-accent)"}}>R</span>}
+                      {p.transferRequested
+                        ? <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0 whitespace-nowrap" style={{background:"color-mix(in srgb, var(--A-neg) 14%, transparent)",color:"var(--A-neg)",border:"1px solid color-mix(in srgb, var(--A-neg) 30%, transparent)"}}>TRADE REQ</span>
+                        : (p.morale ?? 75) < 45 && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0 whitespace-nowrap" style={{background:`color-mix(in srgb, ${moraleToneColor(moraleBand(p.morale).tone)} 14%, transparent)`,color:moraleToneColor(moraleBand(p.morale).tone)}}>UNHAPPY</span>}
                     </div>
-                    <span className="text-[10px] font-bold w-6 text-right" style={{color:formColor}}>{p.form}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
-                      <div className="h-full rounded-full" style={{width:`${p.fitness}%`, background:fitColor}} />
+                    <div className="text-center" title={POSITION_NAMES[p.position] + (p.secondaryPosition ? ` / ${POSITION_NAMES[p.secondaryPosition]}` : '')}><span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span></div>
+                    <div className="text-center text-sm text-atext-dim">{p.age}</div>
+                    <div className="text-center flex justify-center"><RatingDot value={p.overall} size="sm" /></div>
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
+                        <div className="h-full rounded-full" style={{width:`${p.form}%`, background:formColor}} />
+                      </div>
+                      <span className="text-[10px] font-bold w-6 text-right" style={{color:formColor}}>{p.form}</span>
                     </div>
-                    <span className="text-[10px] font-bold w-6 text-right" style={{color:fitColor}}>{p.fitness}</span>
-                  </div>
-                  <div className="text-right text-xs font-mono text-atext-dim">{fmtK(p.wage)}</div>
-                  <div className="text-center">
-                    {p.suspended > 0
-                      ? <Pill color="#A78BFA">SUS {p.suspended}w</Pill>
-                      : p.injured > 0
-                        ? <Pill color="var(--A-neg)">{p.injured}w</Pill>
-                        : inLineup
-                          ? <Pill color="var(--A-pos)">23</Pill>
-                          : <span className="text-atext-mute text-xs">—</span>}
-                  </div>
-                </button>
-              );
-            })}
+                    <div className="flex items-center gap-1">
+                      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
+                        <div className="h-full rounded-full" style={{width:`${p.fitness}%`, background:fitColor}} />
+                      </div>
+                      <span className="text-[10px] font-bold w-6 text-right" style={{color:fitColor}}>{p.fitness}</span>
+                    </div>
+                    <div className="text-right text-xs font-mono text-atext-dim">{fmtK(p.wage)}</div>
+                    <div className="text-center flex flex-col items-center gap-0.5">
+                      {p.suspended > 0
+                        ? <Pill color="#A78BFA">SUS {p.suspended}w</Pill>
+                        : p.injured > 0
+                          ? <Pill color="var(--A-neg)">{p.injured}w</Pill>
+                          : inLineup
+                            ? <Pill color="var(--A-pos)">23</Pill>
+                            : <span className="text-atext-mute text-xs">—</span>}
+                      <ContractChip years={p.contract} />
+                    </div>
+                  </button>
+                );
+              }}
+            />
           </div>
           </div>
         </div>
         </>
       </div>
 
-      <div className="w-full lg:w-80 xl:w-72 flex-shrink-0">
-        {selected ? (
-          <PlayerDetail player={selected} career={career} updateCareer={updateCareer} onClose={()=>setSelected(null)} />
-        ) : (
-          <div className="rounded-2xl p-8 text-center border border-aline bg-apanel-2/50 lg:sticky lg:top-20">
-            <Users className="w-10 h-10 mx-auto mb-3 text-aline-2 opacity-80" />
-            <div className="text-sm text-atext-mute font-medium">Select a player</div>
-            <p className="text-[11px] text-atext-mute mt-2 leading-snug">
-              Tap a row or a map slot to open their profile and contract actions.
-            </p>
-          </div>
-        )}
-      </div>
+      {isLg && (
+        <div className="w-80 xl:w-72 flex-shrink-0">
+          {selected ? (
+            <PlayerDetail player={selected} onClose={()=>setSelected(null)} />
+          ) : (
+            <div className="rounded-2xl p-8 text-center border border-aline bg-apanel-2/50 lg:sticky lg:top-20">
+              <Users className="w-10 h-10 mx-auto mb-3 text-aline-2 opacity-80" />
+              <div className="text-sm text-atext-mute font-medium">Select a player</div>
+              <p className="text-[11px] text-atext-mute mt-2 leading-snug">
+                Tap a row or a map slot to open their profile and contract actions.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
       </section>
+      {!isLg && selected && (
+        <PlayerCardModal player={selected} onClose={() => setSelected(null)} />
+      )}
+      {contextMenu && (
+        <PlayerContextMenu
+          player={contextMenu.player}
+          pos={contextMenu.pos}
+          onClose={() => setContextMenu(null)}
+          actions={buildContextActions(contextMenu.player, career, updateCareer, onNavigate)}
+        />
+      )}
     </div>
   );
 }
 
-function PlayerDetail({ player, career, updateCareer, onClose }) {
+const ALL_VIEWS = [
+  { key: "overview",  label: "Overview" },
+  { key: "condition", label: "Condition" },
+  { key: "contracts", label: "Contracts" },
+  { key: "stats",     label: "Season stats" },
+];
+
+function statColor(v) {
+  return v >= 75 ? "var(--A-pos)" : v >= 55 ? "var(--A-accent)" : "var(--A-neg)";
+}
+
+const contractBadge = (out) => (
+  <span
+    className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap"
+    style={out
+      ? { background: "rgba(232,74,111,0.16)", color: "#E84A6F", border: "1px solid rgba(232,74,111,0.4)" }
+      : { background: "rgba(255,179,71,0.14)", color: "#FFB347", border: "1px solid rgba(255,179,71,0.4)" }}
+  >
+    {out ? "Out of contract" : "1y left"}
+  </span>
+);
+
+/**
+ * All Players — a single data-dense grid of the whole list. Toggle the column
+ * group (Overview / Condition / Contracts / Season stats), sort any way, and
+ * click any row to pop the full player card immediately.
+ */
+function AllPlayersTab() {
+  const career = useCareer();
+  const [view, setView] = useState("overview");
+  const [sort, setSort] = useState("overall");
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(null);
+  const nm = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || "Player"));
+
+  const rows = useMemo(() => {
+    let arr = [...(career.squad || [])];
+    arr.sort((a, b) => {
+      switch (sort) {
+        case "name": return nm(a).localeCompare(nm(b));
+        case "age": return (a.age ?? 0) - (b.age ?? 0);
+        case "form": return (b.form ?? 0) - (a.form ?? 0);
+        case "fitness": return (b.fitness ?? 0) - (a.fitness ?? 0);
+        case "morale": return (b.morale ?? 0) - (a.morale ?? 0);
+        case "wage": return (b.wage ?? 0) - (a.wage ?? 0);
+        case "contract": return (a.contract ?? 0) - (b.contract ?? 0);
+        case "potential": return (b.potential ?? 0) - (a.potential ?? 0);
+        case "goals": return (b.goals ?? 0) - (a.goals ?? 0);
+        case "disposals": return (b.disposals ?? 0) - (a.disposals ?? 0);
+        default: return (b.overall ?? 0) - (a.overall ?? 0);
+      }
+    });
+    if (search.trim()) arr = arr.filter(p => nm(p).toLowerCase().includes(search.toLowerCase()));
+    return arr;
+  }, [career.squad, sort, search]);
+
+  const statCell = (v) => <span className="font-bold" style={{ color: statColor(v ?? 0) }}>{v ?? "—"}</span>;
+  const posCell = (p) => <span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap" style={posBadgeStyle(p.position)}>{formatPositionSlash(p)}</span>;
+
+  const columns = {
+    overview: [
+      { head: "Pos", render: posCell },
+      { head: "Age", sortKey: "age", render: (p) => p.age, align: "center" },
+      { head: "OVR", sortKey: "overall", tooltip: "Overall rating (1–99). Squad average shown in hub.", render: (p) => <RatingDot value={p.overall} size="sm" />, align: "center" },
+      { head: "Pot", sortKey: "potential", tooltip: "Potential ceiling. Visible after scouting (approx. ±10).", render: (p) => p.potential ?? "—", align: "center" },
+      { head: "Wage", sortKey: "wage", tooltip: "Weekly wage in $k.", render: (p) => fmtK(p.wage), align: "right" },
+    ],
+    condition: [
+      { head: "Pos", render: posCell },
+      { head: "Form", sortKey: "form", tooltip: "Recent form (0–100). Above 75 = in form. Below 50 = struggling.", render: (p) => statCell(p.form), align: "center" },
+      { head: "Fitness", sortKey: "fitness", tooltip: "Match fitness (0–100). Below 70 risks injury.", render: (p) => statCell(p.fitness), align: "center" },
+      { head: "Morale", sortKey: "morale", tooltip: "Morale (0–100). Below 38 may trigger a transfer request.", render: (p) => statCell(p.morale), align: "center" },
+      { head: "Status", render: (p) => p.suspended > 0 ? <Pill color="#A78BFA">SUS {p.suspended}w</Pill> : p.injured > 0 ? <Pill color="var(--A-neg)">{p.injured}w</Pill> : <span className="text-atext-mute text-xs">Fit</span>, align: "center" },
+    ],
+    contracts: [
+      { head: "Pos", render: posCell },
+      { head: "Age", sortKey: "age", render: (p) => p.age, align: "center" },
+      { head: "Wage", sortKey: "wage", tooltip: "Weekly wage in $k.", render: (p) => fmtK(p.wage), align: "right" },
+      { head: "Yrs", sortKey: "contract", tooltip: "Years remaining on contract. 0 = out of contract (OOC).", render: (p) => `${p.contract ?? 0}y`, align: "center" },
+      { head: "Status", render: (p) => (p.contract ?? 0) <= 1 ? contractBadge((p.contract ?? 0) <= 0) : <span className="text-atext-mute text-xs">Signed</span>, align: "right" },
+    ],
+    stats: [
+      { head: "Pos", render: posCell },
+      { head: "G", sortKey: "goals", tooltip: "Goals kicked this season.", render: (p) => p.goals ?? 0, align: "center" },
+      { head: "B", render: (p) => p.behinds ?? 0, align: "center" },
+      { head: "Disp", sortKey: "disposals", tooltip: "Disposals this season.", render: (p) => p.disposals ?? 0, align: "center" },
+      { head: "Marks", render: (p) => p.marks ?? 0, align: "center" },
+    ],
+  }[view];
+
+  const template = `2rem minmax(140px,1.4fr) ${columns.map(() => "minmax(56px,1fr)").join(" ")}`;
+  const alignCls = (a) => (a === "right" ? "text-right justify-end" : a === "center" ? "text-center justify-center" : "text-left");
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-1">
+        <h3 className={`${css.h1} text-xl md:text-2xl tracking-wide`}>All players</h3>
+        <p className="text-xs text-atext-dim max-w-2xl leading-relaxed">
+          The whole list in one grid. Switch the column group to compare ratings, condition, contracts or season output — then tap anyone to open their card.
+        </p>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-atext-mute pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search players…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full sm:max-w-xs pl-9 pr-4 py-2 rounded-xl border border-aline bg-apanel text-sm text-atext placeholder:text-atext-mute focus:outline-none focus:border-aaccent"
+        />
+      </div>
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5">
+          {ALL_VIEWS.map((v) => (
+            <button
+              key={v.key}
+              type="button"
+              onClick={() => setView(v.key)}
+              className={`text-[11px] px-3 py-1.5 rounded-lg font-bold border transition-all ${
+                view === v.key
+                  ? "border-transparent"
+                  : "bg-apanel border-aline text-atext-dim hover:border-aaccent/35"
+              }`}
+              style={view === v.key ? { background: "var(--A-accent)", color: "var(--fd-on-accent, #0A0D0C)" } : {}}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-2xl overflow-hidden border border-aline">
+        <div className="overflow-x-auto">
+          <div className="grid px-4 py-3 min-w-[640px]" style={{ gridTemplateColumns: template, gap: "0.5rem", background: "var(--A-panel-2)", borderBottom: "1px solid var(--A-line)" }}>
+            <div className="text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute">#</div>
+            <button
+              type="button"
+              onClick={() => setSort("name")}
+              className={`flex items-center gap-0.5 text-[10px] font-black uppercase tracking-[0.15em] transition-colors text-left ${sort === "name" ? "text-aaccent" : "text-atext-mute hover:text-atext"}`}
+            >
+              Player
+              {sort === "name" && <ChevronDown className="w-3 h-3 flex-shrink-0" />}
+            </button>
+            {columns.map((c) => (
+              c.sortKey ? (
+                <FloatingTooltip key={c.head} content={c.tooltip}>
+                  <button
+                    type="button"
+                    onClick={() => setSort(c.sortKey)}
+                    className={`flex items-center gap-0.5 text-[10px] font-black uppercase tracking-[0.15em] transition-colors ${alignCls(c.align)} ${sort === c.sortKey ? "text-aaccent" : "text-atext-mute hover:text-atext"}`}
+                  >
+                    {c.head}
+                    {sort === c.sortKey && (
+                      c.sortKey === "age" || c.sortKey === "contract"
+                        ? <ChevronUp className="w-3 h-3 flex-shrink-0" />
+                        : <ChevronDown className="w-3 h-3 flex-shrink-0" />
+                    )}
+                  </button>
+                </FloatingTooltip>
+              ) : (
+                <FloatingTooltip key={c.head} content={c.tooltip}>
+                  <div className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${alignCls(c.align)}`}>{c.head}</div>
+                </FloatingTooltip>
+              )
+            ))}
+          </div>
+          <div className="max-h-[68vh] overflow-y-auto min-w-[640px] [scrollbar-width:thin]" style={{ background: "var(--A-panel)" }}>
+            {rows.map((p, i) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setSelected(p)}
+                className="w-full grid px-4 py-2.5 text-left transition-colors hover:bg-aaccent/5"
+                style={{ gridTemplateColumns: template, gap: "0.5rem", borderBottom: "1px solid var(--A-line)" }}
+              >
+                <div className="text-atext-mute text-sm font-bold">{i + 1}</div>
+                <div className="flex items-center gap-2 min-w-0">
+                  {p.injured > 0 && <Heart className="w-3 h-3 flex-shrink-0 text-aneg" />}
+                  <span className="truncate text-sm font-semibold text-atext">{nm(p)}</span>
+                  {p.rookie && <span className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0" style={{ background: "color-mix(in srgb, var(--A-accent) 13%, transparent)", color: "var(--A-accent)" }}>R</span>}
+                </div>
+                {columns.map((c) => (
+                  <div key={c.head} className={`flex items-center text-sm text-atext ${alignCls(c.align)}`}>{c.render(p)}</div>
+                ))}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {selected && (
+        <PlayerCardModal player={selected} onClose={() => setSelected(null)} />
+      )}
+    </div>
+  );
+}
+
+function PlayerDetail({ player, onClose }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const inLineup = lineupHasPlayer(career.lineup, player.id);
   const pName = player.firstName ? player.firstName+" "+player.lastName : (player.name||"Player");
   const renewalsLeague = PYRAMID[career.leagueKey];
@@ -406,28 +797,44 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
     updateCareer({ squad: career.squad.filter(p => p.id !== player.id), lineup: removeIdFromLineup(career.lineup, player.id) });
     onClose();
   };
+  // Unhappiness resolution. promiseGameTime also clears any standing trade request
+  // and the matching notification row; backPlayer is a smaller public vote of faith.
+  const resolveUnhappiness = (fn, label) => {
+    const week = career.week ?? 0;
+    const updated = fn(player, week);
+    const squad = career.squad.map((p) => (p.id === player.id ? updated : p));
+    const patch = {
+      squad,
+      news: [{ week, type: 'info', text: `🤝 ${pName}: ${label}.` }, ...(career.news || [])].slice(0, 25),
+    };
+    // Clearing a trade request resolves the bell notification too.
+    if (player.transferRequested && !updated.transferRequested) {
+      patch.inbox = (career.inbox || []).map((m) =>
+        m.id === `transfer_req_${player.id}` ? { ...m, resolved: true, resolvedAt: Date.now() } : m);
+    }
+    updateCareer(patch);
+  };
+  const onPromiseGameTime = () => resolveUnhappiness(promiseGameTime, 'promised more game time');
+  const onBackPlayer = () => resolveUnhappiness(backPlayer, 'publicly backed by the coach');
   const ATTR_COLORS = { kicking:"#4ADBE8", marking:"#4AE89A", handball:"#A78BFA", tackling:"#E84A6F", speed:"var(--A-accent)", endurance:"#4AE89A", strength:"#E84A6F", decision:"#4ADBE8" };
+
+  const detailClub = findClub(career.clubId);
 
   return (
     <div className="rounded-2xl overflow-hidden sticky top-20" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)"}}>
       {/* Header */}
-      <div className="p-4" style={{background:`linear-gradient(135deg, var(--A-panel), var(--A-panel-2))`}}>
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-dim mb-0.5">
-              {POSITION_NAMES[player.position]}{player.secondaryPosition ? ` · ${POSITION_NAMES[player.secondaryPosition]}` : ''}
-            </div>
-            <h3 className="font-display text-2xl text-atext leading-tight truncate">{pName.toUpperCase()}</h3>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className="text-[11px] text-atext-dim">Age {player.age}</span>
-              <span className="text-aline-2">·</span>
-              <span className={`text-[11px] ${player.contract <= 1 ? 'text-[#FFB347] font-bold' : 'text-atext-dim'}`}>{player.contract}yr</span>
-              <span className="text-aline-2">·</span>
-              <span className="text-[11px] text-atext-dim">{fmtK(player.wage)}/yr</span>
-              {player.contract <= 1 && <Pill color="#FFB347">Renew soon</Pill>}
-            </div>
+      <div className="p-3" style={{background:`linear-gradient(135deg, var(--A-panel), var(--A-panel-2))`}}>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-dim truncate">
+            {POSITION_NAMES[player.position]}{player.secondaryPosition ? ` · ${POSITION_NAMES[player.secondaryPosition]}` : ''}
           </div>
-          <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            {player.contract <= 1 && <Pill color="#FFB347">Renew soon</Pill>}
+            {player.trueRating && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{background:"#4ADBE814",color:"#4ADBE8",border:"1px solid #4ADBE830"}}>
+                Scout {player.trueRating}
+              </span>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -436,15 +843,10 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
             >
               <X className="w-4 h-4" />
             </button>
-            <div className="flex flex-col items-center gap-1.5">
-            <RatingDot value={player.overall} size="lg" />
-            {player.trueRating && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{background:"#4ADBE814",color:"#4ADBE8",border:"1px solid #4ADBE830"}}>
-                Scout {player.trueRating}
-              </span>
-            )}
-            </div>
           </div>
+        </div>
+        <div className="mb-3">
+          <PlayerCard3D player={player} club={detailClub} />
         </div>
         {/* Form / Fitness / Morale row */}
         <div className="grid grid-cols-3 gap-2">
@@ -462,29 +864,137 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
                   <FormSparkline history={player.formHistory} current={player.form} />
                 </div>
               )}
+              {l === 'Morale' && (
+                <div className="flex justify-center mt-1.5">
+                  <MoraleBandPill morale={player.morale} />
+                </div>
+              )}
             </div>
           ))}
         </div>
+
+        {/* Morale event log — last few cause-and-effect changes */}
+        {(player.moraleLog?.length > 0 || player.transferRequested) && (
+          <div className="mt-3 rounded-xl p-2.5" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+            <div className="text-[8px] font-black uppercase tracking-widest text-atext-mute mb-1.5">Morale Log</div>
+            {player.transferRequested && (
+              <div className="text-[10px] font-bold text-aneg mb-1.5">🗣️ Has requested a trade — unsettled by limited opportunities.</div>
+            )}
+            {(player.moraleLog || []).slice(0, 4).map((e, i) => {
+              const up = (e.delta ?? 0) >= 0;
+              return (
+                <div key={i} className="flex items-center justify-between gap-2 text-[10px] leading-snug py-0.5">
+                  <span className="text-atext-dim truncate">{e.reason || '—'}</span>
+                  <span className="font-mono font-bold flex-shrink-0" style={{ color: up ? 'var(--A-pos)' : 'var(--A-neg)' }}>
+                    {up ? '+' : ''}{e.delta ?? 0}
+                  </span>
+                </div>
+              );
+            })}
+            {(player.moraleLog?.length ?? 0) === 0 && (
+              <div className="text-[10px] text-atext-mute italic">No recent changes logged.</div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Attributes */}
       <div className="p-4" style={{borderTop:"1px solid var(--A-line)"}}>
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute mb-3">Attributes</div>
-        <div className="space-y-2.5">
+        {/* Radar chart */}
+        <div style={{height:190}}>
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart
+              data={Object.entries(player.attrs).map(([k, v]) => ({
+                attr: k.slice(0,3).toUpperCase(),
+                value: v,
+                fullMark: 100,
+              }))}
+              margin={{top:8,right:16,bottom:8,left:16}}
+            >
+              <PolarGrid stroke="var(--A-line)" strokeOpacity={0.7} />
+              <PolarAngleAxis
+                dataKey="attr"
+                tick={{ fontSize: 9, fill: 'var(--A-text-mute)', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em' }}
+              />
+              <Radar
+                name="attrs"
+                dataKey="value"
+                stroke="var(--A-accent)"
+                strokeWidth={1.5}
+                fill="var(--A-accent)"
+                fillOpacity={0.15}
+                dot={{ r: 2.5, fill: 'var(--A-accent)', strokeWidth: 0 }}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+        {/* Compact numeric grid */}
+        <div className="grid grid-cols-4 gap-1 mt-2">
           {Object.entries(player.attrs).map(([k, v]) => {
             const color = ATTR_COLORS[k] || "var(--A-accent)";
             return (
-              <div key={k} className="flex items-center gap-2">
-                <div className="text-[11px] capitalize font-semibold text-atext-dim w-20 flex-shrink-0">{k}</div>
-                <div className="flex-1 h-2 rounded-full overflow-hidden" style={{background:"var(--A-line)"}}>
-                  <div className="h-full rounded-full transition-all" style={{width:`${v}%`, background:`linear-gradient(90deg,${color}88,${color})`}} />
-                </div>
-                <div className="text-[12px] font-black w-7 text-right" style={{color}}>{v}</div>
+              <div key={k} className="rounded-lg px-1.5 py-1.5 text-center" style={{background:"var(--A-panel)"}}>
+                <div className="text-[8px] font-black uppercase tracking-wider" style={{color:"var(--A-text-mute)"}}>{k.slice(0,3)}</div>
+                <div className="text-[14px] font-black leading-tight tabular-nums" style={{color}}>{v}</div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Career Arc */}
+      {(() => {
+        const age = player.age;
+        let stage, badgeColor, desc, delta;
+        if (age <= 22) {
+          stage = "DEVELOPING"; badgeColor = "#60A5FA";
+          desc = "Expected to improve each season";
+          delta = "+2 to +6 OVR";
+        } else if (age <= 26) {
+          stage = "PRIME"; badgeColor = "var(--A-accent)";
+          desc = "Peak years — compete for selection";
+          delta = "±1 OVR";
+        } else if (age <= 29) {
+          stage = "EXPERIENCED"; badgeColor = "#F59E0B";
+          desc = "Natural decline starting — plan succession";
+          delta = "−1 to −3 OVR";
+        } else {
+          stage = "VETERAN"; badgeColor = "#E84A6F";
+          desc = "Significant decline likely each off-season";
+          delta = "−2 to −6 OVR";
+        }
+        const MIN_AGE = 18, MAX_AGE = 37, SPAN = MAX_AGE - MIN_AGE;
+        const zones = [
+          { from: 18, to: 23, color: "#60A5FA" },
+          { from: 23, to: 27, color: "var(--A-accent)" },
+          { from: 27, to: 30, color: "#F59E0B" },
+          { from: 30, to: 37, color: "#E84A6F" },
+        ];
+        const pct = (a) => `${Math.min(100, Math.max(0, ((a - MIN_AGE) / SPAN) * 100))}%`;
+        const dotPct = Math.min(100, Math.max(0, ((age - MIN_AGE) / SPAN) * 100));
+        return (
+          <div className="px-4 pb-4" style={{borderTop:"1px solid var(--A-line)", paddingTop:"1rem"}}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-atext-mute">Career Arc</div>
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full" style={{background:`color-mix(in srgb, ${badgeColor} 16%, transparent)`, color:badgeColor, border:`1px solid color-mix(in srgb, ${badgeColor} 30%, transparent)`}}>{stage}</span>
+            </div>
+            <div className="relative h-3 rounded-full overflow-visible mb-1" style={{background:"var(--A-line)"}}>
+              <div className="absolute inset-0 rounded-full overflow-hidden">
+                {zones.map((z, zi) => (
+                  <div key={zi} className="absolute top-0 h-full opacity-70" style={{left:pct(z.from), width:`calc(${pct(z.to)} - ${pct(z.from)})`, background:z.color}} />
+                ))}
+              </div>
+              <div className="absolute top-1/2 w-3 h-3 rounded-full border-2 z-10" style={{left:`${dotPct}%`, transform:"translate(-50%, -50%)", background:badgeColor, borderColor:"var(--A-bg)", boxShadow:`0 0 0 2px ${badgeColor}`}} />
+            </div>
+            <div className="flex justify-between text-[8px] text-atext-mute mb-2 mt-1.5">
+              <span>18</span><span>26</span><span>30</span><span>37</span>
+            </div>
+            <div className="text-[10px] text-atext-dim leading-snug">{desc}</div>
+            <div className="mt-1 text-[10px] font-bold" style={{color:badgeColor}}>Next season: {delta}</div>
+          </div>
+        );
+      })()}
 
       {/* Season Stats */}
       <div className="px-4 pb-4" style={{borderTop:"1px solid var(--A-line)", paddingTop:"1rem"}}>
@@ -501,6 +1011,17 @@ function PlayerDetail({ player, career, updateCareer, onClose }) {
 
       {/* Actions */}
       <div className="p-4 space-y-2" style={{borderTop:"1px solid var(--A-line)"}}>
+        {(player.transferRequested || (player.morale ?? 75) < 45) && (
+          <div className="rounded-xl p-2.5 mb-1 space-y-2" style={{ background: 'color-mix(in srgb, var(--A-neg) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--A-neg) 25%, transparent)' }}>
+            <div className="text-[10px] font-bold text-aneg leading-snug">
+              {player.transferRequested ? 'Wants a trade. Win him back:' : 'Mood is dropping — get ahead of it:'}
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={onPromiseGameTime} className={`flex-1 ${css.btnPrimary} text-xs py-2`}>Promise game time</button>
+              <button type="button" onClick={onBackPlayer} className={`flex-1 ${css.btnGhost} text-xs py-2`}>Back publicly</button>
+            </div>
+          </div>
+        )}
         <button onClick={toggleLineup} className={`w-full text-sm font-bold py-2.5 rounded-xl transition-all ${inLineup ? css.btnDanger : css.btnPrimary}`}>
           {inLineup ? "Remove from match squad" : lineupPlayerCount(career.lineup) >= LINEUP_CAP ? "Match squad full" : "Add to match squad"}
         </button>
@@ -535,7 +1056,7 @@ function autoSuggestTactic(avgOvr) {
   return 'defensive';
 }
 
-function ZoneTacticPicker({ zone, label, zoneColor, currentKey, onSelect, players }) {
+function ZoneTacticPicker({ label, zoneColor, currentKey, onSelect, players }) {
   const avgOvr = players.length
     ? Math.round(players.reduce((s, p) => s + (p.overall || 70), 0) / players.length)
     : null;
@@ -573,7 +1094,56 @@ function ZoneTacticPicker({ zone, label, zoneColor, currentKey, onSelect, player
   );
 }
 
-function TacticsTab({ career, updateCareer, onOpenClubStaff }) {
+const ROLE_GRADE_COLOR = { A: 'var(--A-pos)', B: '#64748B', C: 'var(--A-neg)' };
+
+function PlayerRolesPanel({ lineup, playerRoles, onSet }) {
+  const roleEntries = Object.entries(PLAYER_ROLES);
+  return (
+    <div className={`${css.panel} p-5`}>
+      <h3 className={`${css.h1} text-2xl mb-1`}>PLAYER ROLES</h3>
+      <p className="text-xs text-atext-dim mb-4 leading-snug">
+        Assign roles to starters. <span className="text-atext font-semibold">A-grade</span> fits boost your team rating;{' '}
+        <span className="text-atext font-semibold">C-grade</span> mismatches cost you.
+      </p>
+      {lineup.length === 0 ? (
+        <div className="text-[11px] text-atext-dim">No players in your match squad yet.</div>
+      ) : (
+        <div className="space-y-1.5">
+          {lineup.map((p) => {
+            const roleKey = playerRoles[p.id] || 'none';
+            const fit = roleFit(p, roleKey);
+            const showFit = roleKey !== 'none' && PLAYER_ROLES[roleKey]?.attrs?.length;
+            return (
+              <div key={p.id} className={`${css.inset} flex items-center gap-2 p-2`}>
+                <RatingDot value={p.overall} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12px] font-semibold text-atext truncate">{p.name}</div>
+                  <div className="text-[10px] text-atext-dim uppercase tracking-wide">{formatPositionSlash(p) || p.position}</div>
+                </div>
+                {showFit ? (
+                  <Pill color={ROLE_GRADE_COLOR[fit.grade]}>{fit.grade}</Pill>
+                ) : null}
+                <select
+                  value={roleKey}
+                  onChange={(e) => onSet(p.id, e.target.value)}
+                  className="bg-apanel border border-aline rounded-lg text-[11px] text-atext px-2 py-1.5 min-h-[36px] max-w-[150px]"
+                >
+                  {roleEntries.map(([key, r]) => (
+                    <option key={key} value={key}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TacticsTab({ onOpenClubStaff }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const squad = career.squad || [];
   const rawLineup = career.lineup || [];
   const lineup = lineupPlayersOrdered(squad, rawLineup);
@@ -630,6 +1200,9 @@ function TacticsTab({ career, updateCareer, onOpenClubStaff }) {
         )}
       </div>
 
+      <PlayerRolesPanel lineup={lineup} playerRoles={career.playerRoles || {}}
+        onSet={(playerId, roleKey) => updateCareer({ playerRoles: { ...(career.playerRoles || {}), [playerId]: roleKey } })} />
+
     <div className="grid md:grid-cols-2 gap-4">
       <div className={`${css.panel} p-5`}>
         <h3 className={`${css.h1} text-2xl mb-3`}>POSITION DEPTH</h3>
@@ -650,7 +1223,7 @@ function TacticsTab({ career, updateCareer, onOpenClubStaff }) {
         <div className="text-[11px] text-atext-dim mb-4">
           Drag the grip to reorder. Remove with ✕. Add or swap players from <span className="text-atext font-semibold">Squad → Players</span>.
         </div>
-        <LineupSortablePanel career={career} updateCareer={updateCareer} stitch={false} />
+        <LineupSortablePanel stitch={false} />
         <button
           type="button"
           className={`${css.btnGhost} mt-4 text-xs font-bold uppercase tracking-wider min-h-[44px]`}
@@ -666,7 +1239,21 @@ function TacticsTab({ career, updateCareer, onOpenClubStaff }) {
   );
 }
 
-function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
+function trainingPhaseAdvice(career) {
+  const phase = career.phase ?? 'regular';
+  const completedRounds = career.completedRounds ?? 0;
+  const totalRounds = career.league?.rounds ?? career.currentLeague?.rounds ?? 22;
+  const roundsLeft = totalRounds - completedRounds;
+
+  if (phase === 'pre_season')  return { label: 'Pre-season',   advice: 'Push intensity — this is when fitness banks are built. 75–90 recommended.', intensity: 82 };
+  if (phase === 'finals')      return { label: 'Finals block', advice: 'Taper down — freshen the legs, trust the system. 55–65 recommended.',        intensity: 60 };
+  if (roundsLeft <= 3)         return { label: 'End of season','advice': 'Light work — preserve the list. 50–60 recommended.',                        intensity: 55 };
+  return                              { label: 'In-season',    advice: 'Moderate load — match fitness over development. 65–75 recommended.',           intensity: 70 };
+}
+
+function TrainingTab({ onOpenClubStaff }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const t = career.training;
   const focusSum = useMemo(() => Object.values(t.focus || {}).reduce((a, b) => a + b, 0), [t.focus]);
 
@@ -703,7 +1290,16 @@ function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
     updateCareer({ training: { ...t, intensity: preset.intensity, focus: { ...preset.focus } } });
   };
 
-  const today = career.currentDate || `${career.season - 1}-12-01`;
+  const recommendedPreset = () => {
+    const phase = career.phase || 'preseason';
+    const avgAge = (career.squad || []).reduce((s, p) => s + (p.age || 24), 0) / Math.max(1, (career.squad || []).length);
+    if (phase === 'finals') return TRAINING_PRESETS.find(p => p.key === 'maintenance');
+    if (phase === 'season') return TRAINING_PRESETS.find(p => p.key === 'maintenance');
+    if (avgAge <= 23) return TRAINING_PRESETS.find(p => p.key === 'youth');
+    return TRAINING_PRESETS.find(p => p.key === 'preseason');
+  };
+
+  const today = career.currentDate || `${career.season - 1}-11-01`;
   const nextTraining = (career.eventQueue || []).find((e) => e.type === "training" && !e.completed && e.date >= today);
   const nextTrainingInfo = nextTraining ? TRAINING_INFO[nextTraining.subtype] : null;
 
@@ -758,7 +1354,16 @@ function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
         </div>
       </div>
       <div className={`${css.panel} p-4 md:p-5`}>
-        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute mb-2">Quick presets</div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-mute">Quick presets</div>
+          <button
+            type="button"
+            onClick={() => { const rec = recommendedPreset(); if (rec) applyPreset(rec); }}
+            className={`${css.btnPrimary} flex items-center gap-1.5 text-xs px-3 py-2 min-h-[36px]`}
+          >
+            <Wand2 className="w-3.5 h-3.5" /> Recommended
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
           {TRAINING_PRESETS.map((pr) => (
             <button
@@ -786,6 +1391,24 @@ function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
             Intensity scales raw attribute gains on training days — multiplier ≈{" "}
             <span className="text-atext font-mono font-bold">{intMul.toFixed(2)}×</span> (about 1.0 at intensity 60).
           </p>
+          {(() => {
+            const advice = trainingPhaseAdvice(career);
+            return (
+              <div className="rounded-xl px-3 py-2 mb-3 flex items-center justify-between gap-2"
+                style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent">{advice.label}</div>
+                  <div className="text-[11px] text-atext-mute mt-0.5 leading-tight">{advice.advice}</div>
+                </div>
+                <button
+                  onClick={() => updateCareer({ training: { ...t, intensity: advice.intensity } })}
+                  className="text-[11px] px-2 py-1 rounded-lg shrink-0 font-medium"
+                  style={{ background: 'var(--A-accent)', color: '#000' }}>
+                  Apply
+                </button>
+              </div>
+            );
+          })()}
           <div className="flex items-center gap-3 mb-2 py-1">
             <div className={`${css.h1} text-5xl text-aaccent w-20 text-center`}>{t.intensity}</div>
             <div className="flex-1 min-h-[48px] flex flex-col justify-center">
@@ -880,7 +1503,53 @@ function TrainingTab({ career, updateCareer, onOpenClubStaff }) {
           })}
         </div>
       </div>
-    </div>
+      {career.staffMarket?.length > 0 && (
+      <div className="mt-6">
+        <h3 className="text-[11px] font-mono uppercase tracking-widest text-aaccent mb-2">Staff Market</h3>
+        <div className="space-y-2">
+          {career.staffMarket.map(candidate => (
+            <div key={candidate.marketId}
+              className="rounded-xl p-3 flex items-center justify-between gap-3"
+              style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+              <div className="min-w-0">
+                <div className="text-[13px] font-semibold text-atext truncate">{candidate.name}</div>
+                <div className="text-[11px] text-atext-mute mt-0.5">
+                  {candidate.roleLabel} · Rating {candidate.rating}
+                  {candidate.currentRating ? ` (currently ${candidate.currentRating})` : ''}
+                </div>
+                <div className="text-[10px] text-atext-dim mt-0.5">
+                  ${(candidate.wage / 1000).toFixed(0)}k/yr · Sign-on ${(candidate.signingFee / 1000).toFixed(0)}k
+                </div>
+              </div>
+              <button
+                disabled={(career.finance?.cash ?? 0) < candidate.signingFee}
+                onClick={() => {
+                  updateCareer(c => {
+                    if ((c.finance?.cash ?? 0) < candidate.signingFee) return c;
+                    const updatedStaff = (c.staff || []).map(s =>
+                      s.id === candidate.staffId
+                        ? { ...s, name: candidate.name, rating: candidate.rating, wage: candidate.wage, contractYears: candidate.contractYears }
+                        : s
+                    );
+                    const newMarket = (c.staffMarket || []).filter(m => m.marketId !== candidate.marketId);
+                    return {
+                      ...c,
+                      staff: updatedStaff,
+                      staffMarket: newMarket,
+                      finance: { ...c.finance, cash: (c.finance?.cash ?? 0) - candidate.signingFee },
+                    };
+                  });
+                }}
+                className="text-[11px] px-3 py-1.5 rounded-lg shrink-0 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ background: 'var(--A-accent)', color: '#000' }}>
+                Sign
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
   );
 }
 

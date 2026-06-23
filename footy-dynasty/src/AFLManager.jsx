@@ -2,6 +2,7 @@
 import { AnimatePresence, motion, MotionConfig, useReducedMotion } from "motion/react";
 import { seedRng, rng } from "./lib/rng.js";
 import { PYRAMID, findClub } from "./data/pyramid.js";
+import { careerStore } from "./lib/careerStore.js";
 import { generateSquad } from "./lib/playerGen.js";
 import {
   generateFixtures,
@@ -29,6 +30,8 @@ import {
 import { computeInitialCareerBoot } from "./lib/bootCareer.js";
 import { seedNationalDraft } from "./lib/draftSeed.js";
 import { GlobalStyle } from "./components/primitives.jsx";
+import { Toaster } from 'sonner';
+import LandingScreen from "./screens/LandingScreen.jsx";
 import GameOverScreen from "./screens/GameOverScreen.jsx";
 import PostMatchSummary from "./screens/PostMatchSummary.jsx";
 import SeasonSummaryScreen from "./screens/SeasonSummaryScreen.jsx";
@@ -40,22 +43,27 @@ import SackingSequence from './screens/SackingSequence.jsx';
 import VoteOfConfidenceFlow from './screens/VoteOfConfidenceFlow.jsx';
 import BoardMeetingScreen from './screens/BoardMeetingScreen.jsx';
 import ArrivalBriefingFlow from './screens/ArrivalBriefingFlow.jsx';
+import PressConferenceScreen from './screens/PressConferenceScreen.jsx';
+import LegendFarewellScreen from './screens/LegendFarewellScreen.jsx';
 import TutorialOverlay, {
   tutorialAllowsNavigation,
   tutorialMidStepCompleted,
   tutorialLocksAdvanceButton,
 } from './components/TutorialOverlay.jsx';
 import { advanceBlockedByCareerNeeds, applyCareerPatch } from './lib/inbox.js';
+import { hasBlockingNotification, pruneHandledNotifications } from './lib/notifications.js';
 import { HubScreen } from './screens/hub/HubScreen.jsx';
 import AppErrorBoundary from './components/AppErrorBoundary.jsx';
-import { CareerSetup } from './screens/CareerSetupScreen.jsx';
+import { CareerSetup, quickStartCareer } from './screens/CareerSetupScreen.jsx';
 import { Sidebar } from './components/gameChrome/Sidebar.jsx';
+import OvalBackdrop from './components/OvalBackdrop.jsx';
 import { BottomNav } from './components/gameChrome/BottomNav.jsx';
 import { TopBar } from './components/gameChrome/TopBar.jsx';
 import { InboxBanner } from './components/InboxBanner.jsx';
 import { ExportReminderBanner } from './components/ExportReminderBanner.jsx';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.jsx';
 import AdvanceAgendaModal from './components/AdvanceAgendaModal.jsx';
+import CommandPalette from './components/CommandPalette.jsx';
 import { getVisibleAdvanceAgenda, snoozeAdvanceAgendaItems } from './lib/advanceAgenda.js';
 import { recordGameEvent } from './lib/gameAnalytics.js';
 import {
@@ -74,6 +82,7 @@ const ClubScreenLazy = lazy(() => import('./screens/club/ClubScreen.jsx'));
 const RecruitScreenLazy = lazy(() => import('./screens/recruit/RecruitScreen.jsx'));
 const DraftRoomScreenLazy = lazy(() => import('./screens/DraftRoomScreen.jsx'));
 const SettingsScreenLazy = lazy(() => import('./screens/SettingsScreen.jsx'));
+const CareersScreenLazy = lazy(() => import('./screens/careers/CareersScreen.jsx'));
 
 // --- Gameplay systems spec (Sections 1-3) ---
 import { getDifficultyConfig } from "./lib/difficulty.js";
@@ -85,9 +94,10 @@ import {
 import {
   generateJobMarket, takeSeasonOff,
 } from './lib/coachReputation.js';
+import { simulatePartialSeason } from './lib/jobMove.js';
 // --- Finance system rebuild ---
 import { makeStartingFinance, scaledSquadToFitCap } from './lib/finance/engine.js';
-import { buildInitialSponsorOffers } from './lib/finance/sponsors.js';
+import { buildStartingSponsors } from './lib/finance/sponsors.js';
 import {
   ensureCareerBoard,
   resetExecutiveBoard,
@@ -101,13 +111,20 @@ import {
 } from './lib/board.js';
 import { getClubGround } from './data/grounds.js';
 import { buildMatchDayExitPatch } from './lib/matchDayFinalize.js';
-import { advanceCareerNextEvent, triggerSackState, fastForwardFinals } from './lib/careerAdvance.js';
+import { advanceCareerNextEvent, resolveLiveMatchHalfTime, resolveQ3Decision, triggerSackState, fastForwardFinals } from './lib/careerAdvance.js';
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
+import { injectClubTheme, clearClubTheme } from './lib/clubColors.js';
 
-/** Stadium Carbon dark theme — dirB maps --A-* tokens to black + orange palette. */
-function themeWrapperClass() {
-  return 'dirB';
+const THEME_STORAGE_KEY = 'fd-theme';
+
+// The game ships the "Daylight" light theme (dirA) — clean white/teal.
+function resolveThemeClass() {
+  return 'dirA';
+}
+
+function persistTheme() {
+  try { localStorage.setItem(THEME_STORAGE_KEY, 'tactician'); } catch { /* ignore */ }
 }
 
 function AppMotionConfig({ reducedMotion, children }) {
@@ -120,17 +137,46 @@ function AppMotionConfig({ reducedMotion, children }) {
 
 function LazyRouteFallback({ label, reducedMotion }) {
   if (reducedMotion) {
-    return <div className="py-16 text-center text-atext-dim font-mono text-sm">{label}</div>;
+    return (
+      <div className="px-4 py-8 max-w-2xl mx-auto space-y-4">
+        <div className="h-7 w-48 rounded-lg bg-apanel-2" style={{ border: "1px solid var(--A-line)" }} />
+        {[100, 85, 92, 78].map((w, i) => (
+          <div key={i} className="h-5 rounded-md bg-apanel-2" style={{ width: `${w}%`, border: "1px solid var(--A-line)" }} />
+        ))}
+      </div>
+    );
   }
   return (
-    <motion.div
-      className="py-16 text-center text-atext-dim font-mono text-sm"
-      initial={{ opacity: 0.4 }}
-      animate={{ opacity: [0.4, 1, 0.4] }}
-      transition={{ duration: 1.25, repeat: Infinity, ease: "easeInOut" }}
-    >
-      {label}
-    </motion.div>
+    <div className="px-4 py-8 max-w-2xl mx-auto">
+      <style>{`
+        @keyframes fd-shimmer {
+          0%   { background-position: -600px 0; }
+          100% { background-position: 600px 0; }
+        }
+        .fd-skeleton {
+          background: linear-gradient(
+            90deg,
+            var(--A-panel-2) 25%,
+            color-mix(in srgb, var(--A-line-2) 60%, var(--A-panel-2)) 50%,
+            var(--A-panel-2) 75%
+          );
+          background-size: 600px 100%;
+          animation: fd-shimmer 1.5s ease-in-out infinite;
+          border-radius: 8px;
+          border: 1px solid var(--A-line);
+        }
+      `}</style>
+      {/* Header shimmer */}
+      <div className="fd-skeleton h-7 w-48 mb-6" />
+      {/* Content row shimmers */}
+      <div className="space-y-3">
+        <div className="fd-skeleton h-16 w-full" />
+        <div className="fd-skeleton h-12 w-full" style={{ animationDelay: "0.1s" }} />
+        <div className="fd-skeleton h-12 w-[92%]" style={{ animationDelay: "0.2s" }} />
+        <div className="fd-skeleton h-12 w-[85%]" style={{ animationDelay: "0.3s" }} />
+      </div>
+      <div className="mt-4 text-[10px] font-mono uppercase tracking-widest text-atext-mute text-center">{label}</div>
+    </div>
   );
 }
 
@@ -145,19 +191,51 @@ export default function AFLManager() {
 
 function AFLManagerInner() {
   const bootRef = useMemo(() => computeInitialCareerBoot(), []);
+
+  // ── Zustand store (phase 1: AFLManager owns init; components can subscribe directly) ──
+  // All three hook calls must be at the very top — before any early returns.
+  const career = careerStore((s) => s.career);
+  const setCareer = careerStore((s) => s.setCareer);
+  const updateCareer = careerStore((s) => s.updateCareer);
+
+  // Seed the store synchronously on first mount from boot data so the first
+  // render already has the saved career (no null→career flicker).
+  const bootInitRef = useRef(false);
+  if (!bootInitRef.current) {
+    bootInitRef.current = true;
+    if (bootRef.career !== careerStore.getState().career) {
+      careerStore.setState({ career: bootRef.career });
+    }
+  }
+
   const [activeSlot, setActiveSlotState] = useState(() => bootRef.activeSlot);
+  const [showLanding, setShowLanding] = useState(() => !bootRef.career);
   const [showSlotPicker, setShowSlotPicker] = useState(false);
   const [slotMetaTick, setSlotMetaTick] = useState(0);
   const [showPostMatch, setShowPostMatch] = useState(false);
-  const [career, setCareer] = useState(() => bootRef.career);
   const [screen, setScreen] = useState("hub");
   const [tab, setTab] = useState(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
   const [advanceAgendaOpen, setAdvanceAgendaOpen] = useState(false);
   const [advanceAgendaItems, setAdvanceAgendaItems] = useState([]);
   const [pwaNeedsUpdate, setPwaNeedsUpdate] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const installPromptRef = useRef(null);
+
+  const themeClass = resolveThemeClass(career);
+
+  // Persist theme preference to localStorage so it applies before a career loads
+  useEffect(() => {
+    persistTheme(career?.options?.theme ?? 'light');
+  }, [career?.options?.theme]);
+
+  // Inject club colour CSS custom properties when the user's team changes
+  useEffect(() => {
+    if (career?.team) injectClubTheme(career.team);
+    return () => clearClubTheme();
+  }, [career?.team]);
 
   useEffect(() => {
     const handler = () => setPwaNeedsUpdate(true);
@@ -174,6 +252,18 @@ function AFLManagerInner() {
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCmdOpen(v => !v);
+      }
+      if (e.key === 'Escape') setCmdOpen(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
   }, []);
 
   const bumpSlotMeta = useCallback(() => setSlotMetaTick((t) => t + 1), []);
@@ -207,6 +297,49 @@ function AFLManagerInner() {
 
   const advanceToNextEvent = requestAdvance;
 
+  // "Sim to next key moment" — batch through uneventful training days and stop
+  // at the first thing that needs the coach: a match, key event, blocker, or
+  // phase change. Respects the same gates as a normal advance.
+  const quickAdvance = useCallback(() => {
+    const { career: start, setCareer: sc, setScreen: ss, setTab: st } = advanceShellRef.current;
+    if (!start?.clubId) return;
+    if (tutorialLocksAdvanceButton(start) || advanceBlockedByCareerNeeds(start)) return;
+    let cur = start;
+    let navScreen = null;
+    for (let i = 0; i < 30; i++) {
+      const nextEv = (cur.eventQueue || []).find((e) => !e.completed);
+      if (!nextEv) {
+        // Post-season phases advance one step at a time through the normal flow.
+        if (i === 0) performAdvance();
+        return;
+      }
+      let result = null;
+      advanceCareerNextEvent({
+        career: cur,
+        league: PYRAMID[cur.leagueKey],
+        club: findClub(cur.clubId),
+        setCareer: (c) => { result = c; },
+        // Training events nudge back to the hub — only a real navigation
+        // (draft room, etc.) should interrupt the batch.
+        setScreen: (s) => { if (s !== 'hub') navScreen = s; },
+        setTab: st,
+      });
+      if (!result) break;
+      cur = result;
+      const stop =
+        navScreen ||
+        cur.inMatchDay || cur.liveMatch || cur.isSacked || cur.gameOver ||
+        cur.showSeasonSummary || cur.boardCrisis?.phase === 'active' ||
+        cur.boardMeetingBlocking || cur.inFinals ||
+        (cur.postSeasonPhase === 'trade_period' && cur.inTradePeriod) ||
+        advanceBlockedByCareerNeeds(cur) ||
+        nextEv.type !== 'training';
+      if (stop) break;
+    }
+    sc(cur);
+    if (navScreen) ss(navScreen);
+  }, [performAdvance]);
+
   const handleAdvanceAgendaClose = useCallback(() => {
     setAdvanceAgendaOpen(false);
     setAdvanceAgendaItems([]);
@@ -234,6 +367,7 @@ function AFLManagerInner() {
   const completeMatchDay = useCallback((autoAdvanceCalendar = false) => {
     const { career: c, setCareer: sc, setScreen: ss, setTab: st } = advanceShellRef.current;
     if (!c?.clubId) return;
+    if (c.liveMatch) return; // half-time or Q3 pause — coach's call resolves the match first
     const patched = applyCareerPatch(c, buildMatchDayExitPatch);
     const isPreseason = !!c.currentMatchResult?.isPreseason;
     const isFinals = !!c.currentMatchResult?.isFinals;
@@ -295,12 +429,12 @@ function AFLManagerInner() {
   useEffect(() => {
     if (!career || career.tutorialComplete) return;
     const step = career.tutorialStep ?? 0;
-    if (step <= 0 || step >= 6) return;
+    if (step <= 0 || step >= TUTORIAL_STEPS.length) return;
     if (!tutorialMidStepCompleted(step, screen, tab, career)) return;
     const next = step + 1;
     const isDone = next >= TUTORIAL_STEPS.length;
     setCareer((c) => ({ ...c, tutorialStep: next, tutorialComplete: isDone }));
-  }, [career, career?.tutorialStep, career?.tutorialComplete, career?.sponsors, screen, tab]);
+  }, [career, career?.tutorialStep, career?.tutorialComplete, career?.sponsors, screen, tab, setCareer]);
 
   useCareerHtmlDatasetEffect(career);
 
@@ -333,6 +467,7 @@ function AFLManagerInner() {
     onAdvance: advanceToNextEvent,
     onOpenShortcuts: () => setShortcutsOpen(true),
     onNavigateScreen: onNavScreen,
+    onQuickSave: handleQuickSave,
     tutorialStep: career?.tutorialStep,
     tutorialComplete: career?.tutorialComplete,
   });
@@ -395,6 +530,7 @@ function AFLManagerInner() {
     setActiveSlot(null);
     setActiveSlotState(null);
     setCareer(null);
+    setShowLanding(true);
     setScreen('hub');
     setTab(null);
   }
@@ -403,6 +539,21 @@ function AFLManagerInner() {
     if (!career || !activeSlot) return;
     writeSlot(activeSlot, career);
     setSlotMetaTick(t => t + 1);
+  }
+
+  // Ctrl/Cmd+S quick-save — reuses the active-slot writeSlot path and surfaces
+  // a brief confirmation in the news feed. Guarded so it never throws.
+  function handleQuickSave() {
+    try {
+      if (!career || !activeSlot) return;
+      writeSlot(activeSlot, career);
+      setSlotMetaTick(t => t + 1);
+      updateCareer({
+        news: [{ week: career.week, type: 'info', text: '💾 Game saved.' }, ...(career.news || [])].slice(0, 25),
+      });
+    } catch (_) {
+      /* ignore — manual save should never break the app */
+    }
   }
 
   function handleSwitchSlot(slot) {
@@ -434,14 +585,21 @@ function AFLManagerInner() {
   }
 
   // ============== JOB MARKET — accept a new job at a different club ==============
-  function acceptNewJob(offer) {
+  // startMode: 'nextSeason' (default — fresh pre-season, season+1) ·
+  //            'sameSeasonPreseason' (end-of-season move firing after rollover) ·
+  //            'midSeason' (immediate vacancy takeover, this season already underway)
+  function acceptNewJob(offer, opts = {}) {
+    const startMode = opts.startMode || 'nextSeason';
     const newLeague = PYRAMID[offer.leagueKey];
     if (!newLeague) return;
     const newClub = newLeague.clubs.find(c => c.id === offer.clubId);
     if (!newClub) return;
     seedRng(Date.now() % 100000);
     const cfg = getDifficultyConfig(career.difficulty);
-    const newSquad = generateSquad(newClub.id, newLeague.tier, 32, career.season + 1).map(p => ({
+    // Mid-season + end-of-season moves keep the current season number; only a
+    // plain next-season move advances the year.
+    const SEASON = startMode === 'nextSeason' ? career.season + 1 : career.season;
+    const newSquad = generateSquad(newClub.id, newLeague.tier, 32, SEASON).map(p => ({
       ...p,
       // Spec 3F: legacy follows you — premiership winners boost morale, relegation history sows doubt
       morale: clamp((p.morale ?? 70)
@@ -454,8 +612,26 @@ function AFLManagerInner() {
     const newLocalDivision = newLeague.tier === 3 ? localDivisionForClub(newClub.id, offer.leagueKey, newRegionState) : null;
     const compClubsNew = getCompetitionClubs(offer.leagueKey, newRegionState, newLocalDivision);
     const newFixtures = generateFixtures(compClubsNew);
-    const SEASON = career.season + 1;
-    const eventQueue = generateSeasonCalendar(SEASON, compClubsNew, newFixtures, newClub.id);
+    const eventQueue = generateSeasonCalendar(SEASON, compClubsNew, newFixtures, newClub.id, {
+      nationalDraft: newLeague.tier === 1,
+    });
+    // Resolve the calendar position. Mid-season takeover fast-forwards the
+    // calendar to "now" and seeds a believable ladder + record so far.
+    let startWeek = 0;
+    let startPhase = 'preseason';
+    let startDate = `${SEASON - 1}-12-01`;
+    let startLadder = blankLadder(compClubsNew);
+    if (startMode === 'midSeason') {
+      startDate = career.currentDate || startDate;
+      const roundEvents = eventQueue.filter(e => e.type === 'round');
+      const playedRounds = roundEvents.filter(e => e.date < startDate).length;
+      eventQueue.forEach(e => { if (e.date < startDate) e.completed = true; });
+      const sim = simulatePartialSeason(compClubsNew, newFixtures, playedRounds, newLeague.tier, newClub.id);
+      startLadder = sim.ladder;
+      const nextRound = roundEvents.find(e => !e.completed);
+      startWeek = nextRound ? nextRound.round : (roundEvents.length ? roundEvents[roundEvents.length - 1].round : 0);
+      startPhase = playedRounds > 0 ? 'season' : 'preseason';
+    }
     const interviewBump = offer.interviewStartingBoardBonus ?? 0;
     const startingBoard = clamp(
       ((career.coachReputation ?? 30) >= 60 ? 65 : 55) + interviewBump,
@@ -463,7 +639,6 @@ function AFLManagerInner() {
       78,
     );
     const newFinance = makeStartingFinance(newLeague.tier, career.difficulty, startingBoard);
-    const newLadder = blankLadder(compClubsNew);
     const squadForCap = scaledSquadToFitCap({
       clubId: newClub.id,
       leagueKey: offer.leagueKey,
@@ -472,13 +647,7 @@ function AFLManagerInner() {
       squad: newSquad,
     });
     const newLineup = squadForCap.slice().sort((a,b)=>b.overall-a.overall).slice(0, LINEUP_CAP).map(p => p.id);
-    const initialOffers = buildInitialSponsorOffers({
-      leagueTier: newLeague.tier,
-      difficulty: career.difficulty,
-      clubId: newClub.id,
-      ladder: newLadder,
-      coachReputation: career.coachReputation ?? 30,
-    });
+    const initialSponsors = buildStartingSponsors(newLeague.tier);
     const newFacilities = DEFAULT_FACILITIES();
     const newClubGround = getClubGround(newClub, newFacilities.stadium.level, newLeague.tier);
 
@@ -507,19 +676,20 @@ function AFLManagerInner() {
       regionState: newRegionState,
       localDivision: newLocalDivision,
       season:    SEASON,
-      week:      0,
+      week:      startWeek,
       winStreak: 0,
       homeWinStreak: 0,
-      currentDate: `${SEASON - 1}-12-01`,
-      phase:     'preseason',
+      currentDate: startDate,
+      phase:     startPhase,
+      pendingJobOffer: null,
       eventQueue,
       squad:     squadForCap,
       lineup:    newLineup,
       kits:      defaultKits(newClub.colors),
-      ladder:    newLadder,
+      ladder:    startLadder,
       fixtures:  newFixtures,
       finance:   newFinance,
-      sponsors:  [],
+      sponsors:  initialSponsors,
       staff:     generateStaff(newLeague.tier),
       staffTasks: DEFAULT_STAFF_TASKS(),
       facilities: newFacilities,
@@ -530,6 +700,8 @@ function AFLManagerInner() {
       sackingStep: null,
       gameOver:  null,
       jobOffers: [],
+      tier3Div1Titles: 0,
+      lastPromotionPlayoff: null,
       boardWarning: 0,
       boardVotePrepBonus: 0,
       jobMarketRerolls: 0,
@@ -562,7 +734,7 @@ function AFLManagerInner() {
       cashCrisisLevel:            0,
       bankLoan:                   null,
       sponsorRenewalProposals:    [],
-      sponsorOffers:              initialOffers,
+      sponsorOffers:              [],
       expiredSponsorsLastSeason:  [],
       pendingRenewals:            [],
       renewalsClosed:             false,
@@ -586,8 +758,11 @@ function AFLManagerInner() {
         ? { ...generateJournalist(), satisfaction: 65 }
         : generateJournalist(),
       news: [
-        { week: 0, type: 'win', text: `✍️ Welcome to ${newClub.name}, ${career.managerName}. ${offer.chairmanLine.replace(/&ldquo;|&rdquo;|&quot;|"/g, '').trim()}` },
-        { week: 0, type: 'info', text: '🤝 No shirt sponsors signed yet — open the Club tab to review incoming offers.' },
+        { week: startWeek, type: 'win', text: `✍️ Welcome to ${newClub.name}, ${career.managerName}. ${offer.chairmanLine.replace(/&ldquo;|&rdquo;|&quot;|"/g, '').trim()}` },
+        ...(startMode === 'midSeason'
+          ? [{ week: startWeek, type: 'info', text: `🪑 You step in mid-season with the club sitting where they are on the ladder — pick up the run home.` }]
+          : []),
+        { week: startWeek, type: 'info', text: '🤝 No shirt sponsors signed yet — open the Club tab to review incoming offers.' },
       ],
     };
     resetExecutiveBoard(nextCareer, newClub, newLeague, newFinance.boardConfidence);
@@ -600,6 +775,32 @@ function AFLManagerInner() {
     setScreen('hub');
     setTab(null);
   }
+
+  // Route a Job Centre signing by its start timing. Immediate vacancies take you
+  // over now; end-of-season deals are agreed but wait until the season finishes.
+  function handleAcceptJobFromCentre(offer, startType) {
+    if (startType === 'endOfSeason') {
+      updateCareer((c) => ({
+        pendingJobOffer: { ...offer, agreedSeason: c.season },
+        news: [{ week: c.week ?? 0, type: 'info', text: `🤝 You've agreed to take over ${offer.clubName} at season's end — finish strong with ${club?.short || 'your club'}.` }, ...(c.news || [])].slice(0, 20),
+      }));
+      setScreen('hub');
+      setTab(null);
+      return;
+    }
+    acceptNewJob(offer, { startMode: startType === 'immediate' ? 'midSeason' : 'nextSeason' });
+  }
+
+  // End-of-season move: once the agreed season has rolled into the new
+  // pre-season, relocate to the club you committed to.
+  useEffect(() => {
+    const po = career?.pendingJobOffer;
+    if (!po) return;
+    if (career.season > (po.agreedSeason ?? career.season) && career.phase === 'preseason' && !career.isSacked) {
+      acceptNewJob(po, { startMode: 'sameSeasonPreseason' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [career?.season, career?.phase, career?.pendingJobOffer]);
 
   const sortedLadderRows = useMemo(
     () => (career?.ladder?.length ? sortedLadder(career.ladder) : []),
@@ -629,49 +830,89 @@ function AFLManagerInner() {
     });
   }, [career, activeSlot]);
 
+  // Commit a freshly-built career object: allocate a slot, persist, and enter
+  // the hub. Shared by the manual setup flow and one-tap Quick Start.
+  const commitNewCareer = (rawCareer) => {
+    const { _quickStart, ...c } = rawCareer;
+    const meta = readSlotMeta();
+    let slot = activeSlot;
+    if (!slot) {
+      slot = SLOT_IDS.find(s => !meta[s]) || 'A';
+    }
+    setActiveSlot(slot);
+    setActiveSlotState(slot);
+    const initialised = {
+      ...c,
+      saveVersion: SAVE_VERSION,
+      options: {
+        autosave: true,
+        confirmBeforeNewCareer: true,
+        confirmBeforeDeleteSlot: true,
+        uiDensity: 'comfortable',
+        reduceMotion: false,
+        sessionDiagnostics: false,
+        ...(c.options || {}),
+      },
+    };
+    const initLeague = PYRAMID[initialised.leagueKey];
+    const initClubCount =
+      getCompetitionClubs(initialised.leagueKey, initialised.regionState, initialised.localDivision)?.length
+      || initLeague?.clubs?.length
+      || 12;
+    assignDynastyQuestsForSeason(initialised, initLeague?.tier ?? 2, initClubCount);
+    writeSlot(slot, initialised);
+    sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
+    sessionStorage.removeItem(SETUP_SS_KEY);
+    recordGameEvent(initialised, 'career_started', {
+      clubId: initialised.clubId,
+      leagueKey: initialised.leagueKey,
+      difficulty: initialised.difficulty,
+      slot,
+      quickStart: !!_quickStart,
+    });
+    setCareer(initialised);
+    setScreen("hub");
+  };
+
+  const handleQuickStart = () => {
+    try {
+      const c = quickStartCareer({ existingSlots: readSlotMeta() });
+      commitNewCareer({ ...c, _quickStart: true });
+    } catch (err) {
+      console.error('[quickStart] career init error:', err);
+      // Fall back to the manual flow so the player is never stuck.
+      setShowLanding(false);
+    }
+  };
+
+  // ============== LANDING SCREEN ==============
+  if (!career && showLanding) {
+    const slotMeta = readSlotMeta();
+    const hasSaves = SLOT_IDS.some((s) => slotMeta[s]);
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <LandingScreen
+          hasSaves={hasSaves}
+          themeClass={themeClass}
+          onQuickStart={handleQuickStart}
+          onNewCareer={() => setShowLanding(false)}
+          onLoadGame={() => setShowLanding(false)}
+        />
+      </AppMotionConfig>
+    );
+  }
+
   // ============== CAREER SETUP ==============
   if (!career) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <CareerSetup onStart={(c) => {
-          const meta = readSlotMeta();
-          let slot = activeSlot;
-          if (!slot) {
-            slot = SLOT_IDS.find(s => !meta[s]) || 'A';
-          }
-          setActiveSlot(slot);
-          setActiveSlotState(slot);
-          const initialised = {
-            ...c,
-            saveVersion: SAVE_VERSION,
-            options: {
-              autosave: true,
-              confirmBeforeNewCareer: true,
-              confirmBeforeDeleteSlot: true,
-              uiDensity: 'comfortable',
-              reduceMotion: false,
-              sessionDiagnostics: false,
-              ...(c.options || {}),
-            },
-          };
-          const initLeague = PYRAMID[initialised.leagueKey];
-          const initClubCount =
-            getCompetitionClubs(initialised.leagueKey, initialised.regionState, initialised.localDivision)?.length
-            || initLeague?.clubs?.length
-            || 12;
-          assignDynastyQuestsForSeason(initialised, initLeague?.tier ?? 2, initClubCount);
-          writeSlot(slot, initialised);
-          sessionStorage.removeItem(SETUP_SS_KEY_LEGACY);
-          sessionStorage.removeItem(SETUP_SS_KEY);
-          recordGameEvent(initialised, 'career_started', {
-            clubId: initialised.clubId,
-            leagueKey: initialised.leagueKey,
-            difficulty: initialised.difficulty,
-            slot,
-          });
-          setCareer(initialised);
-          setScreen("hub");
-        }} existingSlots={readSlotMeta()} onResume={(slot) => { handleSwitchSlot(slot); }} />
+        <CareerSetup
+          onStart={commitNewCareer}
+          onQuickStart={handleQuickStart}
+          existingSlots={readSlotMeta()}
+          onResume={(slot) => { handleSwitchSlot(slot); }}
+          themeClass={themeClass}
+        />
       </AppMotionConfig>
     );
   }
@@ -680,7 +921,129 @@ function AFLManagerInner() {
   const league = PYRAMID[career.leagueKey];
 
   // ============== UPDATER ==============
-  const updateCareer = (patchOrFn) => setCareer((c) => applyCareerPatch(c, patchOrFn));
+  // updateCareer is hoisted to the top of AFLManagerInner (Zustand hook).
+
+  // Dispatch an action from the notification bell (staff/player/club approaches).
+  function handleNotificationAction(item, actionId) {
+    if (!item) return;
+    // Mark the item handled (with an outcome line) and keep it as history, then
+    // prune so the resolved trail can't grow without bound.
+    const resolve = (c, outcome) =>
+      pruneHandledNotifications(
+        (c.inbox || []).map((m) => (m.id === item.id ? { ...m, resolved: true, resolvedAt: Date.now(), outcome } : m))
+      );
+
+    // Club approach — accept jumps to the new club; decline just clears it.
+    if (item.kind === "job_offer") {
+      if (actionId === "accept") {
+        const offer = item.payload?.offer || career.jobApproach;
+        if (offer) { acceptNewJob(offer); return; }
+      }
+      updateCareer((c) => ({
+        inbox: resolve(c, actionId === "accept" ? "Approach accepted" : "Declined — stayed put"),
+        jobApproach: null,
+        news: [{ week: c.week ?? 0, type: "info", text: actionId === "accept" ? "✅ Approach accepted." : "🤝 You turned down the approach and stayed put." }, ...(c.news || [])].slice(0, 20),
+      }));
+      return;
+    }
+
+    if (item.kind === "player_transfer_request") {
+      const pid = item.payload?.playerId;
+      updateCareer((c) => {
+        const squad = (c.squad || []).map((p) => {
+          if (p.id !== pid) return p;
+          return actionId === "approve"
+            ? { ...p, transferListed: true }
+            : { ...p, morale: Math.max(0, Math.min(100, (p.morale ?? 70) - 4)) };
+        });
+        return {
+          squad,
+          inbox: resolve(c, actionId === "approve" ? `${item.payload?.playerName} transfer-listed` : `Talked ${item.payload?.playerName} round`),
+          news: [{ week: c.week ?? 0, type: "info", text: actionId === "approve"
+            ? `📋 ${item.payload?.playerName} added to the transfer list.`
+            : `🗣️ You talked ${item.payload?.playerName} round — for now.` }, ...(c.news || [])].slice(0, 20),
+        };
+      });
+      return;
+    }
+
+    if (item.kind === "staff_leave" || item.kind === "staff_poach") {
+      const sid = item.payload?.staffId;
+      updateCareer((c) => {
+        const keep = actionId === "renew" || actionId === "match";
+        const staff = keep
+          ? (c.staff || []).map((s) => (s.id === sid ? { ...s, contract: (s.contract ?? 1) + (item.kind === "staff_poach" ? 1 : 2), loyalty: (s.loyalty ?? 0) + 1 } : s))
+          : (c.staff || []).filter((s) => s.id !== sid);
+        return {
+          staff,
+          inbox: resolve(c, keep ? `${item.payload?.staffName} stayed` : `${item.payload?.staffName} left`),
+          news: [{ week: c.week ?? 0, type: "info", text: keep
+            ? `🤝 ${item.payload?.staffName} stays at the club.`
+            : `👋 ${item.payload?.staffName} (${item.payload?.role}) has left the club.` }, ...(c.news || [])].slice(0, 20),
+        };
+      });
+      return;
+    }
+
+    if (item.kind === "volunteer_join") {
+      updateCareer((c) => {
+        const accept = actionId === "accept";
+        const staff = accept && item.payload?.staff ? [...(c.staff || []), item.payload.staff] : (c.staff || []);
+        return {
+          staff,
+          inbox: resolve(c, accept ? `${item.payload?.staff?.name} joined` : "Declined"),
+          news: accept
+            ? [{ week: c.week ?? 0, type: "info", text: `🙌 ${item.payload?.staff?.name} joins as ${item.payload?.staff?.role}.` }, ...(c.news || [])].slice(0, 20)
+            : (c.news || []),
+        };
+      });
+      return;
+    }
+
+    // Tier-3 recruitment: a local player wants to sign on.
+    if (item.kind === "player_join") {
+      updateCareer((c) => {
+        const sign = actionId === "sign";
+        const p = item.payload?.player;
+        const full = (c.squad || []).length >= 40;
+        const added = sign && p && !full ? [...(c.squad || []), p] : (c.squad || []);
+        const name = p ? `${p.firstName} ${p.lastName}` : "the player";
+        return {
+          squad: added,
+          inbox: resolve(c, sign && !full ? `${name} signed` : full ? "List full" : "Declined"),
+          news: sign
+            ? [{ week: c.week ?? 0, type: "info", text: full
+                ? `📋 Couldn't sign ${name} — your list is full.`
+                : `🤝 ${name} (${p?.overall} OVR) signs on at the club.` }, ...(c.news || [])].slice(0, 20)
+            : (c.news || []),
+        };
+      });
+      return;
+    }
+
+    // Tier-3 departure: a player is thinking of walking away.
+    if (item.kind === "player_leave") {
+      const pid = item.payload?.playerId;
+      updateCareer((c) => {
+        const keep = actionId === "convince";
+        const squad = keep
+          ? (c.squad || []).map((p) => (p.id === pid ? { ...p, morale: Math.min(100, (p.morale ?? 70) + 10) } : p))
+          : (c.squad || []).filter((p) => p.id !== pid);
+        return {
+          squad,
+          lineup: keep ? c.lineup : (c.lineup || []).filter((id) => id !== pid),
+          inbox: resolve(c, keep ? `${item.payload?.playerName} stayed` : `${item.payload?.playerName} left`),
+          news: [{ week: c.week ?? 0, type: "info", text: keep
+            ? `🗣️ You talked ${item.payload?.playerName} into staying on.`
+            : `🚶 ${item.payload?.playerName} has left the club.` }, ...(c.news || [])].slice(0, 20),
+        };
+      });
+      return;
+    }
+
+    // Unknown kind — just mark it handled.
+    updateCareer((c) => ({ inbox: resolve(c, "Handled") }));
+  }
 
   const tutorialActive = career && !career.tutorialComplete;
   const visibleAdvanceAgendaCount =
@@ -697,10 +1060,9 @@ function AFLManagerInner() {
   if (career.isSacked) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <SackingSequence
-          career={career}
           club={club}
           onAdvanceStep={(nextStep) => {
             const update = { sackingStep: nextStep };
@@ -738,10 +1100,9 @@ function AFLManagerInner() {
   if (career.gameOver && !career.isSacked) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <GameOverScreen
-          career={career}
           club={club}
           onRestart={() => {
             setActiveSlot(null);
@@ -769,7 +1130,7 @@ function AFLManagerInner() {
   if (career.showPremiershipScreen && career.premiershipMoment) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <motion.div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <motion.div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <PremiershipScreen
             moment={career.premiershipMoment}
@@ -784,7 +1145,7 @@ function AFLManagerInner() {
   if (career.showFinalsQualification && career.finalsQualification) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <motion.div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <motion.div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <FinalsQualificationScreen
             qualification={career.finalsQualification}
@@ -799,10 +1160,9 @@ function AFLManagerInner() {
   if (career.showFinalsEliminated) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <motion.div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <motion.div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <FinalsEliminatedScreen
-            career={career}
             league={league}
             onSimRemainder={() => {
               const next = fastForwardFinals(career, league);
@@ -815,10 +1175,21 @@ function AFLManagerInner() {
     );
   }
 
+  if (career.pendingFarewells?.length > 0) {
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
+          {globalStyle}
+          <LegendFarewellScreen onComplete={() => updateCareer(c => ({ ...c, pendingFarewells: [] }))} />
+        </div>
+      </AppMotionConfig>
+    );
+  }
+
   if (career.showSeasonSummary && career.seasonSummary) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <SeasonSummaryScreen
           summary={career.seasonSummary}
@@ -835,13 +1206,39 @@ function AFLManagerInner() {
   if (career.inMatchDay && career.currentMatchResult) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <MatchDayScreen
           result={career.currentMatchResult}
+          liveMatch={career.liveMatch}
+          squad={career.squad}
+          lineup={career.lineup}
           league={league}
-          career={career}
           club={club}
+          onCoachCall={(callId) => {
+            const { career: c, setCareer: sc } = advanceShellRef.current;
+            if (!c?.liveMatch) return;
+            resolveLiveMatchHalfTime({
+              career: c,
+              league: PYRAMID[c.leagueKey],
+              club: findClub(c.clubId),
+              callId,
+              setCareer: sc,
+            });
+          }}
+          onQ3Decision={({ callId, subOutId, subInId }) => {
+            const { career: c, setCareer: sc } = advanceShellRef.current;
+            if (!c?.liveMatch || c.liveMatch.matchPhase !== 'after_q3') return;
+            resolveQ3Decision({
+              career: c,
+              league: PYRAMID[c.leagueKey],
+              club: findClub(c.clubId),
+              callId,
+              subOutId,
+              subInId,
+              setCareer: sc,
+            });
+          }}
           onContinue={() => {
             if (career.lastMatchSummary && !career.currentMatchResult.isPreseason) {
               setShowPostMatch(true);
@@ -853,6 +1250,7 @@ function AFLManagerInner() {
         {showPostMatch && career.lastMatchSummary && (
           <PostMatchSummary
             summary={career.lastMatchSummary}
+            leagueTier={league?.tier}
             onContinue={() => {
               setShowPostMatch(false);
               const isFinals = career.currentMatchResult?.isFinals;
@@ -865,13 +1263,27 @@ function AFLManagerInner() {
     );
   }
 
+  if (career.pendingPressMoment) {
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
+          {globalStyle}
+          <PressConferenceScreen
+            onComplete={(patch) => {
+              updateCareer({ ...cloneSerializable(career), ...patch });
+            }}
+          />
+        </div>
+      </AppMotionConfig>
+    );
+  }
+
   if (career.boardCrisis?.phase === 'active') {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <VoteOfConfidenceFlow
-          career={career}
           club={club}
           league={league}
           onComplete={({ survived, pitchBonus }) => {
@@ -905,10 +1317,9 @@ function AFLManagerInner() {
   if (career.boardMeetingBlocking) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <BoardMeetingScreen
-          career={career}
           blocking={career.boardMeetingBlocking}
           onChoose={(choiceId) => {
             const draft = cloneSerializable(career);
@@ -929,10 +1340,9 @@ function AFLManagerInner() {
   if (career.arrivalBriefing?.pending) {
     return (
       <AppMotionConfig reducedMotion={motionReduced}>
-        <div className={`${themeWrapperClass()} font-sans min-h-screen`}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <ArrivalBriefingFlow
-          career={career}
           club={club}
           league={league}
           onComplete={(patch) => {
@@ -950,12 +1360,12 @@ function AFLManagerInner() {
 
   return (
     <AppMotionConfig reducedMotion={motionReduced}>
-    <div className={`${themeWrapperClass()} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
+    <div className={`${themeClass} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
       {globalStyle}
-      <Sidebar screen={screen} onNavigate={onNavScreen} club={club} league={league} career={career} myLadderPos={myLadderPos} />
-      <main className="flex-1 overflow-y-auto min-w-0">
+      <OvalBackdrop />
+      <Sidebar screen={screen} onNavigate={onNavScreen} club={club} league={league} myLadderPos={myLadderPos} />
+      <main className="relative flex-1 overflow-y-auto min-w-0">
         <TopBar
-          career={career}
           club={club}
           league={league}
           myLadderPos={myLadderPos}
@@ -967,15 +1377,17 @@ function AFLManagerInner() {
             tutorialLocksAdvanceButton(career)
               ? undefined
               : advanceBlockedByCareerNeeds(career)
-                ? "Finish Club → Board inbox replies, resolve trade-period offers (Recruit → Trades), or clear other blocking inbox items before advancing."
+                ? "Respond to pending notifications (the bell), finish Club → Board inbox replies, or resolve trade-period offers (Recruit → Trades) before advancing."
                 : undefined
           }
           advanceAgendaCount={visibleAdvanceAgendaCount}
-          tutorialSpotlightAdvance={!!tutorialActive && (career.tutorialStep ?? 0) === 6}
+          tutorialSpotlightAdvance={!!tutorialActive && (career.tutorialStep ?? 0) === TUTORIAL_STEPS.length - 1}
+          onNotificationAction={handleNotificationAction}
+          notifOpen={notifOpen}
+          onNotifOpenChange={setNotifOpen}
+          onBlockedAdvance={hasBlockingNotification(career) ? () => setNotifOpen(true) : undefined}
         />
         <InboxBanner
-          career={career}
-          updateCareer={updateCareer}
           onGoRecruit={() => {
             setScreen("recruit");
             setTab("trade");
@@ -986,7 +1398,7 @@ function AFLManagerInner() {
           }}
         />
         <ExportReminderBanner onGoSettings={() => setScreen("settings")} />
-        <div className="p-3 md:p-6 pb-28 md:pb-6 max-w-[1400px] mx-auto">
+        <div className="p-3 md:p-6 md:pb-6 max-w-[1400px] mx-auto" style={{ paddingBottom: 'calc(7rem + env(safe-area-inset-bottom, 0px))' }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={screen}
@@ -998,7 +1410,6 @@ function AFLManagerInner() {
             >
               {screen === "hub" && (
                 <HubScreen
-                  career={career}
                   club={club}
                   league={league}
                   myLadderPos={myLadderPos}
@@ -1006,15 +1417,13 @@ function AFLManagerInner() {
                   setScreen={onNavScreen}
                   setTab={setTab}
                   onAdvance={advanceToNextEvent}
-                  updateCareer={updateCareer}
+                  onQuickAdvance={quickAdvance}
                 />
               )}
               {screen === "squad" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading squad…" reducedMotion={motionReduced} />}>
                   <SquadScreenLazy
-                    career={career}
                     club={club}
-                    updateCareer={updateCareer}
                     tab={tab}
                     setTab={setTab}
                     tutorialActive={tutorialActive}
@@ -1028,15 +1437,13 @@ function AFLManagerInner() {
               )}
               {screen === "schedule" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading calendar…" reducedMotion={motionReduced} />}>
-                  <ScheduleScreenLazy career={career} club={club} league={league} onOpenCompetition={() => onNavScreen("compete")} />
+                  <ScheduleScreenLazy club={club} league={league} onOpenCompetition={() => onNavScreen("compete")} onNavigate={onNavScreen} />
                 </Suspense>
               )}
               {screen === "club" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading club…" reducedMotion={motionReduced} />}>
                   <ClubScreenLazy
-                    career={career}
                     club={club}
-                    updateCareer={updateCareer}
                     tab={tab}
                     setTab={setTab}
                     tutorialActive={tutorialActive}
@@ -1046,9 +1453,7 @@ function AFLManagerInner() {
               {screen === "recruit" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading recruit…" reducedMotion={motionReduced} />}>
                   <RecruitScreenLazy
-                    career={career}
                     club={club}
-                    updateCareer={updateCareer}
                     tab={tab}
                     setTab={setTab}
                     league={league}
@@ -1059,24 +1464,25 @@ function AFLManagerInner() {
               {screen === "draft" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading draft room…" reducedMotion={motionReduced} />}>
                   <DraftRoomScreenLazy
-                    career={career}
                     club={club}
                     league={league}
-                    updateCareer={updateCareer}
                     onExit={() => { setScreen("recruit"); setTab("draft"); }}
                   />
                 </Suspense>
               )}
               {screen === "compete" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading competition…" reducedMotion={motionReduced} />}>
-                  <CompetitionScreenLazy career={career} club={club} league={league} tab={tab} setTab={setTab} onOpenCalendar={() => onNavScreen("schedule")} />
+                  <CompetitionScreenLazy club={club} league={league} tab={tab} setTab={setTab} onOpenCalendar={() => onNavScreen("schedule")} />
+                </Suspense>
+              )}
+              {screen === "careers" && (
+                <Suspense fallback={<LazyRouteFallback label="Loading careers…" reducedMotion={motionReduced} />}>
+                  <CareersScreenLazy club={club} league={league} onAcceptJob={handleAcceptJobFromCentre} />
                 </Suspense>
               )}
               {screen === "settings" && (
                 <Suspense fallback={<LazyRouteFallback label="Loading settings…" reducedMotion={motionReduced} />}>
                   <SettingsScreenLazy
-                    career={career}
-                    updateCareer={updateCareer}
                     activeSlot={activeSlot}
                     onExportCareer={handleExportCareer}
                     onImportCareerFile={handleImportCareerFile}
@@ -1098,12 +1504,21 @@ function AFLManagerInner() {
       <BottomNav
         screen={screen}
         onNavigate={onNavScreen}
-        career={career}
         league={league}
         onAdvance={advanceToNextEvent}
         advanceDisabled={
           tutorialLocksAdvanceButton(career) || advanceBlockedByCareerNeeds(career)
         }
+        advanceDisabledReason={
+          tutorialLocksAdvanceButton(career)
+            ? "Finish the tutorial step first"
+            : hasBlockingNotification(career)
+              ? "Tap the bell — a decision is waiting"
+              : advanceBlockedByCareerNeeds(career)
+                ? "Resolve your inbox / trades first"
+                : undefined
+        }
+        onShowNotifications={hasBlockingNotification(career) ? () => setNotifOpen(true) : undefined}
         advanceAgendaCount={visibleAdvanceAgendaCount}
       />
       {/* Tutorial Overlay (Spec Section 1) */}
@@ -1112,8 +1527,7 @@ function AFLManagerInner() {
           step={career.tutorialStep ?? 0}
           onNext={() => {
             const cur = career.tutorialStep ?? 0;
-            if (cur !== 0) return;
-            const next = 1;
+            const next = cur + 1;
             updateCareer({ tutorialStep: next, tutorialComplete: next >= TUTORIAL_STEPS.length });
           }}
           onSkip={() => updateCareer({ tutorialStep: TUTORIAL_STEPS.length, tutorialComplete: true })}
@@ -1182,15 +1596,33 @@ function AFLManagerInner() {
           </button>
         </div>
       )}
+      <CommandPalette
+        open={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        onNavigate={(key) => {
+          onNavScreen(key);
+        }}
+      />
       <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <AdvanceAgendaModal
         open={advanceAgendaOpen}
-        career={career}
         league={league}
         items={advanceAgendaItems}
         onClose={handleAdvanceAgendaClose}
         onAdvanceAnyway={handleAdvanceAgendaAnyway}
         onGoTo={handleAdvanceAgendaGoTo}
+      />
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: 'var(--A-panel-2)',
+            color: 'var(--A-text)',
+            border: '1px solid var(--A-line)',
+            borderRadius: '12px',
+            fontSize: '13px',
+          },
+        }}
       />
     </div>
     </AppMotionConfig>

@@ -1,6 +1,15 @@
 .cursor/
-.claude/
+.claude/*
+!.claude/skills/
+**/__pycache__/
 .claude-flow/
+.swarm/
 .mcp.json
 CLAUDE.md
 node_modules/
+
+# Local secrets (API keys)
+.env
+.env.local
+mockups/stitch/_*.json
+mockups/stitch/manifest.json

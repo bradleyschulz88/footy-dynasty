@@ -61,7 +61,7 @@ describe('generateSeasonCalendar', () => {
   it('key events have the correct dates', () => {
     const keyEvents = events.filter(ev => ev.type === 'key_event');
     const dates = keyEvents.map(ev => ev.date).sort();
-    expect(dates).toEqual(['2025-12-15', '2026-01-10', '2026-02-15']);
+    expect(dates).toEqual(['2025-11-10', '2025-11-20', '2025-12-15']);
   });
 
   it('exactly 2 preseason_match events exist', () => {

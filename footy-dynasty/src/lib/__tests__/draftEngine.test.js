@@ -121,12 +121,12 @@ describe('draftSeed multi-round', () => {
   const clubIds = league.clubs.map((c) => c.id);
 
   it('seedNationalDraft creates snake order in scouting phase', () => {
-    const career = { clubId: clubIds[0], leagueKey, season: 2026, draftPool: [], draftOrder: [] };
+    const career = { clubId: clubIds[0], leagueKey, season: 2029, draftPool: [], draftOrder: [] };
     seedNationalDraft(career, league, { inaugural: true, force: true });
     expect(career.draftPool.length).toBeGreaterThan(0);
     expect(career.draftOrder.length).toBe(clubIds.length * DRAFT_ROUNDS);
     expect(career.draftOrder[0].round).toBe(1);
     expect(career.draftPhase).toBe('scouting');
-    expect(career.draftStartDate).toBe('2026-01-10');
+    expect(career.draftStartDate).toBe('2028-11-20');
   });
 });

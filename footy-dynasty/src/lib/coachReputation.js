@@ -5,14 +5,47 @@ import { ALL_CLUBS, findLeagueOf } from '../data/pyramid.js';
 import { clamp } from './format.js';
 import { pick } from './rng.js';
 
-export const COACH_TIERS = ['Rookie', 'Journeyman', 'Respected', 'Elite', 'Legend'];
+export const COACH_TIERS = ['Grassroots', 'Rookie', 'Journeyman', 'Respected', 'Elite', 'Legend'];
 
 export function coachTierFromScore(score) {
   if (score >= 80) return 'Legend';
   if (score >= 60) return 'Elite';
   if (score >= 40) return 'Respected';
   if (score >= 20) return 'Journeyman';
-  return 'Rookie';
+  if (score >= 8)  return 'Rookie';
+  return 'Grassroots';
+}
+
+// ---------------------------------------------------------------------------
+// Coaching accreditation — a credential ladder earned by seasons coached.
+// Gates which tiers will even interview you, so you can't leap from a junior
+// club straight to AFL on reputation alone. Earned passively (one notch per
+// season) rather than as a separate mini-game.
+// ---------------------------------------------------------------------------
+export const ACCREDITATION_LEVELS = ['Foundation', 'Level 1', 'Level 2', 'High Performance'];
+
+/** Accreditation index (0-3) from seasons of accreditation accrued. */
+export function accreditationFromSeasons(seasons) {
+  return Math.max(0, Math.min(3, seasons ?? 0));
+}
+
+export function accreditationLabel(index) {
+  return ACCREDITATION_LEVELS[accreditationFromSeasons(index)] || ACCREDITATION_LEVELS[0];
+}
+
+/** Minimum accreditation index a tier requires to interview you. */
+export function minAccreditationForTier(tier) {
+  if (tier === 1) return 2;  // AFL needs Level 2+
+  if (tier === 2) return 1;  // State league needs Level 1+
+  return 0;                  // Community / junior: open to all
+}
+
+/** Starting accreditation index for a career begun at a given tier. */
+export function startingAccreditationForTier(tier) {
+  if (tier === 1) return 3;
+  if (tier === 2) return 2;
+  if (tier === 3) return 1;
+  return 0; // tier 4 grassroots starts at Foundation
 }
 
 // End-of-season reputation adjustment.
@@ -48,10 +81,14 @@ function buildJobListing(club, league, career) {
     ? ['Premiership in 3 seasons', 'Finals every year', 'Full rebuild — patience guaranteed', 'Top-4 inside 2 seasons']
     : league.tier === 2
     ? ['Promotion to AFL within 4 seasons', 'Finals appearance this year', 'Stabilise the club after a turbulent decade', 'Develop home-grown stars']
+    : league.tier === 4
+    ? ['Keep the kids coming back each week', 'Build a winning junior culture', 'Develop players for senior football', 'Get the families involved']
     : ['Restore community pride', 'Win the local flag', 'Bring in young talent', 'Rebuild the senior list from scratch'];
-  const tierWageBase = league.tier === 1 ? 480000 : league.tier === 2 ? 180000 : 65000;
-  const wage = Math.round(tierWageBase * (0.85 + (hash % 30) / 100));
-  const chairmanLine = league.tier === 3
+  const tierWageBase = league.tier === 1 ? 480000 : league.tier === 2 ? 180000 : league.tier === 4 ? 0 : 65000;
+  const wage = league.tier === 4 ? 0 : Math.round(tierWageBase * (0.85 + (hash % 30) / 100));
+  const chairmanLine = league.tier === 4
+    ? `"We need good people who love the game. It's volunteer but we'll look after you."`
+    : league.tier === 3
     ? `"We're a small club with big heart. We'd love to have you on board."`
     : league.tier === 2
     ? `"This club's got history and ambition. We need a coach who can match it."`
@@ -65,7 +102,7 @@ function buildJobListing(club, league, career) {
   ];
   const rosterTags = ['aging', 'young', 'balanced'];
   const mediaHeat = league.tier === 1 ? ['high', 'med', 'high'][hash % 3] : ['low', 'med', 'med'][hash % 3];
-  const minReputation = league.tier === 1 ? 40 : league.tier === 2 ? 24 : 8;
+  const minReputation = league.tier === 1 ? 40 : league.tier === 2 ? 24 : league.tier === 4 ? 0 : 8;
   let interestLabel = 'Shortlisted';
   if (rep >= minReputation + 18) interestLabel = 'Preferred candidate';
   else if (rep < minReputation - 2) interestLabel = 'Long shot';
@@ -89,6 +126,7 @@ function buildJobListing(club, league, career) {
     rosterTag: rosterTags[hash % rosterTags.length],
     mediaHeat,
     minReputation,
+    minAccreditation: minAccreditationForTier(league.tier),
     interestLabel,
     panelTone,
   };
@@ -138,7 +176,7 @@ function appendFallbackJobOffers(career, excludeIds, seenIds, offers, count) {
     const candidates = ALL_CLUBS.filter((c) => {
       if (excludeIds.has(c.id) || seenIds.has(c.id)) return false;
       const lg = findLeagueOf(c.id);
-      return lg && lg.tier === 3;
+      return lg && (lg.tier === 3 || lg.tier === 4);
     });
     if (!candidates.length) break;
     const club = pick(candidates);
@@ -151,13 +189,18 @@ function appendFallbackJobOffers(career, excludeIds, seenIds, offers, count) {
 // Generate available jobs filtered by the coach's tier + current club exclusion.
 export function generateJobMarket(career, options = {}) {
   const tier = coachTierFromScore(career.coachReputation ?? 30);
-  const wantTiers = {
+  // Accreditation gates the ceiling: you can't be offered a tier your
+  // credential doesn't reach yet, no matter how high your reputation.
+  const accred = accreditationFromSeasons(career.coachAccreditation ?? startingAccreditationForTier(findLeagueOf(career.clubId)?.tier ?? 3));
+  const tierAllowed = (t) => accred >= minAccreditationForTier(t);
+  const wantTiers = ({
+    Grassroots:  [4, 4, 4, 4, 4, 3],
     Rookie:      [3, 3, 3, 3, 2, 2, 3],
     Journeyman:  [3, 3, 2, 2, 2, 1, 3, 2],
     Respected:   [2, 2, 2, 1, 1, 2],
     Elite:       [1, 1, 1, 1, 2, 2],
     Legend:      [1, 1, 1, 1, 1, 2, 3],
-  }[tier] || [3, 3];
+  }[tier] || [3, 3]).map((t) => (tierAllowed(t) ? t : (tierAllowed(t + 1) ? t + 1 : Math.max(t, 3))));
 
   const excludeIds = new Set([career.clubId, ...((career.previousClubs || []).slice(-2).map((p) => p.clubId))]);
   const offers = [];
@@ -187,6 +230,27 @@ export function generateJobMarket(career, options = {}) {
     return a.leagueTier - b.leagueTier;
   });
   return offers;
+}
+
+/**
+ * Unsolicited approach gating. A rival club only comes knocking after a truly
+ * dominant season — an undefeated home-and-away campaign. Returns the best
+ * higher-tier listing the coach could step up to, or null when no approach is
+ * warranted. Browsing/applying is always available via {@link generateJobMarket};
+ * this is specifically the "the phone rings on its own" path.
+ */
+export function buildDominantSeasonApproach(career, { losses = 0, games = 0, currentTier = 3 } = {}) {
+  if (games < 10) return null;        // needs a full home-and-away season
+  if (losses > 0) return null;        // must be undefeated
+  if (currentTier <= 1) return null;  // already at the summit
+  const higher = generateJobMarket(career)
+    .filter((o) => o.leagueTier < currentTier)
+    .sort((a, b) => {
+      if (a.leagueTier !== b.leagueTier) return a.leagueTier - b.leagueTier;
+      const rank = (o) => (o.interestLabel === 'Preferred candidate' ? 2 : o.interestLabel === 'Shortlisted' ? 1 : 0);
+      return rank(b) - rank(a);
+    })[0];
+  return higher || null;
 }
 
 // Take-a-season-off recovery: reputation +5, no offers this round.

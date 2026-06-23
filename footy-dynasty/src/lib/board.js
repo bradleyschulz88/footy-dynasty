@@ -8,12 +8,112 @@ import { pushManagerInboxBoardMirror, removeManagerInboxBoardMirrors, pruneStale
 import { getDifficultyConfig } from "./difficulty.js";
 
 const BOARD_ROLE_DEFS = [
-  { role: "Chairman", weight: 2.0, priority: "results", personality: "demanding" },
-  { role: "Football Director", weight: 1.5, priority: "football", personality: "analytical" },
-  { role: "Finance Director", weight: 1.5, priority: "finance", personality: "conservative" },
-  { role: "Community Director", weight: 1.0, priority: "community", personality: "enthusiastic" },
-  { role: "Player Relations Director", weight: 1.0, priority: "players", personality: "empathetic" },
+  { role: "Chairman", weight: 2.0, priority: "results" },
+  { role: "Football Director", weight: 1.5, priority: "football" },
+  { role: "Finance Director", weight: 1.5, priority: "finance" },
+  { role: "Community Director", weight: 1.0, priority: "community" },
+  { role: "Player Relations Director", weight: 1.0, priority: "players" },
 ];
+
+/**
+ * Personality archetypes that flavor each board member's meeting dialogue and
+ * gently colour what they react to. Polish only — no confidence-math changes.
+ */
+export const BOARD_PERSONALITIES = {
+  visionary:    { label: 'Visionary',    blurb: 'Thinks big — rewards ambition and bold moves.' },
+  conservative: { label: 'Conservative', blurb: 'Cautious — values stability over risk.' },
+  analytical:   { label: 'Analytical',   blurb: 'Data-driven — judges by underlying performance.' },
+  passionate:   { label: 'Passionate',   blurb: 'Heart-on-sleeve — swings hard on results and culture.' },
+  frugal:       { label: 'Frugal',       blurb: 'Tight with money — applauds cap discipline.' },
+};
+
+/** Small deterministic string hash → non-negative int (stable per save). */
+function boardHash(str) {
+  let h = 0;
+  const s = String(str ?? "");
+  for (let i = 0; i < s.length; i++) {
+    h = (h * 31 + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+/** Deterministic personality archetype for a given role + clubId. */
+export function personalityForRole(role, clubId) {
+  switch (role) {
+    case "Chairman":
+      // Coin-flip between the two plausible chairman archetypes, stable per save.
+      return boardHash(`${clubId}|${role}`) % 2 === 0 ? "visionary" : "conservative";
+    case "Finance Director":
+      return "frugal";
+    case "Football Director":
+      return "analytical";
+    case "Community Director":
+    case "Player Relations Director":
+      return "passionate";
+    default:
+      return "conservative";
+  }
+}
+
+/**
+ * Backfill personality archetypes onto a board's members (idempotent — only
+ * sets members missing a valid personality). Used by board init and migration.
+ */
+export function assignBoardPersonalities(board, clubId) {
+  const members = board?.members;
+  if (!Array.isArray(members)) return;
+  members.forEach((m) => {
+    if (!m.personality || !BOARD_PERSONALITIES[m.personality]) {
+      m.personality = personalityForRole(m.role, clubId);
+    }
+  });
+}
+
+/** AFL-flavoured boardroom lines keyed by personality × mood. */
+const BOARD_FLAVOR_LINES = {
+  visionary: {
+    warm: ["This is the kind of ambition that builds a dynasty — keep swinging."],
+    neutral: ["I want to see us think bigger than just making up the numbers."],
+    critical: ["I backed a bold vision, not a club drifting sideways."],
+  },
+  conservative: {
+    warm: ["Steady hands, no dramas — exactly how I like the place run."],
+    neutral: ["Let's not get carried away — stability wins flags over time."],
+    critical: ["Too much risk for my liking — we can't keep gambling the club."],
+  },
+  analytical: {
+    warm: ["The underlying numbers back this up — the trend's genuinely good."],
+    neutral: ["Show me the data on list balance before we get excited."],
+    critical: ["The metrics don't lie, and right now they're pointing the wrong way."],
+  },
+  passionate: {
+    warm: ["The members are buzzing — you can feel it around the club!"],
+    neutral: ["The faithful want to see some heart out there, not just structure."],
+    critical: ["This is breaking the supporters' hearts — we owe them better."],
+  },
+  frugal: {
+    warm: ["Inside the cap and in the black — music to my ears."],
+    neutral: ["Every dollar matters — keep that chequebook in your pocket."],
+    critical: ["We are bleeding cash, and that's the fastest way to kill a club."],
+  },
+};
+
+const BOARD_MOODS = new Set(["warm", "neutral", "critical"]);
+
+/**
+ * A short personality-coloured sentence for meeting copy.
+ * @param {object} member  board member ({ personality, mood, ... })
+ * @param {{ mood?: 'warm'|'neutral'|'critical', topic?: string }} [context]
+ * @returns {string}
+ */
+export function boardMemberFlavor(member, context = {}) {
+  const personality =
+    member?.personality && BOARD_PERSONALITIES[member.personality] ? member.personality : "conservative";
+  const moodRaw = context.mood || member?.mood || "neutral";
+  const mood = BOARD_MOODS.has(moodRaw) ? moodRaw : "neutral";
+  const lines = BOARD_FLAVOR_LINES[personality]?.[mood] || BOARD_FLAVOR_LINES.conservative.neutral;
+  return lines[0];
+}
 
 export function defaultBoardShell() {
   return {
@@ -102,6 +202,7 @@ export function ensureCareerBoard(career, club, league) {
     alignBoardMembersToTarget(career.board, career.finance?.boardConfidence ?? 55);
   }
   if (career.board.members.length) {
+    assignBoardPersonalities(career.board, career.clubId);
     recalcBoardConfidence(career);
   }
   pruneStaleBoardMirrors(career);
@@ -115,6 +216,7 @@ export function resetExecutiveBoard(career, club, league, boardConfidence = 55) 
   };
   career.finance = { ...career.finance, boardConfidence: clamp(boardConfidence, 0, 100) };
   if (career.board.members.length) {
+    assignBoardPersonalities(career.board, career.clubId);
     alignBoardMembersToTarget(career.board, career.finance.boardConfidence);
     recalcBoardConfidence(career);
   }
@@ -502,6 +604,33 @@ export function generateSeasonObjectives(career, league) {
   const seasonsManaged = career.coachStats?.seasonsManaged || 1;
   /** @type {object[]} */
   const raw = [];
+  // Tier 4 (junior/grassroots): the parent committee cares about kids playing,
+  // developing, and coming back — not the ladder or the balance sheet.
+  if (league.tier === 4) {
+    raw.push({
+      setBy: "Club President",
+      type: "ladder_position",
+      description: `Finish in the top half (position ${Math.ceil(n / 2)} or better).`,
+      target: Math.ceil(n / 2),
+      confidenceReward: 8,
+      confidencePenalty: -2,
+    });
+    raw.push({
+      setBy: "Welfare Officer",
+      type: "youth_promoted",
+      description: "Develop at least three kids into regular contributors (5+ games each).",
+      target: 3,
+      confidenceReward: 12,
+      confidencePenalty: -3,
+    });
+    career.board.objectives = raw.map((o, i) => ({
+      id: `obj_${season}_${i}`,
+      met: null,
+      current: null,
+      ...o,
+    }));
+    return;
+  }
   if (seasonsManaged >= 3 && league.tier === 1) {
     raw.push({
       setBy: "Chairman",

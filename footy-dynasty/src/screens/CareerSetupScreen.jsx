@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Trophy, ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { Trophy, ChevronRight, ChevronLeft, Check, Zap } from "lucide-react";
 import { STATES, PYRAMID, LEAGUES_BY_STATE, findClub } from "../data/pyramid.js";
 import { generateSquad } from "../lib/playerGen.js";
 import {
@@ -21,7 +21,7 @@ import { getPlayerPrefs, setPlayerPrefs } from "../lib/playerPrefs.js";
 import { DIFFICULTY_IDS, getDifficultyConfig, getDifficultyProfile } from "../lib/difficulty.js";
 import { generateCommittee, generateJournalist, rollPlayerTrait } from "../lib/community.js";
 import { makeStartingFinance, scaledSquadToFitCap } from "../lib/finance/engine.js";
-import { buildInitialSponsorOffers } from "../lib/finance/sponsors.js";
+import { buildStartingSponsors } from "../lib/finance/sponsors.js";
 import { getClubGround } from "../data/grounds.js";
 import { assignDefaultCaptains, defaultClubCulture } from "../lib/gameDepth.js";
 import {
@@ -32,6 +32,7 @@ import {
 import { primeSeasonStoryState } from "../lib/careerAdvance.js";
 import { SETUP_SS_KEY, SLOT_IDS, getLatestSavedSlotMeta, SAVE_VERSION } from "../lib/setupConstants.js";
 import { LINEUP_CAP } from "../lib/lineupHelpers.js";
+import { startingAccreditationForTier } from "../lib/coachReputation.js";
 import { Pill } from "../components/primitives.jsx";
 
 // Per-state colour identity used on selection cards
@@ -115,7 +116,247 @@ const slideIn = {
   transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] },
 };
 
-export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
+// ---------------------------------------------------------------------------
+// Career construction — shared by the manual setup flow and Quick Start.
+// Builds (but does not commit) a brand-new career object. Throws on invalid
+// selections so callers can surface the error.
+// ---------------------------------------------------------------------------
+export function buildNewCareer({
+  clubId,
+  leagueKey,
+  state,
+  localDivision = 5,
+  managerName = "",
+  difficulty = "contender",
+  gameMode = "normal",
+  challengeId = null,
+  existingSlots = {},
+}) {
+  const club = findClub(clubId);
+  const league = PYRAMID[leagueKey];
+  if (!club) throw new Error(`Club not found: ${clubId}`);
+  if (!league) throw new Error(`League not found: ${leagueKey}`);
+  const SEASON = 2026;
+  const cfg = getDifficultyConfig(difficulty);
+  let tunedFinance = makeStartingFinance(league.tier, difficulty, 55);
+  if (gameMode === 'sandbox') {
+    tunedFinance = {
+      ...tunedFinance,
+      cash: Math.round(tunedFinance.cash * 2),
+      boardConfidence: Math.min(95, (tunedFinance.boardConfidence ?? 55) + 18),
+    };
+  } else if (gameMode === 'challenge') {
+    const ch = challengeId || 'under_the_pump';
+    if (ch === 'flag_or_sack') {
+      tunedFinance = {
+        ...tunedFinance,
+        boardConfidence: Math.max(42, (tunedFinance.boardConfidence ?? 55) - 6),
+      };
+    } else if (ch === 'rebuild') {
+      tunedFinance = {
+        ...tunedFinance,
+        cash: Math.round(tunedFinance.cash * 0.85),
+        boardConfidence: Math.min(88, (tunedFinance.boardConfidence ?? 55) + 12),
+      };
+    } else {
+      tunedFinance = {
+        ...tunedFinance,
+        cash: Math.round(tunedFinance.cash * 0.72),
+        boardConfidence: Math.max(38, (tunedFinance.boardConfidence ?? 55) - 14),
+      };
+    }
+  }
+  const tier3KStart = league.tier === 3 ? tier3DivisionCount(leagueKey, state) : 0;
+  const startDiv = league.tier === 3 ? Math.min(localDivision, tier3KStart) : null;
+  const compClubs = getCompetitionClubs(leagueKey, state, startDiv);
+  if (!compClubs.some((row) => row.id === clubId)) throw new Error('Selected club is not in this competition pool.');
+  const ladder0 = blankLadder(compClubs);
+  const squadRaw = generateSquad(clubId, league.tier, 32, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
+  const squad = scaledSquadToFitCap({ clubId, leagueKey, difficulty, finance: tunedFinance, squad: squadRaw });
+  const lineup = squad.slice().sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map(p => p.id);
+  const fixtures = generateFixtures(compClubs);
+  const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId, {
+    nationalDraft: league.tier === 1,
+  });
+  const facilities = DEFAULT_FACILITIES();
+  const clubGround = getClubGround(club, facilities.stadium.level, league.tier);
+  const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
+  const startingSponsors = buildStartingSponsors(league.tier);
+  const newCareer = {
+    managerName: managerName || "Coach",
+    clubId,
+    leagueKey,
+    regionState: state,
+    localDivision: startDiv,
+    season: SEASON,
+    week: 0,
+    currentDate: `${SEASON - 1}-11-01`,
+    phase: 'preseason',
+    eventQueue,
+    lastEvent: null,
+    inMatchDay: false,
+    currentMatchResult: null,
+    squad,
+    lineup,
+    training: DEFAULT_TRAINING(),
+    facilities,
+    finance: tunedFinance,
+    sponsors: startingSponsors,
+    staff: generateStaff(league.tier),
+    staffTasks: DEFAULT_STAFF_TASKS(),
+    kits: defaultKits(club.colors),
+    ladder: ladder0,
+    fixtures,
+    tradePool: generateTradePool(leagueKey, SEASON),
+    draftPool: [],
+    youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
+    news: [
+      { week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` },
+      { week: 0, type: "info", text: "🤝 One local sponsor is on the books. Win games and build the club's reputation to attract bigger backers." },
+      ...(gameMode === 'sandbox'
+        ? [{ week: 0, type: 'info', text: '🧪 Sandbox: boosted treasury & board patience — sacks and confidence votes are disabled.' }]
+        : []),
+      ...(gameMode === 'challenge'
+        ? [{ week: 0, type: 'board', text: '🔥 Challenge — Under the pump: leaner cash and a jumpy board from day one.' }]
+        : []),
+    ],
+    weeklyHistory: [],
+    inFinals: false,
+    finalsRound: 0,
+    finalsFixtures: [],
+    finalsResults: [],
+    premiership: null,
+    tacticChoice: "balanced",
+    seasonHistory: [],
+    saveVersion: SAVE_VERSION,
+    aiSquads: {},
+    draftOrder: [],
+    history: [],
+    brownlow: {},
+    boardWarning: 0,
+    gameOver: null,
+    themeMode: 'A',
+    options: {
+      autosave: true,
+      confirmBeforeNewCareer: true,
+      confirmBeforeDeleteSlot: true,
+      uiDensity: 'comfortable',
+      reduceMotion: false,
+      theme: (() => { try { return localStorage.getItem('fd-theme') ?? 'light'; } catch { return 'light'; } })(),
+    },
+    pendingTradeOffers: [],
+    inbox: [],
+    retiredThisSeason: [],
+    difficulty,
+    gameMode,
+    challengeId: gameMode === 'challenge' ? (challengeId || 'under_the_pump') : null,
+    challengeGoal: gameMode === 'challenge' ? challengeId : null,
+    tutorialStep: isFirstCareer && cfg.tutorialPolicy !== 'never' ? 0 : 6,
+    tutorialComplete: !(isFirstCareer && cfg.tutorialPolicy !== 'never'),
+    isFirstCareer,
+    committee: generateCommittee(league.tier),
+    footyTripAvailable: false,
+    footyTripUsed: false,
+    groundCondition: 85,
+    clubGround,
+    groundName: clubGround.shortName,
+    weeklyWeather: {},
+    winStreak: 0,
+    homeWinStreak: 0,
+    coachReputation: league.tier === 4 ? 5 : 30,
+    coachTier: league.tier === 4 ? 'Grassroots' : 'Journeyman',
+    coachAccreditation: startingAccreditationForTier(league.tier),
+    tier3Div1Titles: 0,
+    lastPromotionPlayoff: null,
+    coachStats: {
+      totalWins: 0, totalLosses: 0, totalDraws: 0,
+      premierships: 0, promotions: 0, relegations: 0,
+      clubsManaged: 1, seasonsManaged: 1,
+    },
+    previousClubs: [],
+    isSacked: false,
+    jobMarketOpen: false,
+    sackingStep: null,
+    jobOffers: [],
+    boardVotePrepBonus: 0,
+    jobMarketRerolls: 0,
+    arrivalBriefing: null,
+    journalist: generateJournalist(),
+    lastBoardConfidenceDelta: 0,
+    lastMatchSummary: null,
+    lastFinanceTickWeek: null,
+    lastFinanceTickDay: null,
+    cashCrisisStartWeek: null,
+    cashCrisisLevel: 0,
+    bankLoan: null,
+    sponsorRenewalProposals: [],
+    sponsorOffers: [],
+    expiredSponsorsLastSeason: [],
+    pendingRenewals: [],
+    renewalsClosed: false,
+    pendingStaffRenewals: [],
+    fundraisersUsed: {},
+    communityGrantUsed: false,
+    lastEosFinance: null,
+    postSeasonPhase: 'none',
+    inTradePeriod: false,
+    tradePeriodDay: 0,
+    freeAgencyOpen: false,
+    postSeasonDraftCountdown: null,
+    freeAgentBalance: { gained: 0, lost: 0 },
+    tradeHistory: [],
+    draftPickBank: null,
+    offSeasonFreeAgents: [],
+    clubCulture: defaultClubCulture(),
+    headToHead: {},
+    finalsRivalryLog: [],
+    captainId: null,
+    viceCaptainId: null,
+    captainHistory: [],
+    bogeyTeamId: null,
+    dominatedTeamId: null,
+    crucialFive: [],
+    crisisFiredThisSeason: false,
+    teamStats: null,
+    retiredPlayers: [],
+  };
+  assignDefaultCaptains(newCareer);
+  ensureCareerBoard(newCareer, club, league);
+  generateSeasonObjectives(newCareer, league);
+  planSeasonBoardMeetings(newCareer);
+  primeSeasonStoryState(newCareer);
+  // First-ever draft is fully scouted so new players can read the board.
+  seedNationalDraft(newCareer, league, { inaugural: true, force: true, revealAll: true });
+  return newCareer;
+}
+
+// Curated beginner default: a random Tier-3 community underdog in Victoria on
+// Grassroots difficulty (patient board, low expectations). Picks from a live
+// competition pool so the selection is always valid. Returns a ready career.
+export function quickStartCareer({ existingSlots = {}, managerName = "" } = {}) {
+  const state = "VIC";
+  const tier3Leagues = LEAGUES_BY_STATE(state).filter(l => !l.isAcademy && l.tier === 3);
+  const league = tier3Leagues[0];
+  if (!league) throw new Error("No Tier 3 league available for Quick Start.");
+  const k = tier3DivisionCount(league.key, state) || 1;
+  // Deepest division = lowest pressure, the gentlest possible start.
+  const localDivision = k;
+  const pool = getCompetitionClubs(league.key, state, localDivision);
+  if (!pool.length) throw new Error("No clubs available for Quick Start.");
+  const club = pool[Math.floor(Math.random() * pool.length)];
+  return buildNewCareer({
+    clubId: club.id,
+    leagueKey: league.key,
+    state,
+    localDivision,
+    managerName,
+    difficulty: "grassroots",
+    gameMode: "normal",
+    existingSlots,
+  });
+}
+
+export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResume, themeClass = 'dirV4' }) {
   const saved = loadSetup();
   const [gameMode, setGameMode] = useState(saved.gameMode ?? 'normal');
   const [challengeId, setChallengeId] = useState(saved.challengeId ?? 'under_the_pump');
@@ -157,7 +398,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
   const effectiveTier3Div  = tier === 3 && tier3K ? Math.min(localDivision, tier3K) : localDivision;
   const availableClubs     = leagueKey ? getCompetitionClubs(leagueKey, state, tier === 3 ? effectiveTier3Div : null) : [];
   const availableLeagues   = state ? LEAGUES_BY_STATE(state).filter(l => !l.isAcademy && (tier ? l.tier === tier : true)) : [];
-  const tiersForState      = state ? [1, 2, 3].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t && !l.isAcademy)) : [1, 2, 3];
+  const tiersForState      = state ? [1, 2, 3, 4].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t && !l.isAcademy)) : [1, 2, 3, 4];
 
   function start(e) {
     if (e) e.preventDefault();
@@ -165,193 +406,10 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     setStartError(null);
     setLoading(true);
     try {
-      const club = findClub(clubId);
-      const league = PYRAMID[leagueKey];
-      if (!club) throw new Error(`Club not found: ${clubId}`);
-      if (!league) throw new Error(`League not found: ${leagueKey}`);
-      const SEASON = 2026;
-      const cfg = getDifficultyConfig(difficulty);
-      let tunedFinance = makeStartingFinance(league.tier, difficulty, 55);
-      if (gameMode === 'sandbox') {
-        tunedFinance = {
-          ...tunedFinance,
-          cash: Math.round(tunedFinance.cash * 2),
-          boardConfidence: Math.min(95, (tunedFinance.boardConfidence ?? 55) + 18),
-        };
-      } else if (gameMode === 'challenge') {
-        const ch = challengeId || 'under_the_pump';
-        if (ch === 'flag_or_sack') {
-          tunedFinance = {
-            ...tunedFinance,
-            boardConfidence: Math.max(42, (tunedFinance.boardConfidence ?? 55) - 6),
-          };
-        } else if (ch === 'rebuild') {
-          tunedFinance = {
-            ...tunedFinance,
-            cash: Math.round(tunedFinance.cash * 0.85),
-            boardConfidence: Math.min(88, (tunedFinance.boardConfidence ?? 55) + 12),
-          };
-        } else {
-          tunedFinance = {
-            ...tunedFinance,
-            cash: Math.round(tunedFinance.cash * 0.72),
-            boardConfidence: Math.max(38, (tunedFinance.boardConfidence ?? 55) - 14),
-          };
-        }
-      }
-      const tier3KStart = league.tier === 3 ? tier3DivisionCount(leagueKey, state) : 0;
-      const startDiv = league.tier === 3 ? Math.min(localDivision, tier3KStart) : null;
-      const compClubs = getCompetitionClubs(leagueKey, state, startDiv);
-      if (!compClubs.some((row) => row.id === clubId)) throw new Error('Selected club is not in this competition pool.');
-      const ladder0 = blankLadder(compClubs);
-      const squadRaw = generateSquad(clubId, league.tier, 32, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
-      const squad = scaledSquadToFitCap({ clubId, leagueKey, difficulty, finance: tunedFinance, squad: squadRaw });
-      const lineup = squad.slice().sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map(p => p.id);
-      const fixtures = generateFixtures(compClubs);
-      const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId);
-      const facilities = DEFAULT_FACILITIES();
-      const clubGround = getClubGround(club, facilities.stadium.level, league.tier);
-      const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
-      const startOffers = buildInitialSponsorOffers({ leagueTier: league.tier, difficulty, clubId, ladder: ladder0, coachReputation: 30 });
-      const newCareer = {
-        managerName: managerName || "Coach",
-        clubId,
-        leagueKey,
-        regionState: state,
-        localDivision: startDiv,
-        season: SEASON,
-        week: 0,
-        currentDate: `${SEASON - 1}-12-01`,
-        phase: 'preseason',
-        eventQueue,
-        lastEvent: null,
-        inMatchDay: false,
-        currentMatchResult: null,
-        squad,
-        lineup,
-        training: DEFAULT_TRAINING(),
-        facilities,
-        finance: tunedFinance,
-        sponsors: [],
-        staff: generateStaff(league.tier),
-        staffTasks: DEFAULT_STAFF_TASKS(),
-        kits: defaultKits(club.colors),
-        ladder: ladder0,
-        fixtures,
-        tradePool: generateTradePool(leagueKey, SEASON),
-        draftPool: [],
-        youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },
-        news: [
-          { week: 0, type: "draw", text: `${managerName || "Coach"} appointed at ${club.name}. Pre-season begins Dec 1.` },
-          { week: 0, type: "info", text: "🤝 No sponsors locked in yet — visit Club → Sponsors to choose from incoming offers." },
-          ...(gameMode === 'sandbox'
-            ? [{ week: 0, type: 'info', text: '🧪 Sandbox: boosted treasury & board patience — sacks and confidence votes are disabled.' }]
-            : []),
-          ...(gameMode === 'challenge'
-            ? [{ week: 0, type: 'board', text: '🔥 Challenge — Under the pump: leaner cash and a jumpy board from day one.' }]
-            : []),
-        ],
-        weeklyHistory: [],
-        inFinals: false,
-        finalsRound: 0,
-        finalsFixtures: [],
-        finalsResults: [],
-        premiership: null,
-        tacticChoice: "balanced",
-        seasonHistory: [],
-        saveVersion: SAVE_VERSION,
-        aiSquads: {},
-        draftOrder: [],
-        history: [],
-        brownlow: {},
-        boardWarning: 0,
-        gameOver: null,
-        themeMode: 'A',
-        options: {
-          autosave: true,
-          confirmBeforeNewCareer: true,
-          confirmBeforeDeleteSlot: true,
-          uiDensity: 'comfortable',
-          reduceMotion: false,
-        },
-        pendingTradeOffers: [],
-        inbox: [],
-        retiredThisSeason: [],
-        difficulty,
-        gameMode,
-        challengeId: gameMode === 'challenge' ? (challengeId || 'under_the_pump') : null,
-        challengeGoal: gameMode === 'challenge' ? challengeId : null,
-        tutorialStep: isFirstCareer && cfg.tutorialPolicy !== 'never' ? 0 : 6,
-        tutorialComplete: !(isFirstCareer && cfg.tutorialPolicy !== 'never'),
-        isFirstCareer,
-        committee: generateCommittee(league.tier),
-        footyTripAvailable: false,
-        footyTripUsed: false,
-        groundCondition: 85,
-        clubGround,
-        groundName: clubGround.shortName,
-        weeklyWeather: {},
-        winStreak: 0,
-        homeWinStreak: 0,
-        coachReputation: 30,
-        coachTier: 'Journeyman',
-        coachStats: {
-          totalWins: 0, totalLosses: 0, totalDraws: 0,
-          premierships: 0, promotions: 0, relegations: 0,
-          clubsManaged: 1, seasonsManaged: 1,
-        },
-        previousClubs: [],
-        isSacked: false,
-        jobMarketOpen: false,
-        sackingStep: null,
-        jobOffers: [],
-        boardVotePrepBonus: 0,
-        jobMarketRerolls: 0,
-        arrivalBriefing: null,
-        journalist: generateJournalist(),
-        lastBoardConfidenceDelta: 0,
-        lastMatchSummary: null,
-        lastFinanceTickWeek: null,
-        lastFinanceTickDay: null,
-        cashCrisisStartWeek: null,
-        cashCrisisLevel: 0,
-        bankLoan: null,
-        sponsorRenewalProposals: [],
-        sponsorOffers: startOffers,
-        expiredSponsorsLastSeason: [],
-        pendingRenewals: [],
-        renewalsClosed: false,
-        pendingStaffRenewals: [],
-        fundraisersUsed: {},
-        communityGrantUsed: false,
-        lastEosFinance: null,
-        postSeasonPhase: 'none',
-        inTradePeriod: false,
-        tradePeriodDay: 0,
-        freeAgencyOpen: false,
-        postSeasonDraftCountdown: null,
-        freeAgentBalance: { gained: 0, lost: 0 },
-        tradeHistory: [],
-        draftPickBank: null,
-        offSeasonFreeAgents: [],
-        clubCulture: defaultClubCulture(),
-        headToHead: {},
-        finalsRivalryLog: [],
-        captainId: null,
-        viceCaptainId: null,
-        captainHistory: [],
-        bogeyTeamId: null,
-        dominatedTeamId: null,
-        crucialFive: [],
-        crisisFiredThisSeason: false,
-        teamStats: null,
-      };
-      assignDefaultCaptains(newCareer);
-      ensureCareerBoard(newCareer, club, league);
-      generateSeasonObjectives(newCareer, league);
-      planSeasonBoardMeetings(newCareer);
-      primeSeasonStoryState(newCareer);
-      seedNationalDraft(newCareer, league, { inaugural: true, force: true });
+      const newCareer = buildNewCareer({
+        clubId, leagueKey, state, localDivision,
+        managerName, difficulty, gameMode, challengeId, existingSlots,
+      });
       onStart(newCareer);
     } catch (err) {
       setStartError(err.message);
@@ -370,7 +428,7 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
     tier === 3 ? step : step <= 3 ? step : step === 5 ? 4 : Math.min(step, 4);
 
   return (
-    <div className="dirB min-h-screen font-sans text-atext flex flex-col">
+    <div className={`${themeClass} min-h-screen font-sans text-atext flex flex-col`}>
       {/* ── Hero ─────────────────────────────────────────────── */}
       <div className="relative overflow-hidden border-b border-aline">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 15% 60%, color-mix(in srgb, var(--A-accent) 10%, transparent) 0%, transparent 55%)' }} />
@@ -421,6 +479,25 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
           {/* ── STEP 0: WHERE WILL YOUR STORY BEGIN? ─── */}
           {step === 0 && (
             <motion.div key="setup-step-0" className="space-y-8" {...slideIn}>
+
+              {/* Quick Start — skip the whole flow with a sensible default */}
+              {onQuickStart && (
+                <motion.button type="button" onClick={onQuickStart}
+                  whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}
+                  className="w-full panel rounded-xl p-4 flex items-center gap-4 text-left group">
+                  <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, var(--A-accent), var(--A-accent-2))', boxShadow: '0 4px 16px color-mix(in srgb, var(--A-accent) 30%, transparent)' }}>
+                    <Zap className="w-5 h-5" style={{ color: 'var(--fd-on-accent, #0A0D0C)' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-atext">Quick Start</div>
+                    <div className="text-[11px] text-atext-dim mt-0.5">
+                      Drop straight into a community club on a forgiving difficulty — no setup needed.
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-aaccent flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
+                </motion.button>
+              )}
 
               {/* Resume saves — only shown when saves exist */}
               {slotsWithSaves.length > 0 && (() => {
@@ -564,29 +641,87 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                     const active = difficulty === id;
                     return (
                       <button key={id} type="button" onClick={() => setDifficulty(id)}
-                        className={`text-left p-4 rounded-xl border transition-all ${active ? '' : 'hover:border-aaccent/30'}`}
+                        className="text-left p-4 rounded-xl border transition-all relative overflow-hidden group"
                         style={{
                           background: active
-                            ? `color-mix(in srgb, ${meta.color} 12%, var(--A-panel-2))`
+                            ? `linear-gradient(135deg, color-mix(in srgb, ${meta.color} 14%, var(--A-panel-2)), var(--A-panel-2))`
                             : 'var(--A-panel-2)',
                           borderColor: active ? meta.color : 'var(--A-line)',
-                          boxShadow: active ? `0 0 0 1px ${meta.color}44` : undefined,
+                          boxShadow: active
+                            ? `0 0 0 1px ${meta.color}33, 0 4px 16px color-mix(in srgb, ${meta.color} 15%, transparent)`
+                            : undefined,
+                          transform: active ? 'translateY(-1px)' : undefined,
                         }}>
-                        <div className="font-display text-2xl mb-1" style={{ color: meta.color }}>
+                        {/* Active indicator strip */}
+                        {active && (
+                          <div
+                            className="absolute top-0 left-0 right-0 h-1 rounded-t-xl"
+                            style={{ background: `linear-gradient(90deg, ${meta.color}, ${meta.color}88)` }}
+                          />
+                        )}
+                        <div className="font-display text-xl mb-0.5 mt-1" style={{ color: meta.color }}>
                           {meta.label.toUpperCase()}
                         </div>
-                        <div className="text-[10px] uppercase tracking-widest text-atext-mute mb-2 font-mono">{meta.audience}</div>
-                        <div className="text-xs text-atext-dim mb-3 leading-snug">{meta.summary}</div>
-                        <ul className="space-y-1">
+                        <div className="text-[10px] text-atext-mute mb-2 italic leading-snug">{meta.tagline}</div>
+                        <ul className="space-y-1.5 mb-3">
                           {meta.bullets.map((b, i) => (
-                            <li key={`${id}-${i}`} className="text-[11px] text-atext flex gap-1.5">
-                              <span style={{ color: meta.color }}>•</span><span>{b}</span>
+                            <li key={`${id}-${i}`} className="text-[11px] text-atext flex gap-1.5 leading-snug">
+                              <span className="shrink-0 mt-0.5" style={{ color: meta.color }}>▸</span>
+                              <span>{b}</span>
                             </li>
                           ))}
                         </ul>
+                        {active ? (
+                          <div
+                            className="text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-1 rounded-md inline-block"
+                            style={{
+                              color: meta.color,
+                              background: `color-mix(in srgb, ${meta.color} 15%, transparent)`,
+                              border: `1px solid color-mix(in srgb, ${meta.color} 30%, transparent)`,
+                            }}
+                          >
+                            ✓ Selected
+                          </div>
+                        ) : (
+                          <div className="text-[10px] font-mono text-atext-mute uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                            Click to select
+                          </div>
+                        )}
                       </button>
                     );
                   })}
+                </div>
+
+                {/* Stat comparison table */}
+                <div className="mt-4 rounded-xl border border-aline/40 overflow-hidden">
+                  <div className="px-4 py-2 border-b border-aline/30">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-atext-mute">Key Differences</span>
+                  </div>
+                  {[
+                    { label: 'Board patience', values: ['3 seasons', '2 seasons', '1 season'] },
+                    { label: 'Starting cash',  values: ['+25%', 'Standard', '−15%'] },
+                    { label: 'Trade budget',   values: ['+50%', 'Standard', '−30%'] },
+                    { label: 'Injury rate',    values: ['Half', 'Normal', 'Double'] },
+                    { label: 'Scout accuracy', values: ['+15%', 'Standard', '−15%'] },
+                  ].map((row) => (
+                    <div key={row.label} className="grid grid-cols-4 border-b border-aline/20 last:border-0">
+                      <div className="px-4 py-2 text-[11px] text-atext-mute flex items-center">{row.label}</div>
+                      {DIFFICULTY_IDS.map((id, i) => {
+                        const m = getDifficultyProfile(id);
+                        const active = difficulty === id;
+                        return (
+                          <div key={id}
+                            className="py-2 text-center text-[11px] font-mono font-bold transition-colors"
+                            style={{
+                              color: active ? m.color : 'var(--A-text-mute)',
+                              background: active ? `color-mix(in srgb, ${m.color} 6%, transparent)` : undefined,
+                            }}>
+                            {row.values[i]}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -654,7 +789,20 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
               <p className="text-atext-dim text-sm mb-8">
                 Start at the top, the middle, or the bottom. Tiers available in <strong className="text-atext">{state}</strong>.
               </p>
-              <div className={`grid gap-4 ${tiersForState.length === 1 ? 'md:grid-cols-1 max-w-sm' : tiersForState.length === 2 ? 'md:grid-cols-2 max-w-2xl' : 'md:grid-cols-3'}`}>
+              <div className={`grid gap-4 ${tiersForState.length <= 1 ? 'md:grid-cols-1 max-w-sm' : tiersForState.length === 2 ? 'md:grid-cols-2 max-w-2xl' : tiersForState.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
+                {tiersForState.includes(4) && (
+                  <motion.button type="button" whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => { setTier(4); setLeagueKey(null); setClubId(null); setStep(3); }}
+                    className="panel rounded-xl p-6 text-left">
+                    <Pill color="#60A5FA">Volunteer</Pill>
+                    <div className="font-display text-5xl mt-3 text-atext">TIER 4</div>
+                    <div className="text-sm text-atext font-semibold mt-1">Junior / Grassroots</div>
+                    <div className="text-[12px] text-atext-dim mt-3 leading-relaxed">
+                      Unpaid. Parent committee. Kids who love the game. The most honest start you can make.
+                    </div>
+                    <div className="text-xs mt-4 font-bold uppercase tracking-widest" style={{ color: '#60A5FA' }}>$0 salary · Grassroots coach</div>
+                  </motion.button>
+                )}
                 {tiersForState.includes(3) && (
                   <motion.button type="button" whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}
                     onClick={() => { setTier(3); setLeagueKey(null); setClubId(null); setStep(3); }}
@@ -862,11 +1010,16 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                   const isSelected = clubId === c.id;
                   return (
                     <motion.button key={c.id} type="button" onClick={() => setClubId(c.id)}
-                      whileHover={!isSelected ? { y: -3, scale: 1.01 } : undefined}
-                      whileTap={{ scale: 0.97 }}
-                      className={`rounded-xl overflow-hidden text-left transition-all ${
-                        isSelected ? 'ring-2 ring-aaccent ring-offset-2 ring-offset-abg' : ''
-                      }`}>
+                      whileHover={!isSelected ? { y: -4, scale: 1.02 } : { scale: 1.01 }}
+                      whileTap={{ scale: 0.96 }}
+                      className="rounded-xl overflow-hidden text-left transition-all"
+                      style={{
+                        outline: isSelected ? `2px solid ${c.colors[0]}` : "2px solid transparent",
+                        outlineOffset: 2,
+                        boxShadow: isSelected
+                          ? `0 0 0 4px color-mix(in srgb, ${c.colors[0]} 22%, transparent), 0 8px 24px color-mix(in srgb, ${c.colors[0]} 25%, transparent)`
+                          : "0 2px 8px rgba(0,0,0,0.06)",
+                      }}>
                       {/* Club colour header */}
                       <div className="h-16 md:h-20 flex items-center justify-center relative"
                         style={{ background: `linear-gradient(135deg, ${c.colors[0]}, ${c.colors[1]})` }}>
@@ -874,19 +1027,32 @@ export function CareerSetup({ onStart, existingSlots = {}, onResume }) {
                           {c.short}
                         </span>
                         {isSelected && (
-                          <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center"
-                            style={{ background: 'rgba(255,255,255,0.95)' }}>
-                            <Check className="w-3.5 h-3.5" style={{ color: c.colors[0] }} />
-                          </div>
+                          <>
+                            {/* Selection checkmark badge */}
+                            <div className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center shadow-lg"
+                              style={{ background: "rgba(255,255,255,0.97)", boxShadow: `0 2px 8px rgba(0,0,0,0.3)` }}>
+                              <Check className="w-4 h-4" style={{ color: c.colors[0] }} />
+                            </div>
+                            {/* Selected shimmer overlay */}
+                            <div className="absolute inset-0 pointer-events-none"
+                              style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0))" }} />
+                          </>
                         )}
                       </div>
                       {/* Club info */}
-                      <div className={`px-3 py-2.5 transition-colors ${
-                        isSelected
-                          ? 'bg-aaccent/10'
-                          : 'bg-apanel'
-                      }`}>
-                        <div className={`font-bold text-sm leading-tight ${isSelected ? 'text-aaccent' : 'text-atext'}`}>
+                      <div
+                        className="px-3 py-2.5 transition-colors"
+                        style={{
+                          background: isSelected
+                            ? `color-mix(in srgb, ${c.colors[0]} 10%, var(--A-panel))`
+                            : "var(--A-panel)",
+                          borderTop: isSelected ? `2px solid color-mix(in srgb, ${c.colors[0]} 40%, transparent)` : "2px solid transparent",
+                        }}
+                      >
+                        <div
+                          className="font-bold text-sm leading-tight"
+                          style={{ color: isSelected ? c.colors[0] : "var(--A-text)" }}
+                        >
                           {c.name}
                         </div>
                         <div className="text-[10px] text-atext-mute mt-0.5 font-mono">{c.state}</div>

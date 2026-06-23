@@ -135,3 +135,46 @@ export function recruitRandomVolunteerStaff(career, nowMs = Date.now()) {
   const idx = rand(0, VOLUNTEER_ROLE_TEMPLATES.length - 1);
   return recruitVolunteerStaff(career, idx, nowMs + 1);
 }
+
+export function generateStaffMarket(career, league) {
+  const tier = league?.tier ?? 3;
+  if (tier > 2) return [];
+
+  const coreRoleIds = ['s1', 's2', 's3', 's4', 's5'];
+  const upgradeable = coreRoleIds.filter(id => {
+    const existing = (career.staff || []).find(s => s.id === id);
+    return existing && (existing.rating ?? 60) < 82;
+  });
+
+  if (upgradeable.length === 0) return [];
+
+  return upgradeable.slice(0, 3).map((id, i) => {
+    const current = (career.staff || []).find(s => s.id === id);
+    // Use a local deterministic hash rather than reseeding the shared RNG,
+    // which would corrupt all downstream randomness in the same finishSeason call.
+    // Stateful local PRNG: advance the seed each call so the upgrade amount and
+    // the two name indices are independent draws (a stateless Math.sin(h) would
+    // return the same value every call, locking names to the rating).
+    let seed = ((career.season ?? 1) * 1000 + id.charCodeAt(1) * 37 + i * 13) | 0;
+    const localRng = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const upgradeAmount = 6 + Math.floor(localRng() * 15);
+    const newRating = Math.min(95, (current?.rating ?? 60) + upgradeAmount);
+    const wageMult = 1 + (newRating - (current?.rating ?? 60)) * 0.025;
+    const newWage = Math.round((current?.wage ?? 50_000) * wageMult);
+    const fnIdx = Math.floor(localRng() * FIRST_NAMES.length);
+    const lnIdx = Math.floor(localRng() * LAST_NAMES.length);
+    const name = `${FIRST_NAMES[fnIdx]} ${LAST_NAMES[lnIdx]}`;
+
+    return {
+      marketId:      `mkt_${id}_${career.season ?? 1}`,
+      staffId:       id,
+      name,
+      rating:        newRating,
+      wage:          newWage,
+      contractYears: 2 + rand(0, 1),
+      signingFee:    Math.round(newWage * 0.4),
+      roleLabel:     current?.role ?? id,
+      currentRating: current?.rating ?? 60,
+    };
+  });
+}

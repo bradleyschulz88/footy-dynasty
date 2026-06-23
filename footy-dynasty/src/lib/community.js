@@ -257,7 +257,9 @@ const COMMITTEE_TIER1_COCKTAIL_LINES = [
 export function postMatchFundraiser(career, tier, isHomeGame) {
   if (!isHomeGame) return null;
   if (tier === 3) {
-    const income = rand(150, 400);
+    // The bar & canteen are a local club's main game-day earner now that the
+    // gate is small and there's no TV money — so this is the bigger line.
+    const income = rand(700, 2000);
     const winnerRoll = rand(0, 100);
     if (winnerRoll < 20 && (career.squad || []).length > 0) {
       const winner = pick(career.squad);
@@ -337,6 +339,28 @@ export function stadiumDescription(level) {
 }
 
 // =============================================================================
+// Supporter base (fanbase) — tracks long-run support growth
+// =============================================================================
+export const TIER_FANBASE_BASE = { 1: 5000, 2: 500, 3: 100 };
+export const TIER_FANBASE_MAX  = { 1: 100_000, 2: 5_000, 3: 1_000 };
+
+/**
+ * Returns an updated fanbase number after a match or season outcome.
+ * Won/drew/lost apply per-match; promoted/relegated apply at season end.
+ */
+export function updateFanbase(career, tier, { won = false, drew = false, promoted = false, relegated = false } = {}) {
+  const base = TIER_FANBASE_BASE[tier] ?? 100;
+  const max  = TIER_FANBASE_MAX[tier] ?? 1_000;
+  const current = career.fanbase ?? base;
+  let delta = 0;
+  if (promoted)        delta = Math.round(base * 0.25);
+  else if (relegated)  delta = -Math.round(base * 0.15);
+  else if (won)        delta = 2;
+  else if (!drew)      delta = -1;
+  return Math.max(1, Math.min(max, current + delta));
+}
+
+// =============================================================================
 // Minimal journalist stub (Section 8 placeholder)
 // =============================================================================
 export function generateJournalist() {
@@ -361,25 +385,168 @@ export function journalistMatchLine(career, result, club, opp) {
   const tone = j.satisfaction >= 60 ? 'supportive'
              : j.satisfaction <= 35 ? 'critical' : 'neutral';
   const margin = Math.abs((result?.myTotal ?? 0) - (result?.oppTotal ?? 0));
-  if (result?.won && margin > 30) {
-    return tone === 'critical'
-      ? `${j.name}: "Big win, sure, but it papers over the cracks."`
-      : `${j.name}: "${club.name} were ruthless. Best performance of the year."`;
+
+  if (result?.won && margin >= 35) {
+    const opts = tone === 'critical'
+      ? [
+          `${j.name}: "Big win, sure, but it papers over the cracks."`,
+          `${j.name}: "The scoreline flatters them. Don't get carried away."`,
+          `${j.name}: "Points in the bag, but questions remain about the method."`,
+        ]
+      : [
+          `${j.name}: "${club.name} were ruthless. Best performance of the year."`,
+          `${j.name}: "A demolition job. ${club.short} turned it on in emphatic fashion."`,
+          `${j.name}: "Statement win. That's the ${club.name} we've been waiting to see."`,
+        ];
+    return pick(opts);
+  }
+  if (result?.won && margin <= 6) {
+    const opts = tone === 'critical'
+      ? [
+          `${j.name}: "A win is a win, but that was too close for comfort."`,
+          `${j.name}: "Barely scraped over the line. Lucky to be going home with four points."`,
+        ]
+      : [
+          `${j.name}: "Nail-biter! ${club.short} held on in a thriller."`,
+          `${j.name}: "Heart-stopping finish — but ${club.name} found a way."`,
+        ];
+    return pick(opts);
   }
   if (result?.won) {
-    return tone === 'critical'
-      ? `${j.name}: "Took the four points but unconvincing."`
-      : `${j.name}: "Workmanlike from ${club.name}. Job done."`;
+    const opts = tone === 'critical'
+      ? [
+          `${j.name}: "Took the four points but unconvincing."`,
+          `${j.name}: "Ground out the win — the coach will be breathing easier tonight."`,
+        ]
+      : [
+          `${j.name}: "Workmanlike from ${club.name}. Job done."`,
+          `${j.name}: "${club.short} ticked the boxes. Solid day's work."`,
+          `${j.name}: "Won't win any awards for style, but ${club.name} get it done."`,
+        ];
+    return pick(opts);
   }
-  if (result?.drew) return `${j.name}: "Honours even at ${club.name}'s home ground."`;
-  if (margin > 40) {
-    return tone === 'supportive'
-      ? `${j.name}: "Tough day. The coaching staff will regroup."`
-      : `${j.name}: "Damning result. Questions will be asked."`;
+  if (result?.drew) {
+    const opts = [
+      `${j.name}: "Honours even at ${club.name}'s home ground."`,
+      `${j.name}: "A point apiece. Both sides will feel they left something out there."`,
+      `${j.name}: "Fair result in a tight contest — ${club.short} couldn't quite close it out."`,
+    ];
+    return pick(opts);
   }
-  return tone === 'supportive'
-    ? `${j.name}: "A loss, but the effort was there."`
-    : `${j.name}: "Another defeat that will keep the board talking."`;
+  if (margin >= 40) {
+    const opts = tone === 'supportive'
+      ? [
+          `${j.name}: "Tough day. The coaching staff will regroup."`,
+          `${j.name}: "A hiding, but this group has bounced back before."`,
+        ]
+      : [
+          `${j.name}: "Damning result. Questions will be asked."`,
+          `${j.name}: "Where do you even start? That was a capitulation."`,
+          `${j.name}: "Thrashed. No other word for it. The board will be watching."`,
+        ];
+    return pick(opts);
+  }
+  const opts = tone === 'supportive'
+    ? [
+        `${j.name}: "A loss, but the effort was there."`,
+        `${j.name}: "Didn't get the four points, but ${club.short} gave everything."`,
+      ]
+    : [
+        `${j.name}: "Another defeat that will keep the board talking."`,
+        `${j.name}: "Points tally keeps shrinking. Time to find some answers."`,
+        `${j.name}: "A familiar story — ${club.name} just couldn't convert when it mattered."`,
+      ];
+  return pick(opts);
+}
+
+/**
+ * Generate a structured post-match headline for the media panel.
+ * @param {object} result - { won, drew, myTotal, oppTotal, trailedAtHalf }
+ * @param {object} club - the player's club { name, short }
+ * @param {object|null} opp - opponent club { name, short }
+ * @param {object|null} journalist - { name, satisfaction, tone }
+ * @returns {{ headline: string, byline: string, tone: 'positive'|'neutral'|'negative'|'critical' }}
+ */
+export function generatePostMatchHeadline(result, club, opp, journalist) {
+  const j = journalist || { name: 'Press', satisfaction: 50, tone: 'neutral' };
+  const sat = j.satisfaction ?? 50;
+  const tone = sat >= 65 ? 'positive' : sat <= 30 ? 'critical' : sat <= 45 ? 'negative' : 'neutral';
+
+  const margin = Math.abs((result?.myTotal ?? 0) - (result?.oppTotal ?? 0));
+  const clubUp = (club?.name || 'HOME SIDE').toUpperCase();
+  const clubShort = (club?.short || 'US').toUpperCase();
+  const oppShort = (opp?.short || 'THEM').toUpperCase();
+  const totalStr = result?.myTotal != null && result?.oppTotal != null
+    ? `${result.myTotal}-${result.oppTotal}` : '';
+  const marginStr = margin > 0 ? `${margin}-POINT` : '';
+
+  let headline, byline;
+
+  if (result?.won && margin >= 35) {
+    headline = pick([
+      `${clubUp} DEMOLISH ${oppShort} IN ${marginStr} ROUT`,
+      `${clubUp} RAMPANT — ${oppShort} BURIED${totalStr ? ` ${totalStr}` : ''}`,
+      `DOMINANT ${clubShort} LEAVE ${oppShort} WITHOUT ANSWERS`,
+    ]).trim();
+    byline = tone === 'critical'
+      ? `A big scoreboard, but structural issues persist for ${club?.name || 'the side'}.`
+      : pick([
+          `${club?.name || 'The home side'} were irresistible, running over the top in a commanding performance.`,
+          `Every line clicked — ${club?.short || 'they'} set the tone early and never let up.`,
+        ]);
+  } else if (result?.won && result?.trailedAtHalf) {
+    headline = pick([
+      `${clubUp} COMPLETE STUNNING COMEBACK OVER ${oppShort}`,
+      `DOWN AT HALF, ${clubShort} ROAR BACK TO STUN ${oppShort}`,
+    ]);
+    byline = tone === 'critical'
+      ? `Trailing at the main break, but ${club?.name || 'the side'} found something — the first half will need reviewing.`
+      : `One of the great second-half performances. ${club?.name || 'The side'} refused to lie down.`;
+  } else if (result?.won && margin <= 6) {
+    headline = pick([
+      `${clubUp} SURVIVE SCARE, HOLD OFF ${oppShort} BY THE BAREST OF MARGINS`,
+      `THRILLER GOES ${clubShort}'S WAY IN LAST-GASP WIN`,
+    ]);
+    byline = tone === 'critical'
+      ? `Too close for comfort, but the four points are there. Much to address.`
+      : `A nailbiter — ${club?.name || 'the side'} showed character when it mattered most.`;
+  } else if (result?.won) {
+    headline = pick([
+      `${clubUp} ACCOUNT FOR ${oppShort}${totalStr ? ` ${totalStr}` : ''}`,
+      `FOUR POINTS FOR ${clubShort} OVER GAME ${oppShort}`,
+      `${clubShort} DO ENOUGH TO ACCOUNT FOR ${oppShort}`,
+    ]);
+    byline = tone === 'critical'
+      ? `The scoreboard shows a win, but the execution left plenty to be desired.`
+      : `${club?.name || 'The side'} steady and professional. That's a win to build on.`;
+  } else if (result?.drew) {
+    headline = pick([
+      `${clubShort} AND ${oppShort} SHARE THE POINTS IN TENSE DRAW`,
+      `NEITHER SIDE BLINKS — ${clubShort} VS ${oppShort} FINISHES LEVEL`,
+    ]);
+    byline = tone === 'critical'
+      ? `A point when ${club?.name || 'the side'} needed four. Missed opportunity.`
+      : `Honours even after a contest neither side deserved to lose.`;
+  } else if (margin >= 40) {
+    headline = pick([
+      `CAPITULATION: ${clubShort} HUMILIATED BY ${oppShort}`,
+      `${oppShort} FLOG ${clubShort} IN HORROR OUTING`,
+    ]);
+    byline = tone === 'positive'
+      ? `A setback, but this group has character. Time to look inward and reset.`
+      : `No excuses for that. ${club?.name || 'The side'} were outplayed in every department.`;
+  } else {
+    headline = pick([
+      `${oppShort} TOO STRONG FOR ${clubShort}`,
+      `${clubShort} BEATEN — ${oppShort} CLAIM FOUR POINTS`,
+      `${clubShort} FALL SHORT IN TIGHT CONTEST WITH ${oppShort}`,
+    ]);
+    byline = tone === 'positive'
+      ? `A loss that stings, but the effort was evident. Regroup and go again.`
+      : `${club?.name || 'The side'} couldn't find the extra gear when it was needed.`;
+  }
+
+  return { headline, byline, tone };
 }
 
 // =============================================================================
@@ -391,4 +558,49 @@ export const PLAYER_TRAITS = ['party_animal', 'leader', 'mentor', 'workhorse', '
 export function rollPlayerTrait() {
   if (rng() > 0.20) return null;
   return pick(PLAYER_TRAITS);
+}
+
+/**
+ * Returns the fortnightly board confidence impact from journalist sentiment.
+ * +1 when the journalist is supportive (satisfaction >= 70),
+ * -1 when hostile (satisfaction <= 25), 0 in the neutral band.
+ */
+export function journalistBoardImpact(journalist) {
+  const sat = journalist?.satisfaction ?? 50;
+  if (sat >= 70) return +1;
+  if (sat <= 25) return -1;
+  return 0;
+}
+
+// Call weekly during T3/T4 career to tick volunteer fatigue.
+// On burnout the role is NOT left vacant — a fresh (low-rated) volunteer steps
+// up so staff-by-id consumers (training s2/s4/s5, medical s6) keep working,
+// but with a real capability hit. Uses the seeded rng for replay determinism.
+export function tickVolunteerBurnout(career) {
+  const staff = career.staff ?? [];
+  const news = [];
+  const updated = staff.map(s => {
+    if (!s.volunteer) return s;
+    const weeklyDelta = 3 + Math.floor(rng() * 5); // 3–7 per week
+    const prev = s.fatigue ?? 0;
+    const next = Math.min(100, prev + weeklyDelta);
+    if (next >= 100) {
+      const freshName = pickName();
+      const freshRating = rand(46, 58); // a green newcomer — noticeably weaker
+      news.push({ type: 'warning', text: `😓 ${s.name} has burned out and stepped down as ${s.role}. ${freshName} has volunteered to step in — they'll need time to find their feet.` });
+      return { ...s, name: freshName, rating: freshRating, fatigue: 0 };
+    }
+    if (next >= 75 && prev < 75) {
+      news.push({ type: 'info', text: `⚠️ ${s.name} (${s.role}) is showing signs of volunteer fatigue.` });
+    }
+    return { ...s, fatigue: next };
+  });
+  return { staff: updated, news };
+}
+
+// Call at season start to partially recover volunteer fatigue
+export function recoverVolunteers(staff) {
+  return (staff ?? []).map(s =>
+    s.volunteer ? { ...s, fatigue: Math.max(0, (s.fatigue ?? 0) - 45) } : s
+  );
 }

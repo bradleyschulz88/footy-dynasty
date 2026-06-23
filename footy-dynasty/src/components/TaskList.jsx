@@ -11,7 +11,8 @@
 import React, { useState } from "react";
 import { ChevronRight, ChevronDown, ChevronUp, AlertTriangle, Lightbulb, CheckCircle } from "lucide-react";
 import { css } from "./primitives.jsx";
-import { lineupPlayerCount, lineupHasPlayer, lineupPlayersOrdered, LINEUP_CAP } from "../lib/lineupHelpers.js";
+import { lineupPlayerCount, lineupHasPlayer, LINEUP_CAP } from "../lib/lineupHelpers.js";
+import { useCareer } from "../lib/careerStore.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -378,7 +379,7 @@ export function buildTasks(career, navigate, myLadderPos, league) {
 const PRIORITY_META = {
   urgent:     { label: "Urgent",      color: "#E84A6F", border: "rgba(232,74,111,0.3)"  },
   warning:    { label: "Action",      color: "#E8D44A", border: "rgba(232,212,74,0.3)"  },
-  suggestion: { label: "Suggestions", color: "#4ADBE8", border: "rgba(0,224,255,0.25)"  },
+  suggestion: { label: "Suggestions", color: "var(--A-accent-2)", border: "color-mix(in srgb, var(--A-accent-2) 25%, transparent)"  },
 };
 
 function TaskRow({ task }) {
@@ -402,7 +403,8 @@ function TaskRow({ task }) {
   );
 }
 
-export function TaskList({ career, onNavigate, myLadderPos, league }) {
+export function TaskList({ onNavigate, myLadderPos, league }) {
+  const career = useCareer();
   const [open, setOpen]     = useState(true);
   const [expanded, setExpanded] = useState({ urgent: true, warning: true, suggestion: false });
 

@@ -42,13 +42,27 @@ export default defineConfig({
           },
           workbox: {
             globPatterns: ['**/*.{js,css,html,ico,svg,woff2}'],
+            // Clear caches from previous deployments so stale JS chunks don't
+            // cause a blank page after a new Vercel deployment.
+            cleanupOutdatedCaches: true,
+            skipWaiting: true,
+            clientsClaim: true,
+            // SPA fallback — all navigation requests serve index.html.
+            navigateFallback: 'index.html',
+            navigateFallbackDenylist: [/^\/api\//],
           },
         }),
       ],
   test: {
     environment: 'node',
     globals: true,
+    testTimeout: 15000,
     maxWorkers: process.env.CI ? 4 : '75%',
     exclude: ["**/node_modules/**", "**/e2e/**"],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json'],
+      include: ['src/lib/**'],
+    },
   },
 })

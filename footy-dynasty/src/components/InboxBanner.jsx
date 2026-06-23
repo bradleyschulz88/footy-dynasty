@@ -7,6 +7,7 @@ import {
   resolveInboxItem,
   canAcknowledgeBlockingInboxItem,
 } from "../lib/inbox.js";
+import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 
 /** Hide system mirrors here — dedicated strips cover board + trade period. */
 function visibleManagerInboxRows(career) {
@@ -14,7 +15,9 @@ function visibleManagerInboxRows(career) {
   return inbox.filter((m) => !m.resolved && m.kind !== "board" && m.kind !== "trade_period");
 }
 
-export function InboxBanner({ career, updateCareer, onGoRecruit, onGoClubBoard }) {
+export function InboxBanner({ onGoRecruit, onGoClubBoard }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const inbox = career.inbox || [];
   const tradeBlock = hasBlockingTradePeriodOffers(career);
   const boardBlock = hasBlockingBoardInbox(career);

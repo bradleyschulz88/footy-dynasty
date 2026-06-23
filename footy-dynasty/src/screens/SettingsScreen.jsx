@@ -4,13 +4,66 @@ import { css } from "../components/primitives.jsx";
 import { DIFFICULTY_IDS, getDifficultyConfig, getDifficultyProfile } from "../lib/difficulty.js";
 import { SLOT_IDS, LAST_EXPORT_STORAGE_KEY } from "../lib/save.js";
 import { findClub } from "../data/pyramid.js";
+import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportSquad(career) {
+  const header = ['Name', 'Position', 'Age', 'Overall', 'Potential', 'Contract', 'Wage', 'Morale'];
+  const rows = (career.squad || []).map(p => [
+    `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim(),
+    p.position ?? '',
+    p.age ?? '',
+    p.overall ?? '',
+    p.potential ?? '',
+    p.contract ?? '',
+    p.wage ?? '',
+    p.morale ?? 70,
+  ]);
+  downloadCsv(`squad-s${career.season ?? 1}.csv`, [header, ...rows]);
+}
+
+function exportFinances(career) {
+  const header = ['Season', 'Cash', 'Revenue', 'Wages', 'Sponsorship', 'BoardConfidence'];
+  const f = career.finance ?? {};
+  const rows = [[
+    career.season ?? '',
+    f.cash ?? '',
+    f.annualIncome ?? '',
+    f.wages ?? '',
+    f.sponsorship ?? '',
+    f.boardConfidence ?? '',
+  ]];
+  downloadCsv(`finances-s${career.season ?? 1}.csv`, [header, ...rows]);
+}
+
+function exportLadder(career) {
+  const header = ['Pos', 'Club', 'W', 'L', 'D', 'PF', 'PA', 'Pts'];
+  const sorted = [...(career.ladder || [])].sort((a, b) => (b.pts ?? b.points ?? 0) - (a.pts ?? a.points ?? 0));
+  const rows = sorted.map((row, i) => [
+    i + 1,
+    row.id ?? row.clubId ?? '',
+    row.W ?? 0,
+    row.L ?? 0,
+    row.D ?? 0,
+    row.F ?? 0,
+    row.A ?? 0,
+    row.pts ?? row.points ?? 0,
+  ]);
+  downloadCsv(`ladder-s${career.season ?? 1}.csv`, [header, ...rows]);
+}
 
 // ============================================================================
 // SETTINGS — save slots, new career, difficulty & preferences (game-wide)
 // ============================================================================
 export default function SettingsScreen({
-  career,
-  updateCareer,
   activeSlot,
   onExportCareer,
   onImportCareerFile,
@@ -23,6 +76,8 @@ export default function SettingsScreen({
   onSwitchSlot,
   onDeleteSlot,
 }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const importRef = useRef(null);
   const opts = career.options || {};
   const patchOpts = (p) => updateCareer({ options: { ...opts, ...p } });
@@ -81,7 +136,7 @@ export default function SettingsScreen({
                             {meta.slotLabel ? `${meta.slotLabel} · ` : ''}S{meta.season}{meta.week ? ` R${meta.week}` : ''} · {findClub(meta.clubId)?.short || meta.clubId}
                           </span>
                           {!isActive && (
-                            <button type="button" onClick={() => onSwitchSlot?.(s)} className="text-aaccent hover:text-[#4ADBE8] font-bold shrink-0">
+                            <button type="button" onClick={() => onSwitchSlot?.(s)} className="text-aaccent hover:text-aaccent font-bold shrink-0">
                               Load
                             </button>
                           )}
@@ -93,7 +148,7 @@ export default function SettingsScreen({
                         <>
                           <span className="flex-1 text-atext-mute italic">Empty</span>
                           {career && !isActive && (
-                            <button type="button" onClick={() => onSwitchSlot?.(s)} className="text-aaccent hover:text-[#4ADBE8] font-bold shrink-0">
+                            <button type="button" onClick={() => onSwitchSlot?.(s)} className="text-aaccent hover:text-aaccent font-bold shrink-0">
                               Use
                             </button>
                           )}
@@ -136,7 +191,7 @@ export default function SettingsScreen({
                 }}
               >
                 <div className="font-display text-lg mb-1" style={{ color: profile.color }}>{profile.label}</div>
-                <div className="text-[11px] text-atext-dim leading-snug">{profile.summary}</div>
+                <div className="text-[11px] text-atext-dim leading-snug">{profile.tagline ?? profile.summary}</div>
               </button>
             );
           })}
@@ -164,7 +219,7 @@ export default function SettingsScreen({
                   key={id}
                   type="button"
                   onClick={() => patchOpts({ advanceReminders: id })}
-                  className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${active ? 'bg-aaccent text-[#001520]' : 'bg-apanel-2 text-atext-dim'}`}
+                  className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${active ? 'bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]' : 'bg-apanel-2 text-atext-dim'}`}
                 >
                   {label}
                 </button>
@@ -176,6 +231,19 @@ export default function SettingsScreen({
 
       <div className={`${css.panel} p-5 space-y-4`}>
         <h3 className={`${css.h1} text-2xl`}>DISPLAY</h3>
+
+        {/* Theme — Tactician Dark is the single shipped identity. */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-bold text-sm">Colour theme</div>
+            <div className="text-[11px] text-atext-dim">Tactician Dark — midnight navy with cyan & amber.</div>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-aline bg-apanel-2">
+            <span className="w-3 h-3 rounded-full" style={{ background: 'var(--A-accent)' }} />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-atext">Tactician Dark</span>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="font-bold text-sm">UI density</div>
@@ -187,7 +255,7 @@ export default function SettingsScreen({
                 key={d}
                 type="button"
                 onClick={() => patchOpts({ uiDensity: d })}
-                className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${uiDensity === d ? 'bg-aaccent text-[#001520]' : 'bg-apanel-2 text-atext-dim'}`}
+                className={`px-3 py-2 text-[10px] font-bold uppercase tracking-widest ${uiDensity === d ? 'bg-aaccent text-[var(--fd-on-accent,#0A0D0C)]' : 'bg-apanel-2 text-atext-dim'}`}
               >
                 {d}
               </button>
@@ -336,6 +404,27 @@ export default function SettingsScreen({
               e.target.value = '';
             }}
           />
+        </div>
+      </div>
+
+      <div className={`${css.panel} p-5 space-y-4`}>
+        <h3 className={`${css.h1} text-2xl`}>EXPORT DATA</h3>
+        <p className="text-xs text-atext-dim">Download your current career data as CSV files for analysis or record-keeping.</p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { label: 'Squad CSV', fn: () => exportSquad(career) },
+            { label: 'Finances CSV', fn: () => exportFinances(career) },
+            { label: 'Ladder CSV', fn: () => exportLadder(career) },
+          ].map(({ label, fn }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={fn}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-bold uppercase tracking-widest border border-aline bg-apanel-2 hover:border-aaccent/40 text-atext-dim"
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
