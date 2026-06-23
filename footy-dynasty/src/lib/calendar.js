@@ -2,7 +2,7 @@
 // Date utilities — all dates stored as 'YYYY-MM-DD' strings
 // ---------------------------------------------------------------------------
 
-import { rng } from './rng.js';
+import { rng, TIER_SCALE } from './rng.js';
 import { clamp } from './format.js';
 import { themedRoundForNumber } from './themedRounds.js';
 import { PLAYER_TRAITS } from './playerGen.js';
@@ -232,6 +232,8 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
 
     const vals = Object.values(updated.attrs);
     updated.overall = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+    // Sync trueRating so match engine and year-end progression both see training gains.
+    updated.trueRating = Math.min(99, Math.round(updated.overall * (TIER_SCALE[p.tier ?? 2] ?? 0.80)));
 
     const lastName = p.lastName || p.name?.split(' ').slice(-1)[0] || 'Player';
     if (age <= 21)  devNotes.push(`${lastName} (age ${age}) — youth boost`);
@@ -272,6 +274,7 @@ export function applyTraining(squad, lineup, subtype, staff, opts = {}) {
         });
         const vals = Object.values(targetPlayer.attrs);
         targetPlayer.overall = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+        targetPlayer.trueRating = Math.min(99, Math.round(targetPlayer.overall * (TIER_SCALE[targetPlayer.tier ?? 2] ?? 0.80)));
       });
     });
   }

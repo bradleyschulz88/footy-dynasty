@@ -160,7 +160,7 @@ export function generatePlayer(clubTier, idx, nameContext) {
   Object.keys(attrs).forEach(k => { attrs[k] = Math.max(30, Math.min(99, attrs[k])); });
   const overall = Math.round(Object.values(attrs).reduce((a, b) => a + b, 0) / 8);
   const trueRating = Math.round(overall * (TIER_SCALE[tier] || 1.0));
-  const potential = Math.min(99, overall + (age <= 21 ? rand(5, 18) : age <= 25 ? rand(0, 8) : rand(-2, 3)));
+  const potential = Math.min(99, overall + (age <= 21 ? rand(5, 18) : age <= 25 ? rand(0, 8) : Math.max(0, rand(-2, 3))));
   const potentialTrue = Math.round(potential * (TIER_SCALE[tier] || 1.0));
   const secondaryPosition = rollSecondaryPosition(position);
   const nameKey = nameContext?.clubId != null ? String(nameContext.clubId) : "_";
