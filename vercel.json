@@ -1,5 +1,5 @@
 {
-  "installCommand": "cd footy-dynasty && npm ci",
-  "buildCommand": "cd footy-dynasty && npm run build",
-  "outputDirectory": "footy-dynasty/dist"
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
 }
