@@ -308,10 +308,10 @@ export function simMatch(home, away, isPlayerHome, playerStrength, homeFixtureAd
   const expAway = clamp(80 - diff * 1.6, 30, 160);
   const hScore = Math.max(20, Math.round(randNorm(expHome, 18)));
   const aScore = Math.max(20, Math.round(randNorm(expAway, 18)));
-  const hGoals = Math.floor(hScore / 6) + (hScore % 6 > 3 ? 1 : 0);
-  const hBeh   = Math.max(0, Math.round((hScore - hGoals * 6) / 1) + rand(2, 9));
-  const aGoals = Math.floor(aScore / 6) + (aScore % 6 > 3 ? 1 : 0);
-  const aBeh   = Math.max(0, Math.round((aScore - aGoals * 6) / 1) + rand(2, 9));
+  const hGoals = Math.floor(hScore / 6);
+  const hBeh   = hScore - hGoals * 6;
+  const aGoals = Math.floor(aScore / 6);
+  const aBeh   = aScore - aGoals * 6;
   const homeTotal = hGoals * 6 + hBeh;
   const awayTotal = aGoals * 6 + aBeh;
   return {

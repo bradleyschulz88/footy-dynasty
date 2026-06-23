@@ -608,7 +608,7 @@ export function generateSeasonObjectives(career, league) {
   // developing, and coming back — not the ladder or the balance sheet.
   if (league.tier === 4) {
     raw.push({
-      setBy: "Club President",
+      setBy: "Chairman",
       type: "ladder_position",
       description: `Finish in the top half (position ${Math.ceil(n / 2)} or better).`,
       target: Math.ceil(n / 2),
@@ -616,7 +616,7 @@ export function generateSeasonObjectives(career, league) {
       confidencePenalty: -2,
     });
     raw.push({
-      setBy: "Welfare Officer",
+      setBy: "Player Relations Director",
       type: "youth_promoted",
       description: "Develop at least three kids into regular contributors (5+ games each).",
       target: 3,

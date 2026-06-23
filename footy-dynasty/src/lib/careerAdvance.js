@@ -327,8 +327,8 @@ function buildPostMatchSummary(c, league, club, myResult, roundOrLabel) {
   const labelStr = typeof roundOrLabel === 'number' ? `Round ${roundOrLabel}` : String(roundOrLabel || 'Match');
   return {
     label: labelStr,
-    myScore: `${myResult.result?.homeGoals ?? 0}.${myResult.result?.homeBehinds ?? 0} (${myResult.myTotal})`,
-    oppScore: `${myResult.result?.awayGoals ?? 0}.${myResult.result?.awayBehinds ?? 0} (${myResult.oppTotal})`,
+    myScore: `${(isHome ? myResult.result?.homeGoals : myResult.result?.awayGoals) ?? 0}.${(isHome ? myResult.result?.homeBehinds : myResult.result?.awayBehinds) ?? 0} (${myResult.myTotal})`,
+    oppScore: `${(isHome ? myResult.result?.awayGoals : myResult.result?.homeGoals) ?? 0}.${(isHome ? myResult.result?.awayBehinds : myResult.result?.homeBehinds) ?? 0} (${myResult.oppTotal})`,
     myShortName: club.short, oppShortName: myResult.opp?.short || 'OPP',
     myColor: club.colors?.[0] || 'var(--A-accent)',
     oppColor: myResult.opp?.colors?.[0] || '#64748B',
@@ -343,7 +343,7 @@ function buildPostMatchSummary(c, league, club, myResult, roundOrLabel) {
     boardReaction,
     journalistLine: journoLine,
     committeeReaction,
-    isFinals: typeof roundOrLabel === 'string' && roundOrLabel !== `Round ${roundOrLabel}`,
+    isFinals: typeof roundOrLabel !== 'number' && !/^Round\s+\d+$/i.test(String(roundOrLabel)),
     isGrandFinal: labelStr === 'Grand Final',
   };
 }
@@ -384,6 +384,23 @@ function startFinals(c, league) {
   const myPos = sorted.findIndex((r) => r.id === c.clubId) + 1;
   const inFinals = finalists.some((f) => f.id === c.clubId);
   const seedIds = finalists.map((f) => f.id);
+
+  // Guard: fewer than 2 teams means no bracket is possible — crown the top team directly.
+  if (finalists.length < 2) {
+    const champion = finalists[0] ?? sorted[0];
+    c.inFinals = false;
+    c.phase = 'offseason';
+    c.seasonChampion = champion?.id ?? null;
+    c.news = [{
+      week: c.week,
+      type: 'win',
+      text: champion
+        ? `Season complete — ${champion.name} crowned premiers (insufficient teams for finals).`
+        : 'Season complete — no teams available for finals.',
+    }, ...c.news].slice(0, 15);
+    beginPostSeasonTradePeriod(c, league, c.leagueKey);
+    return c;
+  }
 
   c.inFinals = true;
   c.phase = 'finals';

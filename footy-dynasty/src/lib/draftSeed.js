@@ -35,7 +35,10 @@ function shapeDraftProspect(p, i) {
   Object.entries(p.attrs || {}).forEach(([k, v]) => {
     attrs[k] = Math.max(30, Math.min(99, Math.round(v * scale)));
   });
-  const overall = Math.round(Object.values(attrs).reduce((a, b) => a + b, 0) / 8) || target;
+  const attrValues = Object.values(attrs);
+  const overall = attrValues.length > 0
+    ? Math.round(attrValues.reduce((a, b) => a + b, 0) / attrValues.length)
+    : target;
   const potential = Math.min(99, overall + (i < ELITE_PROSPECT_COUNT ? rand(8, 15) : rand(6, 20)));
   return {
     ...p,
@@ -77,16 +80,22 @@ export function buildReverseLadderOrder(ladderRows) {
   return sortedLadder(ladderRows).slice().reverse().map((r) => r.id);
 }
 
+/** Local seeded shuffle that does NOT touch the global RNG state. */
+function shuffleWithSeed(arr, seed) {
+  let s = seed;
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    const j = Math.abs(s) % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 /** Deterministic lottery for inaugural draft before any ladder exists. */
 export function buildInauguralDraftOrder(clubIds, seedKey) {
   if (!clubIds?.length) return [];
-  seedRng(Number(seedKey) * 7919 + 13);
-  const order = [...clubIds];
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = rand(0, i);
-    [order[i], order[j]] = [order[j], order[i]];
-  }
-  return order;
+  return shuffleWithSeed(clubIds, Number(seedKey) * 7919 + 13);
 }
 
 function inauguralSeedKey(c) {

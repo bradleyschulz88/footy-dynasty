@@ -104,12 +104,28 @@ export function buildStartingSponsors(leagueTier) {
 }
 
 // Auto-accept a renewal proposal — applies the new annualValue + years.
+// Handles the case where the sponsor was moved to expired before acceptance.
 export function applyRenewalAcceptance(career, proposal) {
+  let found = false;
+  const updated = (career.sponsors || []).map(s => {
+    if (s.id !== proposal.sponsorId) return s;
+    found = true;
+    return { ...s, annualValue: proposal.proposedValue, yearsLeft: (s.yearsLeft ?? 0) + proposal.proposedYears };
+  });
+  if (!found) {
+    // Sponsor expired before acceptance — re-add it with renewed terms.
+    updated.push({
+      id: proposal.sponsorId,
+      name: proposal.name ?? proposal.sponsorName ?? 'Returning Sponsor',
+      annualValue: proposal.proposedValue,
+      yearsLeft: proposal.proposedYears,
+      category: proposal.category ?? 'general',
+    });
+  }
   return {
-    sponsors: (career.sponsors || []).map(s =>
-      s.id === proposal.sponsorId
-        ? { ...s, annualValue: proposal.proposedValue, yearsLeft: (s.yearsLeft ?? 0) + proposal.proposedYears }
-        : s,
+    sponsors: updated,
+    sponsorRenewalProposals: (career.sponsorRenewalProposals || []).filter(
+      p => p.proposalId !== proposal.proposalId,
     ),
   };
 }
