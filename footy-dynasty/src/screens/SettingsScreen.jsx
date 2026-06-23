@@ -75,6 +75,7 @@ export default function SettingsScreen({
   onTogglePicker,
   onSwitchSlot,
   onDeleteSlot,
+  onShowPrivacy,
 }) {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
@@ -470,6 +471,16 @@ export default function SettingsScreen({
             {autosave ? 'On' : 'Off'}
           </button>
         </div>
+      </div>
+
+      <div className="pt-2 pb-6 text-center">
+        <button
+          type="button"
+          onClick={onShowPrivacy}
+          className="text-[10px] font-mono uppercase tracking-widest text-atext-mute hover:text-aaccent transition-colors"
+        >
+          Privacy Policy
+        </button>
       </div>
     </div>
   );
