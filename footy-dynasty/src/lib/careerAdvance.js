@@ -1313,6 +1313,7 @@ function finishSeason(c, league) {
     c.staffMarket = [];
   }
 
+
   // AFL expansion: when new clubs join (e.g. Tasmania 2028), rebuild the fixture schedule
   if (c.leagueKey === 'AFL') {
     const newClubs = getAFLClubsForSeason(c.season);

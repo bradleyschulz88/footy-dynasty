@@ -51,6 +51,7 @@ function shapeDraftProspect(p, i) {
   };
 }
 
+
 /** Snake draft: round 1 order, even rounds reversed. Optional bonusPicks are inserted before the snake. */
 export function buildSnakeDraftOrder(round1ClubIds, rounds = DRAFT_ROUNDS, bonusPicks = []) {
   if (!round1ClubIds?.length) return [];
