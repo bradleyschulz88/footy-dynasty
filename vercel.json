@@ -1,0 +1,5 @@
+{
+  "installCommand": "npm --prefix footy-dynasty ci",
+  "buildCommand": "npm --prefix footy-dynasty run build",
+  "outputDirectory": "footy-dynasty/dist"
+}
