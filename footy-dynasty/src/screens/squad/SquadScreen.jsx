@@ -1239,16 +1239,18 @@ function TacticsTab({ onOpenClubStaff }) {
   );
 }
 
-function trainingPhaseAdvice(career) {
+function trainingPhaseAdvice(career, league) {
   const phase = career.phase ?? 'regular';
   const completedRounds = career.completedRounds ?? 0;
-  const totalRounds = career.league?.rounds ?? career.currentLeague?.rounds ?? 22;
+  const totalRounds = league?.rounds ?? 22;
   const roundsLeft = totalRounds - completedRounds;
-
-  if (phase === 'pre_season')  return { label: 'Pre-season',   advice: 'Push intensity — this is when fitness banks are built. 75–90 recommended.', intensity: 82 };
-  if (phase === 'finals')      return { label: 'Finals block', advice: 'Taper down — freshen the legs, trust the system. 55–65 recommended.',        intensity: 60 };
-  if (roundsLeft <= 3)         return { label: 'End of season','advice': 'Light work — preserve the list. 50–60 recommended.',                        intensity: 55 };
-  return                              { label: 'In-season',    advice: 'Moderate load — match fitness over development. 65–75 recommended.',           intensity: 70 };
+  if (phase === 'pre_season' || phase === 'preseason')
+    return { label: 'Pre-season', advice: 'Push intensity — fitness banks are built now. 75–90 recommended.', recommend: 82 };
+  if (phase === 'finals')
+    return { label: 'Finals block', advice: 'Taper down — freshen the legs, trust the system. 55–65 recommended.', recommend: 60 };
+  if (roundsLeft <= 3)
+    return { label: 'End of season', advice: 'Light work — preserve the list for finals. 50–60 recommended.', recommend: 55 };
+  return { label: 'In-season', advice: 'Moderate load — match fitness over development. 65–75 recommended.', recommend: 70 };
 }
 
 function TrainingTab({ onOpenClubStaff }) {
@@ -1392,18 +1394,18 @@ function TrainingTab({ onOpenClubStaff }) {
             <span className="text-atext font-mono font-bold">{intMul.toFixed(2)}×</span> (about 1.0 at intensity 60).
           </p>
           {(() => {
-            const advice = trainingPhaseAdvice(career);
+            const phaseAdvice = trainingPhaseAdvice(career, PYRAMID[career.leagueKey]);
             return (
               <div className="rounded-xl px-3 py-2 mb-3 flex items-center justify-between gap-2"
                 style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
                 <div className="min-w-0">
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent">{advice.label}</div>
-                  <div className="text-[11px] text-atext-mute mt-0.5 leading-tight">{advice.advice}</div>
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent">{phaseAdvice.label}</div>
+                  <div className="text-[11px] text-atext-mute mt-0.5 leading-tight">{phaseAdvice.advice}</div>
                 </div>
                 <button
-                  onClick={() => updateCareer({ training: { ...t, intensity: advice.intensity } })}
+                  onClick={() => updateCareer({ training: { ...t, intensity: phaseAdvice.recommend } })}
                   className="text-[11px] px-2 py-1 rounded-lg shrink-0 font-medium"
-                  style={{ background: 'var(--A-accent)', color: '#000' }}>
+                  style={{ background: 'var(--A-accent)', color: 'var(--fd-on-accent)' }}>
                   Apply
                 </button>
               </div>
