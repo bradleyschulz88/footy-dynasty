@@ -249,7 +249,7 @@ export function buildOffSeasonFreeAgents(c, generatePlayerFn = generatePlayer) {
     out.push({
       id: `fa_${c.season}_${i}`,
       source: 'free_agent',
-      freeAgentType: p.age >= 28 && (p.gamesPlayed || 0) >= 80 ? 'UFA' : 'UFA',
+      freeAgentType: p.age >= 28 && (p.gamesPlayed || 0) >= 80 ? 'UFA' : 'RFA',
       firstName: p.firstName,
       lastName: p.lastName,
       position: p.position,

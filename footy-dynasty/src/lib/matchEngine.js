@@ -200,7 +200,7 @@ function pickMoment() {
 // Convert a rating differential into base shot rates per quarter (Poisson-ish)
 // expected ~10-16 total shots per quarter at AFL level
 function shotRates(diff) {
-  const baseTotal = 14; // total per quarter (both teams)
+  const baseTotal = 16; // total per quarter (both teams) — calibrated to AFL average ~90 pts/team/game
   const split = clamp(0.5 + diff * 0.012, 0.20, 0.80);
   return {
     home: baseTotal * split,

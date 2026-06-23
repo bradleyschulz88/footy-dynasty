@@ -177,6 +177,29 @@ describe('applyTraining', () => {
     expect(Array.isArray(result.devNotes)).toBe(true);
   });
 
+  it('trueRating is updated after training so match engine sees gains', () => {
+    // Previously applyTraining only updated overall, leaving trueRating stale.
+    // Match engine reads trueRating first, so gains were invisible in matches.
+    const squad = [makePlayer('p1', {
+      tier: 1,
+      trueRating: 70,
+      overall: 70,
+      attrs: { kicking: 70, marking: 70, handball: 70 },
+    })];
+    let trueRatingChanged = false;
+    for (let i = 0; i < 20; i++) {
+      const { squad: newSquad } = applyTraining(squad, ['p1'], 'ball_drill', staff, { intensity: 100 });
+      const updated = newSquad.find(p => p.id === 'p1');
+      if (updated.trueRating !== squad[0].trueRating) {
+        trueRatingChanged = true;
+        // trueRating should equal overall for tier-1 players
+        expect(updated.trueRating).toBe(updated.overall);
+        break;
+      }
+    }
+    expect(trueRatingChanged).toBe(true);
+  });
+
   it('a player aged 19 triggers a youth boost entry in devNotes containing their last name', () => {
     let found = false;
     for (let i = 0; i < 20; i++) {
