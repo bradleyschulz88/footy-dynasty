@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Trophy, FolderOpen, Zap, SlidersHorizontal } from "lucide-react";
+import PrivacyScreen from "./PrivacyScreen.jsx";
 
 const TAGLINES = [
   "Build a dynasty. Leave a legacy.",
@@ -12,11 +13,20 @@ const TAGLINES = [
 export default function LandingScreen({ hasSaves, themeClass = 'dirV4', onQuickStart, onNewCareer, onLoadGame }) {
   const [tagline] = useState(() => TAGLINES[Math.floor(Math.random() * TAGLINES.length)]);
   const [ready, setReady] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setReady(true), 80);
     return () => clearTimeout(t);
   }, []);
+
+  if (showPrivacy) {
+    return (
+      <div className={`${themeClass} font-sans`}>
+        <PrivacyScreen onBack={() => setShowPrivacy(false)} />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -198,6 +208,22 @@ export default function LandingScreen({ hasSaves, themeClass = 'dirV4', onQuickS
                   )}
                 </React.Fragment>
               ))}
+            </motion.div>
+
+            {/* Privacy Policy link */}
+            <motion.div
+              className="mt-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.4 }}
+              transition={{ delay: 1.0, duration: 0.5 }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowPrivacy(true)}
+                className="text-[10px] font-mono uppercase tracking-widest text-atext-mute hover:text-aaccent transition-colors"
+              >
+                Privacy Policy
+              </button>
             </motion.div>
           </motion.div>
         )}

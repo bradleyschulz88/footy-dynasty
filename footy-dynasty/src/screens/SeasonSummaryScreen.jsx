@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import confetti from "canvas-confetti";
 import { DollarSign, AlertCircle } from "lucide-react";
 import { fmtK } from "../lib/format.js";
@@ -114,6 +114,43 @@ export default function SeasonSummaryScreen({
   );
 
   const celebrate = summary.champion || summary.promoted;
+
+  const [copied, setCopied] = useState(false);
+
+  function buildShareText(s, clubName) {
+    const pos = s.position;
+    const ordinal = pos === 1 ? "st" : pos === 2 ? "nd" : pos === 3 ? "rd" : "th";
+    const outcomeFlag = s.champion
+      ? "🏆 Premiers!"
+      : s.promoted
+        ? "↑ Promoted"
+        : s.relegated
+          ? "↓ Relegated"
+          : null;
+    const lines = [
+      `🏉 Season ${s.season} with ${clubName}`,
+      `${s.leagueName} — ${pos}${ordinal} place`,
+      `${s.W}W ${s.L}L ${s.D}D`,
+    ];
+    if (outcomeFlag) lines.push(outcomeFlag);
+    lines.push("", "Play Footy Dynasty → footydynasty.app");
+    return lines.join("\n");
+  }
+
+  async function handleShare() {
+    const text = buildShareText(summary, club.name);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Footy Dynasty", text });
+      } else {
+        await navigator.clipboard.writeText(text + "\nhttps://footydynasty.app");
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch {
+      // user cancelled or API unavailable — do nothing
+    }
+  }
 
   useEffect(() => {
     if (summary.champion) {
@@ -333,7 +370,26 @@ export default function SeasonSummaryScreen({
       </div>
 
       <div className="px-6 py-6" style={{ borderTop: "1px solid var(--A-line)" }}>
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto space-y-3">
+          <button
+            onClick={handleShare}
+            className="w-full py-3 rounded-2xl font-bold text-base tracking-wide transition-all flex items-center justify-center gap-2"
+            style={{
+              background: "var(--A-panel-2)",
+              color: "var(--A-accent)",
+              border: "1px solid var(--A-line)",
+            }}
+          >
+            📤 Share my season
+          </button>
+          {copied && (
+            <div
+              className="text-center text-sm py-1.5 rounded-xl"
+              style={{ color: "#4AE89A", background: "rgba(74,232,154,0.1)", border: "1px solid rgba(74,232,154,0.25)" }}
+            >
+              ✓ Copied to clipboard
+            </div>
+          )}
           <button
             onClick={onContinue}
             className="w-full py-4 rounded-2xl font-display text-xl tracking-widest transition-all"
