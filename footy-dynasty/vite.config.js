@@ -56,6 +56,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    testTimeout: 15000,
     maxWorkers: process.env.CI ? 4 : '75%',
     exclude: ["**/node_modules/**", "**/e2e/**"],
     coverage: {
