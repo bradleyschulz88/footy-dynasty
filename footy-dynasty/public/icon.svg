@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background: dark navy rounded square -->
+  <rect width="512" height="512" rx="100" fill="#0B1220"/>
+  <!-- Football oval (AFL shape) in amber/gold, rotated ~30deg -->
+  <ellipse cx="256" cy="210" rx="122" ry="76" fill="#F5A623" transform="rotate(-30 256 210)"/>
+  <!-- Seam highlight -->
+  <ellipse cx="256" cy="210" rx="122" ry="76" fill="none" stroke="#CC8200" stroke-width="5" transform="rotate(-30 256 210)"/>
+  <!-- Centre stitch line (vertical) -->
+  <line x1="256" y1="155" x2="256" y2="265" stroke="#0B1220" stroke-width="7" stroke-linecap="round"/>
+  <!-- Lace crossbars -->
+  <line x1="234" y1="172" x2="278" y2="172" stroke="#0B1220" stroke-width="5.5" stroke-linecap="round"/>
+  <line x1="228" y1="198" x2="284" y2="198" stroke="#0B1220" stroke-width="5.5" stroke-linecap="round"/>
+  <line x1="228" y1="224" x2="284" y2="224" stroke="#0B1220" stroke-width="5.5" stroke-linecap="round"/>
+  <line x1="234" y1="250" x2="278" y2="250" stroke="#0B1220" stroke-width="5.5" stroke-linecap="round"/>
+  <!-- DYNASTY wordmark -->
+  <text x="256" y="348" font-family="'Arial Black', 'Arial Bold', Arial, sans-serif" font-weight="900" font-size="68" fill="#F5A623" text-anchor="middle" letter-spacing="3">DYNASTY</text>
+  <!-- Three stars below -->
+  <text x="256" y="408" font-family="serif" font-size="44" fill="#F5A623" text-anchor="middle">&#9733; &#9733; &#9733;</text>
+</svg>
