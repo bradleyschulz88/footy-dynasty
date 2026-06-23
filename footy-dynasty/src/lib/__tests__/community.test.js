@@ -36,9 +36,9 @@ describe('committee mood helpers', () => {
     expect(dn.find(m => m.role === 'Treasurer').mood).toBe(0);
   });
 
-  it('committeeMoodAverage returns 100 for an empty / Tier 1 setup', () => {
-    expect(committeeMoodAverage([])).toBe(100);
-    expect(committeeMoodAverage(null)).toBe(100);
+  it('committeeMoodAverage returns 50 (neutral) for an empty / Tier 1 setup', () => {
+    expect(committeeMoodAverage([])).toBe(50);
+    expect(committeeMoodAverage(null)).toBe(50);
   });
 
   it('committeeMessage returns null for an unknown trigger', () => {

@@ -171,7 +171,7 @@ export function generateStaffMarket(career, league) {
       name,
       rating:        newRating,
       wage:          newWage,
-      contractYears: 2 + rand(0, 1),
+      contractYears: 2 + Math.round(localRng()),
       signingFee:    Math.round(newWage * 0.4),
       roleLabel:     current?.role ?? id,
       currentRating: current?.rating ?? 60,

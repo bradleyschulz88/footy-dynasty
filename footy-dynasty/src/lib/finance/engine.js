@@ -176,10 +176,11 @@ export function incomeBreakdown(career) {
 
   const broadcast   = (BROADCAST_PER_MATCH[tier] ?? 0) * SEASON_MATCHES_EST;
   const gate        = perMatch.gate * homeGames;
-  const membership  = Math.round(total * INCOME_MIX.membership);
-  const merchandise = Math.round(total * INCOME_MIX.merchandise);
-  const sponsors    = annualSponsorIncome(career);
   const gaming      = gamingVenueAnnualRevenue(career);
+  const baseTotal   = total - gaming; // strip gaming before fractioning to avoid double-count
+  const membership  = Math.round(baseTotal * INCOME_MIX.membership);
+  const merchandise = Math.round(baseTotal * INCOME_MIX.merchandise);
+  const sponsors    = annualSponsorIncome(career);
 
   // T3 community-specific income lines (projected annual).
   const bar     = tier === 3 ? Math.round(homeGames * ((T3_COMMUNITY.barPerHomeGame.min + T3_COMMUNITY.barPerHomeGame.max) / 2)) : 0;
@@ -198,7 +199,7 @@ export function expenseBreakdown(career) {
   const facilities  = annualFacilityUpkeep(career);
   // T3 community ops — ground hire + umpires + affiliation/insurance.
   const groundHire  = tier === 3 ? homeGames * T3_COMMUNITY.groundHirePerGame : 0;
-  const umpires     = tier === 3 ? SEASON_MATCHES_EST * T3_COMMUNITY.umpireFeePerGame : 0;
+  const umpires     = tier === 3 ? homeGames * T3_COMMUNITY.umpireFeePerGame : 0;
   const affiliation = tier === 3 ? T3_COMMUNITY.affiliationFeeAnnual + T3_COMMUNITY.insuranceAnnual : 0;
   const grandTotal  = playerWages + staffWages + facilities + groundHire + umpires + affiliation;
   return { playerWages, staffWages, facilities, groundHire, umpires, affiliation, grandTotal };

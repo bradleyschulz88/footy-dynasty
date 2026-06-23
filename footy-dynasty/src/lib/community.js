@@ -65,7 +65,7 @@ export function bumpCommitteeMood(committee, role, delta) {
 }
 
 export function committeeMoodAverage(committee) {
-  if (!Array.isArray(committee) || committee.length === 0) return 100;
+  if (!Array.isArray(committee) || committee.length === 0) return 50;
   return Math.round(committee.reduce((a, m) => a + m.mood, 0) / committee.length);
 }
 
@@ -196,8 +196,12 @@ export function applyFootyTrip(career, optionId) {
   if (!opt) return null;
 
   let squad = (career.squad || []).map(p => ({ ...p, morale: clamp((p.morale ?? 70) + opt.moraleGain, 0, 100) }));
-  let committee = bumpCommitteeMood(career.committee, 'Social Coordinator', 12);
-  committee     = bumpCommitteeMood(committee,        'Treasurer',          opt.treasurerHit);
+  let committee = career.committee?.length
+    ? bumpCommitteeMood(career.committee, 'Social Coordinator', 12)
+    : career.committee;
+  committee = career.committee?.length
+    ? bumpCommitteeMood(committee, 'Treasurer', opt.treasurerHit)
+    : committee;
 
   const news = [];
   // Mentor bond on regional/interstate

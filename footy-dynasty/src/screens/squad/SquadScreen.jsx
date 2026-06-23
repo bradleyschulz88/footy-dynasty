@@ -1117,7 +1117,7 @@ function PlayerRolesPanel({ lineup, playerRoles, onSet }) {
               <div key={p.id} className={`${css.inset} flex items-center gap-2 p-2`}>
                 <RatingDot value={p.overall} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <div className="text-[12px] font-semibold text-atext truncate">{p.name}</div>
+                  <div className="text-[12px] font-semibold text-atext truncate">{p.name ?? `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim()}</div>
                   <div className="text-[10px] text-atext-dim uppercase tracking-wide">{formatPositionSlash(p) || p.position}</div>
                 </div>
                 {showFit ? (

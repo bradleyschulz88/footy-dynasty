@@ -327,8 +327,8 @@ function buildPostMatchSummary(c, league, club, myResult, roundOrLabel) {
   const labelStr = typeof roundOrLabel === 'number' ? `Round ${roundOrLabel}` : String(roundOrLabel || 'Match');
   return {
     label: labelStr,
-    myScore: `${myResult.result?.homeGoals ?? 0}.${myResult.result?.homeBehinds ?? 0} (${myResult.myTotal})`,
-    oppScore: `${myResult.result?.awayGoals ?? 0}.${myResult.result?.awayBehinds ?? 0} (${myResult.oppTotal})`,
+    myScore: `${(isHome ? myResult.result?.homeGoals : myResult.result?.awayGoals) ?? 0}.${(isHome ? myResult.result?.homeBehinds : myResult.result?.awayBehinds) ?? 0} (${myResult.myTotal})`,
+    oppScore: `${(isHome ? myResult.result?.awayGoals : myResult.result?.homeGoals) ?? 0}.${(isHome ? myResult.result?.awayBehinds : myResult.result?.homeBehinds) ?? 0} (${myResult.oppTotal})`,
     myShortName: club.short, oppShortName: myResult.opp?.short || 'OPP',
     myColor: club.colors?.[0] || 'var(--A-accent)',
     oppColor: myResult.opp?.colors?.[0] || '#64748B',
@@ -343,7 +343,7 @@ function buildPostMatchSummary(c, league, club, myResult, roundOrLabel) {
     boardReaction,
     journalistLine: journoLine,
     committeeReaction,
-    isFinals: typeof roundOrLabel === 'string' && roundOrLabel !== `Round ${roundOrLabel}`,
+    isFinals: typeof roundOrLabel !== 'number' && !/^Round\s+\d+$/i.test(String(roundOrLabel)),
     isGrandFinal: labelStr === 'Grand Final',
   };
 }
@@ -384,6 +384,23 @@ function startFinals(c, league) {
   const myPos = sorted.findIndex((r) => r.id === c.clubId) + 1;
   const inFinals = finalists.some((f) => f.id === c.clubId);
   const seedIds = finalists.map((f) => f.id);
+
+  // Guard: fewer than 2 teams means no bracket is possible — crown the top team directly.
+  if (finalists.length < 2) {
+    const champion = finalists[0] ?? sorted[0];
+    c.inFinals = false;
+    c.phase = 'offseason';
+    c.seasonChampion = champion?.id ?? null;
+    c.news = [{
+      week: c.week,
+      type: 'win',
+      text: champion
+        ? `Season complete — ${champion.name} crowned premiers (insufficient teams for finals).`
+        : 'Season complete — no teams available for finals.',
+    }, ...c.news].slice(0, 15);
+    beginPostSeasonTradePeriod(c, league, c.leagueKey);
+    return c;
+  }
 
   c.inFinals = true;
   c.phase = 'finals';
@@ -512,6 +529,10 @@ function simFinalsPair(c, league, m, _roundLabel) {
 function advanceFinalsWeek(c, league) {
   const alive = c.finalsAlive || [];
   if (alive.length <= 1) {
+    if (alive.length === 0) {
+      c.news = [{ week: c.week, type: 'info', text: 'Finals bracket error — season concluded without a recorded premier.' }, ...(c.news || [])].slice(0, 25);
+      return;
+    }
     return crownPremier(c, league, alive[0]);
   }
 
@@ -895,12 +916,12 @@ function finishSeason(c, league) {
   const retiredThisYear = [];
   c.squad = c.squad.map((p) => {
     const newAge = p.age + 1;
-    const decline = newAge >= 30 ? rand(2, 6) : newAge >= 27 ? rand(0, 3) : newAge <= 22 ? -rand(2, 6) : 0;
+    const decline = newAge >= 30 ? rand(2, 6) : newAge >= 27 ? rand(0, 3) : newAge <= 22 ? -rand(2, 6) : -rand(0, 2);
     const newTrue = clamp((p.trueRating || p.overall) - Math.round(decline * (TIER_SCALE[p.tier || 2] || 1.0)), 25, 99);
     const newOverall = clamp(Math.round(newTrue / newTierScale) - (newLeagueTier < (p.tier || league.tier) ? rand(0, 3) : 0), 30, 99);
     return {
       ...p, age: newAge, overall: newOverall, trueRating: newTrue, tier: newLeagueTier,
-      contract: Math.max(0, p.contract - 1), form: rand(50, 80), fitness: rand(85, 100),
+      contract: Math.max(0, p.contract - 1), _originalContract: p.contract, form: rand(50, 80), fitness: rand(85, 100),
       // Accumulate lifetime career totals before wiping season counters.
       careerGoals: (p.careerGoals || 0) + (p.goals || 0),
       careerGames: (p.careerGames || 0) + (p.gamesPlayed || 0),
@@ -912,8 +933,9 @@ function finishSeason(c, league) {
       unhappySince: null, transferRequested: false, weeksWithoutGame: 0,
     };
   });
-  const survivors = c.squad.filter((p) => !p._walking && p.age <= 36 && p.contract > 0);
-  const leavers = c.squad.filter((p) => p._walking || p.age > 36 || p.contract <= 0);
+  const survivors = c.squad.filter((p) => !p._walking && p.age <= 36 && (p._originalContract ?? p.contract) > 0)
+    .map((p) => { const { _originalContract, ...rest } = p; return rest; });
+  const leavers = c.squad.filter((p) => p._walking || p.age > 36 || (p._originalContract ?? p.contract) <= 0);
   leavers.forEach((p) => {
     retiredThisYear.push({
       id: p.id,
@@ -1171,16 +1193,17 @@ function finishSeason(c, league) {
   // ── Facility loan repayments (annual, per season) ───────────────────────
   if (c.facilityLoans?.length) {
     const paidOff = [];
-    c.facilityLoans = c.facilityLoans
-      .map(loan => ({ ...loan, seasonsLeft: loan.seasonsLeft - 1 }))
-      .filter(loan => {
-        if (loan.seasonsLeft <= 0) {
-          paidOff.push(loan);
-          return false;
-        }
-        c.finance.cash = (c.finance.cash ?? 0) - loan.annualRepayment;
-        return true;
-      });
+    const remaining = [];
+    (c.facilityLoans || []).forEach(loan => {
+      loan.seasonsLeft -= 1;
+      c.finance.cash = (c.finance.cash ?? 0) - loan.annualRepayment;
+      if (loan.seasonsLeft <= 0) {
+        paidOff.push(loan);
+      } else {
+        remaining.push(loan);
+      }
+    });
+    c.facilityLoans = remaining;
     paidOff.forEach(loan => {
       c.news = [{
         week: 0, type: 'info',

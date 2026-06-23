@@ -32,7 +32,6 @@ import { seedNationalDraft } from "./lib/draftSeed.js";
 import { GlobalStyle } from "./components/primitives.jsx";
 import { Toaster } from 'sonner';
 import LandingScreen from "./screens/LandingScreen.jsx";
-import PrivacyScreen from "./screens/PrivacyScreen.jsx";
 import GameOverScreen from "./screens/GameOverScreen.jsx";
 import PostMatchSummary from "./screens/PostMatchSummary.jsx";
 import SeasonSummaryScreen from "./screens/SeasonSummaryScreen.jsx";
@@ -223,7 +222,6 @@ function AFLManagerInner() {
   const [pwaNeedsUpdate, setPwaNeedsUpdate] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [showPrivacy, setShowPrivacy] = useState(false);
   const installPromptRef = useRef(null);
 
   const themeClass = resolveThemeClass(career);
@@ -669,7 +667,7 @@ function AFLManagerInner() {
           losses: career.coachStats?.totalLosses || 0,
           premierships: career.coachStats?.premierships || 0,
           finalSeason: career.season,
-          tier: league.tier,
+          tier: (PYRAMID[career.leagueKey])?.tier,
         },
       ],
       // New club state
@@ -1496,7 +1494,6 @@ function AFLManagerInner() {
                     onTogglePicker={() => setShowSlotPicker((s) => !s)}
                     onSwitchSlot={handleSwitchSlot}
                     onDeleteSlot={handleDeleteSlot}
-                    onShowPrivacy={() => setShowPrivacy(true)}
                   />
                 </Suspense>
               )}
@@ -1627,11 +1624,6 @@ function AFLManagerInner() {
           },
         }}
       />
-      {showPrivacy && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 10000 }}>
-          <PrivacyScreen onBack={() => setShowPrivacy(false)} />
-        </div>
-      )}
     </div>
     </AppMotionConfig>
   );
