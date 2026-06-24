@@ -76,9 +76,12 @@ export function Sidebar({ screen, onNavigate, club, league, myLadderPos }) {
 
       {/* Club identity card */}
       <div className="px-4 py-3 border-b border-aline hidden md:block">
-        <div className="panel rounded-xl overflow-hidden">
+        <div className="relative rounded-xl overflow-hidden" style={{
+          background: `linear-gradient(135deg, ${c1}28 0%, ${c2}14 70%, var(--A-panel) 100%)`,
+          border: '1px solid var(--A-line)',
+        }}>
           {/* Club colour bar */}
-          <div className="h-[5px] w-full" style={{ background: `linear-gradient(90deg, ${c1}, ${c2})` }} />
+          <div className="h-[3px] w-full" style={{ background: `linear-gradient(90deg, ${c1}, ${c2})` }} />
           <div className="p-3">
             <div className="flex items-center gap-3 mb-3">
               {/* Club crest badge */}

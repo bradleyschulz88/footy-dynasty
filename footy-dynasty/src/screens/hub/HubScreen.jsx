@@ -309,7 +309,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
           {/* Summary strip — ladder / record / win rate */}
           <div className="flex items-center rounded-xl py-2 px-1" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
             <div className="flex-1 text-center leading-none">
-              <div className="font-display text-lg tabular-nums" style={{ color: 'var(--A-accent)', fontVariantNumeric: 'tabular-nums' }}>#{myLadderPos || '—'}</div>
+              <div className="font-display text-lg tabular-nums" style={{ color: posColor, fontVariantNumeric: 'tabular-nums' }}>#{myLadderPos || '—'}</div>
               <div className="text-[8px] text-atext-mute uppercase tracking-[0.12em] font-mono mt-1">Ladder</div>
             </div>
             <div className="w-px h-6" style={{ background: 'var(--A-line)' }} />
@@ -317,11 +317,20 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
               <div className="font-display text-lg tabular-nums" style={{ color: 'var(--A-accent)', fontVariantNumeric: 'tabular-nums' }}>
                 {myRow ? <>{myRow.W}<small className="text-[11px] text-atext-mute font-semibold">W</small>-{myRow.L}<small className="text-[11px] text-atext-mute font-semibold">L</small></> : '—'}
               </div>
-              <div className="text-[8px] text-atext-mute uppercase tracking-[0.12em] font-mono mt-1">Record</div>
+              {myRow?.form?.length > 0 && (
+                <div className="flex items-center justify-center gap-0.5 mt-1">
+                  {(myRow.form.slice(-5)).map((r, i) => (
+                    <div key={i} className="w-1.5 h-1.5 rounded-sm" style={{
+                      background: r === 'W' ? 'var(--A-pos)' : r === 'L' ? 'var(--A-neg)' : 'var(--A-accent-2)'
+                    }} />
+                  ))}
+                </div>
+              )}
+              {!(myRow?.form?.length > 0) && <div className="text-[8px] text-atext-mute uppercase tracking-[0.12em] font-mono mt-1">Record</div>}
             </div>
             <div className="w-px h-6" style={{ background: 'var(--A-line)' }} />
             <div className="flex-1 text-center leading-none">
-              <div className="font-display text-lg tabular-nums" style={{ color: 'var(--A-accent)', fontVariantNumeric: 'tabular-nums' }}>{winPct}<small className="text-[11px] text-atext-mute font-semibold">%</small></div>
+              <div className="font-display text-lg tabular-nums" style={{ color: posColor, fontVariantNumeric: 'tabular-nums' }}>{winPct}<small className="text-[11px] text-atext-mute font-semibold">%</small></div>
               <div className="text-[8px] text-atext-mute uppercase tracking-[0.12em] font-mono mt-1">Win Rate</div>
             </div>
           </div>
@@ -376,16 +385,16 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
                 <DollarSign className="w-3 h-3 text-atext-mute" />
                 <span className="text-[9px] uppercase tracking-[0.12em] font-bold font-mono text-atext-mute">Finances</span>
               </div>
-              <div className="font-display text-xl leading-none tabular-nums" style={{ color: 'var(--A-accent-2)', fontVariantNumeric: 'tabular-nums' }}>{fmtK(career.finance?.cash ?? 0)}</div>
+              <div className="font-display text-3xl font-bold leading-none tabular-nums" style={{ color: 'var(--A-accent-2)', fontVariantNumeric: 'tabular-nums' }}>{fmtK(career.finance?.cash ?? 0)}</div>
               <div className="text-[9px] text-atext-mute mt-1">Available cash</div>
               {cap > 0 && (
                 <div className="mt-2.5">
                   <div className="flex items-center justify-between text-[8px] mb-1">
                     <span className="text-atext-mute uppercase tracking-wider font-mono">Wage Cap</span>
-                    <span className="font-display tabular-nums" style={{ color: 'var(--A-accent-2)' }}>{capPctHub}%</span>
+                    <span className="font-display tabular-nums" style={{ color: capPctHub >= 85 ? 'var(--A-neg)' : 'var(--A-accent-2)' }}>{capPctHub}%</span>
                   </div>
                   <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--A-panel)' }}>
-                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, capPctHub)}%`, background: 'linear-gradient(90deg, var(--A-accent-2), #FF8A3D)' }} />
+                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, capPctHub)}%`, background: capPctHub >= 85 ? 'linear-gradient(90deg, #FF6B35, var(--A-neg))' : 'linear-gradient(90deg, var(--A-accent-2), #FF8A3D)' }} />
                   </div>
                   <div className="text-[8px] text-atext-mute mt-1 font-mono tabular-nums">{fmtK(playerWagesHub)} / {fmtK(cap)}</div>
                 </div>
@@ -393,7 +402,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
             </div>
 
             {/* Board */}
-            <div className="rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+            <div className="rounded-xl p-3" style={{ background: 'var(--A-panel-2)', border: boardConf != null && boardConf >= 70 ? '1px solid var(--A-pos)' : boardConf != null && boardConf < 30 ? '1px solid var(--A-neg)' : '1px solid var(--A-line)' }}>
               <div className="flex items-center gap-1.5 mb-2">
                 <Handshake className="w-3 h-3 text-atext-mute" />
                 <span className="text-[9px] uppercase tracking-[0.12em] font-bold font-mono text-atext-mute">Board</span>
