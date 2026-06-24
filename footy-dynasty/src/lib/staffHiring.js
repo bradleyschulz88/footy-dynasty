@@ -138,17 +138,21 @@ export function recruitRandomVolunteerStaff(career, nowMs = Date.now()) {
 
 export function generateStaffMarket(career, league) {
   const tier = league?.tier ?? 3;
-  if (tier > 2) return [];
+  if (tier > 3) return [];
+
+  // Tier 3 community clubs get 1 candidate with a lower rating ceiling (72).
+  const maxCandidates = tier <= 2 ? 3 : 1;
+  const ratingCap = tier <= 2 ? 95 : 72;
 
   const coreRoleIds = ['s1', 's2', 's3', 's4', 's5'];
   const upgradeable = coreRoleIds.filter(id => {
     const existing = (career.staff || []).find(s => s.id === id);
-    return existing && (existing.rating ?? 60) < 82;
+    return existing && (existing.rating ?? 60) < (ratingCap - 5);
   });
 
   if (upgradeable.length === 0) return [];
 
-  return upgradeable.slice(0, 3).map((id, i) => {
+  return upgradeable.slice(0, maxCandidates).map((id, i) => {
     const current = (career.staff || []).find(s => s.id === id);
     // Use a local deterministic hash rather than reseeding the shared RNG,
     // which would corrupt all downstream randomness in the same finishSeason call.
@@ -158,7 +162,7 @@ export function generateStaffMarket(career, league) {
     let seed = ((career.season ?? 1) * 1000 + id.charCodeAt(1) * 37 + i * 13) | 0;
     const localRng = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
     const upgradeAmount = 6 + Math.floor(localRng() * 15);
-    const newRating = Math.min(95, (current?.rating ?? 60) + upgradeAmount);
+    const newRating = Math.min(ratingCap, (current?.rating ?? 60) + upgradeAmount);
     const wageMult = 1 + (newRating - (current?.rating ?? 60)) * 0.025;
     const newWage = Math.round((current?.wage ?? 50_000) * wageMult);
     const fnIdx = Math.floor(localRng() * FIRST_NAMES.length);
