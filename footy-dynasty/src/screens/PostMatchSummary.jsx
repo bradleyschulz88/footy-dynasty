@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import confetti from "canvas-confetti";
-import { Award, Trophy, Newspaper, Users, ChevronRight, ChevronDown, ChevronUp, Banknote, Tv, Handshake, Ticket } from "lucide-react";
+import { Award, Trophy, Newspaper, Users, ChevronRight, ChevronDown, ChevronUp, Banknote, Tv, Handshake, Ticket, BarChart2 } from "lucide-react";
 
 import { collectFocusables } from "../lib/hotkeysHelpers.js";
 import { fmtK } from "../lib/format.js";
@@ -17,6 +17,10 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
   const panelRef = useRef(null);
   const primaryRef = useRef(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [activeTab, setActiveTab] = useState('summary'); // 'summary' | 'stats'
+
+  const playerStatRows = Object.values(summary?.playerStats || {})
+    .sort((a, b) => b.disposals - a.disposals);
 
   const handleContinue = useCallback(() => {
     onContinue?.();
@@ -246,8 +250,61 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
           </div>
         </div>
 
-        {/* Toggleable full report */}
-        <div style={{ borderBottom: "1px solid var(--A-line)" }}>
+        {/* Tab bar — Summary / Stats */}
+        {playerStatRows.length > 0 && (
+          <div className="flex border-b" style={{ borderColor: "var(--A-line)" }}>
+            {[{ id: 'summary', label: 'Match Report' }, { id: 'stats', label: 'Player Stats', icon: BarChart2 }].map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className="flex items-center gap-1.5 px-5 py-2.5 text-[11px] font-mono font-bold uppercase tracking-widest transition-colors"
+                style={{
+                  color: activeTab === tab.id ? 'var(--A-accent)' : 'var(--A-text-mute)',
+                  borderBottom: activeTab === tab.id ? '2px solid var(--A-accent)' : '2px solid transparent',
+                  marginBottom: -1,
+                }}
+              >
+                {tab.icon && <tab.icon className="w-3 h-3" />}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Player Stats tab */}
+        {activeTab === 'stats' && playerStatRows.length > 0 && (
+          <div style={{ borderBottom: "1px solid var(--A-line)" }}>
+            <div className="px-4 pt-3 pb-1">
+              <div className="flex items-center gap-2 text-[9px] font-mono font-bold uppercase tracking-widest text-atext-mute pb-1 mb-1" style={{ borderBottom: "1px solid var(--A-line)" }}>
+                <span className="w-7 text-center">POS</span>
+                <span className="flex-1">Player</span>
+                <span className="w-7 text-center">D</span>
+                <span className="w-7 text-center">M</span>
+                <span className="w-7 text-center">T</span>
+                <span className="w-7 text-center">G</span>
+              </div>
+              <div className="space-y-0.5 max-h-52 overflow-y-auto">
+                {playerStatRows.map((p, i) => (
+                  <div key={i} className="flex items-center gap-2 py-1 text-xs" style={{ borderBottom: "1px solid var(--A-line)", opacity: 0.9 }}>
+                    <span className="w-7 text-center text-[10px] font-mono font-bold" style={{ color: 'var(--A-text-mute)' }}>{p.position}</span>
+                    <span className="flex-1 font-medium text-atext truncate">{p.name}</span>
+                    <span className="w-7 text-center font-mono tabular-nums text-atext">{p.disposals}</span>
+                    <span className="w-7 text-center font-mono tabular-nums text-atext-dim">{p.marks}</span>
+                    <span className="w-7 text-center font-mono tabular-nums text-atext-dim">{p.tackles}</span>
+                    <span className="w-7 text-center font-mono tabular-nums font-bold" style={{ color: p.goals > 0 ? 'var(--A-accent-2)' : 'var(--A-text-mute)' }}>
+                      {p.goals > 0 ? p.goals : '·'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[9px] text-atext-mute font-mono pt-2 pb-1 text-center">D = disposals · M = marks · T = tackles · G = goals</div>
+            </div>
+          </div>
+        )}
+
+        {/* Toggleable full report (only shown on Summary tab) */}
+        {activeTab === 'summary' && <div style={{ borderBottom: "1px solid var(--A-line)" }}>
           <button
             type="button"
             onClick={() => setShowDetails((v) => !v)}
@@ -328,7 +385,7 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Actions — Continue button */}
         <div className="px-6 py-4 flex items-center justify-between">
