@@ -1021,14 +1021,26 @@ function RookieListTab() {
       news: [{ week: career.week, type: 'info', text: `📈 Promoted ${p.firstName} ${p.lastName} to senior list (${fmtK(newWage)}/yr)` }, ...(career.news || [])].slice(0, 20),
     });
   };
+  const sorted = [...rookies].sort((a, b) => (b.potential || 0) - (a.potential || 0));
+  const promotable = sorted.filter(p => p.rookie);
+  const promoteAll = () => promotable.forEach(p => promote(p));
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>ROOKIE LIST</div>
-          <div className="text-xs text-atext-dim">Track your young talent. Promote when ready — wage rises 40% on elevation.</div>
+          <div className="text-xs text-atext-dim">Sorted by potential — promote when ready, wage rises 40%.</div>
         </div>
-        <Stat label="Rookies" value={rookies.length} accent="var(--A-accent)" icon={Sprout} />
+        <div className="flex items-center gap-2">
+          {promotable.length > 1 && (
+            <button type="button" onClick={promoteAll}
+              className="text-[11px] px-3 py-1.5 rounded-lg font-bold cursor-pointer transition-all active:scale-[0.97] hover:opacity-90"
+              style={{ background: 'color-mix(in srgb, var(--A-accent) 15%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 30%, transparent)' }}>
+              Promote all ({promotable.length})
+            </button>
+          )}
+          <Stat label="Rookies" value={rookies.length} accent="var(--A-accent)" icon={Sprout} />
+        </div>
       </div>
       {rookies.length === 0 ? (
         <div className={`${css.panel} p-12 text-center`}>
@@ -1037,23 +1049,42 @@ function RookieListTab() {
         </div>
       ) : (
         <div className="rounded-2xl overflow-hidden" style={{border:"1px solid var(--A-line)", background:"var(--A-panel)"}}>
-          {rookies.map((p) => (
-            <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center" style={{borderBottom:"1px solid var(--A-line)"}}>
-              <div className="col-span-4 font-semibold text-sm">{p.firstName} {p.lastName} <span className="text-[10px] text-atext-dim ml-1">age {p.age}</span></div>
-              <div className="col-span-1"><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>
-              <div className="col-span-1"><RatingDot value={p.overall} /></div>
-              <div className="col-span-2 flex items-center gap-1 text-[11px]">
-                <span className="text-atext-mute">POT</span>
-                <span className="font-bold text-apos">{p.potential}</span>
+          {sorted.map((p) => {
+            const gap = (p.potential || 0) - (p.overall || 0);
+            const gapColor = gap >= 20 ? 'var(--A-pos)' : gap >= 10 ? 'var(--A-accent-2)' : 'var(--A-text-mute)';
+            const pos = formatPositionSlash(p);
+            return (
+              <div key={p.id} className="flex items-center gap-3 px-4 py-3" style={{borderBottom:"1px solid var(--A-line)"}}>
+                {/* Name + pos + age */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-semibold text-sm text-atext">{p.firstName} {p.lastName}</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: 'color-mix(in srgb, var(--A-accent) 12%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)' }}>{pos}</span>
+                  </div>
+                  <div className="text-[10px] text-atext-mute mt-0.5">Age {p.age} · {p.contract}yr · {fmtK(p.wage)}/yr</div>
+                </div>
+                {/* OVR → POT */}
+                <div className="flex flex-col items-center gap-0.5 flex-shrink-0">
+                  <div className="flex items-center gap-1">
+                    <RatingDot value={p.overall} />
+                    <span className="text-[9px] text-atext-mute">→</span>
+                    <span className="text-[11px] font-black" style={{ color: gapColor }}>{p.potential}</span>
+                  </div>
+                  {/* Gap bar */}
+                  <div className="w-12 h-1 rounded-full bg-aline overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, (p.overall / (p.potential || 1)) * 100)}%`, background: gapColor }} />
+                  </div>
+                  <div className="text-[8px] font-mono" style={{ color: gapColor }}>+{gap}</div>
+                </div>
+                {/* Promote */}
+                <div className="flex-shrink-0">
+                  {p.rookie
+                    ? <button onClick={() => promote(p)} className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition-all active:scale-[0.97]" style={{ background: 'var(--A-accent)', color: 'var(--fd-on-accent, #0A0D0C)' }}>Promote</button>
+                    : <span className="text-[9px] text-atext-mute uppercase tracking-widest">Senior</span>}
+                </div>
               </div>
-              <div className="col-span-2 text-xs text-atext-dim">{p.contract}yr · {fmtK(p.wage)}/yr</div>
-              <div className="col-span-2 flex justify-end">
-                {p.rookie
-                  ? <button onClick={() => promote(p)} className={`${css.btnPrimary} text-xs px-3 py-1.5`}>Promote</button>
-                  : <span className="text-[10px] text-atext-mute uppercase tracking-widest">Senior</span>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
