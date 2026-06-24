@@ -10,6 +10,7 @@ import {
   GraduationCap, Briefcase,
   Award, AlertCircle, ChevronsUp, FileText,
   Landmark, LayoutDashboard, Wrench, MessageCircle, BarChart3,
+  Wand2, Star, AlertTriangle, Search, MapPin,
 } from "lucide-react";
 import { seedRng, rand, pick } from '../../lib/rng.js';
 import { STATES, PYRAMID, findClub, findLeagueOf } from '../../data/pyramid.js';
@@ -2280,6 +2281,20 @@ function StaffTab() {
   const hirableIds = listExpandableHires(career);
   const wageBillAnnual = annualWageBill(career);
 
+  const ratingColor = (r) => r >= 80 ? 'var(--A-pos)' : r >= 65 ? 'var(--A-accent-2)' : 'var(--A-neg)';
+  const sortedByRating = [...roster].sort((a, b) => b.rating - a.rating);
+  const bestForScouting = roster.find(s => s.id === 's8') || sortedByRating[0];
+  const bestForTrade = roster.find(s => s.id === 's7') || sortedByRating[0];
+  const bestForTraining = sortedByRating[0];
+  const autoAssignBest = () => {
+    if (roster.length === 0) return;
+    patchStaffTasks({
+      scoutLeadId: bestForScouting?.id ?? null,
+      tradeNegotiatorId: bestForTrade?.id ?? null,
+      trainingLeadId: bestForTraining?.id ?? null,
+    });
+  };
+
   const tryHireProfessional = (blueprintId) => {
     const fee = professionalSigningFee(leagueTier, blueprintId);
     const res = hireBlueprintStaff(career, blueprintId);
@@ -2335,138 +2350,209 @@ function StaffTab() {
       </div>
 
       <div className={`${css.panel} p-5 space-y-4`}>
-        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-atext-mute">Staff priorities</div>
-        <div className="text-xs text-atext-dim leading-snug">
-          Assign people on your roster to football-office jobs. <span className="text-atext font-semibold">Scouting lead</span>{' '}
-          drives report accuracy and interstate travel discounts (defaults to Senior Scout when unset).{' '}
-          <span className="text-atext font-semibold">Trade negotiator</span> shapes opening wage asks (defaults to Head Recruiter).{' '}
-          <span className="text-atext font-semibold">Training program lead</span> lifts every session using their rating +6 as a floor.
-          Match-day depth still scales with match-prep tier when a performance analyst is employed.
+        {/* Header + Auto-assign */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-atext-mute">Staff priorities</div>
+          {roster.length > 0 && (
+            <button
+              type="button"
+              onClick={autoAssignBest}
+              className="text-[11px] px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-[0.97] hover:opacity-90"
+              style={{ background: 'color-mix(in srgb, var(--A-accent) 15%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 30%, transparent)' }}
+            >
+              <Wand2 className="w-3 h-3" />
+              Auto-assign best
+            </button>
+          )}
         </div>
+
+        {/* Collapsed hints — one banner instead of 3 boxes */}
         {rosterHints.length > 0 && (
-          <div className="space-y-2">
-            {rosterHints.map((h) => (
-              <div
-                key={h.title}
-                className="rounded-xl border border-aline bg-apanel-2/40 px-3 py-2 text-[11px] text-atext-dim leading-snug"
-              >
-                <span className="font-semibold text-atext">{h.title}</span>
-                {' — '}
-                {h.body}
-              </div>
-            ))}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+            style={{ background: 'color-mix(in srgb, var(--A-accent-2) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--A-accent-2) 25%, transparent)' }}>
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--A-accent-2)' }} />
+            <span className="text-[11px] text-atext-dim flex-1">
+              <span className="font-semibold text-atext">{rosterHints.length} role{rosterHints.length > 1 ? 's' : ''} unfilled</span>
+              {' — '}{rosterHints.map(h => h.title.replace('No ', '').replace(' on staff', '')).join(' · ')}
+            </span>
           </div>
         )}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Recruiting region focus</label>
+
+        {/* Role cards */}
+        <div className="grid md:grid-cols-2 gap-3">
+
+          {/* Scouting Lead */}
+          {(() => {
+            const currentId = tasks.scoutLeadId;
+            const selected = roster.find(s => s.id === currentId);
+            const rec = bestForScouting;
+            const showRec = rec && rec.id !== currentId;
+            return (
+              <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+                <div className="flex items-center gap-1.5">
+                  <Search className="w-3.5 h-3.5 text-aaccent" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-atext-mute">Scouting Lead</span>
+                </div>
+                <div className="relative">
+                  <select
+                    value={currentId ?? ''}
+                    onChange={e => patchStaffTasks({ scoutLeadId: e.target.value === '' ? null : e.target.value })}
+                    className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm pr-14"
+                  >
+                    <option value="">Auto — Senior Scout if on staff</option>
+                    {roster.map(s => <option key={s.id} value={s.id}>{s.name} — {s.role}</option>)}
+                  </select>
+                  {selected && (
+                    <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-black px-1.5 py-0.5 rounded pointer-events-none"
+                      style={{ background: `color-mix(in srgb, ${ratingColor(selected.rating)} 18%, transparent)`, color: ratingColor(selected.rating), border: `1px solid color-mix(in srgb, ${ratingColor(selected.rating)} 35%, transparent)` }}>
+                      {selected.rating}
+                    </span>
+                  )}
+                </div>
+                {showRec && (
+                  <button type="button" onClick={() => patchStaffTasks({ scoutLeadId: rec.id })}
+                    className="flex items-center gap-1.5 text-[10px] font-bold px-2 py-1.5 rounded-lg w-full cursor-pointer transition-all hover:opacity-90 active:scale-[0.98]"
+                    style={{ background: 'color-mix(in srgb, var(--A-accent) 10%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 22%, transparent)' }}>
+                    <Star className="w-3 h-3 fill-current" />
+                    Use {rec.name} ({rec.rating})
+                  </button>
+                )}
+                <p className="text-[10px] text-atext-dim leading-snug">Reports sharper + cheaper interstate packs. Defaults to Senior Scout.</p>
+              </div>
+            );
+          })()}
+
+          {/* Trade Negotiator */}
+          {(() => {
+            const currentId = tasks.tradeNegotiatorId;
+            const selected = roster.find(s => s.id === currentId);
+            const rec = bestForTrade;
+            const showRec = rec && rec.id !== currentId;
+            return (
+              <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+                <div className="flex items-center gap-1.5">
+                  <Handshake className="w-3.5 h-3.5 text-aaccent" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-atext-mute">Trade Negotiator</span>
+                </div>
+                <div className="relative">
+                  <select
+                    value={currentId ?? ''}
+                    onChange={e => patchStaffTasks({ tradeNegotiatorId: e.target.value === '' ? null : e.target.value })}
+                    className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm pr-14"
+                  >
+                    <option value="">Auto — Head Recruiter if on staff</option>
+                    {roster.map(s => <option key={`t-${s.id}`} value={s.id}>{s.name} — {s.role}</option>)}
+                  </select>
+                  {selected && (
+                    <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-black px-1.5 py-0.5 rounded pointer-events-none"
+                      style={{ background: `color-mix(in srgb, ${ratingColor(selected.rating)} 18%, transparent)`, color: ratingColor(selected.rating), border: `1px solid color-mix(in srgb, ${ratingColor(selected.rating)} 35%, transparent)` }}>
+                      {selected.rating}
+                    </span>
+                  )}
+                </div>
+                {showRec && (
+                  <button type="button" onClick={() => patchStaffTasks({ tradeNegotiatorId: rec.id })}
+                    className="flex items-center gap-1.5 text-[10px] font-bold px-2 py-1.5 rounded-lg w-full cursor-pointer transition-all hover:opacity-90 active:scale-[0.98]"
+                    style={{ background: 'color-mix(in srgb, var(--A-accent) 10%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 22%, transparent)' }}>
+                    <Star className="w-3 h-3 fill-current" />
+                    Use {rec.name} ({rec.rating})
+                  </button>
+                )}
+                <p className="text-[10px] text-atext-dim leading-snug">Opening trade asks follow their skill. Defaults to Head Recruiter.</p>
+              </div>
+            );
+          })()}
+
+          {/* Training Program Lead */}
+          {(() => {
+            const currentId = tasks.trainingLeadId;
+            const selected = roster.find(s => s.id === currentId);
+            const rec = bestForTraining;
+            const showRec = rec && rec.id !== currentId;
+            return (
+              <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+                <div className="flex items-center gap-1.5">
+                  <Dumbbell className="w-3.5 h-3.5 text-aaccent" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-atext-mute">Training Lead</span>
+                </div>
+                <div className="relative">
+                  <select
+                    value={currentId ?? ''}
+                    onChange={e => patchStaffTasks({ trainingLeadId: e.target.value === '' ? null : e.target.value })}
+                    className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm pr-14"
+                  >
+                    <option value="">Rotate — specialists only</option>
+                    {roster.map(s => <option key={`tr-${s.id}`} value={s.id}>{s.name} — {s.role}</option>)}
+                  </select>
+                  {selected && (
+                    <span className="absolute right-7 top-1/2 -translate-y-1/2 text-[10px] font-black px-1.5 py-0.5 rounded pointer-events-none"
+                      style={{ background: `color-mix(in srgb, ${ratingColor(selected.rating)} 18%, transparent)`, color: ratingColor(selected.rating), border: `1px solid color-mix(in srgb, ${ratingColor(selected.rating)} 35%, transparent)` }}>
+                      {selected.rating}
+                    </span>
+                  )}
+                </div>
+                {showRec && (
+                  <button type="button" onClick={() => patchStaffTasks({ trainingLeadId: rec.id })}
+                    className="flex items-center gap-1.5 text-[10px] font-bold px-2 py-1.5 rounded-lg w-full cursor-pointer transition-all hover:opacity-90 active:scale-[0.98]"
+                    style={{ background: 'color-mix(in srgb, var(--A-accent) 10%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 22%, transparent)' }}>
+                    <Star className="w-3 h-3 fill-current" />
+                    Use {rec.name} ({rec.rating})
+                  </button>
+                )}
+                <p className="text-[10px] text-atext-dim leading-snug">Lifts session floor to lead&apos;s rating +6. Defaults to rotating specialists.</p>
+              </div>
+            );
+          })()}
+
+          {/* Recruiting Region Focus */}
+          <div className="rounded-xl p-3 space-y-2" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+            <div className="flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-aaccent" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-atext-mute">Recruiting Region</span>
+            </div>
             <select
               value={tasks.recruitPriorityState ?? ''}
-              onChange={(e) =>
-                patchStaffTasks({
-                  recruitPriorityState: e.target.value === '' ? null : e.target.value,
-                })
-              }
+              onChange={e => patchStaffTasks({ recruitPriorityState: e.target.value === '' ? null : e.target.value })}
               className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm"
             >
               <option value="">Balanced (no fee discount)</option>
-              {STATES.filter((s) => s !== 'NAT').map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                  {clubState && s === clubState ? ' (home)' : ''}
-                </option>
+              {STATES.filter(s => s !== 'NAT').map(s => (
+                <option key={s} value={s}>{s}{clubState && s === clubState ? ' (home)' : ''}</option>
               ))}
             </select>
-            <p className="text-[10px] text-atext-dim mt-1">Cheaper interstate scout packs into this state + clearer reports there.</p>
+            <p className="text-[10px] text-atext-dim leading-snug">Cheaper scout packs + clearer reports for the chosen state.</p>
           </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Scouting lead</label>
-            <select
-              value={tasks.scoutLeadId ?? ''}
-              onChange={(e) =>
-                patchStaffTasks({
-                  scoutLeadId: e.target.value === '' ? null : e.target.value,
-                })
-              }
-              className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm"
-            >
-              <option value="">Auto — Senior Scout if on staff</option>
-              {roster.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} — {s.role}
-                </option>
-              ))}
-            </select>
-            <p className="text-[10px] text-atext-dim mt-1">Local / interstate reports and travel fees use their rating (volunteer coaches count at a softer curve).</p>
+
+        </div>
+
+        {/* Match-prep depth */}
+        <div>
+          <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-2">Match-prep depth</label>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { tier: 0, label: 'Standard' },
+              { tier: 1, label: 'Extra tape' },
+              { tier: 2, label: 'Deep dive' },
+            ].map(({ tier, label }) => (
+              <button
+                key={tier}
+                type="button"
+                onClick={() => patchStaffTasks({ matchPrepTier: tier })}
+                className={`px-3 py-2 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                  tasks.matchPrepTier === tier
+                    ? 'border-aaccent bg-aaccent/15 text-aaccent'
+                    : 'border-aline bg-apanel text-atext-dim hover:border-aline-2'
+                }`}
+                disabled={tier >= 2 && !hasAnalyst}
+                title={tier >= 2 && !hasAnalyst ? 'Requires Performance Analyst (s10) on staff' : ''}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Trade negotiator</label>
-            <select
-              value={tasks.tradeNegotiatorId ?? ''}
-              onChange={(e) =>
-                patchStaffTasks({
-                  tradeNegotiatorId: e.target.value === '' ? null : e.target.value,
-                })
-              }
-              className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm"
-            >
-              <option value="">Auto — Head Recruiter if on staff</option>
-              {roster.map((s) => (
-                <option key={`t-${s.id}`} value={s.id}>
-                  {s.name} — {s.role}
-                </option>
-              ))}
-            </select>
-            <p className="text-[10px] text-atext-dim mt-1">Opening trade asks use their negotiation skill (cap filter &quot;max demand&quot; follows the same band).</p>
-          </div>
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Training program lead</label>
-            <select
-              value={tasks.trainingLeadId ?? ''}
-              onChange={(e) =>
-                patchStaffTasks({
-                  trainingLeadId: e.target.value === '' ? null : e.target.value,
-                })
-              }
-              className="w-full rounded-lg border border-aline bg-apanel px-2 py-2 text-sm"
-            >
-              <option value="">Rotate — specialists only</option>
-              {roster.map((s) => (
-                <option key={`tr-${s.id}`} value={s.id}>
-                  {s.name} — {s.role}
-                </option>
-              ))}
-            </select>
-            <p className="text-[10px] text-atext-dim mt-1">Every session uses the better of the specialist coach or your lead&apos;s rating +6.</p>
-          </div>
-          <div className="md:col-span-2 lg:col-span-2">
-            <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">Match-prep depth</label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { tier: 0, label: 'Standard' },
-                { tier: 1, label: 'Extra tape' },
-                { tier: 2, label: 'Deep dive' },
-              ].map(({ tier, label }) => (
-                <button
-                  key={tier}
-                  type="button"
-                  onClick={() => patchStaffTasks({ matchPrepTier: tier })}
-                  className={`px-3 py-2 rounded-lg text-xs font-bold border transition ${
-                    tasks.matchPrepTier === tier
-                      ? 'border-aaccent bg-aaccent/15 text-aaccent'
-                      : 'border-aline bg-apanel text-atext-dim hover:border-aline-2'
-                  }`}
-                  disabled={tier >= 2 && !hasAnalyst}
-                  title={tier >= 2 && !hasAnalyst ? 'Requires Performance Analyst (s10) on staff' : ''}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <p className="text-[10px] text-atext-dim mt-1">
-              {hasAnalyst ? 'Analyst unlocks the deepest match-preview flavour.' : 'Hire a performance analyst to unlock Deep dive.'}
-            </p>
-          </div>
+          <p className="text-[10px] text-atext-dim mt-1">
+            {hasAnalyst ? 'Analyst unlocks the deepest match-preview flavour.' : 'Hire a performance analyst to unlock Deep dive.'}
+          </p>
         </div>
       </div>
 
