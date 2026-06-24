@@ -451,6 +451,16 @@ export function migrate(save) {
     }
   }
 
+  if (v < 34) {
+    s.saveVersion = 34;
+    // Fix bad leagueKey values introduced by pickPromotionLeague/pickRelegationLeague
+    // returning PYRAMID keys that don't exist ("SFL" → "TSL", "PerthFL" → "PerthFootballLeague").
+    const badKeys = { SFL: 'TSL', PerthFL: 'PerthFootballLeague' };
+    if (s.leagueKey && badKeys[s.leagueKey]) {
+      s.leagueKey = badKeys[s.leagueKey];
+    }
+  }
+
   return s;
 }
 

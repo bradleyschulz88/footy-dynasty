@@ -918,7 +918,7 @@ function AFLManagerInner() {
   }
 
   const club = findClub(career.clubId);
-  const league = PYRAMID[career.leagueKey];
+  const league = PYRAMID[career.leagueKey] ?? PYRAMID[Object.keys(PYRAMID).find(k => PYRAMID[k]?.tier === 2)] ?? Object.values(PYRAMID).find(l => l?.tier);
 
   // ============== UPDATER ==============
   // updateCareer is hoisted to the top of AFLManagerInner (Zustand hook).

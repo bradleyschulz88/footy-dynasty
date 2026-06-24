@@ -213,11 +213,11 @@ export function pickPromotionLeague(league) {
     if (league.state === "VIC") return "VFL";
     if (league.state === "SA")  return "SANFL";
     if (league.state === "WA")  return "WAFL";
-    if (league.state === "TAS") return "SFL";
+    if (league.state === "TAS") return "TSL";
     if (league.state === "NT")  return "NTFL";
     if (league.state === "NSW") return "AFLSyd";
     if (league.state === "ACT") return "AFLCanberra";
-    if (league.state === "QLD") return "VFL";
+    if (league.state === "QLD") return "QAFL";
   }
   return null;
 }
@@ -227,14 +227,14 @@ export function pickRelegationLeague(league) {
     if (league.state === "VIC") return "VFL";
     if (league.state === "SA")  return "SANFL";
     if (league.state === "WA")  return "WAFL";
-    if (league.state === "TAS") return "SFL";
+    if (league.state === "TAS") return "TSL";
     if (league.state === "NT")  return "NTFL";
     return null;
   }
   if (league.tier === 2) {
     if (league.state === "VIC") return "EFNL";
     if (league.state === "SA")  return "AdelFL";
-    if (league.state === "WA")  return "PerthFL";
+    if (league.state === "WA")  return "PerthFootballLeague";
     if (league.state === "TAS") return null;
     if (league.state === "NT")  return null;
     return null;
