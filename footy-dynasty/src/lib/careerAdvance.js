@@ -345,6 +345,7 @@ function buildPostMatchSummary(c, league, club, myResult, roundOrLabel) {
     committeeReaction,
     isFinals: typeof roundOrLabel !== 'number' && !/^Round\s+\d+$/i.test(String(roundOrLabel)),
     isGrandFinal: labelStr === 'Grand Final',
+    playerStats: c.lastMatchPlayerStats || {},
   };
 }
 
@@ -1331,8 +1332,8 @@ function finishSeason(c, league) {
   if (champion) bumpClubCulture(c, 15);
   c.crisisFiredThisSeason = false;
 
-  // Generate staff market for tier 1–2 clubs; clear it for lower tiers
-  if (league.tier <= 2) {
+  // Generate staff market for tier 1–3 clubs; clear it for tier 4 (grassroots)
+  if (league.tier <= 3) {
     c.staffMarket = generateStaffMarket(c, league);
   } else {
     c.staffMarket = [];
@@ -2054,6 +2055,7 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   const attrStatMult = (val) => clamp(1 + ((val ?? 60) - 68) * 0.012, 0.75, 1.35);
   const matchMargin = Math.abs((myResult.myTotal ?? 0) - (myResult.oppTotal ?? 0));
   const heavyDefeat = !won && !drew && matchMargin > 40;
+  const matchStats = {};
   c.squad = c.squad.map((p) => {
     const playedThisWeek = c.lineup.includes(p.id);
     if (!playedThisWeek) {
@@ -2091,6 +2093,16 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
       resultDelta = heavyDefeat ? -4 : -2;
       resultReason = heavyDefeat ? MORALE_REASONS.heavyLoss : MORALE_REASONS.loss;
     }
+    matchStats[p.id] = {
+      name: `${p.firstName} ${p.lastName}`,
+      position: p.position,
+      goals: att.goals || 0,
+      behinds: att.behinds || 0,
+      disposals: dispAdd,
+      marks: markAdd,
+      tackles: tackleAdd,
+      votes,
+    };
     let np = { ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
       weeksWithoutGame: 0,
       goals: p.goals + (att.goals || 0), behinds: p.behinds + (att.behinds || 0), disposals: p.disposals + dispAdd,
@@ -2102,6 +2114,7 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
     if (np.morale < cfg.moraleFloor) np.morale = cfg.moraleFloor;
     return np;
   });
+  c.lastMatchPlayerStats = matchStats;
   if (milestones.items.length > 0) {
     c.news = [...milestones.items, ...(c.news || [])].slice(0, 22);
     // Season highlights — save milestone news to display in end-of-season recap
