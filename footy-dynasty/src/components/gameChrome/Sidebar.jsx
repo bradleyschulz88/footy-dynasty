@@ -150,9 +150,9 @@ export function Sidebar({ screen, onNavigate, club, league, myLadderPos }) {
                   onClick={() => { if (!navLocked) onNavigate(it.key); }}
                   title={navLocked ? 'Complete the current tutorial step or skip the tutorial.' : undefined}
                   className={[
-                    "flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 rounded-xl transition-all group whitespace-nowrap md:w-full relative overflow-hidden",
+                    "flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 rounded-xl transition-all group whitespace-nowrap md:w-full relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--A-accent)] focus-visible:ring-offset-1",
                     spotlight ? "ring-2 ring-[var(--A-accent)] ring-offset-2 ring-offset-apanel animate-pulse" : "",
-                    navLocked ? "opacity-35 cursor-not-allowed" : "",
+                    navLocked ? "opacity-35 cursor-not-allowed" : "cursor-pointer hover:bg-[color-mix(in_srgb,var(--A-accent)_6%,transparent)]",
                   ].filter(Boolean).join(" ")}
                   style={{
                     // Active: richer background + accent border

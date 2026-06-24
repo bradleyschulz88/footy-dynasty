@@ -15,6 +15,17 @@ import {
   Dumbbell,
   Repeat,
   ChevronRight,
+  Calendar,
+  CheckCircle2,
+  XCircle,
+  ArrowLeftRight,
+  TrendingDown,
+  Landmark,
+  Info,
+  Sparkles,
+  AlertTriangle,
+  Activity,
+  ThermometerSnowflake,
 } from "lucide-react";
 import { TaskList } from "../../components/TaskList.jsx";
 import { ClubBadge } from "../../components/ClubBadge.jsx";
@@ -772,7 +783,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
           )}
           {lastEv.type === 'key_event' && (
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{background:'color-mix(in srgb, var(--A-accent) 10%, transparent)', border:'1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)'}}>📅</div>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{background:'color-mix(in srgb, var(--A-accent) 10%, transparent)', border:'1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)'}}><Calendar className="w-6 h-6 text-aaccent" /></div>
               <div className="flex-1">
                 <div className={css.label}>Event</div>
                 <div className="font-bold text-atext">{lastEv.name}</div>
@@ -785,9 +796,9 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
           )}
           {(lastEv.type === 'round' || lastEv.type === 'preseason_match') && (
             <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0`}
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0`}
                 style={{background: lastEv.won ? 'color-mix(in srgb, var(--A-pos) 10%, transparent)' : lastEv.drew ? 'color-mix(in srgb, var(--A-accent-2) 10%, transparent)' : 'color-mix(in srgb, var(--A-neg) 10%, transparent)', border: `1px solid ${lastEv.won ? 'color-mix(in srgb, var(--A-pos) 25%, transparent)' : lastEv.drew ? 'color-mix(in srgb, var(--A-accent-2) 25%, transparent)' : 'color-mix(in srgb, var(--A-neg) 25%, transparent)'}`}}>
-                {lastEv.won ? '✅' : lastEv.drew ? '🤝' : '❌'}
+                {lastEv.won ? <CheckCircle2 className="w-6 h-6" style={{color:'var(--A-pos)'}} /> : lastEv.drew ? <Handshake className="w-6 h-6" style={{color:'var(--A-accent-2)'}} /> : <XCircle className="w-6 h-6" style={{color:'var(--A-neg)'}} />}
               </div>
               <div className="flex-1">
                 <div className={css.label}>
@@ -857,7 +868,15 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
               return (
                 <div key={ev.id} className="flex-shrink-0 rounded-xl p-3 text-center min-w-[88px]" style={{background:`${color}10`, border:`1px solid ${color}30`}}>
                   <div className="text-[9px] font-bold uppercase tracking-wider" style={{color}}>{formatDate(ev.date).split(' ').slice(0,-1).join(' ')}</div>
-                  <div className="text-lg mt-1">{isTraining ? (info?.icon || '🏋️') : isKey ? '📅' : '🏉'}</div>
+                  <div className="flex justify-center mt-1">
+                    {isTraining ? (
+                      <span className="text-lg">{info?.icon || '🏋️'}</span>
+                    ) : isKey ? (
+                      <Calendar className="w-5 h-5" style={{color}} />
+                    ) : (
+                      <Play className="w-5 h-5" style={{color}} />
+                    )}
+                  </div>
                   <div className="text-[10px] font-semibold text-atext mt-1 leading-tight">{evLabel}</div>
                   {matchWeather && (
                     <div className="text-[9px] text-atext-dim mt-1 leading-tight">{weatherEmoji(matchWeather)} {matchWeather}</div>
@@ -891,7 +910,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
         return (
 <div className="rounded-2xl p-4 flex items-center justify-between" style={{background:"color-mix(in srgb, var(--A-accent) 8%, transparent)", border:"2px solid color-mix(in srgb, var(--A-accent) 35%, transparent)"}}>
 <div className="flex items-center gap-3">
-            <span className="text-3xl">🏆</span>
+            <Trophy className="w-8 h-8 flex-shrink-0 text-aaccent" />
 <div>
 <div className="font-display text-2xl text-aaccent">FINALS</div>
 <div className="text-sm text-atext-dim">
@@ -912,7 +931,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
       {career.postSeasonPhase === 'trade_period' && career.inTradePeriod && (
         <div className="rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3" style={{background:"color-mix(in srgb, var(--A-pos) 8%, transparent)", border:"2px solid color-mix(in srgb, var(--A-pos) 35%, transparent)"}}>
           <div className="flex items-center gap-3 min-w-[200px]">
-            <span className="text-3xl">🔀</span>
+            <ArrowLeftRight className="w-8 h-8 flex-shrink-0" style={{color:'var(--A-pos)'}} />
             <div>
               <div className="font-display text-xl text-aaccent">TRADE PERIOD</div>
               <div className="text-xs text-atext-dim">
@@ -934,7 +953,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
       {career.postSeasonPhase === 'draft_waiting' && (
         <div className="rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3" style={{background:"color-mix(in srgb, var(--A-accent-2) 8%, transparent)", border:"2px solid color-mix(in srgb, var(--A-accent-2) 30%, transparent)"}}>
           <div className="flex items-center gap-3">
-            <span className="text-3xl">📋</span>
+            <FileText className="w-8 h-8 flex-shrink-0 text-aaccent-2" />
             <div>
               <div className="font-display text-xl text-aaccent">{career.draftPickBank ? 'NATIONAL DRAFT COUNTDOWN' : 'OFF-SEASON COUNTDOWN'}</div>
               <div className="text-xs text-atext-dim">{career.postSeasonDraftCountdown ?? POST_TRADE_DRAFT_COUNTDOWN_DAYS} step{(career.postSeasonDraftCountdown ?? POST_TRADE_DRAFT_COUNTDOWN_DAYS) === 1 ? '' : 's'} until list reset &amp; new pre-season</div>
@@ -947,8 +966,8 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
       {/* Premiership Banner */}
       {career.premiership === career.season && (
         <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"color-mix(in srgb, var(--A-accent-2) 12%, transparent)", border:"2px solid color-mix(in srgb, var(--A-accent-2) 45%, transparent)"}}>
-          <span className="text-3xl">🎉</span>
-                    <div>
+          <Sparkles className="w-8 h-8 flex-shrink-0" style={{color:'var(--A-accent-2)'}} />
+          <div>
             <div className="font-display text-2xl text-aaccent">REIGNING PREMIERS!</div>
             <div className="text-sm text-atext-dim">You won the {career.season} flag — defend it this season.</div>
           </div>
@@ -956,7 +975,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
       )}
       {career.premiership === career.season - 1 && career.premiership !== career.season && (
         <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:"color-mix(in srgb, var(--A-accent-2) 8%, transparent)", border:"2px solid color-mix(in srgb, var(--A-accent-2) 30%, transparent)"}}>
-          <span className="text-3xl">🎉</span>
+          <Sparkles className="w-8 h-8 flex-shrink-0" style={{color:'var(--A-accent-2)'}} />
           <div>
             <div className="font-display text-2xl text-aaccent">BACK-TO-BACK PREMIERS!</div>
             <div className="text-sm text-atext-dim">Can you go three in a row this season?</div>
@@ -1120,10 +1139,10 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
             {recentNews.length === 0 && <div className="text-sm text-atext-dim py-4 text-center">No news yet.</div>}
             {recentNews.map((n, i) => {
               const borderColor = n.type === "win" ? "var(--A-pos)" : n.type === "loss" ? "var(--A-neg)" : n.type === "board" ? "#FFB347" : n.type === "info" ? "var(--A-accent-2)" : "var(--A-text-mute)";
-              const emoji = n.type === "win" ? "🏆" : n.type === "loss" ? "📉" : n.type === "board" ? "🏛️" : n.type === "info" ? "ℹ️" : "•";
+              const NewsIcon = n.type === "win" ? Trophy : n.type === "loss" ? TrendingDown : n.type === "board" ? Landmark : n.type === "info" ? Info : Newspaper;
               return (
                 <div key={i} className="flex gap-3 p-3 rounded-xl" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)", borderLeft:`3px solid ${borderColor}`}}>
-                  <div className="flex-shrink-0 text-sm leading-snug mt-0.5">{emoji}</div>
+                  <div className="flex-shrink-0 mt-0.5"><NewsIcon className="w-3.5 h-3.5" style={{color: borderColor}} /></div>
                   <div className="flex-1 min-w-0">
                     {/* Headline bold, body dim, source very small */}
                     <div className="font-bold text-sm text-atext leading-snug">{n.text}</div>
@@ -1238,7 +1257,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
         return (
           <motion.div variants={hubItem} className="rounded-2xl p-4 flex items-start gap-3"
             style={{ background: 'color-mix(in srgb, var(--A-neg) 6%, var(--A-panel))', border: '1px solid color-mix(in srgb, var(--A-neg) 22%, var(--A-line))' }}>
-            <span className="text-2xl flex-shrink-0">🧊</span>
+            <ThermometerSnowflake className="w-6 h-6 flex-shrink-0 text-aneg" />
             <div className="min-w-0 flex-1">
               <div className="font-bold text-sm text-atext">Dressing Room</div>
               <div className="text-xs text-atext-dim mt-1 leading-relaxed">
@@ -1310,7 +1329,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
       <motion.div variants={hubItem} className="space-y-3">
       {career.finance.boardConfidence < 35 && (
         <div className="rounded-2xl p-4 flex items-center gap-3" style={{background:'color-mix(in srgb, var(--A-neg) 10%, transparent)', border:'1.5px solid color-mix(in srgb, var(--A-neg) 30%, transparent)'}}>
-          <span className="text-2xl">⚠️</span>
+          <AlertTriangle className="w-6 h-6 flex-shrink-0 text-aneg" />
           <div>
             <div className="font-bold text-sm text-aneg">Board On Notice — Confidence {career.finance.boardConfidence}%</div>
             <div className="text-xs text-atext-dim">Win your next match or face consequences. The board is watching closely.</div>
@@ -1324,7 +1343,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
         if (!expiring.length) return null;
         return (
           <div className="rounded-2xl p-4 flex items-start gap-3" style={{background:"rgba(232,212,74,0.1)", border:"1.5px solid rgba(232,212,74,0.3)"}}>
-            <span className="text-2xl flex-shrink-0">📋</span>
+            <FileText className="w-6 h-6 flex-shrink-0" style={{color:'var(--A-accent-2)'}} />
             <div>
               <div className="font-bold text-sm" style={{color:"var(--A-accent-2)"}}>Contracts Expiring — Act Now</div>
               <div className="text-xs text-atext-dim mt-1">
@@ -1344,7 +1363,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
         const names = top2.map(p => `${p.firstName ? p.firstName[0] + '.' : ''} ${p.lastName} (${p.injured}w)`).join(', ');
         return (
           <div className="rounded-2xl p-4 flex items-start gap-3" style={{background:'color-mix(in srgb, var(--A-neg) 7%, transparent)', border:'1.5px solid color-mix(in srgb, var(--A-neg) 30%, transparent)'}}>
-            <span className="text-2xl flex-shrink-0">🤕</span>
+            <Activity className="w-6 h-6 flex-shrink-0 text-aneg" />
             <div>
               <div className="font-bold text-sm text-aneg">Injury Report — {injuredPlayers.length} player{injuredPlayers.length !== 1 ? 's' : ''} out</div>
               <div className="text-xs text-atext-dim mt-1">Out: {names}{injuredPlayers.length > 2 ? ` +${injuredPlayers.length - 2} more` : ''}</div>
