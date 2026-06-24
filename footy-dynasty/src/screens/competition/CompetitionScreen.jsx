@@ -372,8 +372,8 @@ function PyramidTab({ club, league }) {
                 <div key={key} className={`p-3 rounded-xl ${isCurrent ? "bg-aaccent/15 border-2 border-aaccent" : myStateLeague ? "bg-aaccent-2/10 border border-aaccent-2/40" : "bg-apanel border border-aline opacity-60"}`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-bold text-sm">{l.short}</div>
-                      <div className="text-[10px] text-atext-dim">{l.state} · {l.clubs.length} clubs</div>
+                      <div className="font-semibold text-sm text-atext truncate">{l.name}</div>
+                      <div className="text-[10px] text-atext-mute font-mono">{l.short} · {l.state} · {l.clubs.length} clubs</div>
                       <div className="text-[10px] text-atext-mute mt-1 leading-snug line-clamp-2">{pyramidNoteForLeague(key, l.tier)}</div>
                     </div>
                     {isCurrent && <Pill color="var(--A-accent)">HERE</Pill>}
@@ -399,8 +399,8 @@ function PyramidTab({ club, league }) {
                 const isCurrent = career.leagueKey === key;
                 return (
                   <div key={key} className={`p-3 rounded-lg ${isCurrent ? "bg-aaccent/15 border-2 border-aaccent" : myStateLeague ? "bg-apos/10 border border-apos/30" : "bg-apanel border border-aline opacity-60"}`}>
-                    <div className="font-bold text-xs">{l.short}</div>
-                    <div className="text-[10px] text-atext-dim">{l.clubs.length} clubs · {l.state}</div>
+                    <div className="font-semibold text-xs text-atext truncate">{l.name}</div>
+                    <div className="text-[9px] text-atext-mute font-mono">{l.short} · {l.clubs.length} clubs · {l.state}</div>
                     <div className="text-[10px] text-atext-mute mt-1 leading-snug line-clamp-3">{pyramidNoteForLeague(key, l.tier)}</div>
                     {isCurrent && <div className="mt-1"><Pill color="var(--A-accent)">HERE</Pill></div>}
                   </div>
