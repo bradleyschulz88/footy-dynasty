@@ -105,6 +105,7 @@ import {
 import { medicalStaffMitigation } from './staffTasks.js';
 import { sanitizeLineup, lineupPlayersOrdered } from './lineupHelpers.js';
 import { scoutPrepRatingBonus } from './oppositionScout.js';
+import { processReturningDeployments, tickWatchlistStaleness, tickRivalInterest, bumpRelationship } from './scoutingSystem.js';
 import { weeklyClubOperationsPulse } from './weeklyClubPulse.js';
 import {
   assignDynastyQuestsForSeason,
@@ -1480,6 +1481,41 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     c.staff = updatedStaff;
     if (burnoutNews.length > 0) {
       c.news = [...burnoutNews.map(n => ({ ...n, week: c.week })), ...(c.news ?? [])].slice(0, 25);
+    }
+  }
+
+  // Scout deployments — process returns, watchlist staleness, rival interest (once per unique week)
+  if (c.week !== (c.lastScoutTickWeek ?? -1)) {
+    c.lastScoutTickWeek = c.week;
+    const origDeployments = c.scoutDeployments || [];
+    const { newEntries, completedIds, news: scoutNews } = processReturningDeployments(c, c.week);
+    if (completedIds.length > 0) {
+      c.scoutWatchlist = [...(c.scoutWatchlist || []), ...newEntries];
+      c.scoutDeployments = origDeployments.map(d =>
+        completedIds.includes(d.id) ? { ...d, status: 'returned' } : d
+      );
+      for (const id of completedIds) {
+        const dep = origDeployments.find(d => d.id === id);
+        if (dep) c.leagueRelationships = bumpRelationship(c.leagueRelationships, dep.leagueKey, c, 10);
+      }
+    }
+    if ((c.scoutWatchlist || []).length > 0) {
+      c.scoutWatchlist = tickWatchlistStaleness(c.scoutWatchlist, c.week);
+      c.scoutWatchlist = tickRivalInterest(c.scoutWatchlist, rng);
+      const urgent = c.scoutWatchlist.filter(w => !w.isStale && (w.rivalInterest || 0) >= 2);
+      if (urgent.length > 0 && rng() < 0.35) {
+        const w = urgent[Math.floor(rng() * urgent.length)];
+        scoutNews.push({ type: 'info', text: `⚡ Intel: ${w.rivalInterest} club${w.rivalInterest > 1 ? 's' : ''} tracking ${w.firstName} ${w.lastName} (${w.fromLeagueShort || ''}) — act soon.` });
+      }
+    }
+    const trustedLeagues = Object.entries(c.leagueRelationships || {}).filter(([, r]) => r.score >= 80);
+    if (trustedLeagues.length > 0 && rng() < 0.08) {
+      const [lKey] = trustedLeagues[Math.floor(rng() * trustedLeagues.length)];
+      const lg = PYRAMID[lKey];
+      if (lg) scoutNews.push({ type: 'info', text: `🤝 Tip-off from ${lg.short}: a player is looking for a new club — consider deploying a scout.` });
+    }
+    if (scoutNews.length > 0) {
+      c.news = [...scoutNews.map(n => ({ ...n, week: c.week })), ...(c.news || [])].slice(0, 25);
     }
   }
 
