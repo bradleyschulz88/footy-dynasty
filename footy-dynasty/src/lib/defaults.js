@@ -1,6 +1,6 @@
 import { SEED, rand, pick, rng, seedRng } from './rng.js';
 import { FIRST_NAMES, LAST_NAMES, generatePlayer } from './playerGen.js';
-import { ALL_CLUBS } from '../data/pyramid.js';
+import { ALL_CLUBS, PYRAMID } from '../data/pyramid.js';
 import { TIER_FINANCE } from './finance/constants.js';
 
 // `defaultFinance` now reads tier baselines from finance/constants.js.
@@ -222,10 +222,16 @@ export function enrichMarketPlayerCareer(p, season) {
 }
 
 export function generateTradePool(leagueKey, season) {
-  seedRng(season * 333 + 7);
+  const leagueTier = PYRAMID[leagueKey]?.tier ?? 2;
+  // Generate players calibrated to the league tier so lower-tier clubs see
+  // affordable, appropriately valued players in the market.
+  const tierMin = Math.max(1, leagueTier - 1);
+  const tierMax = Math.min(4, leagueTier + 1);
+  const leagueHash = leagueKey ? leagueKey.split('').reduce((h, c) => h + c.charCodeAt(0), 0) : 0;
+  seedRng(season * 333 + 7 + leagueHash);
   return Array.from({ length: 25 }, (_, i) => {
-    const tierForPlayer = rand(1, 3);
-    const p = generatePlayer(tierForPlayer, 5000 + i + season * 50, { clubId: 'trade', season });
+    const tierForPlayer = rand(tierMin, tierMax);
+    const p = generatePlayer(tierForPlayer, 5000 + i + season * 50 + leagueHash, { clubId: 'trade', season });
     return enrichMarketPlayerCareer({ ...p, fromClub: pick(ALL_CLUBS).short }, season);
   });
 }

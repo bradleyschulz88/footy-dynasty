@@ -213,7 +213,7 @@ function FreeAgentsTab() {
       return;
     }
     if (!canAffordSigning(career, fa.wageAsk)) {
-      updateCareer({ news: [{ week: career.week, type: 'loss', text: `⛔ Cap won’t fit ${fa.firstName} ${fa.lastName} at ${fmtK(fa.wageAsk)}/yr.` }, ...(career.news || [])].slice(0, 15) });
+      updateCareer({ news: [{ week: career.week, type: 'loss', text: `⛔ Cap won't fit ${fa.firstName} ${fa.lastName} at ${fmtK(fa.wageAsk)}/yr.` }, ...(career.news || [])].slice(0, 15) });
       return;
     }
     const fee = Math.round(fa.value * 0.35);
@@ -820,9 +820,11 @@ function TradeTab() {
   };
 
   const acceptDeal = (p) => {
-    if (career.finance.transferBudget < p.value) {
+    // Signing fee = 30% of market value (agent fee + player incentive), not full transfer fee.
+    const signingFee = Math.round(p.value * 0.30);
+    if ((career.finance.transferBudget ?? 0) < signingFee) {
       updateCareer({
-        news: [{ week: career.week, type: 'loss', text: `⛔ Transfer budget too low to complete the deal for ${p.firstName} ${p.lastName} (${fmtK(p.value)}).` }, ...(career.news || [])].slice(0, 15),
+        news: [{ week: career.week, type: 'loss', text: `⛔ Transfer budget too low to sign ${p.firstName} ${p.lastName} (need ${fmtK(signingFee)}).` }, ...(career.news || [])].slice(0, 15),
       });
       return;
     }
@@ -834,23 +836,21 @@ function TradeTab() {
     }
     if (!canAffordSigning(career, negotiating.wage)) {
       updateCareer({
-        news: [{ week: career.week, type: 'loss', text: `⛔ Player list cap won’t fit ${p.firstName} ${p.lastName} at ${fmtK(negotiating.wage)}/yr.` }, ...(career.news || [])].slice(0, 15),
+        news: [{ week: career.week, type: 'loss', text: `⛔ Player list cap won't fit ${p.firstName} ${p.lastName} at ${fmtK(negotiating.wage)}/yr.` }, ...(career.news || [])].slice(0, 15),
       });
       return;
     }
-    const signingBonus = Math.round(p.value * 0.05);
-    if ((career.finance.cash ?? 0) < signingBonus) {
+    if ((career.finance.cash ?? 0) < signingFee) {
       updateCareer({
-        news: [{ week: career.week, type: 'loss', text: `⛔ Cash too low for signing bonus (${fmtK(signingBonus)}) on ${p.firstName} ${p.lastName}.` }, ...(career.news || [])].slice(0, 15),
+        news: [{ week: career.week, type: 'loss', text: `⛔ Cash too low for signing fee (${fmtK(signingFee)}) on ${p.firstName} ${p.lastName}.` }, ...(career.news || [])].slice(0, 15),
       });
       return;
     }
     const signedPlayer = { ...p, id: `trade_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage: negotiating.wage, contract: negotiating.years, receivedInTrade: null, seasonsAtClub: 0 };
-    // Spec Phase 2: trades come out of the transfer budget only; signing-on bonus = 5% of value from cash.
     updateCareer({
       squad: [...career.squad, signedPlayer],
       tradePool: pool.filter(x => x.id !== p.id),
-      finance: { ...career.finance, transferBudget: career.finance.transferBudget - p.value, cash: career.finance.cash - signingBonus },
+      finance: { ...career.finance, transferBudget: career.finance.transferBudget - signingFee, cash: career.finance.cash - signingFee },
       news: [{ week: career.week, type: "win", text: `🤝 Signed ${p.firstName} ${p.lastName} (${p.overall} OVR) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr` }, ...career.news].slice(0,15),
     });
     setNegotiating(null);
@@ -1620,23 +1620,24 @@ function LocalTab({ club }) {
   const otherStates = useMemo(() => STATES.filter((s) => s !== homeState), [homeState]);
   const [interState, setInterState] = useState(() => otherStates[0] ?? 'VIC');
 
-  // ── Emergency trialists (tier 3, in-season, injury cover) ──────────────────
+  // ── Emergency trialists (semi-pro/amateur tiers, in-season or preseason) ───
   const localTierCheck = leagueTierOf(career);
-  const isInSeason = career.phase === 'season';
+  const isInSeason = career.phase === 'season' || career.phase === 'preseason';
   const injuredCount = (career.squad || []).filter((p) => (p.injured || 0) > 0).length;
-  const showEmergencyPool = localTierCheck === 3 && isInSeason;
+  const showEmergencyPool = localTierCheck >= 2 && isInSeason;
 
   const emergencyPool = useMemo(() => {
     if (!showEmergencyPool) return [];
     seedRng((career.season ?? 2026) * 1000 + (career.week ?? 1) * 7 + 3);
     return Array.from({ length: 4 }, (_, i) => {
-      const p = generatePlayer(3, 99000 + i + (career.week ?? 1) * 13, { clubId: 'local', season: career.season });
+      const p = generatePlayer(localTierCheck, 99000 + i + (career.week ?? 1) * 13, { clubId: 'local', season: career.season });
       return { ...p, id: `emerg_${career.season}_${career.week}_${i}`, fromLocal: club.state, fromClubId: null, emergencyFree: true };
     });
-  }, [showEmergencyPool, career.season, career.week, club.state]);
+  }, [showEmergencyPool, localTierCheck, career.season, career.week, club.state]);
 
   const signEmergency = (p) => {
-    const wage = 18_000;
+    // Emergency wage scales by tier: lower tiers = lower wage floor.
+    const wage = localTierCheck >= 3 ? 12_000 : 25_000;
     if ((career.squad || []).length >= 40) return;
     if (!canAffordSigning(career, wage)) return;
     const newPlayer = { ...p, id: `emerg_signed_${Date.now()}_${rand(1e6, 9e6)}`, wage, contract: 1 };
@@ -1782,15 +1783,16 @@ function LocalTab({ club }) {
             <span className="text-[10px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--A-neg) 20%, transparent)', color: 'var(--A-neg)' }}>Emergency Pool</span>
             {injuredCount > 0 && <span className="text-[10px] text-atext-mute">{injuredCount} player{injuredCount !== 1 ? 's' : ''} injured</span>}
           </div>
-          <div className="text-xs text-atext-dim mb-3">Players who've fronted up to training — available for immediate 1-year walk-on deals mid-season. Pool refreshes each round.</div>
+          <div className="text-xs text-atext-dim mb-3">Players who've fronted up to training — available for immediate 1-year walk-on deals. Pool refreshes each round.</div>
           <div className="grid sm:grid-cols-2 gap-2">
             {emergencyPool.map((p) => {
-              const canSign = (career.squad || []).length < 40 && canAffordSigning(career, 18_000);
+              const wage = localTierCheck >= 3 ? 12_000 : 25_000;
+              const canSign = (career.squad || []).length < 40 && canAffordSigning(career, wage);
               return (
                 <div key={p.id} className={`${css.panel} p-3 flex items-center gap-3`}>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-bold text-atext truncate">{p.firstName} {p.lastName}</div>
-                    <div className="text-[10px] text-atext-mute">{formatPositionSlash(p)} · Age {p.age} · OVR {p.overall}</div>
+                    <div className="text-[10px] text-atext-mute">{formatPositionSlash(p)} · Age {p.age} · OVR {p.overall} · {fmtK(wage)}/yr</div>
                   </div>
                   <button
                     type="button"
