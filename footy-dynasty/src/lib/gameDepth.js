@@ -146,6 +146,7 @@ export function clearUpcomingTurningPoints(career) {
  * After a round resolves, tag the next H&A match with at most one turning-point type.
  */
 export function refreshTurningPointForNextFixture(career, league) {
+  if (!league?.tier) return;
   clearUpcomingTurningPoints(career);
   const nextEv = nextSeasonRoundEvent(career);
   if (!nextEv) return;
@@ -194,6 +195,7 @@ export function refreshTurningPointForNextFixture(career, league) {
  */
 export function refreshCrucialFive(career, league, completedRound) {
   if (completedRound < 8) return;
+  if (!league?.tier) return;
   const finalsLine = league.tier === 1 ? 8 : 6;
   const ladder = sortedLadder(career.ladder || []);
   const clubId = career.clubId;

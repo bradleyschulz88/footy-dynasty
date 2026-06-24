@@ -461,6 +461,14 @@ export function migrate(save) {
     }
   }
 
+  // Always validate leagueKey on load — if it points to a non-existent league, repair it.
+  // This guards against any future bad key, regardless of save version.
+  if (s.leagueKey && !PYRAMID[s.leagueKey]) {
+    const stateToLeague = { VIC: 'VFL', SA: 'SANFL', WA: 'WAFL', TAS: 'TSL', NT: 'NTFL', QLD: 'QAFL', NSW: 'AFLSyd', ACT: 'AFLCanberra' };
+    const club = s.clubId ? findClub(s.clubId) : null;
+    s.leagueKey = (club?.state && stateToLeague[club.state]) || 'AFL';
+  }
+
   return s;
 }
 
