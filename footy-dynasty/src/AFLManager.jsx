@@ -123,13 +123,16 @@ function resolveLeague(leagueKey) {
   return PYRAMID[leagueKey] ?? PYRAMID['AFL'] ?? Object.values(PYRAMID).find(l => l?.tier);
 }
 
-// The game ships the "Daylight" light theme (dirA) — clean white/teal.
 function resolveThemeClass() {
-  return 'dirA';
+  try {
+    const saved = localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved && ['dirA', 'dirB', 'dirV4'].includes(saved)) return saved;
+  } catch { /* private/SSR */ }
+  return 'dirV4';
 }
 
-function persistTheme() {
-  try { localStorage.setItem(THEME_STORAGE_KEY, 'tactician'); } catch { /* ignore */ }
+function persistTheme(themeClass) {
+  try { localStorage.setItem(THEME_STORAGE_KEY, themeClass ?? 'dirV4'); } catch { /* ignore */ }
 }
 
 function AppMotionConfig({ reducedMotion, children }) {
@@ -233,7 +236,7 @@ function AFLManagerInner() {
 
   // Persist theme preference to localStorage so it applies before a career loads
   useEffect(() => {
-    persistTheme(career?.options?.theme ?? 'light');
+    persistTheme(themeClass);
   }, [career?.options?.theme]);
 
   // Inject club colour CSS custom properties when the user's team changes
