@@ -451,6 +451,24 @@ export function migrate(save) {
     }
   }
 
+  if (v < 34) {
+    s.saveVersion = 34;
+    // Fix bad leagueKey values introduced by pickPromotionLeague/pickRelegationLeague
+    // returning PYRAMID keys that don't exist ("SFL" → "TSL", "PerthFL" → "PerthFootballLeague").
+    const badKeys = { SFL: 'TSL', PerthFL: 'PerthFootballLeague' };
+    if (s.leagueKey && badKeys[s.leagueKey]) {
+      s.leagueKey = badKeys[s.leagueKey];
+    }
+  }
+
+  // Always validate leagueKey on load — if it points to a non-existent league, repair it.
+  // This guards against any future bad key, regardless of save version.
+  if (s.leagueKey && !PYRAMID[s.leagueKey]) {
+    const stateToLeague = { VIC: 'VFL', SA: 'SANFL', WA: 'WAFL', TAS: 'TSL', NT: 'NTFL', QLD: 'QAFL', NSW: 'AFLSyd', ACT: 'AFLCanberra' };
+    const club = s.clubId ? findClub(s.clubId) : null;
+    s.leagueKey = (club?.state && stateToLeague[club.state]) || 'AFL';
+  }
+
   return s;
 }
 

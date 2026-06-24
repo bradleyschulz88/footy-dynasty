@@ -118,6 +118,11 @@ import { injectClubTheme, clearClubTheme } from './lib/clubColors.js';
 
 const THEME_STORAGE_KEY = 'fd-theme';
 
+// Safe league lookup — always returns a defined league object even if leagueKey is stale/invalid.
+function resolveLeague(leagueKey) {
+  return PYRAMID[leagueKey] ?? PYRAMID['AFL'] ?? Object.values(PYRAMID).find(l => l?.tier);
+}
+
 // The game ships the "Daylight" light theme (dirA) — clean white/teal.
 function resolveThemeClass() {
   return 'dirA';
@@ -277,7 +282,7 @@ function AFLManagerInner() {
     const { career: c, setCareer: sc, setScreen: ss, setTab: st } = advanceShellRef.current;
     if (!c?.clubId) return;
     const advClub = findClub(c.clubId);
-    const advLeague = PYRAMID[c.leagueKey];
+    const advLeague = resolveLeague(c.leagueKey);
     advanceCareerNextEvent({ career: c, league: advLeague, club: advClub, setCareer: sc, setScreen: ss, setTab: st });
   }, []);
 
@@ -285,7 +290,7 @@ function AFLManagerInner() {
     const { career: c } = advanceShellRef.current;
     if (!c?.clubId) return;
     if (tutorialLocksAdvanceButton(c) || advanceBlockedByCareerNeeds(c)) return;
-    const advLeague = PYRAMID[c.leagueKey];
+    const advLeague = resolveLeague(c.leagueKey);
     const items = getVisibleAdvanceAgenda(c, advLeague);
     if (items.length > 0) {
       setAdvanceAgendaItems(items);
@@ -316,7 +321,7 @@ function AFLManagerInner() {
       let result = null;
       advanceCareerNextEvent({
         career: cur,
-        league: PYRAMID[cur.leagueKey],
+        league: resolveLeague(cur.leagueKey),
         club: findClub(cur.clubId),
         setCareer: (c) => { result = c; },
         // Training events nudge back to the hub — only a real navigation
@@ -353,7 +358,7 @@ function AFLManagerInner() {
     const nextCareer =
       snooze && itemIds?.length ? { ...c, ...snoozeAdvanceAgendaItems(c, itemIds) } : c;
     const advClub = findClub(nextCareer.clubId);
-    const advLeague = PYRAMID[nextCareer.leagueKey];
+    const advLeague = resolveLeague(nextCareer.leagueKey);
     advanceCareerNextEvent({
       career: nextCareer,
       league: advLeague,
@@ -378,7 +383,7 @@ function AFLManagerInner() {
       }
       if (isFinals && (patched.finalsAlive || []).length === 1) {
         const advClub = findClub(patched.clubId);
-        const advLeague = PYRAMID[patched.leagueKey];
+        const advLeague = resolveLeague(patched.leagueKey);
         advanceCareerNextEvent({
           career: next,
           league: advLeague,
@@ -393,7 +398,7 @@ function AFLManagerInner() {
       return;
     }
     const advClub = findClub(patched.clubId);
-    const advLeague = PYRAMID[patched.leagueKey];
+    const advLeague = resolveLeague(patched.leagueKey);
     advanceCareerNextEvent({
       career: patched,
       league: advLeague,
@@ -918,7 +923,7 @@ function AFLManagerInner() {
   }
 
   const club = findClub(career.clubId);
-  const league = PYRAMID[career.leagueKey];
+  const league = PYRAMID[career.leagueKey] ?? PYRAMID[Object.keys(PYRAMID).find(k => PYRAMID[k]?.tier === 2)] ?? Object.values(PYRAMID).find(l => l?.tier);
 
   // ============== UPDATER ==============
   // updateCareer is hoisted to the top of AFLManagerInner (Zustand hook).

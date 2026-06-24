@@ -1354,23 +1354,23 @@ function finishSeason(c, league) {
     }
   }
 
-  const nextLeagueForCal = PYRAMID[c.leagueKey];
+  const nextLeagueForCal = PYRAMID[c.leagueKey] ?? league;
   const seasonClub = findClub(c.clubId);
-  const regGround = getClubGround(seasonClub, c.facilities?.stadium?.level ?? 1, nextLeagueForCal.tier);
+  const regGround = getClubGround(seasonClub, c.facilities?.stadium?.level ?? 1, nextLeagueForCal?.tier ?? league?.tier ?? 2);
   c.clubGround = regGround;
   c.groundName = regGround.shortName;
   const calPool = competitionClubsForCareer(c);
-  const calClubs = calPool.length ? calPool : nextLeagueForCal.clubs;
+  const calClubs = calPool.length ? calPool : (nextLeagueForCal?.clubs ?? league?.clubs ?? []);
   c.eventQueue = generateSeasonCalendar(c.season, calClubs, c.fixtures, c.clubId, {
-    nationalDraft: nextLeagueForCal.tier === 1,
+    nationalDraft: (nextLeagueForCal?.tier ?? league?.tier) === 1,
   });
-  ensureCareerBoard(c, seasonClub, nextLeagueForCal);
-  generateSeasonObjectives(c, nextLeagueForCal);
+  ensureCareerBoard(c, seasonClub, nextLeagueForCal ?? league);
+  generateSeasonObjectives(c, nextLeagueForCal ?? league);
   planSeasonBoardMeetings(c);
-  updateBoardObjectiveProgress(c, nextLeagueForCal);
+  updateBoardObjectiveProgress(c, nextLeagueForCal ?? league);
   const dynClubCount =
     competitionClubsForCareer(c).length || calClubs.length || PYRAMID[c.leagueKey]?.clubs?.length || 12;
-  assignDynastyQuestsForSeason(c, nextLeagueForCal?.tier ?? league.tier, dynClubCount);
+  assignDynastyQuestsForSeason(c, nextLeagueForCal?.tier ?? league?.tier ?? 2, dynClubCount);
   c.currentDate = `${c.season - 1}-11-01`;
   c.phase = 'preseason';
   c.lastEvent = null;
@@ -1430,7 +1430,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 
   const anyIncomplete = (c.eventQueue || []).find((e) => !e.completed);
   if (!anyIncomplete) {
-    const finalists = getFinalsTeams(c.ladder, league.tier);
+    const finalists = getFinalsTeams(c.ladder, league?.tier ?? 2);
     if (finalists.length >= 2) {
       startFinals(c, league);
     } else {
@@ -2366,7 +2366,7 @@ function applyPostRoundBoardAndCalendar(c, league, club, meta, myResult) {
   // Tier 4 (junior/grassroots) is a volunteer role with a parent committee —
   // there is no director board to sack you over results. You stay until you
   // choose to leave or get headhunted to a senior club.
-  const sandbox = c.gameMode === 'sandbox' || league.tier === 4;
+  const sandbox = c.gameMode === 'sandbox' || league?.tier === 4;
   if (sandbox) {
     c.boardWarning = 0;
   } else {
@@ -2425,7 +2425,7 @@ function applyPostRoundBoardAndCalendar(c, league, club, meta, myResult) {
   if (meta.phase === 'season' && !c.isSacked && c.boardCrisis?.phase !== 'active') {
     const due = findDueBoardMeetingSlot(c, c.week);
     if (due) {
-      c.boardMeetingBlocking = openBoardMeetingBlockingFromSlot(due, league.tier);
+      c.boardMeetingBlocking = openBoardMeetingBlockingFromSlot(due, league?.tier ?? 2);
     }
   }
 
