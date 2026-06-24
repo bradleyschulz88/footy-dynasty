@@ -3,6 +3,7 @@ import {
   Repeat, Target, ArrowRight,
   Sprout, Newspaper, GraduationCap,
   Map, Plane, Award, FileText, UserPlus, Send,
+  Bookmark, Clock, Eye, X, Star,
 } from "lucide-react";
 import { seedRng, rand, rng } from '../../lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, findClub, findLeagueOf } from '../../data/pyramid.js';
@@ -58,6 +59,12 @@ import {
   startDraftSessionPatch,
 } from '../../lib/draftEngine.js';
 import { useCareer, useUpdateCareer } from '../../lib/careerStore.js';
+import {
+  getRelationshipScore, getRelationshipTier, localLoyaltyModifier,
+  bumpRelationship, createDeployment, generateWatchlistEntries,
+  DEPLOYMENT_DURATION_WEEKS, tickWatchlistStaleness,
+} from '../../lib/scoutingSystem.js';
+import { resolveScoutLeadMember } from '../../lib/staffTasks.js';
 import { gameToast } from '../../lib/toast.js';
 
 // ── Position badge style helper ─────────────────────────────────────────────
@@ -115,6 +122,7 @@ export default function RecruitScreen({ club, tab, setTab, league, onOpenDraftRo
   const career = useCareer();
   const updateCareer = useUpdateCareer();
   const offerCount = (career.pendingTradeOffers || []).filter(o => o.status === 'pending').length;
+  const watchlistCount = (career.scoutWatchlist || []).filter(w => !w.isStale).length;
   const inTradePeriod = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
   // National draft + youth academy are AFL (tier 1) institutions; local football scouting is for everyone.
   const isTopTier = (league?.tier ?? 1) === 1;
@@ -145,6 +153,7 @@ export default function RecruitScreen({ club, tab, setTab, league, onOpenDraftRo
     ...(isTopTier ? [{ key: "draft", label: "Draft", icon: Award }] : []),
     ...(isTopTier ? [{ key: "youth", label: "Youth Academy", icon: GraduationCap }] : []),
     { key: "local", label: "Local Football", icon: Map },
+    { key: "watchlist", label: `Watchlist${watchlistCount ? ` (${watchlistCount})` : ''}`, icon: Bookmark },
   ];
   return (
     <div className="anim-in touch-manipulation">
@@ -165,6 +174,7 @@ export default function RecruitScreen({ club, tab, setTab, league, onOpenDraftRo
         <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Youth academies are run by AFL clubs. Develop talent through Local Football scouting at this level.</div>
       ))}
       {t === "local" && <LocalTab club={club} />}
+      {t === "watchlist" && <WatchlistTab club={club} />}
     </div>
   );
 }
@@ -1636,7 +1646,6 @@ function LocalTab({ club }) {
   }, [showEmergencyPool, localTierCheck, career.season, career.week, club.state]);
 
   const signEmergency = (p) => {
-    // Emergency wage scales by tier: lower tiers = lower wage floor.
     const wage = localTierCheck >= 3 ? 12_000 : 25_000;
     if ((career.squad || []).length >= 40) return;
     if (!canAffordSigning(career, wage)) return;
@@ -1675,6 +1684,11 @@ function LocalTab({ club }) {
   const nextInterFee =
     interState && interState !== homeState ? interstateScoutFee(career.staff, staffTasks, interState, homeState) : 0;
 
+  const activeDeployments = useMemo(
+    () => (career.scoutDeployments || []).filter(d => d.status === 'active'),
+    [career.scoutDeployments]
+  );
+
   const runScout = (leagueKey, fromInterstate) => {
     const league = PYRAMID[leagueKey];
     if (!league) return;
@@ -1692,72 +1706,113 @@ function LocalTab({ club }) {
     const poolRaw = scoutPool.length ? [...scoutPool] : [...league.clubs];
     for (let i = poolRaw.length - 1; i > 0; i--) {
       const j = rand(0, i);
-      const tmp = poolRaw[i];
-      poolRaw[i] = poolRaw[j];
-      poolRaw[j] = tmp;
+      const tmp = poolRaw[i]; poolRaw[i] = poolRaw[j]; poolRaw[j] = tmp;
     }
     const focusBonus = recruitFocusIncrementalBonus(staffTasks, { interstate: isInter, leagueState: leagueSt });
     const found = Array.from({ length: 6 }, (_, i) => {
       const sourceClub = poolRaw[i % poolRaw.length];
       const cid = sourceClub.id || `local:${leagueKey}:${i}`;
-      const p = generatePlayer(league.tier, 13000 + i + Date.now() % 500, {
-        clubId: cid,
-        season: career.season,
-      });
-      const shortLabel = sourceClub.short || sourceClub.name?.slice(0, 4)?.toUpperCase() || "?";
+      const p = generatePlayer(league.tier, 13000 + i + Date.now() % 500, { clubId: cid, season: career.season });
+      const shortLabel = sourceClub.short || sourceClub.name?.slice(0, 4)?.toUpperCase() || '?';
       return {
         ...p,
         fromLocal: shortLabel,
         fromClubId: sourceClub.id || null,
+        fromLeagueKey: leagueKey,
+        localLoyalty: rand(30, 90),
         scoutedOverall: scoutedOverall(p, career, { focusBonus }),
       };
     });
     setScoutedPlayers(found);
     setScoutingLeague(leagueKey);
+    // Bump relationship + deduct fee
+    const patch = {
+      leagueRelationships: bumpRelationship(career.leagueRelationships, leagueKey, career, 5),
+    };
     if (fee > 0) {
-      updateCareer({
-        finance: { ...career.finance, cash: career.finance.cash - fee },
-        news: [{ week: career.week, type: 'info', text: `✈️ Scout pack (${leagueSt} · ${league.short}) · −${fmtK(fee)}` }, ...(career.news || [])].slice(0, 15),
-      });
+      patch.finance = { ...career.finance, cash: career.finance.cash - fee };
+      patch.news = [{ week: career.week, type: 'info', text: `✈️ Scout pack (${leagueSt} · ${league.short}) · −${fmtK(fee)}` }, ...(career.news || [])].slice(0, 15);
     }
+    updateCareer(patch);
   };
 
-  const sign = (p) => {
-    const localTier = leagueTierOf(career);
-    const wage = localTier === 1 ? 200_000 : localTier === 2 ? 80_000 : 18_000;
-    const fee  = localTier === 1 ? 75_000  : localTier === 2 ? 30_000 : 8_000;
-    if (career.finance.cash < fee || career.squad.length >= 40) return;
-    if (!canAffordSigning(career, wage)) return;
-    const newPlayer = { ...p, id: `local_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage, contract: 2 };
-    setScoutedPlayers(s => s.filter(x => x.id !== p.id));
-    updateCareer({
-      squad: [...career.squad, newPlayer],
-      finance: { ...career.finance, cash: career.finance.cash - fee },
-      news: [{ week: career.week, type: "info", text: `📍 Signed local talent ${p.firstName} ${p.lastName} from ${p.fromLocal} ($${(fee/1000).toFixed(0)}k fee, ${(wage/1000).toFixed(0)}k/yr)` }, ...career.news].slice(0,15),
-    });
+  const handleDeploy = (leagueKey, fromInterstate) => {
+    const league = PYRAMID[leagueKey];
+    if (!league) return;
+    if (activeDeployments.some(d => d.leagueKey === leagueKey)) {
+      gameToast('Scout already deployed to this area');
+      return;
+    }
+    const leagueSt = league.state || homeState;
+    const isInter = !!fromInterstate || leagueSt !== homeState;
+    const fee = isInter ? interstateScoutFee(career.staff, staffTasks, leagueSt, homeState) : 0;
+    if (fee > 0 && (career.finance?.cash ?? 0) < fee) {
+      gameToast(`Need ${fmtK(fee)} for interstate scout travel`);
+      return;
+    }
+    const scoutLead = resolveScoutLeadMember(career.staff, staffTasks);
+    const deployment = createDeployment(career, leagueKey, scoutLead?.id || 'auto');
+    const patch = {
+      scoutDeployments: [...(career.scoutDeployments || []), deployment],
+      leagueRelationships: bumpRelationship(career.leagueRelationships, leagueKey, career, 3),
+      news: [{ week: career.week, type: 'info', text: `🔍 Scout dispatched to ${league.name} — report expected in ${DEPLOYMENT_DURATION_WEEKS} weeks.` }, ...(career.news || [])].slice(0, 15),
+    };
+    if (fee > 0) patch.finance = { ...career.finance, cash: career.finance.cash - fee };
+    updateCareer(patch);
+    gameToast(`Scout deployed to ${league.name} · returns week ${deployment.returnsWeek}`);
+  };
+
+  const handleWatch = (p) => {
+    const lKey = p.fromLeagueKey || scoutingLeague;
+    if (!lKey) return;
+    const wlId = `wl_${lKey}_${p.firstName}${p.lastName}_${career.season || 0}`;
+    const existing = career.scoutWatchlist || [];
+    if (existing.some(w => w.id === wlId)) { gameToast('Already on watchlist'); return; }
+    const entry = {
+      ...p,
+      id: wlId,
+      fromLeagueKey: lKey,
+      fromLeagueShort: PYRAMID[lKey]?.short || lKey,
+      fromClubName: p.fromLocal,
+      fromClubShort: p.fromLocal,
+      localLoyalty: p.localLoyalty ?? 50,
+      interestLevel: (p.potential || 0) >= 75 ? 3 : (p.potential || 0) >= 65 ? 2 : 1,
+      flaggedWeek: career.week || 0,
+      lastRefreshedWeek: career.week || 0,
+      rivalInterest: 0,
+      isStale: false,
+    };
+    updateCareer({ scoutWatchlist: [...existing, entry] });
+    gameToast(`${p.firstName} ${p.lastName} added to watchlist`);
   };
 
   const localTierHead = leagueTierOf(career);
-  const feeLabel =
-    localTierHead === 1 ? '$75k' : localTierHead === 2 ? '$30k' : '$8k';
+  const baseFee = localTierHead === 1 ? 75_000 : localTierHead === 2 ? 30_000 : 8_000;
+  const baseWage = localTierHead === 1 ? 200_000 : localTierHead === 2 ? 80_000 : 18_000;
+  const feeLabel = localTierHead === 1 ? '$75k' : localTierHead === 2 ? '$30k' : '$8k';
+
+  const sign = (p) => {
+    const relScore = getRelationshipScore(career, p.fromLeagueKey || scoutingLeague);
+    const loyaltyMod = localLoyaltyModifier(p.localLoyalty ?? 50, relScore);
+    const fee = Math.round(baseFee * loyaltyMod);
+    if ((career.finance?.cash ?? 0) < fee || (career.squad || []).length >= 40) return;
+    if (!canAffordSigning(career, baseWage)) return;
+    const newPlayer = { ...p, id: `local_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage: baseWage, contract: 2 };
+    setScoutedPlayers(s => s.filter(x => x.id !== p.id));
+    updateCareer({
+      squad: [...(career.squad || []), newPlayer],
+      finance: { ...career.finance, cash: career.finance.cash - fee },
+      news: [{ week: career.week, type: 'info', text: `📍 Signed ${p.firstName} ${p.lastName} from ${p.fromLocal} — ${fmtK(fee)} fee, ${fmtK(baseWage)}/yr` }, ...(career.news || [])].slice(0, 15),
+    });
+  };
 
   const signWalkOn = (p) => {
-    const localTier = leagueTierOf(career);
-    const wage = localTier === 1 ? 200_000 : localTier === 2 ? 80_000 : 18_000;
-    if (career.squad.length >= 40) return;
-    if (!canAffordSigning(career, wage)) return;
-    const newPlayer = { ...p, id: `walkon_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage, contract: 2 };
-    setScoutedPlayers((s) => s.filter((x) => x.id !== p.id));
+    if ((career.squad || []).length >= 40 || !canAffordSigning(career, baseWage)) return;
+    const newPlayer = { ...p, id: `walkon_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage: baseWage, contract: 2 };
+    setScoutedPlayers(s => s.filter(x => x.id !== p.id));
     updateCareer({
-      squad: [...career.squad, newPlayer],
-      news: [
-        {
-          week: career.week,
-          type: 'info',
-          text: `📍 Walk-on: ${p.firstName} ${p.lastName} from ${p.fromLocal} — no transfer fee, ${(wage / 1000).toFixed(0)}k/yr`,
-        },
-        ...career.news,
-      ].slice(0, 15),
+      squad: [...(career.squad || []), newPlayer],
+      news: [{ week: career.week, type: 'info', text: `📍 Walk-on: ${p.firstName} ${p.lastName} from ${p.fromLocal} — no fee, ${fmtK(baseWage)}/yr` }, ...(career.news || [])].slice(0, 15),
     });
   };
 
@@ -1769,13 +1824,29 @@ function LocalTab({ club }) {
             <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent)'}} />
             <div className={`${css.h1} text-3xl`}>LOCAL FOOTBALL</div>
           </div>
-          <div className="text-xs text-atext-dim">Scout other {club.state} competitions (same tier or neighbouring levels). Interstate packs charge a scout-travel fee (Senior Scout rating + recruiting priority trim costs); reports gain a small accuracy bump vs local-only runs.</div>
+          <div className="text-xs text-atext-dim">Scout other {club.state} competitions. <span className="text-aaccent font-semibold">Scout Now</span> for instant reports. <span className="text-apos font-semibold">Deploy</span> a scout for 2 weeks to build your watchlist and grow league relationships.</div>
         </div>
         <div className="flex items-center gap-3">
-          <Stat label="Listed signing" value={feeLabel} sub="fee + wages" accent="var(--A-accent)" />
+          <Stat label="Listed signing" value={feeLabel} sub="base fee + wages" accent="var(--A-accent)" />
           <Stat label="Walk-on" value="$0" sub="same wages" accent="var(--A-pos)" />
         </div>
       </div>
+
+      {/* Active deployments strip */}
+      {activeDeployments.length > 0 && (
+        <div className="rounded-xl px-4 py-3 space-y-1.5" style={{ background: 'color-mix(in srgb, var(--A-accent) 8%, var(--A-panel))', border: '1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <Send className="w-3.5 h-3.5 text-aaccent" />
+            <div className="text-[10px] font-black uppercase tracking-widest text-aaccent">Scout{activeDeployments.length > 1 ? 's' : ''} Deployed</div>
+          </div>
+          {activeDeployments.map(d => (
+            <div key={d.id} className="flex items-center justify-between text-xs gap-3">
+              <span className="text-atext font-medium">{d.leagueName}</span>
+              <span className="text-atext-mute font-mono text-[10px]">returns week {d.returnsWeek}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {showEmergencyPool && emergencyPool.length > 0 && (
         <div className="rounded-2xl p-4 border" style={{ background: 'color-mix(in srgb, var(--A-neg) 8%, var(--A-panel))', borderColor: 'color-mix(in srgb, var(--A-neg) 40%, transparent)' }}>
@@ -1794,12 +1865,8 @@ function LocalTab({ club }) {
                     <div className="text-sm font-bold text-atext truncate">{p.firstName} {p.lastName}</div>
                     <div className="text-[10px] text-atext-mute">{formatPositionSlash(p)} · Age {p.age} · OVR {p.overall} · {fmtK(wage)}/yr</div>
                   </div>
-                  <button
-                    type="button"
-                    disabled={!canSign}
-                    onClick={() => signEmergency(p)}
-                    className={`text-[10px] font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition ${canSign ? 'bg-aaccent text-[var(--fd-on-accent,#0A0D0C)] hover:opacity-90' : 'opacity-40 bg-apanel-2 text-atext-mute cursor-not-allowed'}`}
-                  >
+                  <button type="button" disabled={!canSign} onClick={() => signEmergency(p)}
+                    className={`text-[10px] font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition ${canSign ? 'bg-aaccent text-[var(--fd-on-accent,#0A0D0C)] hover:opacity-90 cursor-pointer' : 'opacity-40 bg-apanel-2 text-atext-mute cursor-not-allowed'}`}>
                     Sign
                   </button>
                 </div>
@@ -1811,94 +1878,151 @@ function LocalTab({ club }) {
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-1 space-y-4">
+          {/* Local leagues */}
           <div className={`${css.panel} p-5`}>
             <div className="flex items-center gap-2 mb-3"><Map className="w-5 h-5 text-aaccent" /><div className="font-bold tracking-wide">{club.state} leagues</div></div>
             {localLeagues.length === 0 ? (
-              <div className="text-sm text-atext-dim py-4">No other leagues listed for {club.state} in the pyramid data.</div>
+              <div className="text-sm text-atext-dim py-4">No other leagues listed for {club.state}.</div>
             ) : (
-              <div className="space-y-1.5">
-                {localLeagues.map(l => (
-                  <button key={l.key} type="button" onClick={()=>runScout(l.key, false)} className={`w-full text-left px-3 py-2 rounded-lg border transition cursor-pointer ${scoutingLeague===l.key ? "border-aaccent bg-aaccent/10" : "border-aline hover:border-aaccent/30 bg-apanel"}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="font-semibold text-sm text-atext truncate">{l.name}</div>
-                        <div className="text-[10px] text-atext-mute font-mono">{l.short} · {l.clubs.length} clubs</div>
+              <div className="space-y-2">
+                {localLeagues.map(l => {
+                  const relScore = getRelationshipScore(career, l.key);
+                  const relTier = getRelationshipTier(relScore);
+                  const isDeployed = activeDeployments.some(d => d.leagueKey === l.key);
+                  const dep = activeDeployments.find(d => d.leagueKey === l.key);
+                  return (
+                    <div key={l.key} className={`px-3 py-2.5 rounded-lg border transition ${scoutingLeague === l.key ? 'border-aaccent bg-aaccent/10' : 'border-aline bg-apanel'}`}>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm text-atext truncate">{l.name}</div>
+                          <div className="text-[10px] text-atext-mute font-mono">{l.short} · {l.clubs.length} clubs</div>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {relScore > 0 && <span className="text-[9px] font-bold" style={{ color: relTier.color }}>{relTier.label}</span>}
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--A-accent) 12%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)' }}>T{l.tier}</span>
+                        </div>
                       </div>
-                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--A-accent) 12%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)' }}>T{l.tier}</span>
+                      {relScore > 0 && (
+                        <div className="w-full h-0.5 rounded-full bg-aline mb-2 overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${relScore}%`, background: relTier.color }} />
+                        </div>
+                      )}
+                      <div className="flex gap-1.5">
+                        <button type="button" onClick={() => runScout(l.key, false)}
+                          className="flex-1 text-[10px] font-bold py-1.5 rounded-lg cursor-pointer transition"
+                          style={{ background: 'color-mix(in srgb, var(--A-accent) 12%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)' }}>
+                          Scout Now
+                        </button>
+                        <button type="button" onClick={() => handleDeploy(l.key, false)} disabled={isDeployed}
+                          className={`flex-1 text-[10px] font-bold py-1.5 rounded-lg transition ${isDeployed ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                          style={isDeployed
+                            ? { background: 'var(--A-panel-2)', color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }
+                            : { background: 'color-mix(in srgb, var(--A-pos) 12%, transparent)', color: 'var(--A-pos)', border: '1px solid color-mix(in srgb, var(--A-pos) 25%, transparent)' }}>
+                          {isDeployed ? `Out · wk${dep?.returnsWeek}` : 'Deploy (2wk)'}
+                        </button>
+                      </div>
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
 
+          {/* Interstate */}
           <div className={`${css.panel} p-5`}>
             <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
               <div className="flex items-center gap-2">
                 <Plane className="w-5 h-5 text-aaccent" aria-hidden />
                 <div className="font-bold tracking-wide">Interstate</div>
               </div>
-              <div className="text-[10px] text-atext-dim font-mono">
-                Next pack ≈ {fmtK(nextInterFee)}
-              </div>
+              <div className="text-[10px] text-atext-dim font-mono">≈ {fmtK(nextInterFee)} fee</div>
             </div>
             <label className="block text-[10px] uppercase tracking-wide text-atext-mute font-bold mb-1">State</label>
-            <select
-              value={interState}
-              onChange={(e) => setInterState(e.target.value)}
-              className="w-full mb-3 rounded-lg border border-aline bg-apanel px-2 py-2 text-sm"
-            >
-              {otherStates.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
+            <select value={interState} onChange={(e) => setInterState(e.target.value)}
+              className="w-full mb-3 rounded-lg border border-aline bg-apanel px-2 py-2 text-sm">
+              {otherStates.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
             {interstateLeagues.length === 0 ? (
               <div className="text-sm text-atext-dim py-2">No leagues in pyramid for {interState}.</div>
             ) : (
-              <div className="space-y-1.5 max-h-[40vh] overflow-y-auto pr-1">
-                {interstateLeagues.map((l) => (
-                  <button
-                    key={l.key}
-                    type="button"
-                    onClick={() => runScout(l.key, true)}
-                    className={`w-full text-left px-3 py-2 rounded-lg border transition cursor-pointer ${scoutingLeague === l.key ? 'border-aaccent bg-aaccent/10' : 'border-aline hover:border-aaccent/30 bg-apanel'}`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="font-semibold text-sm text-atext truncate">{l.name}</div>
-                        <div className="text-[10px] text-atext-mute font-mono">{l.short} · {l.clubs.length} clubs · {fmtK(interstateScoutFee(career.staff, staffTasks, interState, homeState))} fee</div>
+              <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+                {interstateLeagues.map((l) => {
+                  const relScore = getRelationshipScore(career, l.key);
+                  const relTier = getRelationshipTier(relScore);
+                  const isDeployed = activeDeployments.some(d => d.leagueKey === l.key);
+                  const dep = activeDeployments.find(d => d.leagueKey === l.key);
+                  return (
+                    <div key={l.key} className={`px-3 py-2.5 rounded-lg border transition ${scoutingLeague === l.key ? 'border-aaccent bg-aaccent/10' : 'border-aline bg-apanel'}`}>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm text-atext truncate">{l.name}</div>
+                          <div className="text-[10px] text-atext-mute font-mono">{l.short} · {l.clubs.length} clubs · {fmtK(interstateScoutFee(career.staff, staffTasks, interState, homeState))} fee</div>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {relScore > 0 && <span className="text-[9px] font-bold" style={{ color: relTier.color }}>{relTier.label}</span>}
+                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'color-mix(in srgb, #F59E0B 12%, transparent)', color: '#F59E0B', border: '1px solid color-mix(in srgb, #F59E0B 25%, transparent)' }}>T{l.tier}</span>
+                        </div>
                       </div>
-                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'color-mix(in srgb, #F59E0B 12%, transparent)', color: '#F59E0B', border: '1px solid color-mix(in srgb, #F59E0B 25%, transparent)' }}>T{l.tier}</span>
+                      {relScore > 0 && (
+                        <div className="w-full h-0.5 rounded-full bg-aline mb-2 overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${relScore}%`, background: relTier.color }} />
+                        </div>
+                      )}
+                      <div className="flex gap-1.5">
+                        <button type="button" onClick={() => runScout(l.key, true)}
+                          className="flex-1 text-[10px] font-bold py-1.5 rounded-lg cursor-pointer transition"
+                          style={{ background: 'color-mix(in srgb, #F59E0B 12%, transparent)', color: '#F59E0B', border: '1px solid color-mix(in srgb, #F59E0B 25%, transparent)' }}>
+                          Scout Now
+                        </button>
+                        <button type="button" onClick={() => handleDeploy(l.key, true)} disabled={isDeployed}
+                          className={`flex-1 text-[10px] font-bold py-1.5 rounded-lg transition ${isDeployed ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                          style={isDeployed
+                            ? { background: 'var(--A-panel-2)', color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }
+                            : { background: 'color-mix(in srgb, var(--A-pos) 12%, transparent)', color: 'var(--A-pos)', border: '1px solid color-mix(in srgb, var(--A-pos) 25%, transparent)' }}>
+                          {isDeployed ? `Out · wk${dep?.returnsWeek}` : 'Deploy (2wk)'}
+                        </button>
+                      </div>
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
 
+        {/* Scouting results */}
         <div className={`${css.panel} p-5 lg:col-span-2`}>
           <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2"><Target className="w-5 h-5 text-aaccent" /><div className="font-bold tracking-wide">Scouting Reports</div></div>
-            {scoutingLeague && (
-              <div className="text-[10px] text-atext-dim max-w-md text-right leading-snug">
-                {PYRAMID[scoutingLeague].short} · six prospects, round-robin from league clubs
-              </div>
-            )}
+            {scoutingLeague && (() => {
+              const relScore = getRelationshipScore(career, scoutingLeague);
+              const relTier = getRelationshipTier(relScore);
+              return (
+                <div className="flex items-center gap-2 text-[10px] text-atext-dim">
+                  <span>{PYRAMID[scoutingLeague]?.short} · 6 prospects</span>
+                  {relScore > 0 && <span className="font-bold" style={{ color: relTier.color }}>{relTier.label} ({relScore})</span>}
+                </div>
+              );
+            })()}
           </div>
           {scoutedPlayers.length === 0 ? (
-            <div className="text-center py-12 text-sm text-atext-dim">Pick a league to dispatch your scouts.</div>
+            <div className="text-center py-12 space-y-2">
+              <Eye className="w-8 h-8 mx-auto opacity-20" />
+              <div className="text-sm text-atext-dim">Pick a league to dispatch your scouts.</div>
+              <div className="text-xs text-atext-mute">Or Deploy a scout to auto-populate your Watchlist over 2 weeks.</div>
+            </div>
           ) : (
             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
               {scoutedPlayers.map(p => {
-                const localTier = leagueTierOf(career);
-                const wage = localTier === 1 ? 200_000 : localTier === 2 ? 80_000 : 18_000;
-                const fee  = localTier === 1 ? 75_000  : localTier === 2 ? 30_000 : 8_000;
-                const canCash = career.finance.cash >= fee;
-                const canCap  = canAffordSigning(career, wage);
-                const can     = canCash && canCap;
-                const canWalkOn = canCap;
+                const relScore = getRelationshipScore(career, p.fromLeagueKey || scoutingLeague);
+                const loyaltyMod = localLoyaltyModifier(p.localLoyalty ?? 50, relScore);
+                const fee = Math.round(baseFee * loyaltyMod);
+                const canCash = (career.finance?.cash ?? 0) >= fee;
+                const canCap = canAffordSigning(career, baseWage);
+                const can = canCash && canCap;
                 const sourceClubVisual = p.fromClubId ? findClub(p.fromClubId) : findClubByShort(p.fromLocal);
+                const loyaltyPct = p.localLoyalty ?? 50;
+                const loyaltyColor = loyaltyPct > 65 ? 'var(--A-neg)' : loyaltyPct > 40 ? 'var(--A-accent-2)' : 'var(--A-pos)';
                 return (
                   <div key={p.id} className={`${css.inset} p-3 grid grid-cols-12 gap-2 items-center`}>
                     <div className="col-span-4 flex items-start gap-2 min-w-0">
@@ -1906,6 +2030,12 @@ function LocalTab({ club }) {
                       <div className="min-w-0">
                         <div className="font-semibold text-sm">{p.firstName} {p.lastName}</div>
                         <div className="text-[10px] text-atext-dim">From {p.fromLocal} · Age {p.age}</div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <div className="text-[9px] text-atext-mute">Loyalty</div>
+                          <div className="w-10 h-1 rounded-full bg-aline overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${loyaltyPct}%`, background: loyaltyColor }} />
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <div className="col-span-1"><Pill color="var(--A-accent)">{formatPositionSlash(p)}</Pill></div>
@@ -1915,15 +2045,20 @@ function LocalTab({ club }) {
                       <div className="flex items-center gap-1"><span className="text-xs font-bold text-apos">{p.potential}</span><Bar value={p.potential} color="var(--A-pos)" small /></div>
                     </div>
                     <div className="col-span-3 flex flex-col gap-1 items-stretch">
-                      <button type="button" onClick={()=>sign(p)} disabled={!can}
-                        className={can ? `${css.btnPrimary} text-[10px] px-2 py-1.5 leading-tight` : "px-2 py-1.5 rounded-lg text-[10px] bg-apanel-2 text-atext-mute leading-tight"}
+                      <button type="button" onClick={() => sign(p)} disabled={!can}
+                        className={can ? `${css.btnPrimary} text-[10px] px-2 py-1.5 leading-tight` : 'px-2 py-1.5 rounded-lg text-[10px] bg-apanel-2 text-atext-mute leading-tight'}
                         title={!canCap ? 'Over salary cap' : !canCash ? 'Insufficient cash' : ''}>
-                        Fee {feeLabel} · Sign
+                        {fmtK(fee)} · Sign
                       </button>
-                      <button type="button" onClick={()=>signWalkOn(p)} disabled={!canWalkOn}
-                        className={canWalkOn ? `${css.btnGhost} text-[10px] px-2 py-1.5 font-bold leading-tight border border-aline` : "px-2 py-1.5 rounded-lg text-[10px] bg-apanel-2 text-atext-mute leading-tight"}
-                        title={!canCap ? 'Over salary cap' : 'No transfer fee — league-minimum style deal'}>
-                        Walk-on ($0 fee)
+                      <button type="button" onClick={() => signWalkOn(p)} disabled={!canCap}
+                        className={canCap ? `${css.btnGhost} text-[10px] px-2 py-1.5 font-bold leading-tight border border-aline` : 'px-2 py-1.5 rounded-lg text-[10px] bg-apanel-2 text-atext-mute leading-tight'}
+                        title={!canCap ? 'Over salary cap' : 'No transfer fee'}>
+                        Walk-on ($0)
+                      </button>
+                      <button type="button" onClick={() => handleWatch(p)}
+                        className="text-[10px] px-2 py-1.5 rounded-lg font-bold leading-tight cursor-pointer transition"
+                        style={{ background: 'color-mix(in srgb, var(--A-accent-2) 12%, transparent)', color: 'var(--A-accent-2)', border: '1px solid color-mix(in srgb, var(--A-accent-2) 25%, transparent)' }}>
+                        Watch
                       </button>
                     </div>
                   </div>
@@ -1934,7 +2069,161 @@ function LocalTab({ club }) {
         </div>
       </div>
       <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
-        <span className="text-aaccent font-bold">TIP:</span> Local scouting finds depth with community flavour. Use <span className="text-atext font-semibold">Walk-on</span> for free-transfer style arrivals (still wage-cap checked) — like train-on players crossing without a cheque changing hands.
+        <span className="text-aaccent font-bold">TIP:</span> Build league relationships by scouting regularly — higher relationship means better accuracy and lower loyalty barriers. <span className="text-apos font-semibold">Deploy</span> scouts early in the season to have prospects lined up before the signing window.
+      </div>
+    </div>
+  );
+}
+
+// ── Watchlist Tab ────────────────────────────────────────────────────────────
+const INTEREST_LABELS = { 3: 'Priority', 2: 'Watching', 1: 'Casual' };
+const INTEREST_COLORS = { 3: 'var(--A-neg)', 2: 'var(--A-accent)', 1: 'var(--A-text-mute)' };
+
+function WatchlistTab({ club }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
+  const watchlist = career.scoutWatchlist || [];
+  const localTier = leagueTierOf(career);
+  const baseWage = localTier === 1 ? 200_000 : localTier === 2 ? 80_000 : 18_000;
+  const baseFee = localTier === 1 ? 75_000 : localTier === 2 ? 30_000 : 8_000;
+
+  const dismiss = (id) => updateCareer({ scoutWatchlist: watchlist.filter(w => w.id !== id) });
+
+  const signFromWatchlist = (w) => {
+    if ((career.squad || []).length >= 40 || !canAffordSigning(career, baseWage)) return;
+    const relScore = getRelationshipScore(career, w.fromLeagueKey);
+    const loyaltyMod = localLoyaltyModifier(w.localLoyalty, relScore);
+    const fee = Math.round(baseFee * loyaltyMod);
+    if ((career.finance?.cash ?? 0) < fee) return;
+    // Strip watchlist metadata before adding to squad
+    const { fromLeagueKey, fromLeagueShort, fromClubName, fromClubShort, localLoyalty,
+      interestLevel, flaggedWeek, lastRefreshedWeek, rivalInterest, isStale,
+      scoutedOverall: _so, ...playerBase } = w;
+    const newPlayer = { ...playerBase, id: `wl_signed_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage: baseWage, contract: 2 };
+    updateCareer({
+      squad: [...(career.squad || []), newPlayer],
+      scoutWatchlist: watchlist.filter(x => x.id !== w.id),
+      finance: { ...career.finance, cash: (career.finance?.cash ?? 0) - fee },
+      news: [{ week: career.week, type: 'info', text: `📍 Signed ${w.firstName} ${w.lastName} (${w.fromLeagueShort}) from watchlist — ${fmtK(fee)} fee, ${fmtK(baseWage)}/yr` }, ...(career.news || [])].slice(0, 15),
+    });
+  };
+
+  const walkOnFromWatchlist = (w) => {
+    if ((career.squad || []).length >= 40 || !canAffordSigning(career, baseWage)) return;
+    const { fromLeagueKey, fromLeagueShort, fromClubName, fromClubShort, localLoyalty,
+      interestLevel, flaggedWeek, lastRefreshedWeek, rivalInterest, isStale,
+      scoutedOverall: _so, ...playerBase } = w;
+    const newPlayer = { ...playerBase, id: `wl_walkon_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage: baseWage, contract: 2 };
+    updateCareer({
+      squad: [...(career.squad || []), newPlayer],
+      scoutWatchlist: watchlist.filter(x => x.id !== w.id),
+      news: [{ week: career.week, type: 'info', text: `📍 Walk-on from watchlist: ${w.firstName} ${w.lastName} (${w.fromLeagueShort}) — no fee, ${fmtK(baseWage)}/yr` }, ...(career.news || [])].slice(0, 15),
+    });
+  };
+
+  if (watchlist.length === 0) {
+    return (
+      <div className={`${css.panel} p-12 flex flex-col items-center gap-3 text-center`}>
+        <Bookmark className="w-9 h-9 opacity-20" />
+        <div className="text-sm font-medium text-atext-dim">Watchlist is empty</div>
+        <div className="text-xs text-atext-mute max-w-xs">Deploy a scout to a league and they'll flag prospects automatically. Or hit <span className="text-aaccent-2 font-semibold">Watch</span> on any player in Local Football reports.</div>
+      </div>
+    );
+  }
+
+  const sorted = [...watchlist].sort((a, b) => {
+    if (a.isStale !== b.isStale) return a.isStale ? 1 : -1;
+    if ((b.interestLevel || 1) !== (a.interestLevel || 1)) return (b.interestLevel || 1) - (a.interestLevel || 1);
+    return (b.potential || 0) - (a.potential || 0);
+  });
+
+  const activeCount = watchlist.filter(w => !w.isStale).length;
+  const staleCount = watchlist.filter(w => w.isStale).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-7 rounded-full" style={{background:'var(--A-accent-2)'}} />
+            <div className={`${css.h1} text-3xl`}>WATCHLIST</div>
+          </div>
+          <div className="text-xs text-atext-dim">{activeCount} active · {staleCount} stale — Updated by scout deployments and manual pins</div>
+        </div>
+        <Stat label="Tracked" value={activeCount} sub={staleCount ? `${staleCount} stale` : 'all fresh'} accent="var(--A-accent-2)" />
+      </div>
+
+      <div className="space-y-2">
+        {sorted.map(w => {
+          const relScore = getRelationshipScore(career, w.fromLeagueKey);
+          const loyaltyMod = localLoyaltyModifier(w.localLoyalty, relScore);
+          const adjustedFee = Math.round(baseFee * loyaltyMod);
+          const canSign = !w.isStale && (career.squad || []).length < 40 && canAffordSigning(career, baseWage) && (career.finance?.cash ?? 0) >= adjustedFee;
+          const canWalkOn = !w.isStale && (career.squad || []).length < 40 && canAffordSigning(career, baseWage);
+          const effectiveLoyalty = Math.max(0, Math.min(100, (w.localLoyalty || 50) - relScore * 0.4));
+          const loyaltyColor = effectiveLoyalty > 60 ? 'var(--A-neg)' : effectiveLoyalty > 30 ? 'var(--A-accent-2)' : 'var(--A-pos)';
+          const interestColor = INTEREST_COLORS[w.interestLevel || 1];
+          return (
+            <div key={w.id} className={`${css.inset} p-3 ${w.isStale ? 'opacity-50' : ''}`}>
+              <div className="grid grid-cols-12 gap-2 items-center">
+                {/* Name, interest, club */}
+                <div className="col-span-4 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded"
+                      style={{ background: `color-mix(in srgb, ${interestColor} 15%, transparent)`, color: interestColor }}>
+                      {INTEREST_LABELS[w.interestLevel || 1]}
+                    </span>
+                    {(w.rivalInterest || 0) > 0 && (
+                      <span className="text-[9px] font-bold" style={{ color: 'var(--A-neg)' }}>⚡{w.rivalInterest}</span>
+                    )}
+                    {w.isStale && <span className="text-[9px] text-aaccent-2 font-bold">STALE</span>}
+                  </div>
+                  <div className="font-semibold text-sm truncate">{w.firstName} {w.lastName}</div>
+                  <div className="text-[10px] text-atext-dim">{w.fromLeagueShort} · {w.fromClubShort} · Age {w.age}</div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[9px] text-atext-mute">Loyalty</span>
+                    <div className="w-10 h-1 rounded-full bg-aline overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${effectiveLoyalty}%`, background: loyaltyColor }} />
+                    </div>
+                  </div>
+                </div>
+                {/* Position */}
+                <div className="col-span-1"><Pill color="var(--A-accent)">{w.position}</Pill></div>
+                {/* Scouted OVR */}
+                <div className="col-span-2"><RatingDot value={w.scoutedOverall ?? w.overall} /></div>
+                {/* Potential */}
+                <div className="col-span-2">
+                  <div className="text-[10px] text-atext-dim">POT</div>
+                  <div className="text-xs font-bold text-apos">{w.potential}</div>
+                  {relScore > 0 && (
+                    <div className="text-[9px] font-bold mt-0.5" style={{ color: getRelationshipTier(relScore).color }}>
+                      {getRelationshipTier(relScore).label}
+                    </div>
+                  )}
+                </div>
+                {/* Actions */}
+                <div className="col-span-3 flex flex-col gap-1">
+                  <button type="button" onClick={() => signFromWatchlist(w)} disabled={!canSign}
+                    className={`text-[10px] font-bold px-2 py-1.5 rounded-lg leading-tight ${canSign ? css.btnPrimary : 'bg-apanel-2 text-atext-mute cursor-not-allowed'}`}>
+                    {fmtK(adjustedFee)} · Sign
+                  </button>
+                  <button type="button" onClick={() => walkOnFromWatchlist(w)} disabled={!canWalkOn}
+                    className={`text-[10px] font-bold px-2 py-1.5 rounded-lg leading-tight border ${canWalkOn ? `${css.btnGhost} border-aline cursor-pointer` : 'bg-apanel-2 text-atext-mute border-aline cursor-not-allowed'}`}>
+                    Walk-on
+                  </button>
+                  <button type="button" onClick={() => dismiss(w.id)}
+                    className="text-[10px] px-2 py-1 rounded-lg text-atext-mute hover:text-aneg transition cursor-pointer leading-tight">
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className={`${css.inset} p-4 text-xs text-atext-dim`}>
+        <span className="text-aaccent-2 font-bold">HOW IT WORKS:</span> Scout deployments auto-flag prospects. Intel goes <span className="font-semibold text-atext">stale</span> after {8} weeks without a refresh. Higher league relationship = better intel accuracy + lower loyalty barrier on signing.
       </div>
     </div>
   );
