@@ -1816,17 +1816,16 @@ function LocalTab({ club }) {
             {localLeagues.length === 0 ? (
               <div className="text-sm text-atext-dim py-4">No other leagues listed for {club.state} in the pyramid data.</div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {localLeagues.map(l => (
-                  <button key={l.key} type="button" onClick={()=>runScout(l.key, false)} className={`w-full text-left p-3 rounded-lg border transition ${scoutingLeague===l.key ? "border-aaccent bg-aaccent/10" : "border-aline hover:border-aline-2 bg-apanel"}`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-bold text-sm">{l.short}</div>
-                        <div className="text-[10px] text-atext-dim">{l.name}</div>
+                  <button key={l.key} type="button" onClick={()=>runScout(l.key, false)} className={`w-full text-left px-3 py-2 rounded-lg border transition cursor-pointer ${scoutingLeague===l.key ? "border-aaccent bg-aaccent/10" : "border-aline hover:border-aaccent/30 bg-apanel"}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm text-atext truncate">{l.name}</div>
+                        <div className="text-[10px] text-atext-mute font-mono">{l.short} · {l.clubs.length} clubs</div>
                       </div>
-                      <Pill color="var(--A-accent)">T{l.tier}</Pill>
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--A-accent) 12%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)' }}>T{l.tier}</span>
                     </div>
-                    <div className="text-[10px] text-atext-dim mt-1">{l.clubs.length} clubs · No travel fee</div>
                   </button>
                 ))}
               </div>
@@ -1856,22 +1855,21 @@ function LocalTab({ club }) {
             {interstateLeagues.length === 0 ? (
               <div className="text-sm text-atext-dim py-2">No leagues in pyramid for {interState}.</div>
             ) : (
-              <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-[40vh] overflow-y-auto pr-1">
                 {interstateLeagues.map((l) => (
                   <button
                     key={l.key}
                     type="button"
                     onClick={() => runScout(l.key, true)}
-                    className={`w-full text-left p-3 rounded-lg border transition ${scoutingLeague === l.key ? 'border-aaccent bg-aaccent/10' : 'border-aline hover:border-aline-2 bg-apanel'}`}
+                    className={`w-full text-left px-3 py-2 rounded-lg border transition cursor-pointer ${scoutingLeague === l.key ? 'border-aaccent bg-aaccent/10' : 'border-aline hover:border-aaccent/30 bg-apanel'}`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-bold text-sm">{l.short}</div>
-                        <div className="text-[10px] text-atext-dim">{l.name}</div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm text-atext truncate">{l.name}</div>
+                        <div className="text-[10px] text-atext-mute font-mono">{l.short} · {l.clubs.length} clubs · {fmtK(interstateScoutFee(career.staff, staffTasks, interState, homeState))} fee</div>
                       </div>
-                      <Pill color="#F59E0B">T{l.tier}</Pill>
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0" style={{ background: 'color-mix(in srgb, #F59E0B 12%, transparent)', color: '#F59E0B', border: '1px solid color-mix(in srgb, #F59E0B 25%, transparent)' }}>T{l.tier}</span>
                     </div>
-                    <div className="text-[10px] text-atext-dim mt-1">{l.clubs.length} clubs · Fee {fmtK(interstateScoutFee(career.staff, staffTasks, interState, homeState))}</div>
                   </button>
                 ))}
               </div>
