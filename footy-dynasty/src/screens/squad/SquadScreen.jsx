@@ -1262,7 +1262,7 @@ function TrainingTab({ onOpenClubStaff }) {
   const setIntensity = (v) => updateCareer({ training: { ...t, intensity: v } });
   const setFocus = (k, v) => {
     const clamped = Math.max(5, Math.min(80, v));
-    const others = Object.keys(t.focus).filter((x) => x !== k);
+    const others = Object.keys(t.focus || {}).filter((x) => x !== k);
     const remain = 100 - clamped;
     const oldOthers = others.reduce((a, x) => a + t.focus[x], 0);
     const newFocus = { [k]: clamped };
@@ -1312,7 +1312,7 @@ function TrainingTab({ onOpenClubStaff }) {
   const staffTrainingNote = trainingStaffSupportLine(career.staff, t.focus?.tactics ?? 25);
 
   const medLevel = career.facilities?.medical?.level ?? 1;
-  const recoveryFocus = t.focus.recovery ?? 20;
+  const recoveryFocus = t?.focus?.recovery ?? 20;
   const intensity = t.intensity ?? 60;
   const matchInjuryProb = clamp(0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001, 0.04, 0.28);
   const trainingInjuryProb = Math.max(

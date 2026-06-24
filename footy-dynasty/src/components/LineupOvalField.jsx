@@ -66,7 +66,7 @@ function ratingColor(ovr) {
   return "#E84A6F";
 }
 
-function formBorderColor(form) {
+export function formBorderColor(form) {
   if (form >= 70) return "rgba(74,232,154,0.80)";
   if (form >= 45) return "rgba(255,255,255,0.38)";
   return "rgba(232,212,74,0.80)";
@@ -135,8 +135,12 @@ function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps
           {slotLabel}
         </span>
         <span
-          className="text-[7px] font-mono font-black leading-none"
-          style={{ color: ovrColor }}
+          className="text-[7px] font-black leading-none px-0.5 rounded"
+          style={{
+            background: `${ovrColor}22`,
+            color: ovrColor,
+            border: `1px solid ${ovrColor}44`,
+          }}
         >
           {player.overall}
         </span>

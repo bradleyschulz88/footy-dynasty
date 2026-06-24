@@ -80,6 +80,14 @@ describe('avgFacilities', () => {
     );
     expect(avgFacilities(f)).toBe(5);
   });
+
+  it('returns 1 (baseline) for an empty object', () => {
+    expect(avgFacilities({})).toBe(1);
+  });
+
+  it('returns 1 (baseline) for undefined input', () => {
+    expect(avgFacilities(undefined)).toBe(1);
+  });
 });
 
 describe('avgStaff', () => {
@@ -95,5 +103,13 @@ describe('avgStaff', () => {
   it('handles varied rating ranges', () => {
     const staff = [{ rating: 50 }, { rating: 50 }, { rating: 100 }, { rating: 100 }];
     expect(avgStaff(staff)).toBe(75);
+  });
+
+  it('returns 60 (average coach default) for an empty array', () => {
+    expect(avgStaff([])).toBe(60);
+  });
+
+  it('returns 60 (average coach default) for undefined input', () => {
+    expect(avgStaff(undefined)).toBe(60);
   });
 });

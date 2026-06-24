@@ -381,7 +381,8 @@ function startFinals(c, league) {
   if (c.inFinals) return c;
   const finalists = getFinalsTeams(c.ladder, league.tier);
   const sorted = sortedLadder(c.ladder);
-  const myPos = sorted.findIndex((r) => r.id === c.clubId) + 1;
+  const myPosIdx = sorted.findIndex((r) => r.id === c.clubId);
+  const myPos = myPosIdx >= 0 ? myPosIdx + 1 : sorted.length;
   const inFinals = finalists.some((f) => f.id === c.clubId);
   const seedIds = finalists.map((f) => f.id);
 
@@ -730,7 +731,8 @@ export function fastForwardFinals(career, league) {
 
 function finishSeason(c, league) {
   const sorted = sortedLadder(c.ladder);
-  const myPos = sorted.findIndex((r) => r.id === c.clubId) + 1;
+  const myPosIdx = sorted.findIndex((r) => r.id === c.clubId);
+  const myPos = myPosIdx >= 0 ? myPosIdx + 1 : sorted.length;
   finalizeDynastyLadderAtSeasonEnd(c, myPos, sorted.length, league.tier);
   const myRow = sorted.find((r) => r.id === c.clubId) || {};
   let promoted = false; let relegated = false;

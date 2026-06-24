@@ -34,7 +34,7 @@ import {
   dedupeLineup,
 } from "../lib/lineupHelpers.js";
 import { RatingDot, css } from "./primitives.jsx";
-import { LineupOvalField } from "./LineupOvalField.jsx";
+import { LineupOvalField, formBorderColor } from "./LineupOvalField.jsx";
 import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 
 const BENCH_TRAY_ID = "bench-tray";
@@ -147,11 +147,18 @@ function SortablePlayerRow({
     );
   }
 
+  const fitColor = (player.fitness ?? 85) >= 80 ? 'var(--A-pos)' : (player.fitness ?? 85) >= 55 ? 'var(--A-accent-2)' : 'var(--A-neg)';
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className="w-full flex items-center gap-1 px-2 py-2.5 min-h-[48px] rounded-xl border border-aline bg-apanel mb-1 touch-manipulation transition-all hover:border-[color-mix(in_srgb,var(--A-accent)_35%,transparent)] hover:bg-[color-mix(in_srgb,var(--A-accent)_4%,transparent)] hover:shadow-sm"
+      style={{
+        ...style,
+        borderTop: '1px solid var(--A-line)',
+        borderRight: '1px solid var(--A-line)',
+        borderBottom: '1px solid var(--A-line)',
+        borderLeft: `3px solid ${formBorderColor(player.form ?? 60)}`,
+      }}
+      className="w-full flex items-center gap-1 px-2 py-2.5 min-h-[48px] rounded-xl bg-apanel mb-1 touch-manipulation transition-all hover:bg-[color-mix(in_srgb,var(--A-accent)_4%,transparent)] hover:shadow-sm"
     >
       <button
         type="button"
@@ -172,7 +179,8 @@ function SortablePlayerRow({
             {formatPositionSlash(player)}
           </span>
           <span className="text-sm font-semibold text-atext truncate">{pName(player)}</span>
-          <span className="text-xs text-atext-mute ml-auto">{player.age}</span>
+          <span className="w-2 h-2 rounded-full flex-shrink-0 ml-auto" style={{ background: fitColor }} title={`Fitness ${player.fitness ?? '?'}%`} />
+          <span className="text-xs text-atext-mute">{player.age}</span>
           <RatingDot value={player.overall} size="sm" />
         </button>
       ) : (
@@ -181,7 +189,8 @@ function SortablePlayerRow({
             {formatPositionSlash(player)}
           </span>
           <span className="text-sm font-semibold text-atext truncate">{pName(player)}</span>
-          <span className="text-xs text-atext-mute ml-auto">{player.age}</span>
+          <span className="w-2 h-2 rounded-full flex-shrink-0 ml-auto" style={{ background: fitColor }} title={`Fitness ${player.fitness ?? '?'}%`} />
+          <span className="text-xs text-atext-mute">{player.age}</span>
           <RatingDot value={player.overall} size="sm" />
         </div>
       )}
@@ -266,6 +275,15 @@ export function SquadLineupBuilder({ benchPlayerIds, stitch, onSelectPlayer }) {
     () => benchPlayerIds.map((id) => squad.find((p) => p.id === id)).filter(Boolean),
     [benchPlayerIds, squad],
   );
+  const [posFilter, setPosFilter] = useState(null);
+  const benchPositions = useMemo(() => {
+    const seen = new Set();
+    benchPlayers.forEach(p => { seen.add(p.position); });
+    return [...seen].sort();
+  }, [benchPlayers]);
+  const filteredBench = posFilter
+    ? benchPlayers.filter(p => p.position === posFilter || p.secondaryPosition === posFilter)
+    : benchPlayers;
 
   /** Prefer pointer targets; when dragging a match-squad player, prefer bench tray over overlapping bench rows so drops register as remove. */
   const lineupCollision = useCallback(
@@ -461,17 +479,36 @@ export function SquadLineupBuilder({ benchPlayerIds, stitch, onSelectPlayer }) {
                 </p>
               </div>
               <span className="text-[10px] text-atext-mute font-mono font-bold tabular-nums whitespace-nowrap shrink-0">
-                {benchPlayers.length}
+                {filteredBench.length}{posFilter ? `/${benchPlayers.length}` : ''}
               </span>
             </div>
+            {benchPositions.length >= 2 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {benchPositions.map(pos => (
+                  <button
+                    key={pos}
+                    type="button"
+                    onClick={() => setPosFilter(p => p === pos ? null : pos)}
+                    className="text-[9px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider transition-all"
+                    style={posFilter === pos ? posBadgeStyle(pos) : { background: 'var(--A-panel-2)', color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }}
+                  >
+                    {pos}
+                  </button>
+                ))}
+              </div>
+            )}
             <SortableContext items={benchPlayerIds} strategy={verticalListSortingStrategy}>
               <div className="max-h-[min(52vh,28rem)] overflow-y-auto min-h-[100px] pr-0.5 [scrollbar-width:thin]">
                 {benchPlayers.length === 0 ? (
                   <div className="text-[11px] text-atext-mute text-center py-6 px-2 rounded-xl border border-dashed border-aline/80 bg-apanel-2/30">
                     Your full list is already in the match-day {LINEUP_CAP}.
                   </div>
+                ) : filteredBench.length === 0 ? (
+                  <div className="text-[11px] text-atext-mute text-center py-4">
+                    No {posFilter} players on the bench.
+                  </div>
                 ) : (
-                  benchPlayers.map((p) => (
+                  filteredBench.map((p) => (
                     <SortablePlayerRow
                       key={p.id}
                       player={p}
@@ -497,8 +534,13 @@ export function SquadLineupBuilder({ benchPlayerIds, stitch, onSelectPlayer }) {
             className={
               stitch
                 ? "w-full stitch-mock-slant-btn text-xs"
-                : `w-full ${css.btnGhost} text-xs py-2.5`
+                : "w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-[0.12em] transition-all active:scale-[0.98]"
             }
+            style={stitch ? undefined : {
+              background: 'color-mix(in srgb, var(--A-accent) 15%, transparent)',
+              color: 'var(--A-accent)',
+              border: '1px solid color-mix(in srgb, var(--A-accent) 30%, transparent)',
+            }}
           >
             Auto-select best 23
           </button>

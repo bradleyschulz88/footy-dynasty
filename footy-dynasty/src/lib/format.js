@@ -3,8 +3,11 @@ export const fmtK = (n) => n >= 1000000 ? `$${(n / 1000000).toFixed(1)}M` : n >=
 export const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
 export const avgFacilities = (f) => {
-  const vals = Object.values(f).map(x => x.level);
-  return vals.reduce((a, b) => a + b, 0) / vals.length;
+  const vals = Object.values(f ?? {}).map(x => x.level);
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 1;
 };
 
-export const avgStaff = (s) => s.reduce((a, b) => a + b.rating, 0) / s.length;
+export const avgStaff = (s) => {
+  if (!s?.length) return 60;
+  return s.reduce((a, b) => a + b.rating, 0) / s.length;
+};
