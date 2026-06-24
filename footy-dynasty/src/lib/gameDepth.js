@@ -157,7 +157,9 @@ export function refreshTurningPointForNextFixture(career, league) {
 
   const oppId = myMatch.home === clubId ? myMatch.away : myMatch.home;
   const ladder = sortedLadder(career.ladder || []);
-  const myPos = ladder.findIndex((r) => r.id === clubId) + 1;
+  const myPosIdx = ladder.findIndex((r) => r.id === clubId);
+  if (myPosIdx < 0) return;
+  const myPos = myPosIdx + 1;
   const finalsTeams = getFinalsTeams(career.ladder || [], league.tier);
   const finalsLine = finalsTeams.length || (league.tier === 1 ? 8 : league.tier === 2 ? 6 : 4);
   const roundsLeft = countSeasonRoundsLeft(career);
@@ -199,7 +201,9 @@ export function refreshCrucialFive(career, league, completedRound) {
   const finalsLine = league.tier === 1 ? 8 : 6;
   const ladder = sortedLadder(career.ladder || []);
   const clubId = career.clubId;
-  const myPos = ladder.findIndex((r) => r.id === clubId) + 1;
+  const myPosIdx2 = ladder.findIndex((r) => r.id === clubId);
+  if (myPosIdx2 < 0) return;
+  const myPos = myPosIdx2 + 1;
 
   const crucial = [];
   for (const e of career.eventQueue || []) {
@@ -207,9 +211,10 @@ export function refreshCrucialFive(career, league, completedRound) {
     const myMatch = (e.matches || []).find((m) => m.home === clubId || m.away === clubId);
     if (!myMatch) continue;
     const oppId = myMatch.home === clubId ? myMatch.away : myMatch.home;
-    const oppPos = ladder.findIndex((r) => r.id === oppId) + 1;
+    const oppPosIdx = ladder.findIndex((r) => r.id === oppId);
+    const oppPos = oppPosIdx >= 0 ? oppPosIdx + 1 : 0;
     if (
-      Math.abs(oppPos - finalsLine) <= 3
+      (oppPos > 0 && Math.abs(oppPos - finalsLine) <= 3)
       || Math.abs(myPos - finalsLine) <= 3
     ) {
       crucial.push({ round: e.round, opponentId: oppId });
