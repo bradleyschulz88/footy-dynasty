@@ -258,7 +258,7 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className="flex items-center gap-1.5 px-5 py-2.5 text-[11px] font-mono font-bold uppercase tracking-widest transition-colors"
+                className="flex items-center gap-1.5 px-5 py-2.5 text-[11px] font-mono font-bold uppercase tracking-widest transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--A-accent)]"
                 style={{
                   color: activeTab === tab.id ? 'var(--A-accent)' : 'var(--A-text-mute)',
                   borderBottom: activeTab === tab.id ? '2px solid var(--A-accent)' : '2px solid transparent',

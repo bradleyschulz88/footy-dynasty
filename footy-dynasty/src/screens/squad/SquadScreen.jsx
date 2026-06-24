@@ -336,7 +336,7 @@ function PlayersTab({ onNavigate }) {
                     key={pos}
                     type="button"
                     onClick={() => setFilterPos(pos)}
-                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(active)}`}
+                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--A-accent)] ${filterChip(active)}`}
                     style={active ? {
                       background: "var(--A-accent)",
                       color: "var(--fd-on-accent, #0A0D0C)",
@@ -364,7 +364,7 @@ function PlayersTab({ onNavigate }) {
                     key={key}
                     type="button"
                     onClick={() => setFilterStatus(key)}
-                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border ${filterChip(active)}`}
+                    className={`text-[11px] px-2.5 py-1.5 rounded-lg font-bold transition-all border cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--A-accent)] ${filterChip(active)}`}
                     style={active ? {
                       background: "var(--A-accent)",
                       color: "var(--fd-on-accent, #0A0D0C)",

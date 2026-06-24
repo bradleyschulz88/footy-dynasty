@@ -818,7 +818,7 @@ function HonoursTab({ club: _club }) {
           {premierships.length > 0 && (
             <div className={`${css.panel} p-4`}>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-xl">🏆</span>
+                <Trophy className="w-5 h-5 flex-shrink-0 text-yellow-400" />
                 <h3 className="font-display text-base tracking-wider text-aaccent-2">PREMIERSHIPS</h3>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -837,7 +837,7 @@ function HonoursTab({ club: _club }) {
           {(career.retiredPlayers?.length > 0) && (
             <div className={`${css.panel} p-4`}>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-xl">🌟</span>
+                <Sparkles className="w-5 h-5 flex-shrink-0 text-aaccent" />
                 <h3 className="font-display text-base tracking-wider text-aaccent">CLUB LEGENDS</h3>
               </div>
               <div className="grid md:grid-cols-2 gap-4">
@@ -879,7 +879,7 @@ function HonoursTab({ club: _club }) {
               {bafWinners.length > 0 && (
                 <div className={`${css.panel} p-4`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xl">🎖️</span>
+                    <Award className="w-5 h-5 flex-shrink-0 text-aaccent" />
                     <h3 className="font-display text-base tracking-wider text-aaccent">BEST & FAIREST</h3>
                   </div>
                   <div className="space-y-1.5">
@@ -896,7 +896,7 @@ function HonoursTab({ club: _club }) {
               {topScorers.length > 0 && (
                 <div className={`${css.panel} p-4`}>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xl">⚽</span>
+                    <Trophy className="w-5 h-5 flex-shrink-0 text-aaccent" />
                     <h3 className="font-display text-base tracking-wider text-aaccent">TOP GOAL KICKERS</h3>
                   </div>
                   <div className="space-y-1.5">
