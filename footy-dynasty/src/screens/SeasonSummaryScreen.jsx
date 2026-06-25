@@ -242,6 +242,33 @@ export default function SeasonSummaryScreen({
           sub={summary.brownlow?.position}
         />
 
+        {summary.coleman && (
+          <AwardCard
+            icon="🎯"
+            label="Coleman Medal"
+            name={summary.coleman.name}
+            stat={`${summary.coleman.goals} goals`}
+          />
+        )}
+
+        {summary.clubChampion && (
+          <AwardCard
+            icon="🏅"
+            label="Club Champion"
+            name={summary.clubChampion.name}
+            stat={`${summary.clubChampion.votes} Brownlow votes`}
+          />
+        )}
+
+        {summary.normSmith && (
+          <AwardCard
+            icon="🏆"
+            label="Norm Smith Medal"
+            name={summary.normSmith.name}
+            stat="Best on ground — Grand Final"
+          />
+        )}
+
         {summary.risingStar && (
           <AwardCard
             icon="🌟"
