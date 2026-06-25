@@ -105,20 +105,26 @@ export default function DraftRoomScreen({ club, league, onExit }) {
     const patch = resolveNextPick(career);
     if (!patch) return;
 
-    // Check if the AI pick consumed a zone prospect the player can match
+    // Check if the AI pick consumed a zone or father-son prospect the player can match
     const poolAfter = patch.draftPool || [];
     if (onClockBefore && onClockBefore.clubId !== career.clubId) {
       const removedProspects = poolBefore.filter(
         (p) => !poolAfter.some((q) => q.id === p.id)
       );
-      const zoneMatch = removedProspects.find((p) => canMatchBid(career.clubId, p));
-      if (zoneMatch) {
+      // Father-son takes priority in the bid-match check (also removes from pipeline)
+      const fsMatch = removedProspects.find(
+        (p) => p.fatherSon && p.fatherClubId === career.clubId
+      );
+      const zoneMatch = !fsMatch && removedProspects.find((p) => canMatchBid(career.clubId, p));
+      const bidTarget = fsMatch || zoneMatch;
+      if (bidTarget) {
         const aiClubName = findClub(onClockBefore.clubId)?.name || onClockBefore.clubId;
         setPendingMatchBid({
-          prospect: zoneMatch,
+          prospect: bidTarget,
           aiClubId: onClockBefore.clubId,
           aiClub: aiClubName,
           pick: onClockBefore.pick,
+          isFatherSon: !!fsMatch,
           patch, // stash the patch so we can apply it either way
         });
         return; // Don't apply patch yet — wait for player's match/pass decision
@@ -147,11 +153,15 @@ export default function DraftRoomScreen({ club, league, onExit }) {
       return;
     }
     if (result.error) return;
-    updateCareer(result.patch);
+    // Remove from father-son pipeline if applicable
+    const pipelinePatch = p.fatherSon
+      ? { fatherSonPipeline: (career.fatherSonPipeline || []).filter((fp) => fp.id !== p.id) }
+      : {};
+    updateCareer({ ...result.patch, ...pipelinePatch });
   };
 
   const onMatchBidAccepted = (matchBid) => {
-    const { prospect, patch: aiPatch } = matchBid;
+    const { prospect, patch: aiPatch, isFatherSon } = matchBid;
     const newSquadPlayer = { ...prospect, receivedInTrade: career.season };
     // Apply the AI pick patch (updates draftOrder, aiSquads, history, etc.)
     // but override: give the prospect to the player's squad instead of the AI club
@@ -166,10 +176,16 @@ export default function DraftRoomScreen({ club, league, onExit }) {
     const matchNews = {
       week: career.week,
       type: "info",
-      text: `🏠 Zone rights exercised — ${prospect.firstName} ${prospect.lastName} joins via academy match.`,
+      text: isFatherSon
+        ? `⭐ Father-son rights exercised — ${prospect.firstName} ${prospect.lastName} joins via father-son match.`
+        : `🏠 Zone rights exercised — ${prospect.firstName} ${prospect.lastName} joins via academy match.`,
     };
+    const pipelinePatch = isFatherSon
+      ? { fatherSonPipeline: (career.fatherSonPipeline || []).filter((p) => p.id !== prospect.id) }
+      : {};
     updateCareer({
       ...aiPatch,
+      ...pipelinePatch,
       aiSquads: correctedAiSquads,
       squad: [...(career.squad || []), newSquadPlayer],
       news: [matchNews, ...(aiPatch.news ? aiPatch.news : career.news || [])].slice(0, 20),
@@ -178,6 +194,10 @@ export default function DraftRoomScreen({ club, league, onExit }) {
 
   const zoneProspects = useMemo(
     () => (career.draftPool || []).filter((p) => canMatchBid(career.clubId, p)),
+    [career.draftPool, career.clubId]
+  );
+  const fsProspects = useMemo(
+    () => (career.draftPool || []).filter((p) => p.fatherSon && p.fatherClubId === career.clubId),
     [career.draftPool, career.clubId]
   );
 
@@ -281,6 +301,16 @@ export default function DraftRoomScreen({ club, league, onExit }) {
         </div>
       )}
 
+      {fsProspects.length > 0 && (
+        <div className="rounded-xl px-3 py-2 mb-1 flex items-center gap-2"
+          style={{ background: 'color-mix(in srgb, #f59e0b 10%, var(--A-panel))', border: '1px solid #f59e0b' }}>
+          <span className="font-bold text-[12px]" style={{ color: '#f59e0b' }}>⭐</span>
+          <span className="text-[12px] text-atext">
+            {fsProspects.length} father-son prospect{fsProspects.length > 1 ? 's' : ''} in the pool —
+            you can match any bid on: {fsProspects.map(p => p.lastName).join(', ')}
+          </span>
+        </div>
+      )}
       {zoneProspects.length > 0 && (
         <div className="rounded-xl px-3 py-2 mb-1 flex items-center gap-2"
           style={{ background: 'color-mix(in srgb, var(--A-accent) 10%, var(--A-panel))', border: '1px solid var(--A-accent)' }}>
@@ -343,6 +373,13 @@ export default function DraftRoomScreen({ club, league, onExit }) {
                       <div className="text-[10px] text-aaccent font-bold">#{i + 1}</div>
                       <div className="font-semibold text-atext flex items-center gap-1.5">
                         {p.firstName} {p.lastName}
+                        {p.fatherSon && p.fatherClubId === career.clubId && (
+                          <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md"
+                            style={{ background: 'color-mix(in srgb, #f59e0b 18%, transparent)', color: '#f59e0b', border: '1px solid color-mix(in srgb, #f59e0b 40%, transparent)' }}
+                            title={`Father-son — ${club?.name || 'Your Club'} can match any bid`}>
+                            ⭐ F/S
+                          </span>
+                        )}
                         {canMatchBid(career.clubId, p) && (
                           <span className="text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md"
                             style={{ background: 'color-mix(in srgb, var(--A-accent) 18%, transparent)', color: 'var(--A-accent)', border: '1px solid color-mix(in srgb, var(--A-accent) 40%, transparent)' }}>
@@ -350,7 +387,14 @@ export default function DraftRoomScreen({ club, league, onExit }) {
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-atext-dim mt-0.5">{formatPositionSlash(p)} · age {p.age}</div>
+                      <div className="text-xs text-atext-dim mt-0.5">
+                        {formatPositionSlash(p)} · age {p.age}
+                        {p.fatherSon && p.fatherClubId === career.clubId && (
+                          <span className="ml-1.5 text-[10px]" style={{ color: '#f59e0b' }}>
+                            Son of {p.fatherName} ({p.fatherGames} games)
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-3">
                       {st >= 3 ? <RatingDot value={p.overall} size="sm" /> : <span className="font-bold">{oDisp.label}</span>}
@@ -423,13 +467,22 @@ export default function DraftRoomScreen({ club, league, onExit }) {
 
       {pendingMatchBid && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="max-w-md w-full mx-4 rounded-2xl p-6" style={{ background: 'var(--A-panel)', border: '1px solid var(--A-accent)' }}>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-2">Academy Zone Rights</div>
+          <div className="max-w-md w-full mx-4 rounded-2xl p-6" style={{
+            background: 'var(--A-panel)',
+            border: `1px solid ${pendingMatchBid.isFatherSon ? '#f59e0b' : 'var(--A-accent)'}`,
+          }}>
+            <div className="text-[10px] font-mono uppercase tracking-widest mb-2"
+              style={{ color: pendingMatchBid.isFatherSon ? '#f59e0b' : 'var(--A-accent)' }}>
+              {pendingMatchBid.isFatherSon ? '⭐ Father-Son Rights' : '🏠 Academy Zone Rights'}
+            </div>
             <h3 className="font-display text-2xl text-atext mb-3">MATCH THE BID?</h3>
             <p className="text-sm text-atext-mute mb-4">
-              {pendingMatchBid.aiClub} just selected your academy zone player{' '}
+              {pendingMatchBid.aiClub} just selected your {pendingMatchBid.isFatherSon ? 'father-son prospect' : 'academy zone player'}{' '}
               <span className="text-atext font-semibold">{pendingMatchBid.prospect.firstName} {pendingMatchBid.prospect.lastName}</span>{' '}
-              (Pick #{pendingMatchBid.pick}). Exercise your zone rights to match?
+              (Pick #{pendingMatchBid.pick}).{' '}
+              {pendingMatchBid.isFatherSon
+                ? `Exercise your father-son rights to match? Son of ${pendingMatchBid.prospect.fatherName} (${pendingMatchBid.prospect.fatherGames} games).`
+                : 'Exercise your zone rights to match?'}
             </p>
             <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--A-panel-2)' }}>
               <div className="text-[12px] text-atext">OVR {pendingMatchBid.prospect.overall} · {pendingMatchBid.prospect.position} · Age {pendingMatchBid.prospect.age}</div>
@@ -443,7 +496,7 @@ export default function DraftRoomScreen({ club, league, onExit }) {
                   setPendingMatchBid(null);
                 }}
                 className="flex-1 py-2 rounded-xl font-semibold text-sm"
-                style={{ background: 'var(--A-accent)', color: '#000' }}
+                style={{ background: pendingMatchBid.isFatherSon ? '#f59e0b' : 'var(--A-accent)', color: '#000' }}
               >
                 Match the bid ✓
               </button>
@@ -451,7 +504,11 @@ export default function DraftRoomScreen({ club, league, onExit }) {
                 type="button"
                 onClick={() => {
                   // Let the AI pick stand — apply the stashed patch
-                  updateCareer(pendingMatchBid.patch);
+                  // Also remove F/S player from pipeline if applicable
+                  const extraPatch = pendingMatchBid.isFatherSon
+                    ? { fatherSonPipeline: (career.fatherSonPipeline || []).filter((p) => p.id !== pendingMatchBid.prospect.id) }
+                    : {};
+                  updateCareer({ ...pendingMatchBid.patch, ...extraPatch });
                   setPendingMatchBid(null);
                 }}
                 className="flex-1 py-2 rounded-xl text-sm"
