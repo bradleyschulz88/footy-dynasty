@@ -75,12 +75,12 @@ const AUS_MAINLAND_PATH = [
 
 function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
   const stateRegions = [
-    { key: 'WA',  x: -10, y: -10, w: 300, h: 710, cx: 140, cy: 340 },
-    { key: 'NT',  x: 288, y: -10, w: 215, h: 400, cx: 390, cy: 190 },
-    { key: 'SA',  x: 288, y: 385, w: 265, h: 310, cx: 400, cy: 510 },
-    { key: 'QLD', x: 500, y: -10, w: 325, h: 435, cx: 658, cy: 210 },
-    { key: 'NSW', x: 548, y: 420, w: 277, h: 150, cx: 672, cy: 485 },
-    { key: 'VIC', x: 548, y: 565, w: 277, h: 120, cx: 665, cy: 610 },
+    { key: 'WA',  x: -10, y: -10, w: 300, h: 710, cx: 140, cy: 340, fs: 22 },
+    { key: 'NT',  x: 288, y: -10, w: 215, h: 400, cx: 390, cy: 190, fs: 18 },
+    { key: 'SA',  x: 288, y: 385, w: 265, h: 310, cx: 400, cy: 510, fs: 18 },
+    { key: 'QLD', x: 500, y: -10, w: 325, h: 435, cx: 658, cy: 210, fs: 18 },
+    { key: 'NSW', x: 548, y: 420, w: 277, h: 150, cx: 672, cy: 485, fs: 15 },
+    { key: 'VIC', x: 548, y: 565, w: 277, h: 120, cx: 665, cy: 610, fs: 15 },
   ];
 
   const borders = [
@@ -93,44 +93,62 @@ function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
     [548, 565, 780, 565],
   ];
 
+  const anySelected = !!selectedState;
+
   return (
-    <div className="rounded-xl overflow-hidden border border-aline/40" style={{ background: 'var(--A-panel)' }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: '#4BBFBF' }}>
       <svg viewBox="0 0 820 770" className="w-full block"
-        style={{ background: 'color-mix(in srgb, var(--A-accent) 3%, var(--A-panel-2))' }}
         aria-label="Map of Australia — select a state to begin">
         <defs>
           <clipPath id="aus-map-clip">
             <path d={AUS_MAINLAND_PATH} />
           </clipPath>
+          <filter id="aus-veg-blur" x="-5%" y="-5%" width="110%" height="110%">
+            <feGaussianBlur stdDeviation="14" />
+          </filter>
+          <filter id="aus-state-glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="10" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
         </defs>
 
-        {/* Mainland base fill */}
-        <path d={AUS_MAINLAND_PATH} style={{ fill: 'var(--A-panel-2)', pointerEvents: 'none' }} />
+        {/* Teal ocean */}
+        <rect width="820" height="770" fill="#4BBFBF" />
+
+        {/* Coastal vegetation glow */}
+        <path d={AUS_MAINLAND_PATH} fill="#9ECFBA" filter="url(#aus-veg-blur)" style={{ pointerEvents: 'none' }} />
+
+        {/* Cream land base */}
+        <path d={AUS_MAINLAND_PATH} fill="#EDE8DC" style={{ pointerEvents: 'none' }} />
 
         {/* State fills and labels clipped to mainland shape */}
         <g clipPath="url(#aus-map-clip)">
-          {stateRegions.map(({ key, x, y, w, h, cx, cy }) => {
+          {stateRegions.map(({ key, x, y, w, h, cx, cy, fs }) => {
             const meta = STATE_META[key];
             const isHov = hoveredState === key;
             const isSel = selectedState === key;
             const active = isHov || isSel;
+            const isDimmed = anySelected && !active;
             return (
               <g key={key} style={{ cursor: 'pointer' }}
                 onClick={() => onSelect(key)}
                 onMouseEnter={() => onHover(key)}
                 onMouseLeave={() => onHover(null)}>
                 <rect x={x} y={y} width={w} height={h}
+                  filter={isSel ? 'url(#aus-state-glow)' : undefined}
                   style={{
-                    fill: isSel ? `${meta.color}55` : isHov ? `${meta.color}28` : 'transparent',
-                    transition: 'fill 0.15s ease',
+                    fill: isSel ? `${meta.color}BF` : isHov ? `${meta.color}88` : 'transparent',
+                    transition: 'fill 0.2s ease',
                   }} />
                 <text x={cx} y={cy + 4} textAnchor="middle"
                   style={{
-                    fontSize: 11, fontFamily: 'monospace',
-                    fill: active ? meta.color : 'var(--A-text-mute)',
-                    fontWeight: active ? 700 : 400,
+                    fontSize: fs, fontFamily: 'system-ui, sans-serif',
+                    letterSpacing: 2,
+                    fill: active ? '#ffffff' : '#3D3830',
+                    fontWeight: active ? 900 : 700,
+                    opacity: isDimmed ? 0.4 : 1,
                     pointerEvents: 'none',
-                    transition: 'fill 0.15s ease',
+                    transition: 'fill 0.2s ease, opacity 0.2s ease',
                     userSelect: 'none',
                   }}>
                   {key}
@@ -139,10 +157,10 @@ function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
             );
           })}
 
-          {/* Internal state border lines */}
+          {/* Dashed state border lines */}
           {borders.map(([x1, y1, x2, y2], i) => (
             <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-              style={{ stroke: 'var(--A-line)', strokeWidth: 0.8, pointerEvents: 'none' }} />
+              style={{ stroke: '#8B8070', strokeWidth: 1.8, strokeDasharray: '6,5', pointerEvents: 'none' }} />
           ))}
 
           {/* ACT — circle marker */}
@@ -152,6 +170,7 @@ function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
             const isHov = hoveredState === key;
             const isSel = selectedState === key;
             const active = isHov || isSel;
+            const isDimmed = anySelected && !active;
             return (
               <g style={{ cursor: 'pointer' }}
                 onClick={() => onSelect(key)}
@@ -159,16 +178,18 @@ function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
                 onMouseLeave={() => onHover(null)}>
                 <circle cx={672} cy={500} r={16}
                   style={{
-                    fill: isSel ? `${meta.color}55` : isHov ? `${meta.color}28` : 'var(--A-panel-2)',
-                    stroke: active ? meta.color : 'var(--A-line)',
-                    strokeWidth: isSel ? 2.5 : 1,
-                    transition: 'fill 0.15s ease, stroke 0.15s ease',
+                    fill: isSel ? `${meta.color}BF` : isHov ? `${meta.color}88` : '#EDE8DC',
+                    stroke: active ? meta.color : '#8B8070',
+                    strokeWidth: active ? 2 : 1.5,
+                    opacity: isDimmed ? 0.5 : 1,
+                    transition: 'fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease',
                   }} />
                 <text x={672} y={504} textAnchor="middle"
                   style={{
-                    fontSize: 8, fontFamily: 'monospace',
-                    fill: active ? meta.color : 'var(--A-text-mute)',
+                    fontSize: 8, fontFamily: 'system-ui, sans-serif',
+                    fill: active ? '#ffffff' : '#3D3830',
                     fontWeight: 700,
+                    opacity: isDimmed ? 0.4 : 1,
                     pointerEvents: 'none',
                     userSelect: 'none',
                   }}>
@@ -181,7 +202,7 @@ function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
 
         {/* Continent outline stroke — drawn last for crisp coastal edges */}
         <path d={AUS_MAINLAND_PATH}
-          style={{ fill: 'none', stroke: 'var(--A-line)', strokeWidth: 1.5, pointerEvents: 'none' }} />
+          style={{ fill: 'none', stroke: '#8B8070', strokeWidth: 2, pointerEvents: 'none' }} />
 
         {/* Tasmania — separate island outside main clip */}
         {(() => {
@@ -190,6 +211,7 @@ function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
           const isHov = hoveredState === key;
           const isSel = selectedState === key;
           const active = isHov || isSel;
+          const isDimmed = anySelected && !active;
           return (
             <g style={{ cursor: 'pointer' }}
               onClick={() => onSelect(key)}
@@ -197,18 +219,20 @@ function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
               onMouseLeave={() => onHover(null)}>
               <path d="M 628,688 L 698,692 L 706,726 L 668,748 L 636,742 L 622,718 Z"
                 style={{
-                  fill: isSel ? `${meta.color}55` : isHov ? `${meta.color}28` : 'var(--A-panel-2)',
-                  stroke: active ? meta.color : 'var(--A-line)',
-                  strokeWidth: isSel ? 2.5 : 1,
-                  transition: 'fill 0.15s ease, stroke 0.15s ease',
+                  fill: isSel ? `${meta.color}BF` : isHov ? `${meta.color}88` : '#EDE8DC',
+                  stroke: active ? meta.color : '#8B8070',
+                  strokeWidth: active ? 2 : 1.5,
+                  opacity: isDimmed ? 0.5 : 1,
+                  transition: 'fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease',
                 }} />
               <text x={662} y={720} textAnchor="middle"
                 style={{
-                  fontSize: 11, fontFamily: 'monospace',
-                  fill: active ? meta.color : 'var(--A-text-mute)',
-                  fontWeight: active ? 700 : 400,
+                  fontSize: 13, fontFamily: 'system-ui, sans-serif',
+                  fill: active ? '#ffffff' : '#3D3830',
+                  fontWeight: active ? 900 : 700,
+                  opacity: isDimmed ? 0.4 : 1,
                   pointerEvents: 'none',
-                  transition: 'fill 0.15s ease',
+                  transition: 'fill 0.2s ease, opacity 0.2s ease',
                   userSelect: 'none',
                 }}>
                 TAS
