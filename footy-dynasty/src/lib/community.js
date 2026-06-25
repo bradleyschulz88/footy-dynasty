@@ -258,22 +258,43 @@ const COMMITTEE_TIER1_COCKTAIL_LINES = [
   (income) => `Partners' lounge tip jar (metaphorically) spat $${income}. Enough for facility paint before finals.`,
 ];
 
-export function postMatchFundraiser(career, tier, isHomeGame) {
+const FUNDRAISER_RAIN_LINES = [
+  (inc) => `Wet night kept the crowd thin, but the raffle still raised $${inc}. The diehards showed up.`,
+  (inc) => `Rain held the numbers down — committee still pulled $${inc} through the door.`,
+  (inc) => `The weather was ordinary but the committee made it work: $${inc} banked.`,
+];
+const FUNDRAISER_WIND_LINES = [
+  (inc) => `Blustery evening, lighter crowd — raffle pulled $${inc} all the same.`,
+  (inc) => `Windy, but $${inc} in the tin. Footy people are resilient.`,
+];
+
+export function postMatchFundraiser(career, tier, isHomeGame, weather) {
   if (!isHomeGame) return null;
+  // Rain cuts T3 bar/raffle income — fewer people brave the cold walk to the clubrooms.
+  const weatherMult = tier === 3
+    ? (weather === 'rain' ? 0.65 : weather === 'wind' ? 0.85 : 1.0)
+    : 1.0;
   if (tier === 3) {
     // The bar & canteen are a local club's main game-day earner now that the
     // gate is small and there's no TV money — so this is the bigger line.
-    const income = rand(700, 2000);
+    const income = Math.round(rand(700, 2000) * weatherMult);
     const winnerRoll = rand(0, 100);
     if (winnerRoll < 20 && (career.squad || []).length > 0) {
       const winner = pick(career.squad);
       const lineFn = pick(COMMITTEE_MEAT_TRAY_WINNER_LINES);
+      const weatherNote = weather === 'rain' ? ' A brave crowd despite the wet.' : weather === 'wind' ? ' Even the wind couldn\'t keep them away.' : '';
       return {
         income,
-        news: { type: 'committee', text: lineFn(winner, income) },
+        news: { type: 'committee', text: lineFn(winner, income) + weatherNote },
         moralePlayerId: winner.id,
         moraleDelta: 4,
       };
+    }
+    if (weather === 'rain') {
+      return { income, news: { type: 'committee', text: pick(FUNDRAISER_RAIN_LINES)(income) } };
+    }
+    if (weather === 'wind') {
+      return { income, news: { type: 'committee', text: pick(FUNDRAISER_WIND_LINES)(income) } };
     }
     const lineFn = pick(COMMITTEE_MEAT_TRAY_GENERIC_LINES);
     return { income, news: { type: 'committee', text: lineFn(income) } };
@@ -574,6 +595,22 @@ export function journalistBoardImpact(journalist) {
   if (sat >= 70) return +1;
   if (sat <= 25) return -1;
   return 0;
+}
+
+const COMMITTEE_DRAMA_LINES = [
+  (m) => `💬 ${m.name} (${m.role}): "I'm giving everything to this club and it's not sustainable. Something has to change."`,
+  (m) => `💬 ${m.name} pulled you aside after training: "If things don't improve around here, I may need to step back from the role."`,
+  (m) => `💬 Word around the rooms — ${m.name} is close to walking. Low morale off the field is becoming a real problem.`,
+  (m) => `💬 ${m.name} wasn't at this week's committee meeting. Not a great sign when ${m.role.toLowerCase()} goes quiet.`,
+];
+
+// ponytail: 30% chance per call, fortnightly cadence — warns before burnout, not a spam flood
+export function checkCommitteeDrama(career) {
+  const committee = career.committee ?? [];
+  const atRisk = committee.filter(m => (m.mood ?? 50) < 30);
+  if (!atRisk.length || rng() > 0.3) return null;
+  const member = pick(atRisk);
+  return { type: 'warning', text: pick(COMMITTEE_DRAMA_LINES)(member) };
 }
 
 // Call weekly during T3/T4 career to tick volunteer fatigue.

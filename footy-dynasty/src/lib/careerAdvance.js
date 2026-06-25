@@ -5,10 +5,16 @@ import { pickPressMoment } from './pressEvents.js';
 import { rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub, getAFLClubsForSeason } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred } from './playerGen.js';
-import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating } from './matchEngine.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating, calcSynergyBonus } from './matchEngine.js';
 import { getCoachingCall, resolveCoachingCall } from './coachingCalls.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
-import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
+import { generateFixtures, generateByeRounds, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
+
+/** Set c.fixtures + c.byeMap from a club list in one shot. */
+function setFixtures(c, clubs) {
+  c.fixtures = generateFixtures(clubs);
+  c.byeMap = generateByeRounds(clubs.map(cl => cl.id), c.fixtures.length);
+}
 import {
   buildFinalsBracket,
   appendFinalsCalendarEvents,
@@ -48,6 +54,7 @@ import {
   ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
   groundConditionBand, journalistMatchLine, generatePostMatchHeadline,
   updateFanbase, journalistBoardImpact, tickVolunteerBurnout, recoverVolunteers,
+  checkCommitteeDrama,
 } from './community.js';
 import {
   coachTierFromScore, applyEndOfSeasonReputation,
@@ -446,7 +453,8 @@ function startFinals(c, league) {
 
 function simFinalsPair(c, league, m, _roundLabel) {
   let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles)
-    + getCaptainMatchBonus(c, true);
+    + getCaptainMatchBonus(c, true)
+    + calcSynergyBonus(c.partnerships, c.lineup);
   const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
   const isHome = m.home === c.clubId;
   if (isPlayerMatch) {
@@ -756,7 +764,7 @@ function finishSeason(c, league) {
   const region = c.regionState ?? findClub(c.clubId)?.state;
 
   if (league.tier === 1) {
-    c.fixtures = generateFixtures(league.clubs);
+    setFixtures(c, league.clubs);
     c.ladder = blankLadder(league.clubs);
   } else if (league.tier === 2) {
     if (myPos === 1) {
@@ -767,11 +775,11 @@ function finishSeason(c, league) {
         c.leagueKey = newLeagueKey;
         c.localDivision = null;
         const clubs = newLeague.tier === 1 ? [...newLeague.clubs] : getCompetitionClubs(newLeagueKey, region, null);
-        c.fixtures = generateFixtures(clubs);
+        setFixtures(c, clubs);
         c.ladder = blankLadder(clubs);
       } else {
         const clubs = getCompetitionClubs(c.leagueKey, region, null);
-        c.fixtures = generateFixtures(clubs);
+        setFixtures(c, clubs);
         c.ladder = blankLadder(clubs);
       }
     } else if (myPos === sorted.length) {
@@ -781,16 +789,16 @@ function finishSeason(c, league) {
         c.leagueKey = newLeagueKey;
         c.localDivision = localDivisionForClub(c.clubId, newLeagueKey, region);
         const clubs = getCompetitionClubs(newLeagueKey, region, c.localDivision);
-        c.fixtures = generateFixtures(clubs);
+        setFixtures(c, clubs);
         c.ladder = blankLadder(clubs);
       } else {
         const clubs = getCompetitionClubs(c.leagueKey, region, null);
-        c.fixtures = generateFixtures(clubs);
+        setFixtures(c, clubs);
         c.ladder = blankLadder(clubs);
       }
     } else {
       const clubs = getCompetitionClubs(c.leagueKey, region, null);
-      c.fixtures = generateFixtures(clubs);
+      setFixtures(c, clubs);
       c.ladder = blankLadder(clubs);
     }
   } else if (league.tier === 3) {
@@ -805,7 +813,7 @@ function finishSeason(c, league) {
         c.localDivision = div - 1;
         c.tier3Div1Titles = 0; // arriving fresh in the higher division
         const clubs = getCompetitionClubs(c.leagueKey, region, c.localDivision);
-        c.fixtures = generateFixtures(clubs);
+        setFixtures(c, clubs);
         c.ladder = blankLadder(clubs);
       } else {
         // Division 1 flag: NO automatic jump to the state league. A community club
@@ -827,7 +835,7 @@ function finishSeason(c, league) {
               c.localDivision = null;
               c.tier3Div1Titles = 0;
               const clubs = getCompetitionClubs(newLeagueKey, region, null);
-              c.fixtures = generateFixtures(clubs);
+              setFixtures(c, clubs);
               c.ladder = blankLadder(clubs);
             }
           }
@@ -840,7 +848,7 @@ function finishSeason(c, league) {
         if (!promotedViaPlayoff) {
           // Stay in Division 1 and defend the flag.
           const clubs = getCompetitionClubs(c.leagueKey, region, 1);
-          c.fixtures = generateFixtures(clubs);
+          setFixtures(c, clubs);
           c.ladder = blankLadder(clubs);
         }
       }
@@ -848,7 +856,7 @@ function finishSeason(c, league) {
       // Streak of Division 1 flags is broken by any non-championship season there.
       if (div === 1) c.tier3Div1Titles = 0;
       const clubs = getCompetitionClubs(c.leagueKey, region, div);
-      c.fixtures = generateFixtures(clubs);
+      setFixtures(c, clubs);
       c.ladder = blankLadder(clubs);
     }
   }
@@ -1346,7 +1354,7 @@ function finishSeason(c, league) {
     const newClubs = getAFLClubsForSeason(c.season);
     const prevClubs = getAFLClubsForSeason(c.season - 1);
     if (newClubs.length !== prevClubs.length) {
-      c.fixtures = generateFixtures(newClubs);
+      setFixtures(c, newClubs);
       newClubs
         .filter(cl => !prevClubs.find(o => o.id === cl.id))
         .forEach(cl => {
@@ -1482,6 +1490,13 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     if (burnoutNews.length > 0) {
       c.news = [...burnoutNews.map(n => ({ ...n, week: c.week })), ...(c.news ?? [])].slice(0, 25);
     }
+  }
+
+  // Committee drama — fortnightly check for low-mood members venting before they burn out
+  if ((league?.tier ?? 4) >= 3 && c.week % 2 === 0 && c.week !== (c.lastDramaWeek ?? -1)) {
+    c.lastDramaWeek = c.week;
+    const drama = checkCommitteeDrama(c);
+    if (drama) c.news = [{ ...drama, week: c.week }, ...(c.news ?? [])].slice(0, 25);
   }
 
   // Scout deployments — process returns, watchlist staleness, rival interest (once per unique week)
@@ -1855,6 +1870,20 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
   if (ev.type === 'round') {
     const round = ev.matches || [];
 
+    // Scheduled bye week: the player's club sits out this round for recovery.
+    const isByeRound = c.byeMap?.[c.clubId] === ev.round;
+    if (isByeRound) {
+      c.hasByeThisWeek = true;
+      c.squad = c.squad.map((p) => ({ ...p, fitness: clamp((p.fitness ?? 90) + 4, 30, 100) }));
+      c.news = [{
+        week: ev.round,
+        type: 'info',
+        text: '🏳️ Bye week — players rest and recover. Fitness lifts across the squad.',
+      }, ...(c.news || [])].slice(0, 25);
+    } else {
+      c.hasByeThisWeek = false;
+    }
+
     // Assign a local rival once per stint at a club — picked from same-division opponents.
     if (!c.rivalClubId) {
       const leagueClubs = competitionClubsForCareer(c).filter((cl) => cl.id !== c.clubId);
@@ -1869,6 +1898,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         const opp = findClub(isHome ? m.away : m.home);
         let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles);
         myRating += getCaptainMatchBonus(c, false);
+        myRating += calcSynergyBonus(c.partnerships, c.lineup);
         const scoutPrep = scoutPrepRatingBonus(c, opp.id, ev.round);
         myRating += scoutPrep;
         // H2H psychological factor: bogey teams suppress confidence; dominated
@@ -2157,6 +2187,21 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
     c.seasonHighlights = [...(c.seasonHighlights || []), ...milestones.items].slice(0, 30);
   }
 
+  // Partnership tracking: count shared lineup appearances for each pair of starters.
+  // ponytail: O(n²) over lineup (≤22 players → max 231 pairs). Grows unboundedly over
+  // many seasons; if saves become large, prune pairs with count < 5 at season end.
+  const lineupIds = (c.lineup || []).filter(Boolean);
+  if (lineupIds.length >= 2) {
+    const p = c.partnerships || {};
+    lineupIds.forEach((id1, i) => {
+      lineupIds.slice(i + 1).forEach((id2) => {
+        const key = [id1, id2].sort().join('_');
+        p[key] = (p[key] || 0) + 1;
+      });
+    });
+    c.partnerships = p;
+  }
+
   // Crowd atmosphere: big home crowd gives a morale lift win or lose.
   // Only for tier 1–3 (tier 4 has no meaningful gate).
   if (isHome && (league?.tier ?? 4) <= 3) {
@@ -2298,7 +2343,7 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   }
 
   if (isHome) {
-    const fundraiser = postMatchFundraiser(c, league.tier, true);
+    const fundraiser = postMatchFundraiser(c, league.tier, true, ensureWeatherForWeek(c, meta.round));
     if (fundraiser) {
       c.finance.cash += fundraiser.income;
       c.news = [{ week: meta.round, ...fundraiser.news }, ...(c.news || [])].slice(0, 20);

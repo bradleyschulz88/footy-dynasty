@@ -5,6 +5,7 @@ import { STATES, PYRAMID, LEAGUES_BY_STATE, findClub } from "../data/pyramid.js"
 import { generateSquad } from "../lib/playerGen.js";
 import {
   generateFixtures,
+  generateByeRounds,
   blankLadder,
   getCompetitionClubs,
   tier3DivisionCount,
@@ -442,6 +443,7 @@ export function buildNewCareer({
   const squad = scaledSquadToFitCap({ clubId, leagueKey, difficulty, finance: tunedFinance, squad: squadRaw });
   const lineup = squad.slice().sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map(p => p.id);
   const fixtures = generateFixtures(compClubs);
+  const byeMap = generateByeRounds(compClubs.map(cl => cl.id), fixtures.length);
   const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId, {
     nationalDraft: league.tier === 1,
   });
@@ -474,6 +476,7 @@ export function buildNewCareer({
     kits: defaultKits(club.colors),
     ladder: ladder0,
     fixtures,
+    byeMap,
     tradePool: generateTradePool(leagueKey, SEASON),
     draftPool: [],
     youth: { recruits: [], zone: club.state, programLevel: 1, scoutFocus: "All-rounders" },

@@ -354,7 +354,15 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
                 <Play className="w-3 h-3" style={{ color: 'var(--A-accent)' }} fill="currentColor" />
                 <span className="text-[9px] uppercase tracking-[0.12em] font-bold font-mono" style={{ color: 'var(--A-accent)' }}>Next Match</span>
               </div>
-              {advanceCtx.nextEventShort && (
+              {career.hasByeThisWeek ? (
+                <div className="flex items-center gap-2 mb-2.5 rounded-lg px-3 py-2" style={{ background: 'color-mix(in srgb, var(--A-accent-2) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--A-accent-2) 25%, transparent)' }}>
+                  <ThermometerSnowflake className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--A-accent-2)' }} />
+                  <div>
+                    <div className="text-[9px] font-mono uppercase tracking-widest mb-0.5" style={{ color: 'var(--A-accent-2)' }}>Bye — Round {career.week}</div>
+                    <div className="text-xs text-atext-dim leading-snug">Players rest and recover. Fitness +4 across the squad.</div>
+                  </div>
+                </div>
+              ) : advanceCtx.nextEventShort && (
                 <div className="flex items-center justify-between gap-2 mb-2.5">
                   <div className="min-w-0">
                     <div className="text-[9px] font-mono uppercase tracking-widest text-atext-mute mb-0.5">{advanceCtx.buttonLabel}</div>
