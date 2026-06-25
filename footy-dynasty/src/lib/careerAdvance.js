@@ -2204,12 +2204,23 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   }
   (result.reportedPlayerIds || []).forEach((pid) => {
     if (rng() < 0.35) {
-      const weeks = rand(1, 3);
-      c.squad = c.squad.map((p) => (p.id === pid ? { ...p, suspended: (p.suspended || 0) + weeks } : p));
       const player = c.squad.find((p) => p.id === pid);
-      if (player) {
-        c.news = [{ week: c.week, type: 'loss', text: `⚖️ ${player.firstName} ${player.lastName} suspended ${weeks} match${weeks > 1 ? 'es' : ''} at the tribunal` }, ...(c.news || [])].slice(0, 20);
-      }
+      if (!player) return;
+      const r = rng();
+      const severity = r < 0.5 ? 'low' : r < 0.85 ? 'medium' : 'high';
+      const baseWeeks = severity === 'low' ? 1 : severity === 'medium' ? 2 : rand(3, 4);
+      const charge = pick(['Rough Conduct', 'High Contact', 'Dangerous Tackle', 'Striking', 'Intentional Contact']);
+      c.tribunalQueue = [...(c.tribunalQueue || []), {
+        id: `tribunal_${c.week}_${player.id}`,
+        playerId: player.id,
+        playerName: `${player.firstName} ${player.lastName}`,
+        position: player.position,
+        charge,
+        severity,
+        baseWeeks,
+        week: c.week,
+      }];
+      c.news = [{ week: c.week, type: 'warning', text: `⚖️ ${player.firstName} ${player.lastName} referred to tribunal for ${charge}.` }, ...(c.news || [])].slice(0, 20);
     }
   });
 
