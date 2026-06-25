@@ -55,6 +55,28 @@ const STATE_META = {
          bullets: ["ACTAFL: tight competition where every game matters", "GWS Giants cover the region — clear AFL pathway exists", "Capital ambition: punching above its weight for a century"] },
 };
 
+// Region classification for VIC tier-3 league filter chips.
+// Other states have few enough leagues that filtering isn't needed.
+function leagueRegion(l) {
+  const n = (l.name || '').toLowerCase();
+  const k = l.key || '';
+  if (['EDFL','EFNL','NFNL','MPFNL','SFNL','WFNL','VAFA','OuterEastFNL','ERGFL'].includes(k)) return 'Metro';
+  if (n.includes('gippsland') || n.includes('ellinbank') || k === 'AlbertonFL') return 'Gippsland';
+  if (n.includes('geelong') || n.includes('bellarine') || n.includes('colac') || n.includes('hampden') || n.includes('warrnambool') || k === 'SouthWestDFL') return 'Geelong & South';
+  if (n.includes('ballarat') || n.includes('wimmera') || n.includes('horsham') || n.includes('mininera') || n.includes('central highland') || k === 'RiddellDFNL') return 'Ballarat & West';
+  if (n.includes('bendigo') || k === 'MaryboroughCastlemaineDFL' || n.includes('north central') || n.includes('loddon') || k === 'GoldenRiversFL' || k === 'HeathcoteDFL' || n.includes('kyabram') || n.includes('picola') || n.includes('goulburn')) return 'Bendigo & North';
+  if (n.includes('murray') || n.includes('ovens') || n.includes('millewa') || n.includes('tallangatta') || n.includes('omeo') || n.includes('sunraysia')) return 'Murray & Border';
+  return null;
+}
+const REGION_COLORS = {
+  'Metro':          '#1D4ED8',
+  'Gippsland':      '#16A34A',
+  'Geelong & South':'#0891B2',
+  'Ballarat & West':'#7C3AED',
+  'Bendigo & North':'#DC2626',
+  'Murray & Border':'#D97706',
+};
+
 // Real geographic SVG paths from react-australia-map (MIT license, pvoznyuk/react-australia-map)
 // viewBox: "-0.4 -0.4 291 263"
 const STATE_PATHS = {
@@ -618,6 +640,7 @@ export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResum
   const [startError, setStartError] = useState(null);
   const slotsWithSaves = SLOT_IDS.filter(s => existingSlots && existingSlots[s]);
   const [hoveredState, setHoveredState] = useState(null);
+  const [regionFilter, setRegionFilter] = useState(null);
 
   const setStep          = (v) => { saveSetup({ step: v });        _setStep(v); };
   const setSelState      = (v) => { saveSetup({ state: v });       _setSelState(v); };
@@ -640,11 +663,15 @@ export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResum
     if (localDivision > k) setLocalDivision(k);
   }, [tier, leagueKey, state, localDivision]);
 
+  useEffect(() => { setRegionFilter(null); }, [state, tier]);
+
   const tier3K             = tier === 3 && leagueKey && state ? tier3DivisionCount(leagueKey, state) : 0;
   const effectiveTier3Div  = tier === 3 && tier3K ? Math.min(localDivision, tier3K) : localDivision;
   const availableClubs     = leagueKey ? getCompetitionClubs(leagueKey, state, tier === 3 ? effectiveTier3Div : null) : [];
   const availableLeagues   = state ? LEAGUES_BY_STATE(state).filter(l => !l.isAcademy && (tier ? l.tier === tier : true)) : [];
   const tiersForState      = state ? [1, 2, 3, 4].filter(t => LEAGUES_BY_STATE(state).some(l => l.tier === t && !l.isAcademy)) : [1, 2, 3, 4];
+  const uniqueLeagueRegions = [...new Set(availableLeagues.map(leagueRegion).filter(Boolean))];
+  const filteredLeagues     = regionFilter ? availableLeagues.filter(l => leagueRegion(l) === regionFilter) : availableLeagues;
 
   function start(e) {
     if (e) e.preventDefault();
@@ -1107,34 +1134,76 @@ export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResum
                   </button>.
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {availableLeagues.map((l) => {
-                    const tier3Divs = tier === 3 && state ? tier3DivisionCount(l.key, state) : 0;
-                    const inState = state ? l.clubs.filter((c) => c.state === state).length : l.clubs.length;
-                    return (
-                      <motion.button key={l.key} type="button" whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
-                        onClick={() => {
-                          setLeagueKey(l.key);
-                          setClubId(null);
-                          if (tier === 3 && state) setLocalDivision(tier3Divs);
-                          setStep(tier === 3 ? 4 : 5);
-                        }}
-                        className="panel rounded-xl p-5 text-left flex items-center justify-between">
-                        <div>
-                          <div className="text-[10px] text-atext-mute uppercase tracking-widest font-mono">Tier {l.tier}</div>
-                          <div className="font-display text-2xl mt-1 text-atext">{l.short}</div>
-                          <div className="text-sm text-atext-dim">{l.name}</div>
-                          <div className="text-[12px] text-atext-mute mt-1">
-                            {tier === 3 && state
-                              ? `${tier3Divs} local division${tier3Divs === 1 ? '' : 's'} · ${inState} clubs in ${state}`
-                              : `${l.clubs.length} clubs`}
+                <>
+                  {/* Region filter chips — only shown when 2+ distinct regions exist (e.g. VIC tier 3) */}
+                  {uniqueLeagueRegions.length >= 2 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {uniqueLeagueRegions.map(r => (
+                        <button key={r} type="button"
+                          onClick={() => setRegionFilter(prev => prev === r ? null : r)}
+                          className="text-[10px] px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider transition-all"
+                          style={regionFilter === r ? {
+                            background: (REGION_COLORS[r] || 'var(--A-accent)') + '30',
+                            color: REGION_COLORS[r] || 'var(--A-accent)',
+                            border: `1px solid ${(REGION_COLORS[r] || 'var(--A-accent)')}60`,
+                          } : {
+                            background: 'var(--A-panel-2)',
+                            color: 'var(--A-text-mute)',
+                            border: '1px solid var(--A-line)',
+                          }}>
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {filteredLeagues.map((l) => {
+                      const tier3Divs = tier === 3 && state ? tier3DivisionCount(l.key, state) : 0;
+                      const inState = state ? l.clubs.filter((c) => c.state === state).length : l.clubs.length;
+                      const region = leagueRegion(l);
+                      const accentColor = region ? (REGION_COLORS[region] || 'var(--A-accent)') : (STATE_META[l.state]?.color || 'var(--A-accent)');
+                      return (
+                        <motion.button key={l.key} type="button" whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
+                          onClick={() => {
+                            setLeagueKey(l.key);
+                            setClubId(null);
+                            if (tier === 3 && state) setLocalDivision(tier3Divs);
+                            setStep(tier === 3 ? 4 : 5);
+                          }}
+                          className="panel rounded-xl overflow-hidden text-left flex items-stretch"
+                          style={{ borderLeft: `4px solid ${accentColor}` }}>
+                          <div className="p-4 flex-1 min-w-0">
+                            {region && (
+                              <div className="text-[9px] font-mono uppercase tracking-widest" style={{ color: accentColor }}>
+                                {region}
+                              </div>
+                            )}
+                            <div className="font-display text-xl text-atext mt-0.5">{l.short}</div>
+                            <div className="text-xs text-atext-dim truncate">{l.name}</div>
+                            <div className="flex items-center gap-2 mt-2">
+                              {tier === 3 && tier3Divs > 0 && (
+                                <div className="flex gap-0.5 items-center">
+                                  {Array.from({ length: Math.min(tier3Divs, 5) }).map((_, i) => (
+                                    <span key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: accentColor, opacity: 0.7 }} />
+                                  ))}
+                                  {tier3Divs > 5 && <span className="text-[8px] text-atext-mute ml-0.5">+{tier3Divs - 5}</span>}
+                                </div>
+                              )}
+                              <span className="text-[11px] text-atext-mute">
+                                {tier === 3 && state
+                                  ? `${tier3Divs} div${tier3Divs !== 1 ? 's' : ''} · ${inState} clubs`
+                                  : `${l.clubs.length} clubs`}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        <ChevronRight className="w-6 h-6 text-aaccent flex-shrink-0" />
-                      </motion.button>
-                    );
-                  })}
-                </div>
+                          <div className="flex items-center px-3 flex-shrink-0" style={{ color: accentColor, opacity: 0.7 }}>
+                            <ChevronRight className="w-4 h-4" />
+                          </div>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </motion.div>
           )}
