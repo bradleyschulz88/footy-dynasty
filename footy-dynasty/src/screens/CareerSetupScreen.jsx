@@ -55,57 +55,137 @@ const STATE_META = {
          bullets: ["ACTAFL: tight competition where every game matters", "GWS Giants cover the region — clear AFL pathway exists", "Capital ambition: punching above its weight for a century"] },
 };
 
+// Clockwise coastal outline of Australia mainland — Gulf of Carpentaria notched in between NT and QLD
+const AUS_MAINLAND_PATH = [
+  "M 288,45",
+  "L 185,48", "L 100,72", "L 55,155",
+  "L 32,280", "L 35,400", "L 55,510",
+  "L 78,565", "L 140,615", "L 230,635", "L 288,638",
+  "L 350,645", "L 400,658", "L 440,648", "L 480,650", "L 548,645",
+  "L 585,660", "L 640,672", "L 685,660", "L 720,638",
+  "L 760,595", "L 780,558", "L 800,492",
+  "L 800,420",
+  "L 798,350", "L 800,240", "L 795,130", "L 768,55", "L 752,47",
+  "L 720,58", "L 695,100", "L 668,152", "L 648,185",
+  "L 615,200", "L 578,197", "L 545,192",
+  "L 512,190", "L 498,155", "L 490,100", "L 480,60",
+  "L 462,46", "L 400,45", "L 288,45",
+  "Z",
+].join(" ");
+
 function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
-  const stateShapes = [
-    { key: 'WA',  path: 'M 12,45 L 288,45 L 288,640 L 12,640 Z',                             cx: 150, cy: 342 },
-    { key: 'NT',  path: 'M 288,45 L 500,45 L 500,385 L 288,385 Z',                           cx: 394, cy: 215 },
-    { key: 'SA',  path: 'M 288,385 L 500,385 L 500,505 L 548,505 L 548,640 L 288,640 Z',     cx: 388, cy: 512 },
-    { key: 'QLD', path: 'M 500,45 L 800,45 L 800,420 L 548,420 L 500,385 Z',                 cx: 654, cy: 225 },
-    { key: 'NSW', path: 'M 548,420 L 800,420 L 778,565 L 548,565 Z',                         cx: 665, cy: 490 },
-    { key: 'VIC', path: 'M 548,565 L 778,565 L 790,640 L 548,640 Z',                         cx: 665, cy: 605 },
-    { key: 'TAS', path: 'M 598,672 L 688,672 L 688,750 L 598,750 Z',                         cx: 643, cy: 711 },
+  const stateRegions = [
+    { key: 'WA',  x: -10, y: -10, w: 300, h: 710, cx: 140, cy: 340 },
+    { key: 'NT',  x: 288, y: -10, w: 215, h: 400, cx: 390, cy: 190 },
+    { key: 'SA',  x: 288, y: 385, w: 265, h: 310, cx: 400, cy: 510 },
+    { key: 'QLD', x: 500, y: -10, w: 325, h: 435, cx: 658, cy: 210 },
+    { key: 'NSW', x: 548, y: 420, w: 277, h: 150, cx: 672, cy: 485 },
+    { key: 'VIC', x: 548, y: 565, w: 277, h: 120, cx: 665, cy: 610 },
   ];
+
+  const borders = [
+    [288, 45,  288, 640],
+    [288, 385, 500, 385],
+    [500, 45,  500, 385],
+    [500, 385, 548, 420],
+    [548, 420, 548, 640],
+    [548, 420, 800, 420],
+    [548, 565, 780, 565],
+  ];
+
   return (
     <div className="rounded-xl overflow-hidden border border-aline/40" style={{ background: 'var(--A-panel)' }}>
       <svg viewBox="0 0 820 770" className="w-full block"
         style={{ background: 'color-mix(in srgb, var(--A-accent) 3%, var(--A-panel-2))' }}
         aria-label="Map of Australia — select a state to begin">
-        {stateShapes.map(({ key, path, cx, cy }) => {
-          const meta = STATE_META[key];
-          const isHov = hoveredState === key;
-          const isSel = selectedState === key;
-          const active = isHov || isSel;
-          return (
-            <g key={key} style={{ cursor: 'pointer' }}
-              onClick={() => onSelect(key)}
-              onMouseEnter={() => onHover(key)}
-              onMouseLeave={() => onHover(null)}>
-              <path d={path}
-                style={{
-                  fill: isSel ? `${meta.color}55` : isHov ? `${meta.color}28` : 'var(--A-panel-2)',
-                  stroke: active ? meta.color : 'var(--A-line)',
-                  strokeWidth: isSel ? 2.5 : 1,
-                  transition: 'fill 0.15s ease, stroke 0.15s ease',
-                }}
-              />
-              <text x={cx} y={cy + 4} textAnchor="middle"
-                style={{
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                  fill: active ? meta.color : 'var(--A-text-mute)',
-                  fontWeight: active ? 700 : 400,
-                  pointerEvents: 'none',
-                  transition: 'fill 0.15s ease',
-                  userSelect: 'none',
-                }}>
-                {key}
-              </text>
-            </g>
-          );
-        })}
-        {/* ACT — circle marker since polygon is too small to interact with */}
+        <defs>
+          <clipPath id="aus-map-clip">
+            <path d={AUS_MAINLAND_PATH} />
+          </clipPath>
+        </defs>
+
+        {/* Mainland base fill */}
+        <path d={AUS_MAINLAND_PATH} style={{ fill: 'var(--A-panel-2)', pointerEvents: 'none' }} />
+
+        {/* State fills and labels clipped to mainland shape */}
+        <g clipPath="url(#aus-map-clip)">
+          {stateRegions.map(({ key, x, y, w, h, cx, cy }) => {
+            const meta = STATE_META[key];
+            const isHov = hoveredState === key;
+            const isSel = selectedState === key;
+            const active = isHov || isSel;
+            return (
+              <g key={key} style={{ cursor: 'pointer' }}
+                onClick={() => onSelect(key)}
+                onMouseEnter={() => onHover(key)}
+                onMouseLeave={() => onHover(null)}>
+                <rect x={x} y={y} width={w} height={h}
+                  style={{
+                    fill: isSel ? `${meta.color}55` : isHov ? `${meta.color}28` : 'transparent',
+                    transition: 'fill 0.15s ease',
+                  }} />
+                <text x={cx} y={cy + 4} textAnchor="middle"
+                  style={{
+                    fontSize: 11, fontFamily: 'monospace',
+                    fill: active ? meta.color : 'var(--A-text-mute)',
+                    fontWeight: active ? 700 : 400,
+                    pointerEvents: 'none',
+                    transition: 'fill 0.15s ease',
+                    userSelect: 'none',
+                  }}>
+                  {key}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Internal state border lines */}
+          {borders.map(([x1, y1, x2, y2], i) => (
+            <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+              style={{ stroke: 'var(--A-line)', strokeWidth: 0.8, pointerEvents: 'none' }} />
+          ))}
+
+          {/* ACT — circle marker */}
+          {(() => {
+            const key = 'ACT';
+            const meta = STATE_META[key];
+            const isHov = hoveredState === key;
+            const isSel = selectedState === key;
+            const active = isHov || isSel;
+            return (
+              <g style={{ cursor: 'pointer' }}
+                onClick={() => onSelect(key)}
+                onMouseEnter={() => onHover(key)}
+                onMouseLeave={() => onHover(null)}>
+                <circle cx={672} cy={500} r={16}
+                  style={{
+                    fill: isSel ? `${meta.color}55` : isHov ? `${meta.color}28` : 'var(--A-panel-2)',
+                    stroke: active ? meta.color : 'var(--A-line)',
+                    strokeWidth: isSel ? 2.5 : 1,
+                    transition: 'fill 0.15s ease, stroke 0.15s ease',
+                  }} />
+                <text x={672} y={504} textAnchor="middle"
+                  style={{
+                    fontSize: 8, fontFamily: 'monospace',
+                    fill: active ? meta.color : 'var(--A-text-mute)',
+                    fontWeight: 700,
+                    pointerEvents: 'none',
+                    userSelect: 'none',
+                  }}>
+                  ACT
+                </text>
+              </g>
+            );
+          })()}
+        </g>
+
+        {/* Continent outline stroke — drawn last for crisp coastal edges */}
+        <path d={AUS_MAINLAND_PATH}
+          style={{ fill: 'none', stroke: 'var(--A-line)', strokeWidth: 1.5, pointerEvents: 'none' }} />
+
+        {/* Tasmania — separate island outside main clip */}
         {(() => {
-          const key = 'ACT';
+          const key = 'TAS';
           const meta = STATE_META[key];
           const isHov = hoveredState === key;
           const isSel = selectedState === key;
@@ -115,24 +195,23 @@ function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
               onClick={() => onSelect(key)}
               onMouseEnter={() => onHover(key)}
               onMouseLeave={() => onHover(null)}>
-              <circle cx={674} cy={506} r={16}
+              <path d="M 628,688 L 698,692 L 706,726 L 668,748 L 636,742 L 622,718 Z"
                 style={{
                   fill: isSel ? `${meta.color}55` : isHov ? `${meta.color}28` : 'var(--A-panel-2)',
                   stroke: active ? meta.color : 'var(--A-line)',
                   strokeWidth: isSel ? 2.5 : 1,
                   transition: 'fill 0.15s ease, stroke 0.15s ease',
-                }}
-              />
-              <text x={674} y={510} textAnchor="middle"
+                }} />
+              <text x={662} y={720} textAnchor="middle"
                 style={{
-                  fontSize: 8,
-                  fontFamily: 'monospace',
+                  fontSize: 11, fontFamily: 'monospace',
                   fill: active ? meta.color : 'var(--A-text-mute)',
-                  fontWeight: 700,
+                  fontWeight: active ? 700 : 400,
                   pointerEvents: 'none',
+                  transition: 'fill 0.15s ease',
                   userSelect: 'none',
                 }}>
-                ACT
+                TAS
               </text>
             </g>
           );
