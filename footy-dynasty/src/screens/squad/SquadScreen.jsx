@@ -1480,7 +1480,7 @@ function TrainingTab({ onOpenClubStaff }) {
             </div>
             <div className="text-[10px] text-atext-mute pt-1 border-t border-aline/60 mt-2">{staffTrainingNote}</div>
           </div>
-          {Object.entries(t.focus).map(([k, v]) => {
+          {Object.entries(t.focus || {}).map(([k, v]) => {
             const colors = { skills: "var(--A-accent)", fitness: "#4ADBE8", tactics: "#E84A6F", recovery: "#4AE89A" };
             const labels = { skills: "Skills", fitness: "Fitness", tactics: "Tactics", recovery: "Recovery" };
             return (
