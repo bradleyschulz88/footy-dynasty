@@ -48,6 +48,7 @@ import {
   ensureWeatherForWeek, applyGroundDegradation, recoverGroundPreseason,
   groundConditionBand, journalistMatchLine, generatePostMatchHeadline,
   updateFanbase, journalistBoardImpact, tickVolunteerBurnout, recoverVolunteers,
+  checkCommitteeDrama,
 } from './community.js';
 import {
   coachTierFromScore, applyEndOfSeasonReputation,
@@ -1484,6 +1485,13 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     }
   }
 
+  // Committee drama — fortnightly check for low-mood members venting before they burn out
+  if ((league?.tier ?? 4) >= 3 && c.week % 2 === 0 && c.week !== (c.lastDramaWeek ?? -1)) {
+    c.lastDramaWeek = c.week;
+    const drama = checkCommitteeDrama(c);
+    if (drama) c.news = [{ ...drama, week: c.week }, ...(c.news ?? [])].slice(0, 25);
+  }
+
   // Scout deployments — process returns, watchlist staleness, rival interest (once per unique week)
   if (c.week !== (c.lastScoutTickWeek ?? -1)) {
     c.lastScoutTickWeek = c.week;
@@ -2298,7 +2306,7 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   }
 
   if (isHome) {
-    const fundraiser = postMatchFundraiser(c, league.tier, true);
+    const fundraiser = postMatchFundraiser(c, league.tier, true, ensureWeatherForWeek(c, meta.round));
     if (fundraiser) {
       c.finance.cash += fundraiser.income;
       c.news = [{ week: meta.round, ...fundraiser.news }, ...(c.news || [])].slice(0, 20);
