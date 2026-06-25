@@ -162,21 +162,22 @@ function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps
         <span
           className="font-black leading-none"
           style={{
-            fontSize: "clamp(14px, 5vw, 22px)",
-            color: "rgba(255,255,255,0.96)",
-            textShadow: stitch ? "none" : `0 1px 10px ${lineCol}90`,
+            fontSize: "clamp(20px, 9vw, 36px)",
+            color: "rgba(255,255,255,0.97)",
+            textShadow: stitch ? "none" : `0 2px 12px ${lineCol}AA, 0 0 4px rgba(0,0,0,0.6)`,
+            letterSpacing: "-0.02em",
           }}
         >
           {num}
         </span>
       </div>
-      {/* Short name */}
+      {/* Short name — tiny, below number */}
       <div className="w-full shrink-0 overflow-hidden px-0.5 mb-0.5">
         <span
           className="block truncate text-center leading-none font-medium"
           style={{
-            fontSize: "clamp(4.5px, 1.5vw, 6px)",
-            color: stitch ? "rgba(200,255,61,0.54)" : "rgba(210,225,255,0.65)",
+            fontSize: "clamp(5px, 1.8vw, 7px)",
+            color: stitch ? "rgba(200,255,61,0.54)" : "rgba(210,225,255,0.60)",
           }}
         >
           {shortName(player)}
@@ -246,10 +247,10 @@ function LargePlayerCardBody({ player, stitch, onSelectPlayer, dragProps }) {
     >
       <div className="relative shrink-0">
         <div
-          className={`relative z-[1] rounded-full border-2 shadow-md flex items-center justify-center bg-gradient-to-b from-[#f1f5f9] to-[#cbd5e1] ${circle}`}
+          className={`relative z-[1] rounded-full border-2 shadow-lg flex items-center justify-center bg-gradient-to-b from-[#1e3a5e] to-[#0f2035] ${circle}`}
           style={{ borderColor: fBorder }}
         >
-          <span className="font-black text-slate-700 tracking-wide text-xs sm:text-sm">{initials(player)}</span>
+          <span className="font-black text-white/95 tracking-wide text-xs sm:text-sm">{initials(player)}</span>
         </div>
         <span
           className="absolute -top-1 -right-1 z-[3] text-[7px] font-black leading-none px-0.5 rounded"
@@ -258,11 +259,11 @@ function LargePlayerCardBody({ player, stitch, onSelectPlayer, dragProps }) {
           {player.overall}
         </span>
       </div>
-      <div className="relative z-[2] w-full min-w-0 -mt-2 rounded-md border border-slate-200/90 bg-white shadow-sm flex overflow-hidden max-w-[6.25rem]">
-        <span className="shrink-0 flex items-center justify-center self-stretch bg-[#3d1f4d] font-black text-white w-6 sm:w-7 text-[9px] sm:text-[10px]">
+      <div className="relative z-[2] w-full min-w-0 -mt-2 rounded-md border border-white/12 bg-[rgba(10,22,42,0.95)] shadow-md flex overflow-hidden max-w-[6.25rem]">
+        <span className="shrink-0 flex items-center justify-center self-stretch bg-[rgba(42,80,160,0.90)] font-black text-white w-6 sm:w-7 text-[9px] sm:text-[10px]">
           {num}
         </span>
-        <span className="flex-1 min-w-0 px-0.5 py-0.5 font-semibold text-slate-900 text-[8px] sm:text-[10px] leading-snug">
+        <span className="flex-1 min-w-0 px-0.5 py-0.5 font-semibold text-white/85 text-[8px] sm:text-[10px] leading-snug">
           <span className="line-clamp-2 break-words [overflow-wrap:anywhere]">{shortName(player)}</span>
         </span>
       </div>
