@@ -284,7 +284,7 @@ const NAMED_MOTIFS = {
 /** Keyword → motif key for lower-tier club names. */
 function motifKeyForName(name) {
   const n = (name || "").toLowerCase();
-  if (/\b(eagle|falcon|condor|raptor|cockatoo|harrier)s?\b/.test(n)) return "wings";
+  if (/\b(eagle|falcon|condor|raptor|cockatoo|harrier|vulture|thunderbird)s?\b/.test(n)) return "wings";
   if (/\bhawks?\b/.test(n)) return "wings";
   if (/\bmagpies?\b/.test(n)) return "halfSplit";
   if (/\b(crow|raven)s?\b/.test(n)) return "crow";
@@ -292,21 +292,25 @@ function motifKeyForName(name) {
   if (/\blions?\b/.test(n)) return "lion";
   if (/\bcats?\b/.test(n)) return "cat";
   if (/\btigers?\b/.test(n)) return "tigerStripes";
-  if (/\b(panther|leopard|cheetah|jaguar)s?\b/.test(n)) return "paw";
+  if (/\b(panther|leopard|cheetah|jaguar|cougar|bobcat)s?\b/.test(n)) return "paw";
   if (/\bwolves?|\bwolf\b/.test(n)) return "paw";
+  if (/\b(gorilla|baboon|ape)s?\b/.test(n)) return "paw";
   if (/\bbulldogs?\b/.test(n)) return "bulldog";
   if (/\bbullants?\b/.test(n)) return "paw";
   if (/\bbulls?\b/.test(n)) return "bull";
+  if (/\b(ram|bison|ox|oxen|steer|buffalo)s?\b/.test(n)) return "bull";
   if (/\bbears?\b/.test(n)) return "bear";
   if (/\bsharks?\b/.test(n)) return "shark";
-  if (/\b(dolphin|orca|whale)s?\b/.test(n)) return "wave";
+  if (/\bbarracuda\b/.test(n)) return "shark";
+  if (/\b(dolphin|orca|whale|stingray)s?\b/.test(n)) return "wave";
   if (/\b(kangaroo|roo)s?\b/.test(n)) return "roo";
   if (/\bdragons?\b/.test(n)) return "flame";
+  if (/\bphoenix\b/.test(n)) return "flame";
   if (/\b(snake|cobra|viper|python|asp)s?\b/.test(n)) return "snake";
   if (/\bsaints?\b/.test(n)) return "cross";
   if (/\b(demon|devil)s?\b/.test(n)) return "trident";
-  if (/\b(charger|thunder|bolt)s?\b/.test(n)) return "lightning";
-  if (/\b(fire|flame|blaze|ember|phoenix|inferno)s?\b/.test(n)) return "flame";
+  if (/\b(charger|thunder|bolt|cannon|bomber|hornet|wasp)s?\b/.test(n)) return "lightning";
+  if (/\b(fire|flame|blaze|ember|inferno)s?\b/.test(n)) return "flame";
   if (/\bsuns?\b/.test(n)) return "sun";
   if (/\b(pirate|anchor|docker)s?\b/.test(n)) return "anchor";
   if (/\b(king|royal|crown|knight)s?\b/.test(n)) return "crown";
@@ -314,15 +318,95 @@ function motifKeyForName(name) {
   if (/\b(wave|tide)s?\b/.test(n)) return "wave";
   if (/\b(coast|beach|bay|sea|ocean|marine)\b/.test(n)) return "wave";
   if (/\b(stag|deer|buck|elk)s?\b/.test(n)) return "antler";
-  if (/\brooster?\b/.test(n)) return "wings";
+  if (/\broosters?\b/.test(n)) return "wings";
   if (/\bgiants?\b/.test(n)) return "mountain";
-  if (/\b(mountain|peak|highland|alpine)\b/.test(n)) return "mountain";
+  if (/\b(mountain|peak|highland|alpine|range|ranges|pioneer)s?\b/.test(n)) return "mountain";
+  if (/\bbushrangers?\b/.test(n)) return "star";
   if (/\b(ranger|rover|rebel|warrior|spartan|raider|viking)s?\b/.test(n)) return "star";
   if (/\b(jet|rocket|comet)s?\b/.test(n)) return "lightning";
   if (/\bpower\b/.test(n)) return "lightning";
   if (/\bport\b/.test(n)) return "anchor";
   return null;
 }
+
+/**
+ * VFL/WAFL affiliates of AFL clubs — reuse the parent club's custom motif.
+ * Key = affiliate club ID, value = AFL club ID to delegate to.
+ */
+const AFL_CLUB_MOTIF_ALIASES = {
+  vfl_box_hill_hawks:      "haw",
+  vfl_carlton:             "car",
+  vfl_collingwood:         "col",
+  vfl_essendon:            "ess",
+  vfl_footscray_western_bu:"wbd",
+  vfl_geelong:             "gee",
+  vfl_north_melbourne:     "nor",
+  vfl_richmond:            "ric",
+  vfl_st_kilda:            "stk",
+  vfl_sydney_swans:        "syd",
+  wafl_west_coast_eagles:  "wce",
+};
+
+/**
+ * Club ID → named motif key for clubs whose name doesn't reveal their mascot
+ * (e.g. "Glenelg" = Tigers, "Norwood" = Redlegs, "Perth" = Demons).
+ */
+const CLUB_ID_MOTIF_KEYS = {
+  // NTFL
+  ntfl_nightcliff:           "tigerStripes", // Nightcliff Tigers
+  ntfl_pint:                 "lightning",    // PINT
+  ntfl_southern_districts:   "star",         // Southern Districts Crocs
+  ntfl_st_mary_s:            "cross",        // St Mary's Saints
+  ntfl_wanderers:            "star",         // Wanderers
+  ntfl_waratah:              "wings",        // Waratah Roosters
+  // QAFL
+  qafl_aspley:               "lightning",   // Aspley Hornets
+  qafl_broadbeach:           "cat",         // Broadbeach Cats
+  qafl_coorparoo:            "crown",       // Coorparoo Kings
+  qafl_labrador:             "tigerStripes",// Labrador Tigers
+  qafl_maroochydore:         "roo",         // Maroochydore Roos
+  qafl_morningside:          "paw",         // Morningside Panthers
+  qafl_mt_gravatt:           "wings",       // Mt Gravatt Hawks
+  qafl_palm_beach_currumbin: "lightning",   // Palm Beach Currumbin Lightning
+  qafl_redland_victoria_point:"shark",      // Redland-Victoria Point Sharks
+  qafl_surfers_paradise:     "trident",     // Surfers Paradise Demons
+  qafl_wilston_grange:       "paw",         // Wilston Grange Gorillas
+  // SANFL
+  sanfl_adelaide:            "crow",        // Adelaide Crows
+  sanfl_central_district:    "bulldog",     // Central District Bulldogs
+  sanfl_glenelg:             "tigerStripes",// Glenelg Tigers
+  sanfl_north_adelaide:      "wings",       // North Adelaide Roosters
+  sanfl_norwood:             "wings",       // Norwood Redlegs (eagle)
+  sanfl_south_adelaide:      "paw",         // South Adelaide Panthers
+  sanfl_sturt:               "halfSplit",   // Sturt Double Blues
+  sanfl_west_adelaide:       "halfSplit",   // West Adelaide Bloods
+  sanfl_woodville_west_torre:"wings",       // Woodville-West Torrens Eagles
+  // TSL
+  tsl_clarence:              "halfSplit",   // Clarence Doublees
+  tsl_glenorchy:             "halfSplit",   // Glenorchy Magpies
+  tsl_lauderdale:            "lightning",   // Lauderdale Bombers
+  tsl_launceston:            "halfSplit",   // Launceston Blues
+  tsl_north_hobart:          "trident",     // North Hobart Demons
+  tsl_north_launceston:      "lightning",   // North Launceston Bombers
+  // VFL (non-AFL-affiliates)
+  vfl_frankston:             "wave",        // Frankston Dolphins
+  vfl_sandringham:           "swan",        // Sandringham Seagulls
+  vfl_werribee:              "tigerStripes",// Werribee Tigers
+  vfl_williamstown:          "swan",        // Williamstown Seagulls
+  // WAFL (non-AFL-affiliates)
+  wafl_claremont:            "tigerStripes",// Claremont Tigers
+  wafl_east_fremantle:       "shark",       // East Fremantle Sharks
+  wafl_east_perth:           "crown",       // East Perth Royals
+  wafl_perth:                "trident",     // Perth Demons
+  wafl_south_fremantle:      "bulldog",     // South Fremantle Bulldogs
+  wafl_subiaco:              "lion",        // Subiaco Lions
+  wafl_west_perth:           "wings",       // West Perth Falcons
+  // Talent League (non-keyword-matched)
+  tl_bendigo_pioneers:       "mountain",   // Bendigo Pioneers
+  tl_calder_cannons:         "lightning",  // Calder Cannons
+  tl_dandenong_stingrays:    "wave",       // Dandenong Stingrays
+  tl_eastern_ranges:         "mountain",   // Eastern Ranges
+};
 
 // Combine geometric + named motifs for richer hash-based fallback (33 total)
 const ALL_MOTIFS = [...MOTIFS, ...Object.values(NAMED_MOTIFS)];
@@ -533,8 +617,13 @@ export function ClubBadge({ club, size = "md", className = "" }) {
   const short = String(club.short).slice(0, 3).toUpperCase();
 
   const clubId = String(club.id || "").toLowerCase();
-  const customMotifFn = AFL_CLUB_MOTIFS[clubId];
-  const namedKey = customMotifFn ? null : motifKeyForName(club.name);
+  // Resolve VFL/WAFL affiliate aliases to their parent AFL club motif
+  const effectiveId = AFL_CLUB_MOTIF_ALIASES[clubId] || clubId;
+  const customMotifFn = AFL_CLUB_MOTIFS[effectiveId];
+  // For non-AFL clubs: check ID map first, then name keywords, then hash fallback
+  const namedKey = customMotifFn
+    ? null
+    : (CLUB_ID_MOTIF_KEYS[clubId] || motifKeyForName(club.name));
   const motifEl = customMotifFn
     ? customMotifFn(c1, c2, c3)
     : namedKey && NAMED_MOTIFS[namedKey]
