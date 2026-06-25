@@ -92,6 +92,242 @@ const MOTIFS = [
 ];
 
 /**
+ * Named mascot / themed motifs for keyword-matched club names.
+ * Each function takes (em, div) — the auto-contrast emblem + divider colors.
+ * Also used to expand the hash-based procedural pool for generic clubs.
+ */
+const NAMED_MOTIFS = {
+  // Eagle / Falcon / Hawk — wings spread with head spike
+  wings: (em, div) => (
+    <>
+      <path d="M2,28 Q10,10 20,18 Q30,10 38,28 L32,26 Q24,14 20,18 Q16,14 8,26 Z" fill={em} opacity="0.9" />
+      <polygon points="16,18 20,6 24,18" fill={em} opacity="0.8" />
+    </>
+  ),
+  // Crow / Raven — bird in flight silhouette
+  crow: (em) => (
+    <path d="M3,30 L13,4 L20,18 L27,4 L37,30 L28,28 L20,36 L12,28 Z" fill={em} opacity="0.9" />
+  ),
+  // Magpie — clean vertical half split
+  halfSplit: (em, div) => (
+    <>
+      <rect x="0" y="0" width="20" height="40" fill={div} opacity="0.2" />
+      <rect x="20" y="0" width="20" height="40" fill={em} opacity="0.9" />
+      <line x1="20" y1="0" x2="20" y2="40" stroke={div} strokeWidth="0.75" opacity="0.4" />
+    </>
+  ),
+  // Swan / Seagull — graceful neck and body curve
+  swan: (em) => (
+    <path d="M10,34 Q10,22 18,16 Q24,10 32,12 Q30,18 24,20 Q28,24 28,32 L24,34 Q22,28 20,26 Q14,28 10,34 Z" fill={em} opacity="0.9" />
+  ),
+  // Lion — mane ring with inner circle and ear triangles
+  lion: (em, div) => (
+    <>
+      <circle cx="20" cy="22" r="14" fill={em} opacity="0.85" />
+      <circle cx="20" cy="22" r="10" fill={div} opacity="0.7" />
+      <polygon points="10,13 15,4 18,13" fill={em} />
+      <polygon points="22,13 25,4 30,13" fill={em} />
+      <ellipse cx="20" cy="26" rx="3.5" ry="2" fill={em} opacity="0.85" />
+    </>
+  ),
+  // Cat — triangular cat-head silhouette with ear points and eye dots
+  cat: (em, div) => (
+    <>
+      <polygon points="8,34 14,8 20,20 26,8 32,34" fill={em} opacity="0.88" />
+      <circle cx="15" cy="26" r="2.5" fill={div} />
+      <circle cx="25" cy="26" r="2.5" fill={div} />
+    </>
+  ),
+  // Tiger — three diagonal stripe bands
+  tigerStripes: (em) => (
+    <>
+      <polygon points="2,6 12,0 24,0 14,6" fill={em} opacity="0.9" />
+      <polygon points="7,24 22,0 34,0 19,24" fill={em} opacity="0.75" />
+      <polygon points="12,40 34,10 40,10 18,40" fill={em} opacity="0.65" />
+    </>
+  ),
+  // Panther / Wolf / Leopard — four-circle paw print
+  paw: (em, div) => (
+    <>
+      <circle cx="20" cy="25" r="8" fill={em} opacity="0.88" />
+      <circle cx="11" cy="16" r="4.5" fill={em} opacity="0.88" />
+      <circle cx="20" cy="12" r="4.5" fill={em} opacity="0.88" />
+      <circle cx="29" cy="16" r="4.5" fill={em} opacity="0.88" />
+    </>
+  ),
+  // Bulldog — round head, nose ellipse, eye dots
+  bulldog: (em, div) => (
+    <>
+      <path d="M10,14 Q10,6 20,6 Q30,6 30,14 L34,24 Q30,34 20,36 Q10,34 6,24 Z" fill={em} opacity="0.88" />
+      <ellipse cx="20" cy="24" rx="4" ry="3" fill={div} />
+      <circle cx="14" cy="16" r="2.5" fill={div} />
+      <circle cx="26" cy="16" r="2.5" fill={div} />
+    </>
+  ),
+  // Bull — upward-curving horns with head mound
+  bull: (em, div) => (
+    <>
+      <path d="M4,20 Q4,8 14,8 Q16,12 20,14 Q24,12 26,8 Q36,8 36,20 Q30,16 20,18 Q10,16 4,20 Z" fill={em} opacity="0.9" />
+      <ellipse cx="20" cy="24" rx="7" ry="5" fill={em} opacity="0.75" />
+    </>
+  ),
+  // Bear — large paw with three claw dots
+  bear: (em, div) => (
+    <>
+      <circle cx="20" cy="24" r="9" fill={em} opacity="0.88" />
+      <circle cx="11" cy="15" r="5" fill={em} opacity="0.88" />
+      <circle cx="20" cy="12" r="5" fill={em} opacity="0.88" />
+      <circle cx="29" cy="15" r="5" fill={em} opacity="0.88" />
+      <circle cx="14" cy="28" r="1.8" fill={div} opacity="0.7" />
+      <circle cx="20" cy="30" r="1.8" fill={div} opacity="0.7" />
+      <circle cx="26" cy="28" r="1.8" fill={div} opacity="0.7" />
+    </>
+  ),
+  // Shark — dorsal fin rising from water line
+  shark: (em) => (
+    <path d="M8,36 Q12,16 20,8 Q24,20 38,36 L30,36 Q26,24 20,20 Q16,24 14,36 Z" fill={em} opacity="0.88" />
+  ),
+  // Dolphin / Coastal — S-curve wave with fill
+  wave: (em, div) => (
+    <>
+      <path d="M2,30 Q8,18 14,22 Q18,26 22,20 Q28,14 34,18 Q38,22 38,30 L38,38 L2,38 Z" fill={em} opacity="0.65" />
+      <path d="M2,26 Q8,14 14,18 Q18,22 22,16 Q28,10 34,14 Q38,18 38,26" fill="none" stroke={em} strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
+    </>
+  ),
+  // Kangaroo — body ellipse + head + ear + tail + legs
+  roo: (em) => (
+    <>
+      <ellipse cx="20" cy="22" rx="9" ry="6" fill={em} opacity="0.88" />
+      <ellipse cx="29" cy="14" rx="5" ry="7" fill={em} opacity="0.88" />
+      <line x1="29" y1="7" x2="27" y2="3" stroke={em} strokeWidth="2" strokeLinecap="round" />
+      <path d="M11,26 Q6,32 8,38" fill="none" stroke={em} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="17" y1="28" x2="13" y2="38" stroke={em} strokeWidth="2" strokeLinecap="round" />
+      <line x1="22" y1="28" x2="26" y2="38" stroke={em} strokeWidth="2.5" strokeLinecap="round" />
+    </>
+  ),
+  // Dragon / Flame — fire tongue silhouette
+  flame: (em) => (
+    <path d="M14,38 Q8,28 12,20 Q10,24 16,18 Q14,22 18,14 Q16,18 22,10 Q20,16 24,12 Q22,18 26,14 Q26,20 30,16 Q32,22 28,28 Q32,34 26,38 Z" fill={em} opacity="0.88" />
+  ),
+  // Snake / Cobra — S-curve body
+  snake: (em) => (
+    <path d="M10,36 Q8,28 12,22 Q16,16 20,18 Q24,20 26,16 Q28,10 24,8 Q30,6 32,12 Q34,20 28,26 Q22,30 20,26 Q18,22 14,24 Q12,28 14,36 Z" fill={em} opacity="0.88" />
+  ),
+  // Demon / Devil — trident (3 tines + crossbar + handle)
+  trident: (em) => (
+    <>
+      <line x1="20" y1="38" x2="20" y2="6" stroke={em} strokeWidth="3.5" strokeLinecap="round" />
+      <line x1="10" y1="6" x2="10" y2="20" stroke={em} strokeWidth="3.5" strokeLinecap="round" />
+      <line x1="30" y1="6" x2="30" y2="20" stroke={em} strokeWidth="3.5" strokeLinecap="round" />
+      <line x1="10" y1="20" x2="30" y2="20" stroke={em} strokeWidth="2.5" />
+    </>
+  ),
+  // Thunder / Power / Chargers — lightning bolt
+  lightning: (em) => (
+    <polygon points="24,4 13,22 22,22 16,38 27,20 18,20 24,4" fill={em} opacity="0.9" />
+  ),
+  // Sun — center circle with 8 radiating rays
+  sun: (em) => (
+    <>
+      <circle cx="20" cy="20" r="6" fill={em} />
+      <line x1="29" y1="20" x2="36" y2="20" stroke={em} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="26.4" y1="26.4" x2="31.3" y2="31.3" stroke={em} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="20" y1="29" x2="20" y2="36" stroke={em} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="13.6" y1="26.4" x2="8.7" y2="31.3" stroke={em} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="11" y1="20" x2="4" y2="20" stroke={em} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="13.6" y1="13.6" x2="8.7" y2="8.7" stroke={em} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="20" y1="11" x2="20" y2="4" stroke={em} strokeWidth="2.5" strokeLinecap="round" />
+      <line x1="26.4" y1="13.6" x2="31.3" y2="8.7" stroke={em} strokeWidth="2.5" strokeLinecap="round" />
+    </>
+  ),
+  // Anchor — ring + staff + crossbar + flukes
+  anchor: (em) => (
+    <>
+      <circle cx="20" cy="11" r="5" fill="none" stroke={em} strokeWidth="2.5" />
+      <line x1="20" y1="16" x2="20" y2="36" stroke={em} strokeWidth="2.5" />
+      <line x1="11" y1="22" x2="29" y2="22" stroke={em} strokeWidth="2.5" />
+      <path d="M11,34 Q14,40 20,36 Q26,40 29,34" fill="none" stroke={em} strokeWidth="2.5" />
+    </>
+  ),
+  // King / Crown / Knight — five-point crown silhouette
+  crown: (em) => (
+    <polygon points="6,34 6,18 12,26 20,14 28,26 34,18 34,34" fill={em} opacity="0.88" />
+  ),
+  // Star / Ranger / Comet — bold 5-point star
+  star: (em) => (
+    <polygon
+      points="20,5 23.8,15.6 35,15.6 26,22.6 29.2,33.2 20,26.2 10.8,33.2 14,22.6 5,15.6 16.2,15.6"
+      fill={em}
+    />
+  ),
+  // Saint / Cross — bold plus-cross
+  cross: (em) => (
+    <>
+      <rect x="16.5" y="6" width="7" height="28" fill={em} rx="1.5" />
+      <rect x="6" y="16.5" width="28" height="7" fill={em} rx="1.5" />
+    </>
+  ),
+  // Stag / Deer / Buck — antler rack
+  antler: (em) => (
+    <path
+      d="M17,36 L17,22 L11,14 L8,8 L13,10 L15,16 L17,20 L20,12 L18,6 L22,6 L20,12 L23,20 L25,16 L27,10 L32,8 L29,14 L23,22 L23,36 Z"
+      fill={em}
+      opacity="0.88"
+    />
+  ),
+  // Giant / Mountain — twin mountain peaks
+  mountain: (em) => (
+    <polygon points="4,38 16,10 23,24 30,6 38,38" fill={em} opacity="0.88" />
+  ),
+};
+
+/** Keyword → motif key for lower-tier club names. */
+function motifKeyForName(name) {
+  const n = (name || "").toLowerCase();
+  if (/\b(eagle|falcon|condor|raptor|cockatoo|harrier)s?\b/.test(n)) return "wings";
+  if (/\bhawks?\b/.test(n)) return "wings";
+  if (/\bmagpies?\b/.test(n)) return "halfSplit";
+  if (/\b(crow|raven)s?\b/.test(n)) return "crow";
+  if (/\b(swan|seagull|gull)s?\b/.test(n)) return "swan";
+  if (/\blions?\b/.test(n)) return "lion";
+  if (/\bcats?\b/.test(n)) return "cat";
+  if (/\btigers?\b/.test(n)) return "tigerStripes";
+  if (/\b(panther|leopard|cheetah|jaguar)s?\b/.test(n)) return "paw";
+  if (/\bwolves?|\bwolf\b/.test(n)) return "paw";
+  if (/\bbulldogs?\b/.test(n)) return "bulldog";
+  if (/\bbullants?\b/.test(n)) return "paw";
+  if (/\bbulls?\b/.test(n)) return "bull";
+  if (/\bbears?\b/.test(n)) return "bear";
+  if (/\bsharks?\b/.test(n)) return "shark";
+  if (/\b(dolphin|orca|whale)s?\b/.test(n)) return "wave";
+  if (/\b(kangaroo|roo)s?\b/.test(n)) return "roo";
+  if (/\bdragons?\b/.test(n)) return "flame";
+  if (/\b(snake|cobra|viper|python|asp)s?\b/.test(n)) return "snake";
+  if (/\bsaints?\b/.test(n)) return "cross";
+  if (/\b(demon|devil)s?\b/.test(n)) return "trident";
+  if (/\b(charger|thunder|bolt)s?\b/.test(n)) return "lightning";
+  if (/\b(fire|flame|blaze|ember|phoenix|inferno)s?\b/.test(n)) return "flame";
+  if (/\bsuns?\b/.test(n)) return "sun";
+  if (/\b(pirate|anchor|docker)s?\b/.test(n)) return "anchor";
+  if (/\b(king|royal|crown|knight)s?\b/.test(n)) return "crown";
+  if (/\bstars?\b/.test(n)) return "star";
+  if (/\b(wave|tide)s?\b/.test(n)) return "wave";
+  if (/\b(coast|beach|bay|sea|ocean|marine)\b/.test(n)) return "wave";
+  if (/\b(stag|deer|buck|elk)s?\b/.test(n)) return "antler";
+  if (/\brooster?\b/.test(n)) return "wings";
+  if (/\bgiants?\b/.test(n)) return "mountain";
+  if (/\b(mountain|peak|highland|alpine)\b/.test(n)) return "mountain";
+  if (/\b(ranger|rover|rebel|warrior|spartan|raider|viking)s?\b/.test(n)) return "star";
+  if (/\b(jet|rocket|comet)s?\b/.test(n)) return "lightning";
+  if (/\bpower\b/.test(n)) return "lightning";
+  if (/\bport\b/.test(n)) return "anchor";
+  return null;
+}
+
+// Combine geometric + named motifs for richer hash-based fallback (33 total)
+const ALL_MOTIFS = [...MOTIFS, ...Object.values(NAMED_MOTIFS)];
+
+/**
  * Hand-crafted AFL club motifs. Each function receives (c1, c2, c3) — the club's
  * actual colors — and returns SVG JSX drawn in the 40×40 viewBox.
  * Inspired by real team visual identities; all original geometry.
@@ -279,7 +515,7 @@ export function ClubBadge({ club, size = "md", className = "" }) {
 
   const seed = String(club.id ?? club.short ?? "");
   const hash = hashStr(seed);
-  const motifIndex = hash % MOTIFS.length;
+  const motifIndex = hash % ALL_MOTIFS.length;
   // Stable, DOM-safe unique id for defs (avoids invalid chars / cross-badge clashes).
   const uid = `cb-${hash.toString(36)}`;
 
@@ -298,9 +534,12 @@ export function ClubBadge({ club, size = "md", className = "" }) {
 
   const clubId = String(club.id || "").toLowerCase();
   const customMotifFn = AFL_CLUB_MOTIFS[clubId];
+  const namedKey = customMotifFn ? null : motifKeyForName(club.name);
   const motifEl = customMotifFn
     ? customMotifFn(c1, c2, c3)
-    : MOTIFS[motifIndex](emblem, divider);
+    : namedKey && NAMED_MOTIFS[namedKey]
+      ? NAMED_MOTIFS[namedKey](emblem, divider)
+      : ALL_MOTIFS[motifIndex](emblem, divider);
 
   return (
     <div className={cls} title={club.name || club.short}>
