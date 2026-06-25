@@ -599,6 +599,10 @@ function advanceFinalsWeek(c, league) {
           drew: drewFinal,
         });
       }
+      // Store GF votes for Norm Smith Medal — highest vote-getter = BOG
+      if (matchLabel === 'Grand Final' && result.votes?.length) {
+        c.lastGrandFinalVotes = result.votes.reduce((acc, v) => { acc[v.playerId] = (acc[v.playerId] || 0) + v.votes; return acc; }, {});
+      }
       const hg = isHome ? (result.homeGoals ?? 0) : (result.awayGoals ?? 0);
       const hb = isHome ? (result.homeBehinds ?? 0) : (result.awayBehinds ?? 0);
       const ag = isHome ? (result.awayGoals ?? 0) : (result.homeGoals ?? 0);
@@ -898,9 +902,37 @@ function finishSeason(c, league) {
       brownlowWinner = { name: pName(player), votes, position: player.position };
     }
   }
+  // Coleman Medal — leading goalkicker at our club this season
+  const colemanPlayer = [...(c.squad || [])].sort((a, b) => (b.goals || 0) - (a.goals || 0))[0];
+  const colemanWinner = colemanPlayer && (colemanPlayer.goals || 0) > 0
+    ? { name: pName(colemanPlayer), goals: colemanPlayer.goals, season: c.season }
+    : null;
+
+  // Club Champion — our player with the most Brownlow votes
+  const clubChampionEntry = Object.entries(c.brownlow || {})
+    .filter(([id]) => c.squad.some(p => p.id === id))
+    .sort(([, a], [, b]) => b - a)[0];
+  const clubChampionPlayer = clubChampionEntry ? c.squad.find(p => p.id === clubChampionEntry[0]) : null;
+  const clubChampion = clubChampionPlayer
+    ? { name: pName(clubChampionPlayer), votes: clubChampionEntry[1] }
+    : null;
+
+  // Norm Smith Medal — best on ground in the Grand Final (only if we won premiership)
+  let normSmith = null;
+  if (champion && c.lastGrandFinalVotes) {
+    const nsEntry = Object.entries(c.lastGrandFinalVotes).sort(([, a], [, b]) => b - a)[0];
+    if (nsEntry) {
+      const nsPlayer = c.squad.find(p => p.id === nsEntry[0]);
+      if (nsPlayer) normSmith = { name: pName(nsPlayer), votes: nsEntry[1] };
+    }
+  }
+
   c.seasonSummary = {
     ...c.seasonSummary,
     brownlow: brownlowWinner,
+    coleman: colemanWinner,
+    clubChampion,
+    normSmith,
     highlights: (c.seasonHighlights || []).slice(0, 8),
   };
 
@@ -1051,6 +1083,9 @@ function finishSeason(c, league) {
     promoted, relegated, champion,
     topScorer: byGoals[0] ? { name: pName(byGoals[0]), goals: byGoals[0].goals || 0 } : null,
     brownlow: brownlowWinner,
+    colemanWinner,
+    clubChampion,
+    normSmith,
     finalsBracket: finalsBracketArchiveSnapshot(c.finalsBracket),
     highlights: (c.seasonHighlights || []).slice(0, 8),
   });
@@ -1380,7 +1415,16 @@ function finishSeason(c, league) {
     ...c.news,
   ].slice(0, 20);
   if (brownlowWinner) {
-    c.news = [{ week: 0, type: 'info', text: `🥇 Brownlow Medal: ${brownlowWinner.name} (${brownlowWinner.votes} votes)` }, ...c.news].slice(0, 20);
+    c.news = [{ week: 0, type: 'info', text: `🥇 Brownlow Medal: ${brownlowWinner.name} (${brownlowWinner.votes} votes)` }, ...c.news].slice(0, 25);
+  }
+  if (colemanWinner) {
+    c.news = [{ week: 0, type: 'win', text: `🥇 ${colemanWinner.name} wins the Coleman Medal with ${colemanWinner.goals} goals this season!` }, ...c.news].slice(0, 25);
+  }
+  if (clubChampion) {
+    c.news = [{ week: 0, type: 'info', text: `🏅 Club Champion: ${clubChampion.name} — ${clubChampion.votes} Brownlow votes this season.` }, ...c.news].slice(0, 25);
+  }
+  if (normSmith) {
+    c.news = [{ week: 0, type: 'win', text: `🏆 Norm Smith Medal: ${normSmith.name} — best on ground in the Grand Final.` }, ...c.news].slice(0, 25);
   }
   if (champion) bumpClubCulture(c, 15);
   c.crisisFiredThisSeason = false;
