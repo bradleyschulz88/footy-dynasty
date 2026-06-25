@@ -5,7 +5,7 @@ import { pickPressMoment } from './pressEvents.js';
 import { rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub, getAFLClubsForSeason } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred } from './playerGen.js';
-import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating } from './matchEngine.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating, calcSynergyBonus } from './matchEngine.js';
 import { getCoachingCall, resolveCoachingCall } from './coachingCalls.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
@@ -447,7 +447,8 @@ function startFinals(c, league) {
 
 function simFinalsPair(c, league, m, _roundLabel) {
   let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles)
-    + getCaptainMatchBonus(c, true);
+    + getCaptainMatchBonus(c, true)
+    + calcSynergyBonus(c.partnerships, c.lineup);
   const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
   const isHome = m.home === c.clubId;
   if (isPlayerMatch) {
@@ -1877,6 +1878,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         const opp = findClub(isHome ? m.away : m.home);
         let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles);
         myRating += getCaptainMatchBonus(c, false);
+        myRating += calcSynergyBonus(c.partnerships, c.lineup);
         const scoutPrep = scoutPrepRatingBonus(c, opp.id, ev.round);
         myRating += scoutPrep;
         // H2H psychological factor: bogey teams suppress confidence; dominated
@@ -2163,6 +2165,21 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
     c.news = [...milestones.items, ...(c.news || [])].slice(0, 22);
     // Season highlights — save milestone news to display in end-of-season recap
     c.seasonHighlights = [...(c.seasonHighlights || []), ...milestones.items].slice(0, 30);
+  }
+
+  // Partnership tracking: count shared lineup appearances for each pair of starters.
+  // ponytail: O(n²) over lineup (≤22 players → max 231 pairs). Grows unboundedly over
+  // many seasons; if saves become large, prune pairs with count < 5 at season end.
+  const lineupIds = (c.lineup || []).filter(Boolean);
+  if (lineupIds.length >= 2) {
+    const p = c.partnerships || {};
+    lineupIds.forEach((id1, i) => {
+      lineupIds.slice(i + 1).forEach((id2) => {
+        const key = [id1, id2].sort().join('_');
+        p[key] = (p[key] || 0) + 1;
+      });
+    });
+    c.partnerships = p;
   }
 
   // Crowd atmosphere: big home crowd gives a morale lift win or lose.
