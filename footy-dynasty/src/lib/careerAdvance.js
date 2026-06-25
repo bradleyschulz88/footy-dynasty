@@ -5,7 +5,7 @@ import { pickPressMoment } from './pressEvents.js';
 import { rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub, getAFLClubsForSeason } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred } from './playerGen.js';
-import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating } from './matchEngine.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating, pickInjury } from './matchEngine.js';
 import { getCoachingCall, resolveCoachingCall } from './coachingCalls.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
 import { generateFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
@@ -1646,12 +1646,23 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     const trainingInjuryPool = lineupPlayersOrdered(c.squad, c.lineup);
     if (rng() < trainingInjuryProb && trainingInjuryPool.length > 0) {
       const injId = pick(trainingInjuryPool).id;
-      const baseWeeks = rand(1, 2);
-      const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
-      c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
+      const inj = pickInjury();
+      const trainingMedRating = (c.staff || []).find((s) => s.id === 's6')?.rating ?? 60;
+      const trainingMedReduction = trainingMedRating >= 85 ? 2 : trainingMedRating >= 70 ? 1 : 0;
+      const trainingWeeks = Math.max(1, Math.min(inj.weeks, 2) - trainingMedReduction); // ponytail: cap training injuries at 2w base; severity still reflected in label
+      c.squad = c.squad.map((p) => {
+        if (p.id !== injId) return p;
+        let concussionsThisSeason = p.concussionsThisSeason || 0;
+        let finalTrainingWeeks = trainingWeeks;
+        if (inj.type === 'concussion') {
+          if (concussionsThisSeason >= 1) finalTrainingWeeks += 2;
+          concussionsThisSeason += 1;
+        }
+        return { ...p, injured: finalTrainingWeeks, injuryType: inj.type, injuryLabel: inj.label, injurySeverity: inj.severity, concussionsThisSeason };
+      });
       const injPlayer = c.squad.find((p) => p.id === injId);
       if (injPlayer) {
-        c.news = [{ week: c.week, type: 'loss', text: `🩹 ${injPlayer.firstName} ${injPlayer.lastName} pulled up sore at training (${weeks}w)` }, ...(c.news || [])].slice(0, 20);
+        c.news = [{ week: c.week, type: 'loss', text: `🩹 ${injPlayer.firstName} ${injPlayer.lastName} — ${inj.label} at training (${inj.severity}, est. ${injPlayer.injured}w)` }, ...(c.news || [])].slice(0, 20);
       }
     }
 
@@ -2189,18 +2200,40 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   const baseInjuryProb =
     0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001 - mit.probReduce;
   const injuryProb = effectiveInjuryRate(c, clamp(baseInjuryProb, 0.04, 0.28));
+  const medRating = (c.staff || []).find((s) => s.id === 's6')?.rating ?? 60;
+  const medReduction = medRating >= 85 ? 2 : medRating >= 70 ? 1 : 0;
+
+  const applyTypedInjury = (pid) => {
+    const inj = pickInjury();
+    let finalWeeks = Math.max(1, inj.weeks - medReduction);
+    c.squad = c.squad.map((p) => {
+      if (p.id !== pid) return p;
+      let concussionsThisSeason = p.concussionsThisSeason || 0;
+      if (inj.type === 'concussion') {
+        if (concussionsThisSeason >= 1) finalWeeks += 2; // AFL concussion protocol
+        concussionsThisSeason += 1;
+      }
+      const forcedRetirement = (inj.type === 'knee_acl' && (p.age || 0) >= 33 && rng() < 0.20)
+        ? true : p.forcedRetirement;
+      return { ...p, injured: finalWeeks, injuryType: inj.type, injuryLabel: inj.label, injurySeverity: inj.severity, concussionsThisSeason, forcedRetirement };
+    });
+    const player = c.squad.find((p) => p.id === pid);
+    if (player) {
+      const newsText = `🩹 ${player.firstName} ${player.lastName} — ${inj.label} (${inj.severity}, est. ${finalWeeks} week${finalWeeks !== 1 ? 's' : ''})`;
+      c.news = [{ week: c.week, type: 'loss', text: newsText }, ...(c.news || [])].slice(0, 20);
+      if (player.forcedRetirement) {
+        c.news = [{ week: c.week, type: 'warning', text: `💔 ${player.firstName} ${player.lastName} has been forced to retire due to an ACL injury.` }, ...(c.news || [])].slice(0, 20);
+      }
+    }
+  };
+
   (result.injuredPlayerIds || []).forEach((pid) => {
     if (!c.lineup.includes(pid)) return;
-    const baseWeeks = rand(1, 4);
-    const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
-    c.squad = c.squad.map((p) => (p.id === pid ? { ...p, injured: weeks } : p));
+    applyTypedInjury(pid);
   });
   const matchInjuryPool = lineupPlayersOrdered(c.squad, c.lineup);
   if (rng() < injuryProb && matchInjuryPool.length > 0) {
-    const injId = pick(matchInjuryPool).id;
-    const baseWeeks = rand(1, 4);
-    const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
-    c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
+    applyTypedInjury(pick(matchInjuryPool).id);
   }
   (result.reportedPlayerIds || []).forEach((pid) => {
     if (rng() < 0.35) {
