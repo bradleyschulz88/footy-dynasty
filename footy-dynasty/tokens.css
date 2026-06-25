@@ -83,23 +83,23 @@
   --S-club: #1B3B7A;
   --S-club-2: #FFD200;
 
-  /* Tactician Dark (Direction V4) — midnight navy, cyan/teal + amber.
+  /* AFL Matchday (Direction V4) — FM-style rich navy, Premiership Gold + MCG Grass.
      The shipped default look. Numbers use Chakra Petch; body uses Inter. */
-  --V4-bg: #0B0E14;
-  --V4-bg-2: #0E1320;
-  --V4-panel: #141925;
-  --V4-panel-2: #1A2030;
-  --V4-line: rgba(255, 255, 255, 0.07);
-  --V4-line-2: rgba(255, 255, 255, 0.15);
-  --V4-text: #E8EDF2;
-  --V4-text-dim: #8A94A6;
-  --V4-text-mute: #5A6577;
-  --V4-accent: #19D3C5;    /* cyan/teal — primary */
-  --V4-accent-2: #FFB020;  /* amber — secondary */
-  --V4-pos: #3DDC84;
-  --V4-neg: #FF5A52;
+  --V4-bg: #1A3050;
+  --V4-bg-2: #1E3A5E;
+  --V4-panel: #234468;
+  --V4-panel-2: #2B527A;
+  --V4-line: rgba(140, 190, 250, 0.22);
+  --V4-line-2: rgba(140, 190, 250, 0.38);
+  --V4-text: #EBF2FF;
+  --V4-text-dim: #B4CFF5;
+  --V4-text-mute: #7EAAD9;
+  --V4-accent: #C8960A;    /* Premiership Gold — primary */
+  --V4-accent-2: #1A7A45;  /* MCG Grass Green — secondary */
+  --V4-pos: #2EB872;
+  --V4-neg: #D94F4F;
   --V4-club: #1B3B7A;
-  --V4-club-2: #FFB020;
+  --V4-club-2: #C8960A;
 }
 
 /* shared */
@@ -679,8 +679,8 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   --A-club-2:    var(--V4-club-2);
 }
 .dirV4 {
-  --fd-oval-opacity: 0.06;
-  --fd-on-accent: #04201E;
+  --fd-oval-opacity: 0.12;
+  --fd-on-accent: #1a0800;
   background: var(--V4-bg);
   color: var(--V4-text);
   font-family: "Inter", system-ui, sans-serif;
@@ -693,8 +693,8 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   content: "";
   position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse 65% 45% at 22% 8%, rgba(25, 211, 197, 0.06), transparent 62%),
-    radial-gradient(ellipse 55% 45% at 85% 92%, rgba(255, 176, 32, 0.04), transparent 64%);
+    radial-gradient(ellipse 65% 45% at 22% 8%, rgba(200, 150, 10, 0.08), transparent 62%),
+    radial-gradient(ellipse 55% 45% at 85% 92%, rgba(26, 122, 69, 0.06), transparent 64%);
   pointer-events: none;
 }
 /* Chakra Petch carries the condensed-numeric "tactician" feel for displays. */
@@ -709,7 +709,7 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   background: var(--V4-panel);
   border: 1px solid var(--V4-line);
   border-radius: var(--radius-b-panel);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: 0 1px 2px rgba(5, 15, 40, 0.25), 0 6px 22px rgba(5, 15, 40, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.10);
 }
 .dirV4 .panel-flat {
   background: var(--V4-panel);
@@ -738,9 +738,9 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   padding: 3px 8px; border-radius: var(--radius-pill);
   font-family: "JetBrains Mono", monospace;
   font-size: var(--font-caption); letter-spacing: 0.12em; text-transform: uppercase;
-  background: rgba(25, 211, 197, 0.12);
+  background: rgba(200, 150, 10, 0.15);
   color: var(--V4-accent);
-  border: 1px solid rgba(25, 211, 197, 0.30);
+  border: 1px solid rgba(200, 150, 10, 0.35);
 }
 .dirV4 .pill-ghost {
   display: inline-flex; align-items: center; gap: 6px;
@@ -765,8 +765,8 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
 }
 .dirV4 .btn-ghost:hover { border-color: var(--V4-accent); color: var(--V4-accent); background: color-mix(in srgb, var(--V4-accent) 8%, transparent); }
 .dirV4 .btn-primary {
-  background: linear-gradient(120deg, var(--V4-accent), #0FA89C);
-  color: #04201E;
+  background: linear-gradient(120deg, var(--V4-accent), #A07508);
+  color: #1a0800;
   padding: 10px 18px;
   border-radius: var(--radius-xl);
   font-family: "JetBrains Mono", monospace;
@@ -776,11 +776,11 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   text-transform: uppercase;
   border: 0;
   cursor: pointer;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.22) inset, 0 4px 20px rgba(25, 211, 197, 0.30);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.28) inset, 0 4px 20px rgba(200, 150, 10, 0.38);
 }
 .dirV4 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.22) inset, 0 6px 28px rgba(25, 211, 197, 0.42);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.28) inset, 0 6px 28px rgba(200, 150, 10, 0.52);
 }
 .dirV4 .grid-bg {
   background-image:
