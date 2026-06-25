@@ -72,6 +72,14 @@ export function formBorderColor(form) {
   return "rgba(232,212,74,0.80)";
 }
 
+function zoneLineColor(zone) {
+  if (zone === "B" || zone === "HB") return "#2A65C8";
+  if (zone === "C") return "#1A7A45";
+  if (zone === "HF" || zone === "F") return "#C84040";
+  if (zone === "RUCK") return "#8B60D0";
+  return "rgba(255,255,255,0.3)";
+}
+
 function initials(p) {
   const a = p.firstName?.[0] || "";
   const b = p.lastName?.[0] || "";
@@ -104,23 +112,27 @@ function mergeRefs(...refs) {
 
 // ── Compact ground position chip (oval slots 0-14) ─────────────────────────────
 
-function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps }) {
+// Direction B jersey card chip — gradient by zone, big jersey number, form bar
+function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps, zone }) {
   const { listeners, attributes } = dragProps;
   const num = squadNumberDisplay(player);
   const ovrColor = ratingColor(player.overall);
-  const fBorder = formBorderColor(player.form ?? 60);
+  const lineCol = zoneLineColor(zone);
+  const formPct = Math.max(0, Math.min(100, player.form ?? 60));
+  const formCol = formBorderColor(player.form ?? 60);
 
   return (
     <button
       type="button"
       className="w-full h-full flex flex-col cursor-grab active:cursor-grabbing overflow-hidden"
       style={{
-        background: stitch ? "rgba(4,12,6,0.85)" : "rgba(6,12,20,0.82)",
-        borderLeft: `3px solid ${fBorder}`,
-        paddingLeft: "4px",
+        background: stitch
+          ? "rgba(4,12,6,0.92)"
+          : `linear-gradient(180deg, ${lineCol}55 0%, ${lineCol}28 55%, rgba(8,16,32,0.94) 100%)`,
+        paddingLeft: "3px",
         paddingRight: "3px",
-        paddingTop: "3px",
-        paddingBottom: "3px",
+        paddingTop: "2px",
+        paddingBottom: "0px",
       }}
       {...listeners}
       {...attributes}
@@ -130,7 +142,7 @@ function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps
       <div className="flex items-center justify-between w-full shrink-0">
         <span
           className="text-[6px] font-mono font-bold uppercase leading-none tracking-wide"
-          style={{ color: stitch ? "rgba(200,255,61,0.42)" : "rgba(255,255,255,0.36)" }}
+          style={{ color: stitch ? "rgba(200,255,61,0.45)" : `${lineCol}DD` }}
         >
           {slotLabel}
         </span>
@@ -145,35 +157,34 @@ function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps
           {player.overall}
         </span>
       </div>
-      {/* Large initials */}
+      {/* Large jersey number as hero */}
       <div className="flex-1 flex items-center justify-center min-h-0">
         <span
-          className="font-black leading-none tracking-tight"
+          className="font-black leading-none"
           style={{
-            fontSize: "clamp(13px, 4.5vw, 18px)",
-            color: stitch ? "rgba(200,255,61,0.92)" : "rgba(255,255,255,0.92)",
+            fontSize: "clamp(14px, 5vw, 22px)",
+            color: "rgba(255,255,255,0.96)",
+            textShadow: stitch ? "none" : `0 1px 10px ${lineCol}90`,
           }}
         >
-          {initials(player)}
+          {num}
         </span>
       </div>
-      {/* Squad number + short name */}
-      <div className="flex items-center gap-0.5 w-full shrink-0 overflow-hidden">
+      {/* Short name */}
+      <div className="w-full shrink-0 overflow-hidden px-0.5 mb-0.5">
         <span
-          className="font-bold shrink-0 leading-none"
-          style={{ fontSize: "clamp(5px, 1.5vw, 6px)", color: "rgba(176,140,230,0.88)" }}
-        >
-          #{num}
-        </span>
-        <span
-          className="truncate leading-none font-semibold"
+          className="block truncate text-center leading-none font-medium"
           style={{
-            fontSize: "clamp(5px, 1.8vw, 7px)",
-            color: stitch ? "rgba(200,255,61,0.54)" : "rgba(255,255,255,0.60)",
+            fontSize: "clamp(4.5px, 1.5vw, 6px)",
+            color: stitch ? "rgba(200,255,61,0.54)" : "rgba(210,225,255,0.65)",
           }}
         >
           {shortName(player)}
         </span>
+      </div>
+      {/* Form bar at bottom */}
+      <div className="w-full h-[3px] shrink-0 overflow-hidden" style={{ background: "rgba(0,0,0,0.35)" }}>
+        <div style={{ width: `${formPct}%`, height: "100%", background: formCol }} />
       </div>
     </button>
   );
@@ -352,6 +363,7 @@ const FilledLineupSlot = React.memo(function FilledLineupSlot({
           slotLabel={slotLabel}
           onSelectPlayer={onSelectPlayer}
           dragProps={{ listeners, attributes }}
+          zone={zone}
         />
         {outOfPos && (
           <span
@@ -493,12 +505,12 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
         </div>
       </div>
 
-      {/* ── Square ground container with oval SVG ── */}
+      {/* ── Portrait ground container with oval SVG ── */}
       <div
-        className="relative w-full max-w-[min(92vw,22rem)] mx-auto rounded-xl overflow-hidden"
+        className="relative w-full max-w-[min(80vw,19rem)] mx-auto rounded-xl overflow-hidden"
         style={{
-          aspectRatio: "1 / 1",
-          background: stitch ? "#040c06" : "#0a1a0d",
+          aspectRatio: "4 / 5",
+          background: stitch ? "#040c06" : "#0d2818",
         }}
       >
         {/* SVG field markings — drawn in a 100×100 coordinate space */}
@@ -549,9 +561,9 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           <line x1="39" y1="91"  x2="39" y2="97.5" stroke="rgba(255,255,255,0.55)" strokeWidth="0.85" />
           <line x1="61" y1="91"  x2="61" y2="97.5" stroke="rgba(255,255,255,0.55)" strokeWidth="0.85" />
           <line x1="67" y1="92"  x2="67" y2="96.5" stroke="rgba(255,255,255,0.30)" strokeWidth="0.55" />
-          {/* Subtle grass stripe bands */}
-          <ellipse cx="50" cy="25" rx="38" ry="16" fill="rgba(255,255,255,0.018)" />
-          <ellipse cx="50" cy="75" rx="38" ry="16" fill="rgba(255,255,255,0.018)" />
+          {/* Zone color tints — back 50 = blue, forward 50 = red */}
+          <ellipse cx="50" cy="24" rx="36" ry="18" fill="rgba(42,101,200,0.10)" />
+          <ellipse cx="50" cy="76" rx="36" ry="18" fill="rgba(200,64,64,0.10)" />
         </svg>
 
         {/* Zone labels at left edge */}
