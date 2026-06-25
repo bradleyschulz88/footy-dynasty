@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Trophy, ChevronRight, ChevronLeft, Check, Zap } from "lucide-react";
+import { Trophy, ChevronRight, ChevronLeft, Check, Zap, MapPin } from "lucide-react";
 import { STATES, PYRAMID, LEAGUES_BY_STATE, findClub } from "../data/pyramid.js";
 import { generateSquad } from "../lib/playerGen.js";
 import {
@@ -35,17 +35,162 @@ import { LINEUP_CAP } from "../lib/lineupHelpers.js";
 import { startingAccreditationForTier } from "../lib/coachReputation.js";
 import { Pill } from "../components/primitives.jsx";
 
-// Per-state colour identity used on selection cards
+// Per-state identity used on map + selection cards
 const STATE_META = {
-  VIC: { color: "#003087", emoji: "🏉", tagline: "The Heartland",       desc: "Most clubs in the country. The game's birthplace." },
-  SA:  { color: "#E31837", emoji: "🦘", tagline: "SANFL Country",       desc: "Second oldest league. Rich, deep football culture." },
-  WA:  { color: "#003D72", emoji: "🌅", tagline: "WAFL Territory",      desc: "WAFL roots with two AFL giants on the horizon." },
-  TAS: { color: "#007A53", emoji: "🍎", tagline: "Apple Isle",          desc: "Tassie Devils incoming. History in the making." },
-  NT:  { color: "#F58025", emoji: "🐊", tagline: "Top End Footy",       desc: "Remote grounds, passionate supporters, raw talent." },
-  QLD: { color: "#7B1D41", emoji: "🌴", tagline: "North of the Border", desc: "Suns, Lions and a fast-growing local competition." },
-  NSW: { color: "#009EE0", emoji: "🌉", tagline: "Swans Territory",     desc: "Sydney footy heartland. Swans & Giants country." },
-  ACT: { color: "#002B5C", emoji: "🏛️", tagline: "Capital Territory",   desc: "Canberra footy — compact, competitive, community." },
+  VIC: { color: "#1D4ED8", tagline: "The Heartland",       desc: "The game's birthplace. More clubs, more leagues, more history than anywhere else in the country.",
+         bullets: ["Most clubs of any state — hundreds at community level", "VFL: where Australian rules was invented in 1858", "MCG awaits at the top of the pyramid"] },
+  SA:  { color: "#E31837", tagline: "SANFL Country",       desc: "Second oldest league in the world. The culture here runs bone-deep — footy isn't just a sport, it's identity.",
+         bullets: ["SANFL — one of the world's oldest football leagues", "Adelaide Oval: a cathedral that doubles as a footy ground", "Passionate supporter culture stretching back generations"] },
+  WA:  { color: "#003D72", tagline: "WAFL Territory",      desc: "WAFL roots with a proud independent culture. West Australians play their own way — physical, direct, relentless.",
+         bullets: ["WAFL: 8 clubs with fierce Perth followings", "Optus Stadium is the game's most modern venue", "Remote communities produce elite athletes every generation"] },
+  TAS: { color: "#007A53", tagline: "Apple Isle",          desc: "The only state without an AFL licence — until now. Tasmania is getting a team, and you could help build the culture.",
+         bullets: ["Tasmania Devils: incoming AFL club from 2028", "History in the making — get in at the ground floor", "Tight communities, genuine passion, no corporate noise"] },
+  NT:  { color: "#F58025", tagline: "Top End Footy",       desc: "Remote grounds, passionate supporters, raw talent. The Territory produces elite athletes at a rate that defies its population.",
+         bullets: ["Highest per-capita AFL talent production in Australia", "NTFL: year-round competition unlike anywhere else", "Remote communities with extraordinary football culture"] },
+  QLD: { color: "#7B1D41", tagline: "North of the Border", desc: "Suns, Lions and a fast-growing local competition. Queensland has become a genuine football state.",
+         bullets: ["QAFL: competitive league spread from Brisbane to Gold Coast", "Two AFL clubs in the same state — Brisbane & Gold Coast", "Growing grassroots scene with massive recruitment potential"] },
+  NSW: { color: "#009EE0", tagline: "Swans Territory",     desc: "Sydney footy has always had to fight for attention. That struggle built toughness — the Swans are proof.",
+         bullets: ["Sydney Swans: one of the AFL's most iconic clubs", "Greater Western Sydney: fastest-growing AFL club", "NSW AFL: competitive state league with deep suburban roots"] },
+  ACT: { color: "#002B5C", tagline: "Capital Territory",   desc: "Small by population, enormous in football heart. Canberra footy is compact, competitive, and community-driven.",
+         bullets: ["ACTAFL: tight competition where every game matters", "GWS Giants cover the region — clear AFL pathway exists", "Capital ambition: punching above its weight for a century"] },
 };
+
+function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
+  const stateShapes = [
+    { key: 'WA',  path: 'M 12,45 L 288,45 L 288,640 L 12,640 Z',                             cx: 150, cy: 342 },
+    { key: 'NT',  path: 'M 288,45 L 500,45 L 500,385 L 288,385 Z',                           cx: 394, cy: 215 },
+    { key: 'SA',  path: 'M 288,385 L 500,385 L 500,505 L 548,505 L 548,640 L 288,640 Z',     cx: 388, cy: 512 },
+    { key: 'QLD', path: 'M 500,45 L 800,45 L 800,420 L 548,420 L 500,385 Z',                 cx: 654, cy: 225 },
+    { key: 'NSW', path: 'M 548,420 L 800,420 L 778,565 L 548,565 Z',                         cx: 665, cy: 490 },
+    { key: 'VIC', path: 'M 548,565 L 778,565 L 790,640 L 548,640 Z',                         cx: 665, cy: 605 },
+    { key: 'TAS', path: 'M 598,672 L 688,672 L 688,750 L 598,750 Z',                         cx: 643, cy: 711 },
+  ];
+  return (
+    <div className="rounded-xl overflow-hidden border border-aline/40" style={{ background: 'var(--A-panel)' }}>
+      <svg viewBox="0 0 820 770" className="w-full block"
+        style={{ background: 'color-mix(in srgb, var(--A-accent) 3%, var(--A-panel-2))' }}
+        aria-label="Map of Australia — select a state to begin">
+        {stateShapes.map(({ key, path, cx, cy }) => {
+          const meta = STATE_META[key];
+          const isHov = hoveredState === key;
+          const isSel = selectedState === key;
+          const active = isHov || isSel;
+          return (
+            <g key={key} style={{ cursor: 'pointer' }}
+              onClick={() => onSelect(key)}
+              onMouseEnter={() => onHover(key)}
+              onMouseLeave={() => onHover(null)}>
+              <path d={path}
+                style={{
+                  fill: isSel ? `${meta.color}55` : isHov ? `${meta.color}28` : 'var(--A-panel-2)',
+                  stroke: active ? meta.color : 'var(--A-line)',
+                  strokeWidth: isSel ? 2.5 : 1,
+                  transition: 'fill 0.15s ease, stroke 0.15s ease',
+                }}
+              />
+              <text x={cx} y={cy + 4} textAnchor="middle"
+                style={{
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  fill: active ? meta.color : 'var(--A-text-mute)',
+                  fontWeight: active ? 700 : 400,
+                  pointerEvents: 'none',
+                  transition: 'fill 0.15s ease',
+                  userSelect: 'none',
+                }}>
+                {key}
+              </text>
+            </g>
+          );
+        })}
+        {/* ACT — circle marker since polygon is too small to interact with */}
+        {(() => {
+          const key = 'ACT';
+          const meta = STATE_META[key];
+          const isHov = hoveredState === key;
+          const isSel = selectedState === key;
+          const active = isHov || isSel;
+          return (
+            <g style={{ cursor: 'pointer' }}
+              onClick={() => onSelect(key)}
+              onMouseEnter={() => onHover(key)}
+              onMouseLeave={() => onHover(null)}>
+              <circle cx={674} cy={506} r={16}
+                style={{
+                  fill: isSel ? `${meta.color}55` : isHov ? `${meta.color}28` : 'var(--A-panel-2)',
+                  stroke: active ? meta.color : 'var(--A-line)',
+                  strokeWidth: isSel ? 2.5 : 1,
+                  transition: 'fill 0.15s ease, stroke 0.15s ease',
+                }}
+              />
+              <text x={674} y={510} textAnchor="middle"
+                style={{
+                  fontSize: 8,
+                  fontFamily: 'monospace',
+                  fill: active ? meta.color : 'var(--A-text-mute)',
+                  fontWeight: 700,
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}>
+                ACT
+              </text>
+            </g>
+          );
+        })()}
+      </svg>
+    </div>
+  );
+}
+
+function StateDetailPanel({ state: activeState, selectedState, onContinue }) {
+  if (!activeState) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[320px] text-center px-6 py-8">
+        <MapPin className="w-7 h-7 mb-3 opacity-30" style={{ color: 'var(--A-text-mute)' }} />
+        <div className="text-[11px] font-mono uppercase tracking-widest" style={{ color: 'var(--A-text-mute)' }}>
+          Hover a state to preview
+        </div>
+      </div>
+    );
+  }
+  const meta = STATE_META[activeState];
+  const leagueCount = LEAGUES_BY_STATE(activeState).length;
+  return (
+    <div className="px-5 py-6">
+      <div className="font-display text-7xl leading-none tracking-wider" style={{ color: meta.color }}>
+        {activeState}
+      </div>
+      <div className="text-[10px] uppercase tracking-widest font-mono font-bold mt-1" style={{ color: meta.color }}>
+        {meta.tagline}
+      </div>
+      <p className="text-sm mt-4 leading-relaxed text-atext-dim">
+        {meta.desc}
+      </p>
+      <ul className="mt-4 space-y-2">
+        {meta.bullets.map((b, i) => (
+          <li key={i} className="flex items-start gap-2 text-[12px] text-atext-dim">
+            <span className="mt-0.5 flex-shrink-0" style={{ color: meta.color }}>▸</span>
+            <span>{b}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-4 font-mono text-[11px] text-atext-mute">
+        {leagueCount} league{leagueCount === 1 ? '' : 's'}
+      </div>
+      {selectedState === activeState && (
+        <button type="button" onClick={onContinue}
+          className="mt-6 w-full py-3 rounded-xl font-display text-lg tracking-widest transition-all"
+          style={{
+            background: 'linear-gradient(135deg, var(--A-accent), var(--A-accent-2))',
+            color: '#0A0A0A',
+            boxShadow: '0 4px 16px color-mix(in srgb, var(--A-accent) 30%, transparent)',
+          }}>
+          Start in {selectedState} →
+        </button>
+      )}
+    </div>
+  );
+}
 
 function SetupPyramidHint({ state, tier, leagueKey }) {
   if (!state) return null;
@@ -372,6 +517,7 @@ export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResum
   const [loading, setLoading] = useState(false);
   const [startError, setStartError] = useState(null);
   const slotsWithSaves = SLOT_IDS.filter(s => existingSlots && existingSlots[s]);
+  const [hoveredState, setHoveredState] = useState(null);
 
   const setStep          = (v) => { saveSetup({ step: v });        _setStep(v); };
   const setSelState      = (v) => { saveSetup({ state: v });       _setSelState(v); };
@@ -453,46 +599,50 @@ export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResum
 
       {/* ── Main content ─────────────────────────────────────── */}
       <div className="flex-1 max-w-5xl mx-auto w-full px-4 md:px-8 py-6 md:py-8">
-        {/* Stepper */}
-        <div className="flex flex-wrap items-center gap-2 mb-6 md:mb-8">
-          {setupLabels.map((label, i) => (
-            <div key={label} className="flex items-center gap-1.5 md:gap-2">
-              <div
-                className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center text-xs md:text-sm font-bold transition-all ${
-                  setupVisualStep === i
-                    ? 'text-[#0A0A0A]'
-                    : i < setupVisualStep
-                      ? 'border border-aaccent/50 text-aaccent'
-                      : 'bg-apanel text-atext-mute border border-aline'
-                }`}
-                style={setupVisualStep === i ? { background: 'linear-gradient(135deg, var(--A-accent), var(--A-accent-2))' } : undefined}
-              >
-                {i < setupVisualStep ? '✓' : i + 1}
-              </div>
-              <span className={`text-xs md:text-sm font-semibold hidden sm:inline ${setupVisualStep === i ? 'text-atext' : 'text-atext-mute'}`}>{label}</span>
-              {i < setupLabels.length - 1 && <ChevronRight className="w-3 h-3 text-atext-mute mx-0.5" />}
-            </div>
-          ))}
+        {/* Step indicator — thin progress bar */}
+        <div className="mb-6 md:mb-8">
+          <div className="flex justify-between mb-1.5">
+            {setupLabels.map((label, i) => (
+              <span key={label} className="text-[10px] font-mono uppercase tracking-widest"
+                style={{ color: i <= setupVisualStep ? 'var(--A-accent)' : 'var(--A-text-mute)' }}>
+                {label}
+              </span>
+            ))}
+          </div>
+          <div className="h-0.5 w-full rounded-full overflow-hidden" style={{ background: 'var(--A-line)' }}>
+            <div className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${(setupVisualStep / Math.max(setupLabels.length - 1, 1)) * 100}%`,
+                background: 'linear-gradient(90deg, var(--A-accent), var(--A-accent-2))',
+              }} />
+          </div>
+          <div className="mt-1.5 text-right text-[10px] font-mono text-atext-mute">
+            {setupVisualStep + 1} / {setupLabels.length}
+          </div>
         </div>
 
         <AnimatePresence mode="wait" initial={false}>
           {/* ── STEP 0: WHERE WILL YOUR STORY BEGIN? ─── */}
           {step === 0 && (
-            <motion.div key="setup-step-0" className="space-y-8" {...slideIn}>
+            <motion.div key="setup-step-0" className="space-y-6" {...slideIn}>
 
-              {/* Quick Start — skip the whole flow with a sensible default */}
+              {/* Quick Start — elevated fast-track banner */}
               {onQuickStart && (
                 <motion.button type="button" onClick={onQuickStart}
                   whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}
-                  className="w-full panel rounded-xl p-4 flex items-center gap-4 text-left group">
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'linear-gradient(135deg, var(--A-accent), var(--A-accent-2))', boxShadow: '0 4px 16px color-mix(in srgb, var(--A-accent) 30%, transparent)' }}>
-                    <Zap className="w-5 h-5" style={{ color: 'var(--fd-on-accent, #0A0D0C)' }} />
+                  className="w-full rounded-xl p-4 flex items-center gap-4 text-left group cursor-pointer"
+                  style={{
+                    background: 'color-mix(in srgb, var(--A-accent) 8%, var(--A-panel))',
+                    border: '1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)',
+                  }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'linear-gradient(135deg, var(--A-accent), var(--A-accent-2))' }}>
+                    <Zap className="w-5 h-5" style={{ color: '#0A0A0A' }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-atext">Quick Start</div>
                     <div className="text-[11px] text-atext-dim mt-0.5">
-                      Drop straight into a community club on a forgiving difficulty — no setup needed.
+                      Drop straight in, no setup — a community club on forgiving difficulty.
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-aaccent flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
@@ -549,15 +699,35 @@ export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResum
                 );
               })()}
 
-              {/* State selection — the primary CTA */}
+              {/* State selection */}
               <div>
                 <h2 className="font-display text-4xl md:text-5xl tracking-wider leading-tight mb-1">
                   WHERE WILL YOUR{' '}
                   <span style={{ color: 'var(--A-accent)' }}>STORY BEGIN?</span>
                 </h2>
-                <p className="text-atext-dim text-sm mb-6">Each state has its own football culture, pyramid and clubs.</p>
+                <p className="text-atext-dim text-sm mb-5">Each state has its own football culture, pyramid and clubs. Hover to explore, click to choose.</p>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {/* Desktop: split map + detail panel */}
+                <div className="hidden lg:grid lg:grid-cols-5 gap-6 items-start">
+                  <div className="lg:col-span-3">
+                    <AustraliaMap
+                      hoveredState={hoveredState}
+                      selectedState={state}
+                      onHover={setHoveredState}
+                      onSelect={(s) => setSelState(s)}
+                    />
+                  </div>
+                  <div className="lg:col-span-2 panel rounded-xl min-h-[320px]">
+                    <StateDetailPanel
+                      state={hoveredState || state}
+                      selectedState={state}
+                      onContinue={() => setStep(1)}
+                    />
+                  </div>
+                </div>
+
+                {/* Mobile: card grid without emoji */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:hidden">
                   {STATES.map(s => {
                     const meta = STATE_META[s];
                     const leagueCount = LEAGUES_BY_STATE(s).length;
@@ -567,10 +737,8 @@ export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResum
                         whileHover={{ y: -3, scale: 1.01 }}
                         whileTap={{ scale: 0.97 }}
                         className="panel rounded-xl overflow-hidden text-left cursor-pointer">
-                        {/* State colour accent strip */}
                         <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${meta.color}, ${meta.color}88)` }} />
                         <div className="p-4">
-                          <div className="text-3xl mb-2 leading-none">{meta.emoji}</div>
                           <div className="font-display text-2xl tracking-wide text-atext leading-none">{s}</div>
                           <div className="text-[10px] font-mono uppercase tracking-widest mt-1 font-bold" style={{ color: meta.color }}>
                             {meta.tagline}
@@ -586,7 +754,7 @@ export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResum
                 </div>
               </div>
 
-              {/* Skip-setup preference — tucked away at bottom */}
+              {/* Skip-setup preference */}
               <label className="flex items-start gap-3 cursor-pointer panel rounded-xl p-4">
                 <input type="checkbox"
                   className="mt-0.5"
