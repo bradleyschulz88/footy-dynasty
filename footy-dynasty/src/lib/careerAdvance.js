@@ -986,10 +986,54 @@ function finishSeason(c, league) {
   c.pendingStaffRenewals = buildStaffRenewalQueue(c.staff);
   c.aiSquads = ageAiSquads(c.aiSquads || {}, newLeagueTier, c.season);
   c.tradePool = generateTradePool(c.leagueKey, c.season);
+
+  // Father-son pipeline — players with 150+ club games can generate a son prospect.
+  // ponytail: only tier-1 clubs have the national draft; F/S only makes sense there.
+  if (league.tier === 1) {
+    const eligible = c.squad.filter((p) => (p.legendGames || 0) >= 150 && !p.hasSonRegistered);
+    eligible.forEach((father) => {
+      if (rng() < 0.3) {
+        const sonAge = 16 + Math.floor(rng() * 4);
+        const sonRating = Math.round(55 + rng() * 30);
+        const sonProspect = {
+          id: `fs_${father.id}_${c.season}`,
+          firstName: father.firstName,
+          lastName: father.lastName,
+          age: sonAge,
+          position: pick(['MID', 'FWD', 'DEF', 'RUC']),
+          overall: sonRating,
+          potential: Math.min(95, sonRating + Math.round(rng() * 15)),
+          fatherSon: true,
+          fatherClubId: c.clubId,
+          fatherName: `${father.firstName} ${father.lastName}`,
+          fatherGames: father.legendGames || 0,
+          scoutReveal: 3, // F/S prospects are fully visible — clubs know who they are
+        };
+        c.fatherSonPipeline = [...(c.fatherSonPipeline || []), sonProspect];
+        c.squad = c.squad.map((p) => p.id === father.id ? { ...p, hasSonRegistered: true } : p);
+        c.news = [{
+          week: c.week,
+          type: 'info',
+          text: `⭐ ${father.firstName} ${father.lastName}'s son has been registered as a father-son prospect. The dynasty continues.`,
+        }, ...(c.news || [])].slice(0, 25);
+      }
+    });
+  }
+
   seedNationalDraft(c, league, { ladderSnapshot: sorted, inaugural: false, force: true });
   // seedNationalDraft clears the pool and marks 'complete' for tier 2/3 careers —
   // only tier 1 re-enters the scouting window.
   if (careerHasNationalDraft(c, league)) c.draftPhase = 'scouting';
+
+  // Age the father-son pipeline and inject draft-eligible prospects into the pool.
+  if (Array.isArray(c.fatherSonPipeline) && c.fatherSonPipeline.length) {
+    c.fatherSonPipeline = c.fatherSonPipeline.map((p) => ({ ...p, age: p.age + 1 }));
+    const eligible = c.fatherSonPipeline.filter((p) => p.age >= 17 && !c.draftPool?.some((d) => d.id === p.id));
+    if (eligible.length && Array.isArray(c.draftPool)) {
+      c.draftPool = [...eligible, ...c.draftPool];
+    }
+  }
+
   c.draftHistory = [];
   syncRecruitPhaseInboxRows(c);
 
@@ -1850,6 +1894,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
         ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
         goals: p.goals + gAdd, behinds: p.behinds + rand(0, 1), disposals: p.disposals + rand(6, 18),
         marks: p.marks + rand(1, 4), tackles: p.tackles + rand(1, 3), gamesPlayed: p.gamesPlayed + 1,
+        legendGames: (p.legendGames || 0) + 1,
       };
     });
     const preMeta = { round: 0 };
@@ -2172,7 +2217,8 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
     let np = { ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
       weeksWithoutGame: 0,
       goals: p.goals + (att.goals || 0), behinds: p.behinds + (att.behinds || 0), disposals: p.disposals + dispAdd,
-      marks: p.marks + markAdd, tackles: p.tackles + tackleAdd, gamesPlayed: p.gamesPlayed + 1 };
+      marks: p.marks + markAdd, tackles: p.tackles + tackleAdd, gamesPlayed: p.gamesPlayed + 1,
+      legendGames: (p.legendGames || 0) + 1 };
     if (resultReason) np = adjustMorale(np, resultDelta, resultReason, meta.round);
     // Cheap "starred" bump: vote-getters / milestone heroes get a lift, logged.
     if (votes > 0) np = adjustMorale(np, 2, MORALE_REASONS.bestOnGround, meta.round);
