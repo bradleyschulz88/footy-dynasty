@@ -807,8 +807,8 @@ export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResum
                 </h2>
                 <p className="text-atext-dim text-sm mb-5">Each state has its own football culture, pyramid and clubs. Hover to explore, click to choose.</p>
 
-                {/* Desktop: split map + detail panel */}
-                <div className="hidden lg:grid lg:grid-cols-5 gap-6 items-start">
+                {/* Map + detail panel — map visible on all screen sizes */}
+                <div className="grid lg:grid-cols-5 gap-6 items-start">
                   <div className="lg:col-span-3">
                     <AustraliaMap
                       hoveredState={hoveredState}
@@ -824,33 +824,6 @@ export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResum
                       onContinue={() => setStep(1)}
                     />
                   </div>
-                </div>
-
-                {/* Mobile: card grid without emoji */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:hidden">
-                  {STATES.map(s => {
-                    const meta = STATE_META[s];
-                    const leagueCount = LEAGUES_BY_STATE(s).length;
-                    return (
-                      <motion.button key={s} type="button"
-                        onClick={() => { setSelState(s); setStep(1); }}
-                        whileHover={{ y: -3, scale: 1.01 }}
-                        whileTap={{ scale: 0.97 }}
-                        className="panel rounded-xl overflow-hidden text-left cursor-pointer">
-                        <div className="h-1.5" style={{ background: `linear-gradient(90deg, ${meta.color}, ${meta.color}88)` }} />
-                        <div className="p-4">
-                          <div className="font-display text-2xl tracking-wide text-atext leading-none">{s}</div>
-                          <div className="text-[10px] font-mono uppercase tracking-widest mt-1 font-bold" style={{ color: meta.color }}>
-                            {meta.tagline}
-                          </div>
-                          <div className="text-[11px] text-atext-dim mt-2 leading-snug">{meta.desc}</div>
-                          <div className="text-[10px] text-atext-mute font-mono mt-3">
-                            {leagueCount} league{leagueCount === 1 ? '' : 's'}
-                          </div>
-                        </div>
-                      </motion.button>
-                    );
-                  })}
                 </div>
               </div>
 
