@@ -149,6 +149,33 @@ export function generateFixtures(leagueClubs, { homeAndAway = true, maxRounds = 
   return maxRounds && full.length > maxRounds ? full.slice(0, maxRounds) : full;
 }
 
+/**
+ * Assign one bye per team across rounds 12–19 for semi-pro/pro competitions
+ * (≥14 teams, ≥22 rounds). Returns { [teamId]: roundNumber } or {} if byes
+ * don't apply.
+ * ponytail: greedy spread — fills rounds in order, each round capped at
+ * floor(n/2) byes. Works for 14–20 teams without backtracking; upgrade path
+ * is a constraint solver if more exotic distributions are ever needed.
+ */
+export function generateByeRounds(teamIds, totalRounds) {
+  const n = teamIds.length;
+  if (n < 14 || totalRounds < 22) return {};
+  const BYE_START = 12;
+  const BYE_END = 19;
+  const maxPerRound = Math.floor(n / 2);
+  const byeMap = {};
+  const roundCounts = {};
+  let roundIdx = BYE_START;
+  for (const id of teamIds) {
+    // Advance to a round that still has capacity within the bye window.
+    while (roundIdx <= BYE_END && (roundCounts[roundIdx] ?? 0) >= maxPerRound) roundIdx++;
+    if (roundIdx > BYE_END) break; // shouldn't happen for ≤20 teams but be safe
+    byeMap[id] = roundIdx;
+    roundCounts[roundIdx] = (roundCounts[roundIdx] ?? 0) + 1;
+  }
+  return byeMap;
+}
+
 export function blankLadder(leagueClubs) {
   return leagueClubs.map(c => ({
     id: c.id, name: c.name, short: c.short,

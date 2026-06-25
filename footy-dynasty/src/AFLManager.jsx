@@ -6,6 +6,7 @@ import { careerStore } from "./lib/careerStore.js";
 import { generateSquad } from "./lib/playerGen.js";
 import {
   generateFixtures,
+  generateByeRounds,
   blankLadder,
   sortedLadder,
   getCompetitionClubs,
@@ -620,6 +621,7 @@ function AFLManagerInner() {
     const newLocalDivision = newLeague.tier === 3 ? localDivisionForClub(newClub.id, offer.leagueKey, newRegionState) : null;
     const compClubsNew = getCompetitionClubs(offer.leagueKey, newRegionState, newLocalDivision);
     const newFixtures = generateFixtures(compClubsNew);
+    const newByeMap = generateByeRounds(compClubsNew.map(cl => cl.id), newFixtures.length);
     const eventQueue = generateSeasonCalendar(SEASON, compClubsNew, newFixtures, newClub.id, {
       nationalDraft: newLeague.tier === 1,
     });
@@ -696,6 +698,7 @@ function AFLManagerInner() {
       kits:      defaultKits(newClub.colors),
       ladder:    startLadder,
       fixtures:  newFixtures,
+      byeMap:    newByeMap,
       finance:   newFinance,
       sponsors:  initialSponsors,
       staff:     generateStaff(newLeague.tier),
