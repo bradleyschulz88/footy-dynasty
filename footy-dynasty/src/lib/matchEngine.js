@@ -709,3 +709,23 @@ export function aiSquadRating(squad) {
   const avg = top.reduce((a, b) => a + (b.trueRating || b.overall), 0) / top.length;
   return avg;
 }
+
+/**
+ * Synergy bonus: +1 per established pair (20+ shared games) in the current lineup, capped at +5.
+ * Only applies to the player's own club — AI clubs don't track partnerships.
+ * ponytail: linear scan over Object.entries(partnerships); fine at <231 pairs per lineup.
+ *   If seasons stack into thousands of pairs, filter to lineup-member keys first.
+ */
+export function calcSynergyBonus(partnerships, lineup) {
+  if (!partnerships || !lineup || lineup.length < 2) return 0;
+  const lineupSet = new Set(lineup);
+  let bonus = 0;
+  for (const [key, count] of Object.entries(partnerships)) {
+    if (count < 20) continue;
+    const [id1, id2] = key.split('_');
+    if (lineupSet.has(id1) && lineupSet.has(id2)) {
+      if (++bonus >= 5) break;
+    }
+  }
+  return bonus;
+}

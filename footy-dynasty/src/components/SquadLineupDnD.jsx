@@ -84,6 +84,20 @@ function SortablePlayerRow({
   };
   const initials = `${player.firstName?.[0] || ""}${player.lastName?.[0] || ""}`;
 
+  // Partnership tag: show when this bench player has 20+ shared games with someone in the lineup.
+  const career = useCareer();
+  const hasPartnership = useMemo(() => {
+    if (variant !== 'bench') return false;
+    const partnerships = career.partnerships;
+    if (!partnerships) return false;
+    const lineupIds = career.lineup || [];
+    return lineupIds.some((id) => {
+      if (!id || id === player.id) return false;
+      const key = [id, player.id].sort().join('_');
+      return (partnerships[key] || 0) >= 20;
+    });
+  }, [variant, career.partnerships, career.lineup, player.id]);
+
   if (stitch) {
     return (
       <div
@@ -193,6 +207,15 @@ function SortablePlayerRow({
           <span className="text-xs text-atext-mute">{player.age}</span>
           <RatingDot value={player.overall} size="sm" />
         </div>
+      )}
+      {hasPartnership && (
+        <span
+          className="text-[9px] px-1 py-0.5 rounded font-bold flex-shrink-0"
+          style={{ color: 'var(--A-accent)', background: 'color-mix(in srgb, var(--A-accent) 12%, transparent)' }}
+          title="20+ games together with a current lineup player"
+        >
+          🤝
+        </span>
       )}
       {onRemove && (
         <button
