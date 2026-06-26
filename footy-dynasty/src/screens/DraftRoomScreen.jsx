@@ -36,6 +36,15 @@ import {
 } from "../lib/draftEngine.js";
 import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 
+/** Shows the scouted (estimated) rating with confidence styling. */
+function ProspectRating({ prospect }) {
+  const conf = prospect.scoutConfidence || 'low';
+  const rating = prospect.scoutedOverall ?? prospect.overall;
+  if (conf === 'low') return <span className="font-mono text-xs" style={{color: 'var(--A-text-mute)'}}>~{rating}?</span>;
+  if (conf === 'medium') return <span className="font-mono text-xs" style={{color: 'var(--A-accent)'}}>~{rating}</span>;
+  return <span className="font-mono text-xs" style={{color: 'var(--A-pos)'}}>{rating}</span>;
+}
+
 export default function DraftRoomScreen({ club, league, onExit }) {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
@@ -74,10 +83,11 @@ export default function DraftRoomScreen({ club, league, onExit }) {
       arr = arr.filter((p) => p.position === posFilter || p.secondaryPosition === posFilter);
     }
     arr.sort((a, b) => {
-      if (poolSort === "overall") return b.overall - a.overall;
+      // Sort by scoutedOverall when available so player sees the estimated order.
+      if (poolSort === "overall") return (b.scoutedOverall ?? b.overall) - (a.scoutedOverall ?? a.overall);
       if (poolSort === "potential") return (b.potential || 0) - (a.potential || 0);
-      if (poolSort === "wageFit") return rookieDraftWage(a.overall, dTier) - rookieDraftWage(b.overall, dTier);
-      return b.overall - a.overall;
+      if (poolSort === "wageFit") return rookieDraftWage(a.scoutedOverall ?? a.overall, dTier) - rookieDraftWage(b.scoutedOverall ?? b.overall, dTier);
+      return (b.scoutedOverall ?? b.overall) - (a.scoutedOverall ?? a.overall);
     });
     return arr;
   }, [career.draftPool, posFilter, poolSort, dTier]);
@@ -397,7 +407,9 @@ export default function DraftRoomScreen({ club, league, onExit }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {st >= 3 ? <RatingDot value={p.overall} size="sm" /> : <span className="font-bold">{oDisp.label}</span>}
+                      {p.scoutedOverall != null
+                        ? <ProspectRating prospect={p} />
+                        : st >= 3 ? <RatingDot value={p.overall} size="sm" /> : <span className="font-bold">{oDisp.label}</span>}
                       <span className="text-xs text-[#4AE89A]">Pot {st >= 3 ? p.potential : potDisp.label}{st >= 3 && p.potential > p.overall && (<span className="ml-1 text-[9px] font-black">+{p.potential - p.overall}↑</span>)}</span>
                       <span className="text-xs font-mono" style={{ color: capOk ? "#4AE89A" : "#E84A6F" }}>{wageDisp.label}</span>
                       {draftLive && isMyTurn && (

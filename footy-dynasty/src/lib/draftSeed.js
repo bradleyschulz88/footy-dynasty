@@ -1,7 +1,7 @@
 /** National draft pool + pick order seeding (inaugural lottery or reverse ladder). */
 import { seedRng, rand } from './rng.js';
 import { generatePlayer } from './playerGen.js';
-import { withDraftScoutingDefaults } from './draftScouting.js';
+import { withDraftScoutingDefaults, stampScoutingUncertainty, getScoutRating } from './draftScouting.js';
 import { sortedLadder, competitionClubsForCareer } from './leagueEngine.js';
 import { PYRAMID } from '../data/pyramid.js';
 
@@ -134,7 +134,7 @@ export function seedNationalDraft(c, league, options = {}) {
   const season = c.season || 2026;
   seedRng(season * 999 + 17);
   const academyIds = ACADEMY_CLUBS();
-  c.draftPool = Array.from({ length: DRAFT_POOL_SIZE }, (_, i) => {
+  const rawPool = Array.from({ length: DRAFT_POOL_SIZE }, (_, i) => {
     const academyClub = academyIds.length ? academyIds[rand(0, academyIds.length - 1)] : 'draft';
     const prospect = shapeDraftProspect(
       generatePlayer(2, 9000 + i + season * 100, { clubId: academyClub, season }),
@@ -143,6 +143,8 @@ export function seedNationalDraft(c, league, options = {}) {
     const withDefaults = withDraftScoutingDefaults(prospect);
     return revealAll ? { ...withDefaults, scoutReveal: 3 } : withDefaults;
   });
+  // Stamp scout uncertainty now while rng is seeded; uses career staff to determine accuracy.
+  c.draftPool = stampScoutingUncertainty(rawPool, getScoutRating(c));
 
   const clubIds = competitionClubIds(c, league);
   const useInaugural = inaugural || !ladderSnapshot?.length;
