@@ -1,4 +1,5 @@
 /** Combine scouting tiers & draft-pool visibility (deterministic display — no render-time RNG). */
+import { rng } from './rng.js';
 
 /** Cost per combine scouting run (reveals next tier on several prospects). */
 export const COMBINE_SCOUT_COST = 25_000;
@@ -99,4 +100,40 @@ export function applyCombineScoutingRound(pool, maxProspects = 14) {
     n++;
   }
   return arr;
+}
+
+/**
+ * Get the scout rating (0–100) for a career. Looks for role 'Scout' or id 's8'.
+ * Falls back to 50 if no scout is on staff.
+ * ponytail: linear scan over staff array — typically <15 members, O(n) is fine.
+ */
+export function getScoutRating(career) {
+  const staff = career?.staff || [];
+  const scout = staff.find((s) => s.id === 's8') ||
+    staff.find((s) => typeof s.role === 'string' && s.role.toLowerCase().includes('scout'));
+  return Number(scout?.rating) || 50;
+}
+
+/**
+ * Stamp trueOverall, scoutedOverall, and scoutConfidence onto every prospect in
+ * the pool. Consumes rng() — must be called while the draft rng is seeded.
+ *
+ * scoutRating 0–100:
+ *   <60  → low    (error ±15 → shown as "~65?")
+ *   60-79 → medium (error ±5–15 → shown as "~67")
+ *   80+   → high   (error ±2–5 → shown as "68")
+ */
+export function stampScoutingUncertainty(pool, scoutRating = 50) {
+  const r = clampVal(Number(scoutRating) || 50, 0, 100);
+  // ponytail: formula from spec — errorRange 2–17 inversely scaled to scout rating
+  const errorRange = Math.max(2, Math.round(17 - (r / 100) * 15));
+  const conf = r >= 80 ? 'high' : r >= 60 ? 'medium' : 'low';
+  return pool.map((p) => {
+    // Skip if already stamped (idempotent on re-seed)
+    if (p.trueOverall != null) return p;
+    const trueOverall = Number(p.overall) || 60;
+    const error = Math.round((rng() * 2 - 1) * errorRange);
+    const scoutedOverall = clampVal(trueOverall + error, 40, 99);
+    return { ...p, trueOverall, scoutedOverall, scoutConfidence: conf };
+  });
 }
