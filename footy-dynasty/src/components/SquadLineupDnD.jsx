@@ -86,6 +86,9 @@ function SortablePlayerRow({
 
   // Partnership tag: show when this bench player has 20+ shared games with someone in the lineup.
   const career = useCareer();
+  const updateCareer = useUpdateCareer();
+  // AFL sub rule: one bench player can be designated the pre-game medical sub.
+  const isDesignatedSub = variant === 'bench' && player.id === career.subPlayerId;
   const hasPartnership = useMemo(() => {
     if (variant !== 'bench') return false;
     const partnerships = career.partnerships;
@@ -216,6 +219,29 @@ function SortablePlayerRow({
         >
           🤝
         </span>
+      )}
+      {variant === 'bench' && (
+        isDesignatedSub ? (
+          <button
+            type="button"
+            className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0 uppercase tracking-wider"
+            style={{ background: 'var(--A-accent)', color: '#000' }}
+            title="Designated medical sub — click to clear"
+            onClick={(e) => { e.stopPropagation(); updateCareer({ subPlayerId: null }); }}
+          >
+            SUB ✕
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="text-[9px] px-1.5 py-0.5 rounded font-bold flex-shrink-0 uppercase tracking-wider"
+            style={{ color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }}
+            title="Designate as medical sub"
+            onClick={(e) => { e.stopPropagation(); updateCareer({ subPlayerId: player.id }); }}
+          >
+            Set sub
+          </button>
+        )
       )}
       {onRemove && (
         <button

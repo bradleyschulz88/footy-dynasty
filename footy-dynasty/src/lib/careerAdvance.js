@@ -2248,7 +2248,9 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
       }
       return np;
     }
-    const fitDrop = rand(8, 18);
+    // AFL sub rule: the designated medical sub is held back and activated ~half-time,
+    // so they cover fewer minutes and finish far fresher than a full-game player.
+    const fitDrop = p.id === c.subPlayerId ? rand(3, 8) : rand(8, 18);
     // Best-on-ground performances carry personal form, even in a loss.
     const votes = votesById[p.id] || 0;
     const formChange = (won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1)) + votes;
