@@ -69,9 +69,10 @@ describe('generateSeasonCalendar', () => {
     expect(preMatches.length).toBe(2);
   });
 
-  it('both preseason_match events have homeId equal to the clubId', () => {
-    const preMatches = events.filter(ev => ev.type === 'preseason_match');
-    preMatches.forEach(ev => expect(ev.homeId).toBe('a'));
+  it('first preseason_match is a home game, second is an away game', () => {
+    const preMatches = events.filter(ev => ev.type === 'preseason_match').sort((a, b) => a.date < b.date ? -1 : 1);
+    expect(preMatches[0].homeId).toBe('a');
+    expect(preMatches[1].awayId).toBe('a');
   });
 
   it('round events exist (one per fixture round)', () => {

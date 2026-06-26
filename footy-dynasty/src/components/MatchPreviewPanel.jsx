@@ -63,7 +63,8 @@ export default function MatchPreviewPanel({ league }) {
       isHome = ev.homeId === career.clubId;
       oppId = isHome ? ev.awayId : ev.homeId;
       opp = findClub(oppId);
-      label = `${ev.label || "Practice match"} · ${isHome ? "vs" : "@"} ${opp?.short || ""}`;
+      label = `PRE-SEASON — ${ev.label || "Practice match"} · ${isHome ? "vs" : "@"} ${opp?.short || ""}`;
+      extraTags = ["Result does not affect ladder"];
     }
     if (!opp) return null;
 

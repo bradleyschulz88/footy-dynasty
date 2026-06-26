@@ -116,7 +116,7 @@ export default function ScheduleScreen({ club: _club, league: _league, onOpenCom
     if (ev.type === "key_event")
       return { color: "var(--A-accent-2)", icon: "📅", label: ev.name, oppClub: null, trainingInfo: null };
     if (ev.type === "preseason_match")
-      return { color: "#E84A6F", icon: "🏉", label: ev.label, oppClub: null, trainingInfo: null };
+      return { color: "var(--A-text-mute)", icon: "🏉", label: `PRE-SEASON — ${ev.label}`, oppClub: null, trainingInfo: null, isPreseason: true };
     if (ev.type === "round") {
       const mi = getMatchInfo(ev);
       const opp = mi?.opp || null;
@@ -366,7 +366,7 @@ export default function ScheduleScreen({ club: _club, league: _league, onOpenCom
               { color: "#A78BFA", label: "Tactics" },
               { color: "#F97316", label: "Gym" },
               { color: "var(--A-accent)", label: "Match Day" },
-              { color: "#E84A6F", label: "Pre-Season Match" },
+              { color: "var(--A-text-mute)", label: "Pre-Season Match" },
               { color: "var(--A-accent-2)", label: "Key Event" },
             ].map(({ color, label }) => (
               <div key={label} className="flex items-center gap-1.5">
@@ -461,6 +461,9 @@ export default function ScheduleScreen({ club: _club, league: _league, onOpenCom
                       <div className="text-[10px] text-atext-mute mt-0.5">
                         {dot.trainingInfo.icon} {dot.trainingInfo.attrs.join(", ")}
                       </div>
+                    )}
+                    {ev.type === "preseason_match" && (
+                      <div className="text-[10px] text-atext-mute mt-0.5">Result does not affect ladder</div>
                     )}
                     {ev.type === "round" && (oppPos || diffPill) && (
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">

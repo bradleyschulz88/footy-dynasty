@@ -2,7 +2,7 @@
 // Date utilities — all dates stored as 'YYYY-MM-DD' strings
 // ---------------------------------------------------------------------------
 
-import { rng, TIER_SCALE } from './rng.js';
+import { rng, pick, TIER_SCALE } from './rng.js';
 import { clamp } from './format.js';
 import { themedRoundForNumber } from './themedRounds.js';
 import { PLAYER_TRAITS } from './playerGen.js';
@@ -346,21 +346,22 @@ export function generateSeasonCalendar(season, leagueClubs, fixtures, clubId, op
     action: 'recruit', phase: 'preseason', completed: false,
   });
 
-  // Pre-season matches (use first 2 opponents in the league)
-  const preOpp = leagueClubs.filter(c => c.id !== clubId).slice(0, 2);
+  // Pre-season practice matches — 2 JLT-style games, random opponents, one home one away.
+  // ponytail: pick() uses seeded rng so replays are deterministic for a given seed.
+  const prePool = leagueClubs.filter(c => c.id !== clubId);
+  const opp1 = pick(prePool);
+  const opp2 = pick(prePool.filter(c => c.id !== opp1.id));
   const preMatchDates = [`${season}-02-08`, `${season}-02-22`];
-  preOpp.forEach((opp, i) => {
-    events.push({
-      id:      eid(),
-      date:    preMatchDates[i],
-      type:    'preseason_match',
-      homeId:  clubId,
-      awayId:  opp.id,
-      label:   `Practice Match ${i + 1}`,
-      phase:   'preseason',
-      completed: false,
-      result:  null,
-    });
+  // Match 1: home; Match 2: away (alternate so both experiences are covered)
+  events.push({
+    id: eid(), date: preMatchDates[0], type: 'preseason_match',
+    homeId: clubId, awayId: opp1.id,
+    label: 'Practice Match 1', phase: 'preseason', completed: false, result: null,
+  });
+  events.push({
+    id: eid(), date: preMatchDates[1], type: 'preseason_match',
+    homeId: opp2.id, awayId: clubId,
+    label: 'Practice Match 2', phase: 'preseason', completed: false, result: null,
   });
 
   // Regular season — one round event per round, starting Mar 21
