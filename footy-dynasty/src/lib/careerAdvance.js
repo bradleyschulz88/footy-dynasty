@@ -1545,6 +1545,35 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     if (drama) c.news = [{ ...drama, week: c.week }, ...(c.news ?? [])].slice(0, 25);
   }
 
+  // Trade request check — runs fortnightly, only for players in contract final year or with very low morale
+  if (c.week % 3 === 0 && c.week !== (c.lastTradeRequestWeek ?? -1)) {
+    c.lastTradeRequestWeek = c.week;
+    const candidates = (c.squad || []).filter(p => {
+      const inFinalYear = (p.contractYears ?? 1) <= 1;
+      const unhappy = (p.morale ?? 70) < 40;
+      const highValue = (p.overall ?? 60) >= 72; // only quality players demand trades
+      const notAlreadyRequesting = !p.hasTradeRequest;
+      return notAlreadyRequesting && highValue && (inFinalYear || unhappy) && rng() < 0.08;
+    });
+    if (candidates.length > 0) {
+      const player = pick(candidates);
+      c.squad = c.squad.map(p => p.id === player.id ? { ...p, hasTradeRequest: true } : p);
+      const reason = (player.morale ?? 70) < 40 ? 'unhappy with their situation at the club' : 'in the final year of their contract and seeking a fresh challenge';
+      c.news = [{
+        week: c.week, type: 'warning',
+        text: `🚨 ${player.firstName} ${player.lastName} has informed the club they want a trade. They are ${reason}.`
+      }, ...(c.news || [])].slice(0, 25);
+      c.pendingTradeRequests = [...(c.pendingTradeRequests || []), {
+        playerId: player.id,
+        playerName: `${player.firstName} ${player.lastName}`,
+        position: player.position,
+        overall: player.overall,
+        reason,
+        week: c.week,
+      }];
+    }
+  }
+
   // Scout deployments — process returns, watchlist staleness, rival interest (once per unique week)
   if (c.week !== (c.lastScoutTickWeek ?? -1)) {
     c.lastScoutTickWeek = c.week;
