@@ -1887,24 +1887,57 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     const won = myTotal > oppTotal;
     const drew = myTotal === oppTotal;
 
+    // Vote-getters: players who stood out get a form boost (best-on-ground recognition).
+    const votesById = {};
+    (result.votes || []).forEach((v) => { votesById[v.playerId] = v.votes; });
+
     c.squad = c.squad.map((p) => {
       if (!c.lineup.includes(p.id)) return p;
-      const fitDrop = rand(5, 12);
+      // Pre-season benefit: match sharpness nets +5 fitness on top of the exercise cost.
+      // Training camp has built base fitness; game intensity is the final polish.
+      const fitNet = 5;
       const formChange = won ? rand(1, 4) : drew ? rand(-1, 2) : rand(-3, 1);
+      const voteBoost = (votesById[p.id] ?? 0) > 0 ? 2 : 0;
       const gAdd = isForwardPreferred(p) ? rand(0, 2) : 0;
-      const newForm = clamp(p.form + formChange, 30, 100);
+      const newForm = clamp(p.form + formChange + voteBoost, 30, 100);
       const formHistory = [...(p.formHistory || []), p.form].slice(-5);
       return {
-        ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
+        ...p, fitness: clamp(p.fitness + fitNet, 30, 100), form: newForm, formHistory,
         goals: p.goals + gAdd, behinds: p.behinds + rand(0, 1), disposals: p.disposals + rand(6, 18),
         marks: p.marks + rand(1, 4), tackles: p.tackles + rand(1, 3), gamesPlayed: p.gamesPlayed + 1,
         legendGames: (p.legendGames || 0) + 1,
       };
     });
-    const preMeta = { round: 0 };
-    const preMyResult = { myTotal, oppTotal, opp };
-    c.news = [{ week: 0, type: won ? 'win' : drew ? 'draw' : 'loss',
-      text: buildMatchReportLine(c, preMeta, preMyResult, won, drew, isHome, result).replace('Rd 0:', `${ev.label}:`) },
+
+    // Injuries are real in pre-season — dramatic and momentum-disrupting.
+    const medLevel = c.facilities?.medical?.level ?? 1;
+    const mit = medicalStaffMitigation(c.staff);
+    (result.injuredPlayerIds || []).forEach((pid) => {
+      if (!c.lineup.includes(pid)) return;
+      const baseWeeks = rand(1, 3);
+      const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
+      c.squad = c.squad.map((p) => (p.id === pid ? { ...p, injured: weeks } : p));
+    });
+    if (rng() < 0.08 && c.lineup.length > 0) {
+      const injId = pick(c.lineup.filter(id => c.squad.find(p => p.id === id && !p.injured)));
+      if (injId) {
+        const weeks = Math.max(1, rand(1, 3) - Math.max(0, medLevel - 1) - mit.weekReduce);
+        c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
+        const injPlayer = c.squad.find(p => p.id === injId);
+        if (injPlayer) {
+          c.news = [{ week: 0, type: 'loss',
+            text: `🤕 Pre-season injury: ${injPlayer.firstName} ${injPlayer.lastName} out ${weeks} week${weeks > 1 ? 's' : ''} — not how you want to start pre-season.` },
+          ...(c.news || [])].slice(0, 15);
+        }
+      }
+    }
+
+    const preText = won
+      ? `🏉 ${ev.label}: ${findClub(c.clubId)?.short || 'Us'} def. ${opp?.short || 'Opp'} ${myTotal}–${oppTotal} — result doesn't count, but promising signs.`
+      : drew
+        ? `🏉 ${ev.label}: Draw ${myTotal}–${oppTotal} vs ${opp?.short || 'Opp'} — no ladder points, coach will be taking notes.`
+        : `🏉 ${ev.label}: ${opp?.short || 'Opp'} def. ${findClub(c.clubId)?.short || 'Us'} ${oppTotal}–${myTotal} — result doesn't count, but the coach will be taking notes.`;
+    c.news = [{ week: 0, type: won ? 'win' : drew ? 'draw' : 'loss', text: preText },
     ...(c.news || [])].slice(0, 15);
     c.lastEvent = {
       type: 'preseason_match', label: ev.label, date: ev.date, isHome, opp, result, myTotal, oppTotal, won, drew,
