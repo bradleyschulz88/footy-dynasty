@@ -7,6 +7,24 @@ import { LINEUP_CAP, LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 
 export const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
+// Philosophy-tactic compatibility: each coaching philosophy fits some tactics better than others.
+// Map uses actual tactic keys: attack, defensive, balanced, flood, press, run.
+const PHILOSOPHY_FIT = {
+  attacking:  { attack: 2,     run: 1,    balanced: 0,  press: 0,  flood: -2, defensive: -2 },
+  defensive:  { defensive: 2,  flood: 2,  press: 1,     balanced: 0, run: -1, attack: -2   },
+  balanced:   { balanced: 2,   run: 1,    press: 1,     flood: 0,  defensive: 0, attack: 0 },
+  contested:  { press: 2,      run: 1,    balanced: 0,  defensive: 0, flood: -1, attack: -1 },
+};
+
+/**
+ * Returns -2..+2 bonus based on how well the coach's philosophy suits the chosen tactic.
+ * @param {string} philosophy  'attacking' | 'defensive' | 'balanced' | 'contested'
+ * @param {string} tactic      match engine tactic key
+ */
+export function philosophyTacticFit(philosophy, tactic) {
+  return PHILOSOPHY_FIT[philosophy]?.[tactic] ?? 0;
+}
+
 /** Effective playing rating for one player (form, fitness, morale, optional quarter fatigue). */
 export function playerEffectiveMatchRating(player, quarter = null) {
   if (!player) return 0;

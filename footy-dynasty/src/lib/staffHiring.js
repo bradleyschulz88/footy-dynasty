@@ -169,6 +169,8 @@ export function generateStaffMarket(career, league) {
     const lnIdx = Math.floor(localRng() * LAST_NAMES.length);
     const name = `${FIRST_NAMES[fnIdx]} ${LAST_NAMES[lnIdx]}`;
 
+    const PHILOSOPHIES = ['attacking', 'defensive', 'balanced', 'contested'];
+    const philIdx = Math.floor(localRng() * PHILOSOPHIES.length);
     return {
       marketId:      `mkt_${id}_${career.season ?? 1}`,
       staffId:       id,
@@ -179,6 +181,7 @@ export function generateStaffMarket(career, league) {
       signingFee:    Math.round(newWage * 0.4),
       roleLabel:     current?.role ?? id,
       currentRating: current?.rating ?? 60,
+      ...(id === 's1' ? { philosophy: PHILOSOPHIES[philIdx] } : {}),
     };
   });
 }
