@@ -124,6 +124,7 @@ export default function RecruitScreen({ club, tab, setTab, league, onOpenDraftRo
   const offerCount = (career.pendingTradeOffers || []).filter(o => o.status === 'pending').length;
   const watchlistCount = (career.scoutWatchlist || []).filter(w => !w.isStale).length;
   const inTradePeriod = career.postSeasonPhase === 'trade_period' && career.inTradePeriod;
+  const hasFaPool = career.postSeasonPhase === 'draft_waiting' && (career.freeAgentPool || []).length > 0;
   // National draft + youth academy are AFL (tier 1) institutions; local football scouting is for everyone.
   const isTopTier = (league?.tier ?? 1) === 1;
   const showPicks = isTopTier && !!career.draftPickBank;
@@ -148,6 +149,7 @@ export default function RecruitScreen({ club, tab, setTab, league, onOpenDraftRo
   const tabs = [
     { key: "offers", label: `Offers${offerCount ? ` (${offerCount})` : ''}`, icon: Newspaper },
     ...(inTradePeriod ? [{ key: "freeagents", label: career.freeAgencyOpen ? "Free agents" : "Free agents (closed)", icon: UserPlus }] : []),
+    ...(hasFaPool ? [{ key: "famarket", label: `FA Market (${(career.freeAgentPool || []).length})`, icon: UserPlus }] : []),
     ...(showPicks ? [{ key: "picks", label: "Draft picks", icon: FileText }] : []),
     { key: "trade", label: inTradePeriod ? "Player market" : "Trades", icon: Repeat },
     ...(isTopTier ? [{ key: "draft", label: "Draft", icon: Award }] : []),
@@ -163,6 +165,7 @@ export default function RecruitScreen({ club, tab, setTab, league, onOpenDraftRo
       {t === "freeagents" && (inTradePeriod ? <FreeAgentsTab /> : (
         <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Free agency runs during the post-season Trade Period (after the grand final).</div>
       ))}
+      {t === "famarket" && <FaMarketTab league={league} />}
       {t === "picks" && (showPicks ? <DraftPickBankTab /> : (
         <div className={`${css.panel} p-8 text-sm text-atext-dim`}>Draft capital is prepared when the Trade Period opens.</div>
       ))}
@@ -2229,6 +2232,168 @@ function WatchlistTab({ club }) {
   );
 }
 
+// ─── FA Market (post-trade-period signing window) ────────────────────────────
+function FaMarketTab({ league }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
+  const pool = career.freeAgentPool || [];
+  const [offering, setOffering] = useState(null); // { player, wage, years }
 
+  const openOffer = (player) => {
+    setOffering({ player, wage: player.askingWage, years: player.contractYearsWanted });
+  };
+
+  const submitOffer = () => {
+    if (!offering) return;
+    const { player, wage, years } = offering;
+    const isRFA = player.faType === 'RFA';
+    // RFA: needs 10% premium on asking wage to beat the match threshold
+    const effectiveAsk = isRFA ? Math.round(player.askingWage * 1.1) : player.askingWage;
+    const wageScore = wage >= effectiveAsk ? 1 : wage / effectiveAsk;
+    const clubScore = Math.min(1, (career.finance?.boardConfidence ?? 50) / 100);
+    const acceptChance = wageScore * 0.7 + clubScore * 0.3;
+    const accepted = Math.random() < acceptChance;
+
+    if (accepted) {
+      if (career.squad.length >= 40) {
+        updateCareer({ news: [{ week: career.week, type: 'loss', text: `⛔ List full — can't sign ${player.firstName} ${player.lastName}.` }, ...(career.news || [])].slice(0, 20) });
+        setOffering(null);
+        return;
+      }
+      const newPlayer = {
+        id: `fa_mkt_${Date.now()}_${rand(1e6, 9e6)}`,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        age: player.age,
+        position: player.position,
+        overall: player.overall,
+        potential: player.overall + rand(0, 8),
+        trueRating: player.overall,
+        tier: league?.tier ?? 1,
+        wage,
+        contract: years,
+        fitness: player.fitness ?? 85,
+        morale: player.morale ?? 70,
+        form: player.form ?? 65,
+        gamesPlayed: 0, goals: 0, disposals: 0, marks: 0, tackles: 0,
+        careerGames: player.careerGames ?? 0,
+        injured: 0, suspended: 0,
+        receivedInTrade: null, seasonsAtClub: 0,
+        attrs: {},
+      };
+      updateCareer({
+        squad: [...career.squad, newPlayer],
+        freeAgentPool: pool.filter(p => p.id !== player.id),
+        finance: { ...career.finance, cash: (career.finance?.cash ?? 0) - wage },
+        news: [{ week: career.week, type: 'win', text: `✍️ FA signed: ${player.firstName} ${player.lastName} (${player.faType}) — ${years}yr @ ${fmtK(wage)}/yr` }, ...(career.news || [])].slice(0, 20),
+      });
+      gameToast.signing(`Signed ${player.firstName} ${player.lastName} (${player.faType})`);
+    } else {
+      updateCareer({
+        news: [{ week: career.week, type: 'info', text: `📵 ${player.firstName} ${player.lastName} (${player.faType}) rejected your offer — try a higher wage or better terms.` }, ...(career.news || [])].slice(0, 20),
+      });
+    }
+    setOffering(null);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-7 rounded-full" style={{ background: 'var(--A-accent)' }} />
+          <div className={`${css.h1} text-3xl`}>FA MARKET</div>
+        </div>
+        <div className="text-xs text-atext-dim">Out-of-contract players available after the trade period. Make an offer — UFA is open; RFA requires beating the asking wage by 10%.</div>
+      </div>
+
+      {pool.length === 0 ? (
+        <div className={`${css.panel} p-12 text-center text-sm text-atext-dim`}>
+          <UserPlus className="w-12 h-12 mx-auto mb-3 opacity-30" />
+          No free agents available this off-season.
+        </div>
+      ) : (
+        <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--A-line)', background: 'var(--A-panel)' }}>
+          <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{ borderColor: 'var(--A-line)', background: 'var(--A-panel-2)' }}>
+            <div className="col-span-4">Player</div>
+            <div className="col-span-2">Pos</div>
+            <div className="col-span-2">OVR</div>
+            <div className="col-span-2 text-right">Ask / Yrs</div>
+            <div className="col-span-2 text-right"></div>
+          </div>
+          {pool.map(player => (
+            <div key={player.id} className="border-b last:border-0" style={{ borderColor: 'var(--A-line)' }}>
+              <div className="grid grid-cols-12 gap-2 px-4 py-3 items-center text-sm">
+                <div className="col-span-4">
+                  <div className="font-semibold">{player.firstName} {player.lastName}</div>
+                  <div className="text-[10px] text-atext-dim flex items-center gap-1.5">
+                    <span style={{ color: player.faType === 'UFA' ? 'var(--A-pos)' : 'var(--A-accent-2)' }}>{player.faType}</span>
+                    <span>· age {player.age}</span>
+                    {player.faType === 'RFA' && <span title="Former club can match — need 10% above asking wage">⚠️ Restricted</span>}
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <span className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md whitespace-nowrap" style={posBadgeStyle(player.position)}>{player.position}</span>
+                </div>
+                <div className="col-span-2"><RatingDot value={player.overall} /></div>
+                <div className="col-span-2 text-right font-mono text-xs">{fmtK(player.askingWage)}/yr · {player.contractYearsWanted}y</div>
+                <div className="col-span-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => openOffer(player)}
+                    className={`${css.btnPrimary} text-xs px-3 py-1.5`}
+                  >
+                    Offer
+                  </button>
+                </div>
+              </div>
+              {offering?.player.id === player.id && (
+                <div className="mx-4 mb-4 rounded-xl p-4 space-y-3" style={{ background: 'color-mix(in srgb, var(--A-accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--A-accent) 25%, transparent)' }}>
+                  {player.faType === 'RFA' && (
+                    <div className="text-xs px-3 py-2 rounded-lg" style={{ background: 'color-mix(in srgb, var(--A-accent-2) 12%, transparent)', color: 'var(--A-accent-2)' }}>
+                      ⚠️ Restricted FA — former club can match your offer. Offer at least {fmtK(Math.round(player.askingWage * 1.1))}/yr to beat the match threshold.
+                    </div>
+                  )}
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex-1 min-w-[160px]">
+                      <label className={`${css.label} text-[11px] mb-1 block`}>Wage offer: {fmtK(offering.wage)}/yr</label>
+                      <input
+                        type="range"
+                        min={Math.round(player.askingWage * 0.6)}
+                        max={Math.round(player.askingWage * 1.8)}
+                        step={5000}
+                        value={offering.wage}
+                        onChange={e => setOffering(o => ({ ...o, wage: Number(e.target.value) }))}
+                        className="w-full accent-[var(--A-accent)]"
+                      />
+                      <div className="flex justify-between text-[10px] text-atext-mute mt-0.5">
+                        <span>{fmtK(Math.round(player.askingWage * 0.6))}</span>
+                        <span className="text-aaccent">Ask: {fmtK(player.askingWage)}</span>
+                        <span>{fmtK(Math.round(player.askingWage * 1.8))}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className={`${css.label} text-[11px] mb-1 block`}>Years</label>
+                      <select
+                        value={offering.years}
+                        onChange={e => setOffering(o => ({ ...o, years: Number(e.target.value) }))}
+                        className="bg-apanel-2 border border-aline rounded-xl px-3 py-2 text-xs text-atext"
+                      >
+                        {[1, 2, 3, 4].map(y => <option key={y} value={y}>{y} yr</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button type="button" onClick={() => setOffering(null)} className="px-4 py-2 rounded-lg text-xs font-bold bg-apanel-2 text-atext-dim hover:bg-aline">Cancel</button>
+                    <button type="button" onClick={submitOffer} className={`${css.btnPrimary} text-xs px-4 py-2`}>Submit Offer</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 

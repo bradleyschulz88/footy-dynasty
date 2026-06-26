@@ -1,6 +1,6 @@
 // Post-season trade period & off-season free agency (spec from FootyDynasty_TradePeriod).
 import { seedRng, rand, rng, pick } from './rng.js';
-import { generatePlayer } from './playerGen.js';
+import { generatePlayer, FIRST_NAMES, LAST_NAMES } from './playerGen.js';
 import { generateTradePool } from './defaults.js';
 import { sortedLadder, competitionClubsForCareer } from './leagueEngine.js';
 import { syncRecruitPhaseInboxRows } from './inbox.js';
@@ -234,6 +234,41 @@ export function buildDraftPickBank(c, league) {
   return bank;
 }
 
+const FA_POSITIONS = ['MID', 'FWD', 'DEF', 'RUC', 'CHF', 'CHB', 'FB', 'HB', 'HF'];
+
+/** Generate a synthetic FA pool after trade period closes. Seeded per season. */
+export function generateFreeAgentPool(c, league) {
+  seedRng((c.season || 2026) * 503 + 37);
+  const tier = league?.tier ?? 1;
+  // ponytail: fixed count per tier — upgrade to count based on OOC players if needed
+  const count = tier <= 2 ? 4 : 2;
+  const pool = [];
+  for (let i = 0; i < count; i++) {
+    const age = 24 + Math.floor(rng() * 8); // 24–31
+    const rating = Math.round(60 + rng() * 20); // 60–80
+    const pos = pick(FA_POSITIONS);
+    const faType = age >= 28 ? 'UFA' : 'RFA';
+    const firstName = pick(FIRST_NAMES);
+    const lastName = pick(LAST_NAMES);
+    pool.push({
+      id: `fa_pool_${c.season}_${i}`,
+      firstName,
+      lastName,
+      age,
+      position: pos,
+      overall: rating,
+      faType,
+      askingWage: Math.round((40000 + rating * 1000) * (tier <= 1 ? 3 : tier <= 2 ? 1.5 : 0.8)),
+      contractYearsWanted: age < 28 ? 3 : 2,
+      fitness: 85,
+      morale: 70,
+      form: 65,
+      gamesPlayed: 0, goals: 0, disposals: 0, marks: 0, tackles: 0, careerGames: 0,
+    });
+  }
+  return pool;
+}
+
 export function buildOffSeasonFreeAgents(c, generatePlayerFn = generatePlayer) {
   seedRng((c.season || 2026) * 401 + 19);
   const out = [];
@@ -303,11 +338,12 @@ export function beginPostSeasonTradePeriod(c, league, leagueKey) {
   ].slice(0, 20);
 }
 
-export function closeTradePeriodStartDraftCountdown(c) {
+export function closeTradePeriodStartDraftCountdown(c, league) {
   c.inTradePeriod = false;
   c.freeAgencyOpen = false;
   c.postSeasonPhase = 'draft_waiting';
   c.postSeasonDraftCountdown = POST_TRADE_DRAFT_COUNTDOWN_DAYS;
+  c.freeAgentPool = generateFreeAgentPool(c, league);
   const net = (c.freeAgentBalance?.lost || 0) - (c.freeAgentBalance?.gained || 0);
   if (net > 0 && c.draftPickBank) {
     const ys = String(c.season);
@@ -374,7 +410,7 @@ export function advanceTradePeriodDay(c, league, _leagueKey) {
     ].slice(0, 25);
   }
   if (day >= TRADE_PERIOD_DAYS) {
-    closeTradePeriodStartDraftCountdown(c);
+    closeTradePeriodStartDraftCountdown(c, league);
     return;
   }
   if (rng() < 0.62) seedAiTradeOffers(c, league);
@@ -399,6 +435,7 @@ export function clearPostSeasonTransient(c) {
   c.freeAgencyOpen = false;
   c.postSeasonDraftCountdown = null;
   c.offSeasonFreeAgents = [];
+  c.freeAgentPool = [];
   c.draftPickBank = null;
 }
 
