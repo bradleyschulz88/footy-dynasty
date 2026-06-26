@@ -141,6 +141,7 @@ export function buildProfessionalStaffMember(blueprintId, leagueTier, opts = {})
   else if (t === 3 && blueprintId === "s1") {
     wage = Math.max(8000, Math.round(b.wage * 0.07));
   }
+  const PHILOSOPHIES = ['attacking', 'defensive', 'balanced', 'contested'];
   return {
     id: b.id,
     role,
@@ -149,6 +150,7 @@ export function buildProfessionalStaffMember(blueprintId, leagueTier, opts = {})
     wage,
     volunteer,
     contract: rand(1, 3),
+    ...(blueprintId === 's1' ? { philosophy: pick(PHILOSOPHIES) } : {}),
   };
 }
 

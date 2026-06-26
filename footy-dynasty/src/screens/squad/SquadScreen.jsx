@@ -30,6 +30,7 @@ import {
 } from '../../lib/board.js';
 import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, removeIdFromLineup } from '../../lib/lineupHelpers.js';
 import { trainingStaffSupportLine } from '../../lib/staffModifiers.js';
+import { philosophyTacticFit } from '../../lib/matchEngine.js';
 import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
 import { RenewalsTab } from "../contracts/ContractRenewals.jsx";
 import PlayerCard3D from "../../components/PlayerCard3D.jsx";
@@ -1056,7 +1057,15 @@ function autoSuggestTactic(avgOvr) {
   return 'defensive';
 }
 
-function ZoneTacticPicker({ label, zoneColor, currentKey, onSelect, players }) {
+const PHILOSOPHY_COLORS = {
+  attacking: 'var(--A-pos)',
+  defensive: 'var(--A-accent)',
+  balanced:  '#F59E0B',
+  contested: '#E84A6F',
+};
+const PHILOSOPHY_LABELS = { attacking: 'Attacking', defensive: 'Defensive', balanced: 'Balanced', contested: 'Contested' };
+
+function ZoneTacticPicker({ label, zoneColor, currentKey, onSelect, players, coachPhilosophy }) {
   const avgOvr = players.length
     ? Math.round(players.reduce((s, p) => s + (p.overall || 70), 0) / players.length)
     : null;
@@ -1077,6 +1086,8 @@ function ZoneTacticPicker({ label, zoneColor, currentKey, onSelect, players }) {
         {TACTIC_CARDS.map(tc => {
           const Icon = tc.icon;
           const active = currentKey === tc.key;
+          const fit = coachPhilosophy ? philosophyTacticFit(coachPhilosophy, tc.key) : 0;
+          const fitColor = fit >= 2 ? 'var(--A-pos)' : fit === 1 ? '#4AE89A' : fit === -1 ? '#F59E0B' : fit <= -2 ? 'var(--A-neg)' : null;
           return (
             <button key={tc.key} type="button" onClick={() => onSelect(tc.key)}
               className={`text-left p-3 rounded-xl border transition-all min-h-[44px] ${active ? 'ring-2 ring-aaccent' : 'hover:border-aaccent/30'}`}
@@ -1084,6 +1095,11 @@ function ZoneTacticPicker({ label, zoneColor, currentKey, onSelect, players }) {
               <div className="flex items-center gap-1.5 mb-1">
                 <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: tc.color }} />
                 <span className="font-bold text-[11px] text-atext">{tc.label}</span>
+                {fitColor && (
+                  <span className="ml-auto text-[10px] font-mono font-bold" style={{ color: fitColor }}>
+                    {fit > 0 ? `+${fit}` : fit}
+                  </span>
+                )}
               </div>
               <div className="text-[10px] text-atext-dim leading-snug">{tc.desc}</div>
             </button>
@@ -1163,6 +1179,9 @@ function TacticsTab({ onOpenClubStaff }) {
   const midPlayers   = lineup.filter(p => ['C','R','WG'].includes(p.position));
   const fwdPlayers   = lineup.filter(p => ['KF','HF'].includes(p.position));
 
+  const headCoach = (career.staff || []).find(s => s.id === 's1');
+  const coachPhilosophy = headCoach?.philosophy || null;
+
   const autoAssignTactics = () => {
     updateCareer({
       defenceTactic:  autoSuggestTactic(backPlayers.length ? backPlayers.reduce((s,p)=>s+p.overall,0)/backPlayers.length : 70),
@@ -1178,15 +1197,25 @@ function TacticsTab({ onOpenClubStaff }) {
           <h3 className={`${css.h1} text-2xl`}>ZONE TACTICS</h3>
           <p className="text-xs text-atext-dim mt-1">Set the approach for each zone independently. Midfield tactic drives the overall match engine.</p>
         </div>
-        <button type="button" onClick={autoAssignTactics}
-          className={`${css.btnGhost} flex items-center gap-1.5 text-xs min-h-[44px]`}>
-          <Wand2 className="w-4 h-4" /> Auto-suggest
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {coachPhilosophy && (
+            <span className="text-[10px] font-mono px-2 py-1 rounded-lg font-bold"
+              style={{ background: `color-mix(in srgb,${PHILOSOPHY_COLORS[coachPhilosophy]} 18%,transparent)`,
+                       color: PHILOSOPHY_COLORS[coachPhilosophy],
+                       border: `1px solid color-mix(in srgb,${PHILOSOPHY_COLORS[coachPhilosophy]} 35%,transparent)` }}>
+              {headCoach.name?.split(' ')[1] || 'Coach'}: {PHILOSOPHY_LABELS[coachPhilosophy]}
+            </span>
+          )}
+          <button type="button" onClick={autoAssignTactics}
+            className={`${css.btnGhost} flex items-center gap-1.5 text-xs min-h-[44px]`}>
+            <Wand2 className="w-4 h-4" /> Auto-suggest
+          </button>
+        </div>
       </div>
 
-      <ZoneTacticPicker zone="defence"  label="Defence"  zoneColor="#4AE89A" currentKey={defTactic} onSelect={setDefence}  players={backPlayers} />
-      <ZoneTacticPicker zone="midfield" label="Midfield" zoneColor="var(--A-accent)" currentKey={midTactic} onSelect={setMidfield} players={midPlayers} />
-      <ZoneTacticPicker zone="forward"  label="Forward"  zoneColor="#E84A6F" currentKey={fwdTactic} onSelect={setForward}  players={fwdPlayers} />
+      <ZoneTacticPicker zone="defence"  label="Defence"  zoneColor="#4AE89A" currentKey={defTactic} onSelect={setDefence}  players={backPlayers} coachPhilosophy={coachPhilosophy} />
+      <ZoneTacticPicker zone="midfield" label="Midfield" zoneColor="var(--A-accent)" currentKey={midTactic} onSelect={setMidfield} players={midPlayers} coachPhilosophy={coachPhilosophy} />
+      <ZoneTacticPicker zone="forward"  label="Forward"  zoneColor="#E84A6F" currentKey={fwdTactic} onSelect={setForward}  players={fwdPlayers} coachPhilosophy={coachPhilosophy} />
 
       <div className={`${css.panel} p-4 md:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`}>
         <div className="text-xs text-atext-dim max-w-xl leading-snug">
@@ -1505,6 +1534,46 @@ function TrainingTab({ onOpenClubStaff }) {
           })}
         </div>
       </div>
+      {(() => {
+        const hc = (career.staff || []).find(s => s.id === 's1');
+        if (!hc) return null;
+        const phil = hc.philosophy;
+        const PHILOSOPHIES = ['attacking', 'defensive', 'balanced', 'contested'];
+        const setPhilosophy = (newPhil) => {
+          updateCareer(c => ({
+            ...c,
+            staff: (c.staff || []).map(s => s.id === 's1' ? { ...s, philosophy: newPhil } : s),
+            // ponytail: morale cost — -5 to all staff mood; future upgrade: track this per-season
+            squad: (c.squad || []).map(p => ({ ...p, morale: Math.max(30, (p.morale ?? 75) - 5) })),
+          }));
+        };
+        return (
+          <div className="mt-6 rounded-xl p-4" style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-0.5">Head Coach Philosophy</div>
+                <div className="text-sm font-semibold text-atext">{hc.name}</div>
+                {phil && (
+                  <span className="inline-block mt-1 text-[10px] font-mono px-2 py-0.5 rounded-lg font-bold"
+                    style={{ background: `color-mix(in srgb,${PHILOSOPHY_COLORS[phil]} 18%,transparent)`,
+                             color: PHILOSOPHY_COLORS[phil],
+                             border: `1px solid color-mix(in srgb,${PHILOSOPHY_COLORS[phil]} 35%,transparent)` }}>
+                    {PHILOSOPHY_LABELS[phil]}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col gap-1 items-end">
+                <select value={phil || ''} onChange={(e) => setPhilosophy(e.target.value)}
+                  className="bg-apanel border border-aline rounded-lg text-[11px] text-atext px-2 py-1.5 min-h-[36px]">
+                  <option value="" disabled>Set philosophy…</option>
+                  {PHILOSOPHIES.map(p => <option key={p} value={p}>{PHILOSOPHY_LABELS[p]}</option>)}
+                </select>
+                <span className="text-[10px] text-atext-mute">Changing costs −5 squad morale</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {career.staffMarket?.length > 0 && (
       <div className="mt-6">
         <h3 className="text-[11px] font-mono uppercase tracking-widest text-aaccent mb-2">Staff Market</h3>
@@ -1515,9 +1584,16 @@ function TrainingTab({ onOpenClubStaff }) {
               style={{ background: 'var(--A-panel-2)', border: '1px solid var(--A-line)' }}>
               <div className="min-w-0">
                 <div className="text-[13px] font-semibold text-atext truncate">{candidate.name}</div>
-                <div className="text-[11px] text-atext-mute mt-0.5">
-                  {candidate.roleLabel} · Rating {candidate.rating}
-                  {candidate.currentRating ? ` (currently ${candidate.currentRating})` : ''}
+                <div className="text-[11px] text-atext-mute mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <span>{candidate.roleLabel} · Rating {candidate.rating}
+                  {candidate.currentRating ? ` (currently ${candidate.currentRating})` : ''}</span>
+                  {candidate.philosophy && (
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded font-bold"
+                      style={{ background: `color-mix(in srgb,${PHILOSOPHY_COLORS[candidate.philosophy]} 18%,transparent)`,
+                               color: PHILOSOPHY_COLORS[candidate.philosophy] }}>
+                      {PHILOSOPHY_LABELS[candidate.philosophy]}
+                    </span>
+                  )}
                 </div>
                 <div className="text-[10px] text-atext-dim mt-0.5">
                   ${(candidate.wage / 1000).toFixed(0)}k/yr · Sign-on ${(candidate.signingFee / 1000).toFixed(0)}k
@@ -1530,7 +1606,8 @@ function TrainingTab({ onOpenClubStaff }) {
                     if ((c.finance?.cash ?? 0) < candidate.signingFee) return c;
                     const updatedStaff = (c.staff || []).map(s =>
                       s.id === candidate.staffId
-                        ? { ...s, name: candidate.name, rating: candidate.rating, wage: candidate.wage, contractYears: candidate.contractYears }
+                        ? { ...s, name: candidate.name, rating: candidate.rating, wage: candidate.wage, contractYears: candidate.contractYears,
+                            ...(candidate.philosophy ? { philosophy: candidate.philosophy } : {}) }
                         : s
                     );
                     const newMarket = (c.staffMarket || []).filter(m => m.marketId !== candidate.marketId);

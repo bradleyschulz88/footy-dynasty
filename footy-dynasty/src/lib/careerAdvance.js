@@ -5,7 +5,7 @@ import { pickPressMoment } from './pressEvents.js';
 import { rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub, getAFLClubsForSeason } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred } from './playerGen.js';
-import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating, calcSynergyBonus } from './matchEngine.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating, calcSynergyBonus, philosophyTacticFit } from './matchEngine.js';
 import { getCoachingCall, resolveCoachingCall } from './coachingCalls.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
 import { generateFixtures, generateByeRounds, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
@@ -452,9 +452,11 @@ function startFinals(c, league) {
 }
 
 function simFinalsPair(c, league, m, _roundLabel) {
+  const _headCoach = (c.staff || []).find(s => s.id === 's1');
   let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles)
     + getCaptainMatchBonus(c, true)
-    + calcSynergyBonus(c.partnerships, c.lineup);
+    + calcSynergyBonus(c.partnerships, c.lineup)
+    + philosophyTacticFit(_headCoach?.philosophy, c.tacticChoice || 'balanced');
   const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
   const isHome = m.home === c.clubId;
   if (isPlayerMatch) {
@@ -1911,7 +1913,9 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     c.aiSquads = ensureSquadsForLeague(c, league);
     const oppSquad = c.aiSquads?.[oppId];
     const oppLineup = oppSquad ? selectAiLineup(oppSquad) : [];
-    const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles);
+    const _hcPreseason = (c.staff || []).find(s => s.id === 's1');
+    const myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles)
+      + philosophyTacticFit(_hcPreseason?.philosophy, c.tacticChoice || 'balanced');
     const oppRating = oppSquad?.length
       ? teamRating(oppSquad, oppLineup.map((p) => p.id), { intensity: 60, focus: {} }, 1, 60)
       : aiClubRating(oppId, league.tier);
@@ -1985,9 +1989,11 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
       if (m.home === c.clubId || m.away === c.clubId) {
         const isHome = m.home === c.clubId;
         const opp = findClub(isHome ? m.away : m.home);
+        const _hcRound = (c.staff || []).find(s => s.id === 's1');
         let myRating = teamRating(c.squad, c.lineup, c.training, avgFacilities(c.facilities), avgStaff(c.staff), null, c.playerRoles);
         myRating += getCaptainMatchBonus(c, false);
         myRating += calcSynergyBonus(c.partnerships, c.lineup);
+        myRating += philosophyTacticFit(_hcRound?.philosophy, c.tacticChoice || 'balanced');
         const scoutPrep = scoutPrepRatingBonus(c, opp.id, ev.round);
         myRating += scoutPrep;
         // H2H psychological factor: bogey teams suppress confidence; dominated
