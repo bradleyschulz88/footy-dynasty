@@ -355,10 +355,12 @@ function ProposeTradePanel() {
     const theirValue = theirPlayer.value ?? Math.round(theirPlayer.overall * 1500);
     const offerValue = (ourPlayer.value ?? Math.round(ourPlayer.overall * 1500)) + cashOffer + pickValue;
     const ratio = offerValue / theirValue;
+    // Deadline day desperation: AI accepts offers worth 10% less (threshold drops 0.10)
+    const desperationDiscount = career.deadlineDayActive ? 0.10 : 0;
     let acceptChance = 0;
-    if (ratio >= 0.88) acceptChance = 0.90;
-    else if (ratio >= 0.72) acceptChance = 0.55;
-    else if (ratio >= 0.55) acceptChance = 0.20;
+    if (ratio >= 0.88 - desperationDiscount) acceptChance = 0.90;
+    else if (ratio >= 0.72 - desperationDiscount) acceptChance = 0.55;
+    else if (ratio >= 0.55 - desperationDiscount) acceptChance = 0.20;
     const accepted = rng() < acceptChance;
     const targetClubShort = findClub(targetClubId)?.short ?? targetClubId;
     if (accepted) {

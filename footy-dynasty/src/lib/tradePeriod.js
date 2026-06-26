@@ -69,6 +69,8 @@ export function playerFromTradeSnapshot(snap, overrides = {}) {
 export const TRADE_PERIOD_DAYS = 14;
 export const FREE_AGENCY_END_DAY = 8;
 export const POST_TRADE_DRAFT_COUNTDOWN_DAYS = 7;
+// Deadline day fires on the last step before the window closes.
+export const DEADLINE_DAY = TRADE_PERIOD_DAYS - 1;
 
 /** AI trade offers use the same shape as pre-season pendingTradeOffers. */
 // Convert squadPositionNeeds (object of {pos: boostAmount}) into a Set of
@@ -337,6 +339,15 @@ export function closeTradePeriodStartDraftCountdown(c) {
   }
   c.pendingTradeOffers = (c.pendingTradeOffers || []).filter((o) => o.status !== 'pending');
   syncRecruitPhaseInboxRows(c);
+  // Deadline passed drama — dramatic news summary
+  const tradesCompleted = (c.tradeHistory || []).filter((t) => t.season === c.season).length;
+  const deadlineLines = [
+    `🔔 Trade deadline has passed. The window is shut — ${tradesCompleted} trade${tradesCompleted !== 1 ? 's' : ''} completed this period.`,
+    `🔔 Deadline Day is done. ${tradesCompleted > 0 ? `Your club got ${tradesCompleted} deal${tradesCompleted !== 1 ? 's' : ''} over the line.` : 'No trades completed — the list stays as is.'}`,
+    `🔔 The trade siren has sounded. What's done is done — clubs must now work with what they have until the mid-season period.`,
+  ];
+  c.news = [{ week: c.week, type: 'info', text: pick(deadlineLines) }, ...(c.news || [])].slice(0, 25);
+  c.deadlineDayActive = false;
   c.news = [
     {
       week: c.week,
@@ -367,17 +378,29 @@ export function advanceTradePeriodDay(c, league, _leagueKey) {
       ...(c.news || []),
     ].slice(0, 20);
   }
-  if (day === TRADE_PERIOD_DAYS) {
+  if (day === DEADLINE_DAY) {
+    c.deadlineDayActive = true;
     c.news = [
-      { week: c.week ?? 0, type: 'warning', text: '🚨 DEADLINE DAY — the trade window closes tonight. Act fast or lose your targets.' },
+      { week: c.week ?? 0, type: 'warning', text: '🚨 DEADLINE DAY — the trade window closes tonight. Clubs are getting desperate. Act fast or lose your targets.' },
       ...(c.news ?? [])
     ].slice(0, 25);
+    // Last-minute collapse: 20% chance a deal-that-fell-through headline fires
+    if (rng() < 0.20) {
+      const collapseLines = [
+        '📰 BREAKING: A last-minute trade involving a key forward has reportedly collapsed — both clubs walked away.',
+        '📰 Shock development: A three-way deal between rival clubs fell apart at the 11th hour. The players involved will stay put.',
+        '📰 Sources confirm a late push to land a star midfielder failed — the club\'s offer was rejected minutes before the deadline.',
+      ];
+      c.news = [{ week: c.week, type: 'press', text: pick(collapseLines) }, ...(c.news || [])].slice(0, 25);
+    }
   }
   if (day >= TRADE_PERIOD_DAYS) {
     closeTradePeriodStartDraftCountdown(c);
     return;
   }
-  if (rng() < 0.62) seedAiTradeOffers(c, league);
+  // AI offer frequency: 30% higher on deadline day (clubs desperate to get deals done)
+  const aiOfferChance = c.deadlineDayActive ? 0.62 * 1.30 : 0.62;
+  if (rng() < aiOfferChance) seedAiTradeOffers(c, league);
 }
 
 /** @returns {'finish_season' | 'continue'} */
@@ -400,6 +423,7 @@ export function clearPostSeasonTransient(c) {
   c.postSeasonDraftCountdown = null;
   c.offSeasonFreeAgents = [];
   c.draftPickBank = null;
+  c.deadlineDayActive = false;
 }
 
 export function playerBlockedFromTrade(player, season) {
