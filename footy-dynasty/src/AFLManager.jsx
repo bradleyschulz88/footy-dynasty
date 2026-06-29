@@ -47,6 +47,7 @@ import ArrivalBriefingFlow from './screens/ArrivalBriefingFlow.jsx';
 import PressConferenceScreen from './screens/PressConferenceScreen.jsx';
 import LegendFarewellScreen from './screens/LegendFarewellScreen.jsx';
 import TradeRequestScreen from './screens/TradeRequestScreen.jsx';
+import TribunalScreen from './screens/TribunalScreen.jsx';
 import TutorialOverlay, {
   tutorialAllowsNavigation,
   tutorialMidStepCompleted,
@@ -1193,6 +1194,17 @@ function AFLManagerInner() {
         <div className={`${themeClass} font-sans min-h-screen`}>
           {globalStyle}
           <TradeRequestScreen onComplete={() => updateCareer(c => ({ ...c, pendingTradeRequests: [] }))} />
+        </div>
+      </AppMotionConfig>
+    );
+  }
+
+  if (career.tribunalQueue?.length > 0) {
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
+          {globalStyle}
+          <TribunalScreen onComplete={() => updateCareer(c => ({ ...c, tribunalQueue: [] }))} />
         </div>
       </AppMotionConfig>
     );
