@@ -319,13 +319,17 @@ export function draftProspectOnClock(career, club, prospect) {
   const listCheck = canAddToList(career, { rookie: true });
   if (!listCheck.ok) return { error: listCheck.reason || 'squad_full' };
 
+  // trueOverall is the actual rating; scoutedOverall was the pre-draft estimate.
+  // Rookie joins squad with true rating; wage uses true overall for fairness.
+  const trueOvr = prospect.trueOverall ?? prospect.overall;
   const dTier = leagueTierOf(career);
-  const rw = rookieDraftWage(prospect.overall, dTier);
+  const rw = rookieDraftWage(trueOvr, dTier);
   if (!canAffordSigning(career, rw)) return { error: 'cap' };
 
   const rookie = {
     ...prospect,
     id: `r_${Date.now()}_${rand(1e9, 2e9 - 1)}`,
+    overall: trueOvr,
     wage: rw,
     contract: 2,
     age: 18,
@@ -334,7 +338,7 @@ export function draftProspectOnClock(career, club, prospect) {
 
   const order = markPickUsed(career.draftOrder, idx, {
     prospectName: `${prospect.firstName} ${prospect.lastName}`,
-    prospectOverall: prospect.overall,
+    prospectOverall: trueOvr,
     prospectPos: prospect.position,
   });
   const pool = (career.draftPool || []).filter((x) => x.id !== prospect.id);
@@ -344,10 +348,17 @@ export function draftProspectOnClock(career, club, prospect) {
     clubId: career.clubId,
     clubShort: club?.short || clubShort(career.clubId),
     prospectName: `${prospect.firstName} ${prospect.lastName}`,
-    overall: prospect.overall,
+    overall: trueOvr,
     position: prospect.position,
     isPlayer: true,
   });
+
+  // Build reveal news comparing scouted estimate to true rating.
+  const scoutedOvr = prospect.scoutedOverall;
+  const diff = scoutedOvr != null ? trueOvr - scoutedOvr : 0;
+  const revealSuffix = scoutedOvr != null
+    ? ` Scouted ~${scoutedOvr}, true rating: ${trueOvr}.${diff > 2 ? ' A steal.' : diff < -2 ? ' Below expectations.' : ''}`
+    : '';
 
   return {
     patch: {
@@ -360,7 +371,7 @@ export function draftProspectOnClock(career, club, prospect) {
         {
           week: career.week,
           type: 'win',
-          text: `🎯 #${pickEntry.pick}: ${club?.short || 'You'} draft ${prospect.firstName} ${prospect.lastName} (${prospect.overall} OVR)`,
+          text: `🎯 #${pickEntry.pick}: ${club?.short || 'You'} draft ${prospect.firstName} ${prospect.lastName} (${trueOvr} OVR).${revealSuffix}`,
         },
         ...(career.news || []),
       ].slice(0, 20),

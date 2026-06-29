@@ -5,7 +5,7 @@ import { pickPressMoment } from './pressEvents.js';
 import { rand, pick, rng, TIER_SCALE } from './rng.js';
 import { PYRAMID, findClub, getAFLClubsForSeason } from '../data/pyramid.js';
 import { isForwardPreferred, isMidPreferred } from './playerGen.js';
-import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating, calcSynergyBonus, philosophyTacticFit } from './matchEngine.js';
+import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating, calcSynergyBonus, philosophyTacticFit, pickInjury } from './matchEngine.js';
 import { getCoachingCall, resolveCoachingCall } from './coachingCalls.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
 import { generateFixtures, generateByeRounds, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
@@ -979,15 +979,15 @@ function finishSeason(c, league) {
       unhappySince: null, transferRequested: false, weeksWithoutGame: 0,
     };
   });
-  const survivors = c.squad.filter((p) => !p._walking && p.age <= 36 && (p._originalContract ?? p.contract) > 0)
-    .map((p) => { const { _originalContract, ...rest } = p; return rest; });
-  const leavers = c.squad.filter((p) => p._walking || p.age > 36 || (p._originalContract ?? p.contract) <= 0);
+  const survivors = c.squad.filter((p) => !p._walking && !p.forcedRetirement && p.age <= 36 && (p._originalContract ?? p.contract) > 0)
+    .map((p) => { const { _originalContract, ...rest } = p; return { ...rest, concussionsThisSeason: 0 }; });
+  const leavers = c.squad.filter((p) => p._walking || p.forcedRetirement || p.age > 36 || (p._originalContract ?? p.contract) <= 0);
   leavers.forEach((p) => {
     retiredThisYear.push({
       id: p.id,
       name: p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'),
       age: p.age,
-      reason: p._walking ? 'walked' : p.age > 36 ? 'retired' : 'released',
+      reason: p.forcedRetirement ? 'retired' : p._walking ? 'walked' : p.age > 36 ? 'retired' : 'released',
       seasonsAtClub: p.seasonsAtClub || 0,
       peakRating: p.peakRating || p.overall || 0,
       // careerGoals/careerGames are already accumulated above — use those.
@@ -1589,6 +1589,35 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     if (drama) c.news = [{ ...drama, week: c.week }, ...(c.news ?? [])].slice(0, 25);
   }
 
+  // Trade request check — runs fortnightly, only for players in contract final year or with very low morale
+  if (c.week % 3 === 0 && c.week !== (c.lastTradeRequestWeek ?? -1)) {
+    c.lastTradeRequestWeek = c.week;
+    const candidates = (c.squad || []).filter(p => {
+      const inFinalYear = (p.contractYears ?? 1) <= 1;
+      const unhappy = (p.morale ?? 70) < 40;
+      const highValue = (p.overall ?? 60) >= 72; // only quality players demand trades
+      const notAlreadyRequesting = !p.hasTradeRequest;
+      return notAlreadyRequesting && highValue && (inFinalYear || unhappy) && rng() < 0.08;
+    });
+    if (candidates.length > 0) {
+      const player = pick(candidates);
+      c.squad = c.squad.map(p => p.id === player.id ? { ...p, hasTradeRequest: true } : p);
+      const reason = (player.morale ?? 70) < 40 ? 'unhappy with their situation at the club' : 'in the final year of their contract and seeking a fresh challenge';
+      c.news = [{
+        week: c.week, type: 'warning',
+        text: `🚨 ${player.firstName} ${player.lastName} has informed the club they want a trade. They are ${reason}.`
+      }, ...(c.news || [])].slice(0, 25);
+      c.pendingTradeRequests = [...(c.pendingTradeRequests || []), {
+        playerId: player.id,
+        playerName: `${player.firstName} ${player.lastName}`,
+        position: player.position,
+        overall: player.overall,
+        reason,
+        week: c.week,
+      }];
+    }
+  }
+
   // Scout deployments — process returns, watchlist staleness, rival interest (once per unique week)
   if (c.week !== (c.lastScoutTickWeek ?? -1)) {
     c.lastScoutTickWeek = c.week;
@@ -1743,12 +1772,23 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     const trainingInjuryPool = lineupPlayersOrdered(c.squad, c.lineup);
     if (rng() < trainingInjuryProb && trainingInjuryPool.length > 0) {
       const injId = pick(trainingInjuryPool).id;
-      const baseWeeks = rand(1, 2);
-      const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
-      c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
+      const inj = pickInjury();
+      const trainingMedRating = (c.staff || []).find((s) => s.id === 's6')?.rating ?? 60;
+      const trainingMedReduction = trainingMedRating >= 85 ? 2 : trainingMedRating >= 70 ? 1 : 0;
+      const trainingWeeks = Math.max(1, Math.min(inj.weeks, 2) - trainingMedReduction); // ponytail: cap training injuries at 2w base; severity still reflected in label
+      c.squad = c.squad.map((p) => {
+        if (p.id !== injId) return p;
+        let concussionsThisSeason = p.concussionsThisSeason || 0;
+        let finalTrainingWeeks = trainingWeeks;
+        if (inj.type === 'concussion') {
+          if (concussionsThisSeason >= 1) finalTrainingWeeks += 2;
+          concussionsThisSeason += 1;
+        }
+        return { ...p, injured: finalTrainingWeeks, injuryType: inj.type, injuryLabel: inj.label, injurySeverity: inj.severity, concussionsThisSeason };
+      });
       const injPlayer = c.squad.find((p) => p.id === injId);
       if (injPlayer) {
-        c.news = [{ week: c.week, type: 'loss', text: `🩹 ${injPlayer.firstName} ${injPlayer.lastName} pulled up sore at training (${weeks}w)` }, ...(c.news || [])].slice(0, 20);
+        c.news = [{ week: c.week, type: 'loss', text: `🩹 ${injPlayer.firstName} ${injPlayer.lastName} — ${inj.label} at training (${inj.severity}, est. ${injPlayer.injured}w)` }, ...(c.news || [])].slice(0, 20);
       }
     }
 
@@ -1931,24 +1971,57 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     const won = myTotal > oppTotal;
     const drew = myTotal === oppTotal;
 
+    // Vote-getters: players who stood out get a form boost (best-on-ground recognition).
+    const votesById = {};
+    (result.votes || []).forEach((v) => { votesById[v.playerId] = v.votes; });
+
     c.squad = c.squad.map((p) => {
       if (!c.lineup.includes(p.id)) return p;
-      const fitDrop = rand(5, 12);
+      // Pre-season benefit: match sharpness nets +5 fitness on top of the exercise cost.
+      // Training camp has built base fitness; game intensity is the final polish.
+      const fitNet = 5;
       const formChange = won ? rand(1, 4) : drew ? rand(-1, 2) : rand(-3, 1);
+      const voteBoost = (votesById[p.id] ?? 0) > 0 ? 2 : 0;
       const gAdd = isForwardPreferred(p) ? rand(0, 2) : 0;
-      const newForm = clamp(p.form + formChange, 30, 100);
+      const newForm = clamp(p.form + formChange + voteBoost, 30, 100);
       const formHistory = [...(p.formHistory || []), p.form].slice(-5);
       return {
-        ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
+        ...p, fitness: clamp(p.fitness + fitNet, 30, 100), form: newForm, formHistory,
         goals: p.goals + gAdd, behinds: p.behinds + rand(0, 1), disposals: p.disposals + rand(6, 18),
         marks: p.marks + rand(1, 4), tackles: p.tackles + rand(1, 3), gamesPlayed: p.gamesPlayed + 1,
         legendGames: (p.legendGames || 0) + 1,
       };
     });
-    const preMeta = { round: 0 };
-    const preMyResult = { myTotal, oppTotal, opp };
-    c.news = [{ week: 0, type: won ? 'win' : drew ? 'draw' : 'loss',
-      text: buildMatchReportLine(c, preMeta, preMyResult, won, drew, isHome, result).replace('Rd 0:', `${ev.label}:`) },
+
+    // Injuries are real in pre-season — dramatic and momentum-disrupting.
+    const medLevel = c.facilities?.medical?.level ?? 1;
+    const mit = medicalStaffMitigation(c.staff);
+    (result.injuredPlayerIds || []).forEach((pid) => {
+      if (!c.lineup.includes(pid)) return;
+      const baseWeeks = rand(1, 3);
+      const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
+      c.squad = c.squad.map((p) => (p.id === pid ? { ...p, injured: weeks } : p));
+    });
+    if (rng() < 0.08 && c.lineup.length > 0) {
+      const injId = pick(c.lineup.filter(id => c.squad.find(p => p.id === id && !p.injured)));
+      if (injId) {
+        const weeks = Math.max(1, rand(1, 3) - Math.max(0, medLevel - 1) - mit.weekReduce);
+        c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
+        const injPlayer = c.squad.find(p => p.id === injId);
+        if (injPlayer) {
+          c.news = [{ week: 0, type: 'loss',
+            text: `🤕 Pre-season injury: ${injPlayer.firstName} ${injPlayer.lastName} out ${weeks} week${weeks > 1 ? 's' : ''} — not how you want to start pre-season.` },
+          ...(c.news || [])].slice(0, 15);
+        }
+      }
+    }
+
+    const preText = won
+      ? `🏉 ${ev.label}: ${findClub(c.clubId)?.short || 'Us'} def. ${opp?.short || 'Opp'} ${myTotal}–${oppTotal} — result doesn't count, but promising signs.`
+      : drew
+        ? `🏉 ${ev.label}: Draw ${myTotal}–${oppTotal} vs ${opp?.short || 'Opp'} — no ladder points, coach will be taking notes.`
+        : `🏉 ${ev.label}: ${opp?.short || 'Opp'} def. ${findClub(c.clubId)?.short || 'Us'} ${oppTotal}–${myTotal} — result doesn't count, but the coach will be taking notes.`;
+    c.news = [{ week: 0, type: won ? 'win' : drew ? 'draw' : 'loss', text: preText },
     ...(c.news || [])].slice(0, 15);
     c.lastEvent = {
       type: 'preseason_match', label: ev.label, date: ev.date, isHome, opp, result, myTotal, oppTotal, won, drew,
@@ -2230,7 +2303,9 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
       }
       return np;
     }
-    const fitDrop = rand(8, 18);
+    // AFL sub rule: the designated medical sub is held back and activated ~half-time,
+    // so they cover fewer minutes and finish far fresher than a full-game player.
+    const fitDrop = p.id === c.subPlayerId ? rand(3, 8) : rand(8, 18);
     // Best-on-ground performances carry personal form, even in a loss.
     const votes = votesById[p.id] || 0;
     const formChange = (won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1)) + votes;
@@ -2322,18 +2397,40 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   const baseInjuryProb =
     0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001 - mit.probReduce;
   const injuryProb = effectiveInjuryRate(c, clamp(baseInjuryProb, 0.04, 0.28));
+  const medRating = (c.staff || []).find((s) => s.id === 's6')?.rating ?? 60;
+  const medReduction = medRating >= 85 ? 2 : medRating >= 70 ? 1 : 0;
+
+  const applyTypedInjury = (pid) => {
+    const inj = pickInjury();
+    let finalWeeks = Math.max(1, inj.weeks - medReduction);
+    c.squad = c.squad.map((p) => {
+      if (p.id !== pid) return p;
+      let concussionsThisSeason = p.concussionsThisSeason || 0;
+      if (inj.type === 'concussion') {
+        if (concussionsThisSeason >= 1) finalWeeks += 2; // AFL concussion protocol
+        concussionsThisSeason += 1;
+      }
+      const forcedRetirement = (inj.type === 'knee_acl' && (p.age || 0) >= 33 && rng() < 0.20)
+        ? true : p.forcedRetirement;
+      return { ...p, injured: finalWeeks, injuryType: inj.type, injuryLabel: inj.label, injurySeverity: inj.severity, concussionsThisSeason, forcedRetirement };
+    });
+    const player = c.squad.find((p) => p.id === pid);
+    if (player) {
+      const newsText = `🩹 ${player.firstName} ${player.lastName} — ${inj.label} (${inj.severity}, est. ${finalWeeks} week${finalWeeks !== 1 ? 's' : ''})`;
+      c.news = [{ week: c.week, type: 'loss', text: newsText }, ...(c.news || [])].slice(0, 20);
+      if (player.forcedRetirement) {
+        c.news = [{ week: c.week, type: 'warning', text: `💔 ${player.firstName} ${player.lastName}'s ACL injury is career-ending — they will retire at season's end.` }, ...(c.news || [])].slice(0, 20);
+      }
+    }
+  };
+
   (result.injuredPlayerIds || []).forEach((pid) => {
     if (!c.lineup.includes(pid)) return;
-    const baseWeeks = rand(1, 4);
-    const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
-    c.squad = c.squad.map((p) => (p.id === pid ? { ...p, injured: weeks } : p));
+    applyTypedInjury(pid);
   });
   const matchInjuryPool = lineupPlayersOrdered(c.squad, c.lineup);
   if (rng() < injuryProb && matchInjuryPool.length > 0) {
-    const injId = pick(matchInjuryPool).id;
-    const baseWeeks = rand(1, 4);
-    const weeks = Math.max(1, baseWeeks - Math.max(0, medLevel - 1) - mit.weekReduce);
-    c.squad = c.squad.map((p) => (p.id === injId ? { ...p, injured: weeks } : p));
+    applyTypedInjury(pick(matchInjuryPool).id);
   }
   (result.reportedPlayerIds || []).forEach((pid) => {
     if (rng() < 0.35) {

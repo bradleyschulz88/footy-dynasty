@@ -10,6 +10,8 @@ import {
   weatherAccuracyMod,
   playerEffectiveMatchRating,
   adaptiveOppTactic,
+  pickInjury,
+  INJURY_TABLE,
 } from '../matchEngine.js';
 
 // ---------------------------------------------------------------------------
@@ -461,5 +463,27 @@ describe('adaptiveOppTactic — AI reacts to the scoreboard', () => {
   it('keeps the plan when the margin is tight', () => {
     expect(adaptiveOppTactic('press', 6, 3)).toBe('press');
     expect(adaptiveOppTactic('balanced', -5, 2)).toBe('balanced');
+  });
+});
+
+describe('pickInjury (typed injury system)', () => {
+  it('returns a valid type/label/severity with weeks inside the table bounds', () => {
+    seedRng(7);
+    for (let i = 0; i < 200; i++) {
+      const inj = pickInjury();
+      const entry = INJURY_TABLE.find((e) => e.type === inj.type && e.label === inj.label);
+      expect(entry).toBeTruthy();
+      expect(['mild', 'moderate', 'severe']).toContain(inj.severity);
+      expect(inj.weeks).toBeGreaterThanOrEqual(entry.minWeeks);
+      expect(inj.weeks).toBeLessThanOrEqual(entry.maxWeeks);
+      // mild = lower bound, severe = upper bound
+      if (inj.severity === 'mild') expect(inj.weeks).toBe(entry.minWeeks);
+      if (inj.severity === 'severe') expect(inj.weeks).toBe(entry.maxWeeks);
+    }
+  });
+
+  it('table weights are a valid distribution (sum ≈ 1)', () => {
+    const total = INJURY_TABLE.reduce((s, e) => s + e.chance, 0);
+    expect(total).toBeCloseTo(1, 2);
   });
 });

@@ -201,8 +201,17 @@ function DraftPickBankTab() {
             <div className="space-y-2">
               {(bank[y] || []).map((p) => (
                 <div key={p.id} className="flex flex-wrap justify-between gap-2 text-sm border-b border-aline pb-2 last:border-0">
-                  <span>Round {p.round} · pick #{p.selection}</span>
-                  <span className="text-atext-dim">{p.type === 'compensation' ? 'Compensation (NT)' : 'Tradeable'}</span>
+                  <span className="flex items-center gap-1.5">
+                    Round {p.round} · pick #{p.selection}
+                    {p.type === 'compensation' && (
+                      <span className="text-[9px] font-mono px-1 rounded" style={{ background: 'color-mix(in srgb, var(--A-accent) 20%, transparent)', color: 'var(--A-accent)' }}>COMP</span>
+                    )}
+                  </span>
+                  <span className="text-atext-dim text-right">
+                    {p.type === 'compensation'
+                      ? (p.forPlayer ? `for ${p.forPlayer} (NT)` : 'Compensation (NT)')
+                      : 'Tradeable'}
+                  </span>
                 </div>
               ))}
             </div>
@@ -358,10 +367,12 @@ function ProposeTradePanel() {
     const theirValue = theirPlayer.value ?? Math.round(theirPlayer.overall * 1500);
     const offerValue = (ourPlayer.value ?? Math.round(ourPlayer.overall * 1500)) + cashOffer + pickValue;
     const ratio = offerValue / theirValue;
+    // Deadline day desperation: AI accepts offers worth 10% less (threshold drops 0.10)
+    const desperationDiscount = career.deadlineDayActive ? 0.10 : 0;
     let acceptChance = 0;
-    if (ratio >= 0.88) acceptChance = 0.90;
-    else if (ratio >= 0.72) acceptChance = 0.55;
-    else if (ratio >= 0.55) acceptChance = 0.20;
+    if (ratio >= 0.88 - desperationDiscount) acceptChance = 0.90;
+    else if (ratio >= 0.72 - desperationDiscount) acceptChance = 0.55;
+    else if (ratio >= 0.55 - desperationDiscount) acceptChance = 0.20;
     const accepted = rng() < acceptChance;
     const targetClubShort = findClub(targetClubId)?.short ?? targetClubId;
     if (accepted) {
