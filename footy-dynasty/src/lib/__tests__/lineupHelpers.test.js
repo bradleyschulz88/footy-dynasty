@@ -9,7 +9,40 @@ import {
   lineupRole,
   addToBench,
   LINEUP_CAP,
+  slotRoleCode,
+  playerFitsSlot,
 } from "../lineupHelpers.js";
+
+describe("slotRoleCode", () => {
+  it("maps on-ground slots to AFL roles (defence-top) and interchange to INT", () => {
+    expect(slotRoleCode(1)).toBe("FB");   // back line centre
+    expect(slotRoleCode(4)).toBe("CHB");  // half-back centre
+    expect(slotRoleCode(7)).toBe("C");    // centre
+    expect(slotRoleCode(13)).toBe("FF");  // full forward
+    expect(slotRoleCode(15)).toBe("RU");  // ruck (first follower)
+    expect(slotRoleCode(18)).toBe("INT"); // first interchange slot
+    expect(slotRoleCode(22)).toBe("INT");
+  });
+});
+
+describe("playerFitsSlot", () => {
+  const back = { position: "KB", secondaryPosition: "HB" };
+  const fwd = { position: "KF", secondaryPosition: "HF" };
+  const utilWing = { position: "C", secondaryPosition: "HB" };
+  it("accepts a player whose primary or secondary matches the slot's line", () => {
+    expect(playerFitsSlot(back, 1)).toBe(true);   // KB in back line
+    expect(playerFitsSlot(fwd, 13)).toBe(true);   // KF in forward line
+    expect(playerFitsSlot(utilWing, 4)).toBe(true); // secondary HB covers half-back
+  });
+  it("rejects a player who suits neither line position", () => {
+    expect(playerFitsSlot(fwd, 1)).toBe(false);   // a forward in the back line
+    expect(playerFitsSlot(back, 13)).toBe(false); // a defender at full forward
+  });
+  it("lets anyone fill an interchange slot, and handles missing players", () => {
+    expect(playerFitsSlot(fwd, 20)).toBe(true);   // interchange accepts anyone
+    expect(playerFitsSlot(null, 1)).toBe(false);
+  });
+});
 
 describe("lineupRole", () => {
   // slots 0–17 = on-ground (field), 18–22 = interchange (bench)
