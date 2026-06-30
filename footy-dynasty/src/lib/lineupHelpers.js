@@ -1,4 +1,5 @@
 import { primaryLineBucket } from "./lineupBalance.js";
+import { LINE_FWD, LINE_MID, LINE_BACK, LINE_RUCK } from "./playerGen.js";
 
 /** Match-day squad (18 on field + 5 interchange). */
 export const LINEUP_CAP = 23;
@@ -210,6 +211,46 @@ export function moveLineupIndex(lineup, from, to) {
   const [removed] = L.splice(from, 1);
   L.splice(clampedTo, 0, removed);
   return L;
+}
+
+/**
+ * AFL role code for each of the 18 on-ground slots (defence-top, matching the
+ * oval rows B→HB→C→HF→F, then followers). Interchange slots (18–22) are 'INT'.
+ */
+export const LINEUP_SLOT_ROLES = [
+  "BP", "FB", "BP",     // 0–2  back line
+  "HBF", "CHB", "HBF",  // 3–5  half-back
+  "WG", "C", "WG",      // 6–8  centre
+  "HFF", "CHF", "HFF",  // 9–11 half-forward
+  "FP", "FF", "FP",     // 12–14 forward line
+  "RU", "RO", "RR",     // 15–17 followers: ruck, rover, ruck-rover
+];
+
+// Which line each on-ground slot belongs to, for "can this player play here?".
+const SLOT_LINE_SET = [
+  LINE_BACK, LINE_BACK, LINE_BACK,
+  LINE_BACK, LINE_BACK, LINE_BACK,
+  LINE_MID, LINE_MID, LINE_MID,
+  LINE_FWD, LINE_FWD, LINE_FWD,
+  LINE_FWD, LINE_FWD, LINE_FWD,
+  LINE_RUCK, LINE_MID, LINE_MID,
+];
+
+/** AFL role label for a lineup slot index ('INT' for interchange). */
+export function slotRoleCode(i) {
+  return i < LINEUP_FIELD_COUNT ? LINEUP_SLOT_ROLES[i] : "INT";
+}
+
+/**
+ * Whether a player suits a given slot by primary or secondary position.
+ * Interchange slots accept anyone.
+ */
+export function playerFitsSlot(player, i) {
+  if (!player) return false;
+  if (i >= LINEUP_FIELD_COUNT) return true;
+  const set = SLOT_LINE_SET[i];
+  if (!set) return true;
+  return set.has(player.position) || set.has(player.secondaryPosition);
 }
 
 /**

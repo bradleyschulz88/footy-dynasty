@@ -29,7 +29,7 @@ import {
   recalcBoardConfidence,
   applyMemberConfidenceDelta,
 } from '../../lib/board.js';
-import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, removeIdFromLineup, lineupRole, addToBench } from '../../lib/lineupHelpers.js';
+import { lineupPlayersOrdered, LINEUP_CAP, LINEUP_FIELD_COUNT, lineupPlayerCount, lineupHasPlayer, removeIdFromLineup, lineupRole, addToBench, slotRoleCode, playerFitsSlot, placeOrSwapLineupSlot, lineupToFixedSlots, fixedSlotsToLineup } from '../../lib/lineupHelpers.js';
 import { trainingStaffSupportLine } from '../../lib/staffModifiers.js';
 import { philosophyTacticFit } from '../../lib/matchEngine.js';
 import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
@@ -373,6 +373,93 @@ function DepthChart({ onSelectPlayer }) {
   );
 }
 
+// Role-by-role line-up editor. Each on-ground slot maps to an AFL role; assigning
+// a player here writes career.lineup (slot index = role), so it shows on the Pitch
+// oval instantly. Picking a player auto-removes them from any other slot.
+const POSITION_LINES = [
+  { title: 'Back line',     slots: [0, 1, 2] },
+  { title: 'Half-back',     slots: [3, 4, 5] },
+  { title: 'Centre line',   slots: [6, 7, 8] },
+  { title: 'Half-forward',  slots: [9, 10, 11] },
+  { title: 'Forward line',  slots: [12, 13, 14] },
+  { title: 'Followers',     slots: [15, 16, 17] },
+  { title: 'Interchange',   slots: [18, 19, 20, 21, 22] },
+];
+
+function PositionsTab() {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
+  const lineup = career.lineup || [];
+  const squad = career.squad || [];
+  const slots = lineupToFixedSlots(lineup);
+  const byId = (id) => squad.find((p) => String(p.id) === String(id));
+  const pName = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'));
+  const isAvailable = (p) => (p.injured ?? 0) === 0 && (p.suspended ?? 0) === 0;
+
+  const assign = (slotIdx, playerId) => {
+    if (!playerId) {
+      const next = lineupToFixedSlots(lineup);
+      next[slotIdx] = null;
+      updateCareer({ lineup: fixedSlotsToLineup(next) });
+      return;
+    }
+    updateCareer({ lineup: placeOrSwapLineupSlot(lineup, playerId, slotIdx) });
+  };
+
+  // Players orderable for a slot: best fit + available first.
+  const optionsFor = (slotIdx) => {
+    const score = (p) => (playerFitsSlot(p, slotIdx) ? 2 : 0) + (isAvailable(p) ? 1 : 0);
+    return [...squad].sort((a, b) => (score(b) - score(a)) || ((b.overall ?? 0) - (a.overall ?? 0)));
+  };
+
+  const SlotRow = ({ slotIdx }) => {
+    const pid = slots[slotIdx];
+    const p = pid != null ? byId(pid) : null;
+    const code = slotRoleCode(slotIdx);
+    const label = slotIdx >= LINEUP_FIELD_COUNT ? `I${slotIdx - LINEUP_FIELD_COUNT + 1}` : code;
+    const fits = p ? playerFitsSlot(p, slotIdx) : true;
+    const avail = p ? isAvailable(p) : true;
+    return (
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="text-[9px] font-black w-10 text-center py-1.5 rounded-md flex-shrink-0" style={{ background: 'var(--A-panel-2)', color: 'var(--A-accent-2)' }}>{label}</span>
+        <select
+          value={pid ?? ''}
+          onChange={(e) => assign(slotIdx, e.target.value ? e.target.value : null)}
+          className="flex-1 min-w-0 text-xs font-medium rounded-lg px-2 py-1.5"
+          style={{ background: 'var(--A-bg)', color: 'var(--A-text)', border: '1px solid var(--A-line)' }}
+        >
+          <option value="">— empty —</option>
+          {optionsFor(slotIdx).map((o) => (
+            <option key={o.id} value={o.id}>
+              {pName(o)} · {formatPositionSlash(o)} · {o.overall}{(o.injured ?? 0) > 0 ? ' (inj)' : (o.suspended ?? 0) > 0 ? ' (susp)' : ''}
+            </option>
+          ))}
+        </select>
+        {!fits && <span title="Out of position" style={{ color: 'var(--A-accent-2)', fontSize: 12 }}>⚠</span>}
+        {p && !avail && <span title="Injured / suspended" style={{ color: 'var(--A-neg)', fontSize: 10, fontWeight: 800 }}>{(p.suspended ?? 0) > 0 ? 'SUSP' : 'INJ'}</span>}
+        {p ? <RatingDot value={p.overall} size="sm" /> : <span className="w-7 text-center text-[11px]" style={{ color: 'var(--A-text-mute)' }}>–</span>}
+      </div>
+    );
+  };
+
+  const nIn = lineupPlayerCount(lineup);
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-atext-dim">
+        {nIn}/{LINEUP_CAP} selected · pick a player for each role — they're removed from their old slot automatically and shown on the Pitch oval. <span style={{ color: 'var(--A-accent-2)' }}>⚠</span> = out of position.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {POSITION_LINES.map((line) => (
+          <div key={line.title} className="rounded-xl border border-aline bg-apanel p-3">
+            <div className="text-[11px] font-black tracking-widest text-aaccent mb-2">{line.title.toUpperCase()}</div>
+            {line.slots.map((slotIdx) => <SlotRow key={slotIdx} slotIdx={slotIdx} />)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PlayersTab({ onNavigate }) {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
@@ -381,7 +468,7 @@ function PlayersTab({ onNavigate }) {
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selected, setSelected] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
-  const [pitchView, setPitchView] = useState("pitch"); // 'pitch' | 'depth' — two views of the same lineup
+  const [pitchView, setPitchView] = useState("pitch"); // 'pitch' | 'positions' | 'depth' — views of the same lineup
   const isLg = useIsLg();
   const rowHoverBg = 'color-mix(in srgb, var(--A-accent) 6%, transparent)';
   const rowSelectBg = 'color-mix(in srgb, var(--A-accent) 10%, transparent)';
@@ -440,6 +527,7 @@ function PlayersTab({ onNavigate }) {
             <div className="inline-flex rounded-xl border border-aline bg-apanel p-1 self-start" role="tablist" aria-label="Match-day view">
               {[
                 { key: "pitch", label: "Pitch" },
+                { key: "positions", label: "Positions" },
                 { key: "depth", label: "Depth" },
               ].map(({ key, label }) => {
                 const active = pitchView === key;
@@ -464,7 +552,9 @@ function PlayersTab({ onNavigate }) {
           <p className="text-xs text-atext-dim max-w-2xl leading-relaxed">
             {pitchView === "pitch"
               ? "Build the 23 on the map and bench pool. The roster table below is for browsing — it does not hide players from the bench list."
-              : "Squad by position. Promote from depth, drop, or set the sub — changes show on the Pitch view instantly. Players appear under their secondary position too, so you can see who can cover."}
+              : pitchView === "positions"
+                ? "Pick a player for each role on the ground. Assignments write straight to the line-up, so they show on the Pitch oval — and a player is auto-removed from their old slot."
+                : "Squad by position. Promote from depth, drop, or set the sub — changes show on the Pitch view instantly. Players appear under their secondary position too, so you can see who can cover."}
           </p>
         </div>
         {pitchView === "pitch" ? (
@@ -473,6 +563,8 @@ function PlayersTab({ onNavigate }) {
             stitch={false}
             onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
           />
+        ) : pitchView === "positions" ? (
+          <PositionsTab />
         ) : (
           <DepthChart
             onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
