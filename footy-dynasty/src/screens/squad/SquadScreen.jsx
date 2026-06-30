@@ -14,12 +14,13 @@ import {
   ChevronUp, ChevronDown, Search,
 } from "lucide-react";
 import { PYRAMID, findClub } from '../../data/pyramid.js';
-import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash, PLAYER_TRAITS } from '../../lib/playerGen.js';
+import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash, PLAYER_TRAITS, LINE_FWD, LINE_MID, LINE_BACK, LINE_RUCK } from '../../lib/playerGen.js';
 import { PLAYER_ROLES, roleFit } from '../../lib/playerRoles.js';
 import { fmtK, clamp } from '../../lib/format.js';
 import { TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
 import { css, RatingDot, Pill } from '../../components/primitives.jsx';
 import { SquadLineupBuilder, LineupSortablePanel } from '../../components/SquadLineupDnD.jsx';
+import { formBorderColor } from '../../components/LineupOvalField.jsx';
 import TabNav from '../../components/TabNav.jsx';
 // --- Finance system rebuild ---
 import { proposeRenewal, renewalExtensionStableKey, applyRenewal, canAffordRenewal } from '../../lib/finance/contracts.js';
@@ -28,7 +29,7 @@ import {
   recalcBoardConfidence,
   applyMemberConfidenceDelta,
 } from '../../lib/board.js';
-import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, removeIdFromLineup } from '../../lib/lineupHelpers.js';
+import { lineupPlayersOrdered, LINEUP_CAP, lineupPlayerCount, lineupHasPlayer, removeIdFromLineup, lineupRole, addToBench } from '../../lib/lineupHelpers.js';
 import { trainingStaffSupportLine } from '../../lib/staffModifiers.js';
 import { philosophyTacticFit } from '../../lib/matchEngine.js';
 import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
@@ -240,6 +241,138 @@ function buildContextActions(player, career, updateCareer, onNavigate) {
   ];
 }
 
+// Depth-chart view of the match-day side. Reads the same career.lineup / subPlayerId
+// as the pitch builder, so promoting/dropping here shows on the Pitch tab instantly.
+const DEPTH_COLUMNS = [
+  { name: 'DEFENCE',  set: LINE_BACK },
+  { name: 'MIDFIELD', set: LINE_MID, ut: true },
+  { name: 'RUCK',     set: LINE_RUCK },
+  { name: 'FORWARD',  set: LINE_FWD },
+];
+const inDepthCol = (pos, col) => !!pos && (col.set.has(pos) || (col.ut && pos === 'UT'));
+const ROLE_TAG = {
+  field: { label: 'FIELD', color: 'var(--A-pos)' },
+  bench: { label: 'BENCH', color: 'var(--A-accent-2)' },
+  sub:   { label: 'SUB',   color: 'var(--A-accent)' },
+};
+
+function DepthChart({ onSelectPlayer }) {
+  const career = useCareer();
+  const updateCareer = useUpdateCareer();
+  const [showCover, setShowCover] = useState(true);
+
+  const lineup = career.lineup || [];
+  const squad = career.squad || [];
+  const subId = career.subPlayerId;
+  const pName = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'));
+  const isAvailable = (p) => (p.injured ?? 0) === 0 && (p.suspended ?? 0) === 0;
+
+  const roleOf = (id) => lineupRole(lineup, subId, id);
+
+  const promoteToBench = (id) => updateCareer({ lineup: addToBench(lineup, id) });
+  const dropPlayer = (id) => {
+    const L = [...lineup];
+    const idx = L.findIndex((pid) => pid != null && String(pid) === String(id));
+    if (idx < 0) return;
+    L[idx] = null;
+    let end = L.length;
+    while (end > 0 && (L[end - 1] == null || L[end - 1] === '')) end--;
+    const next = { lineup: L.slice(0, end) };
+    if (subId != null && String(subId) === String(id)) next.subPlayerId = null;
+    updateCareer(next);
+  };
+  const setSub = (id) => updateCareer({ subPlayerId: id });
+
+  const nIn = lineupPlayerCount(lineup);
+
+  const roleRank = { field: 0, bench: 1, sub: 2 };
+  const sortByRoleThenOvr = (a, b) =>
+    (roleRank[roleOf(a.id)] - roleRank[roleOf(b.id)]) || ((b.overall ?? 0) - (a.overall ?? 0));
+
+  const Row = ({ p, cover }) => {
+    const role = roleOf(p.id);
+    const tag = !cover && role !== 'out' ? ROLE_TAG[role] : null;
+    const avail = isAvailable(p);
+    return (
+      <div
+        className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 mb-1 cursor-pointer ${cover ? 'border border-dashed opacity-70' : 'border'}`}
+        style={{
+          background: cover ? 'transparent' : 'var(--A-panel-2)',
+          borderColor: 'var(--A-line)',
+          borderLeft: `3px solid ${formBorderColor(p.form ?? 60)}`,
+        }}
+        onClick={() => onSelectPlayer?.(p)}
+      >
+        <span className="text-[9px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider flex-shrink-0" style={posBadgeStyle(p.position)}>
+          {formatPositionSlash(p)}
+        </span>
+        <span className="text-xs font-semibold text-atext truncate flex-1 min-w-0">{pName(p)}</span>
+        {cover && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: 'var(--A-accent-2)', border: '1px solid color-mix(in srgb, var(--A-accent-2) 35%, transparent)' }}>2°</span>}
+        {tag && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: tag.color, background: `color-mix(in srgb, ${tag.color} 16%, transparent)` }}>{tag.label}</span>}
+        {!avail && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: 'var(--A-neg)' }}>{(p.suspended ?? 0) > 0 ? 'SUSP' : 'INJ'}</span>}
+        <RatingDot value={p.overall} size="sm" />
+        <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          {role === 'out'
+            ? <button type="button" disabled={!avail} onClick={() => promoteToBench(p.id)} className="text-[9px] font-black px-1.5 py-0.5 rounded-md disabled:opacity-30" style={{ color: 'var(--A-pos)', border: '1px solid color-mix(in srgb, var(--A-pos) 35%, transparent)' }}>＋</button>
+            : cover
+              ? null
+              : <>
+                  {role !== 'sub' && <button type="button" onClick={() => setSub(p.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }} title="Set as medical sub">sub</button>}
+                  <button type="button" onClick={() => dropPlayer(p.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: 'var(--A-neg)', border: '1px solid color-mix(in srgb, var(--A-neg) 35%, transparent)' }} title="Drop to depth">✕</button>
+                </>}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-xs text-atext-dim">
+          {nIn}/{LINEUP_CAP} selected · <span style={{ color: 'var(--A-pos)' }}>FIELD</span> = on-ground · <span style={{ color: 'var(--A-accent-2)' }}>BENCH</span> = interchange · <span style={{ color: 'var(--A-accent)' }}>SUB</span> = medical sub.
+        </p>
+        <label className="text-[11px] text-atext-dim flex items-center gap-1.5 cursor-pointer select-none">
+          <input type="checkbox" checked={showCover} onChange={(e) => setShowCover(e.target.checked)} style={{ accentColor: 'var(--A-accent)' }} />
+          Show secondary-position cover
+        </label>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        {DEPTH_COLUMNS.map((col) => {
+          const primary = squad.filter((p) => inDepthCol(p.position, col));
+          const sel = primary.filter((p) => lineupHasPlayer(lineup, p.id)).sort(sortByRoleThenOvr);
+          const dep = primary.filter((p) => !lineupHasPlayer(lineup, p.id)).sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
+          const cover = squad
+            .filter((p) => !inDepthCol(p.position, col) && inDepthCol(p.secondaryPosition, col))
+            .sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
+          const nField = sel.filter((p) => roleOf(p.id) === 'field').length;
+          return (
+            <div key={col.name} className="rounded-xl border border-aline bg-apanel p-2.5">
+              <div className="text-[11px] font-black tracking-widest text-aaccent text-center">{col.name}</div>
+              <div className="text-[8.5px] text-atext-mute text-center mb-2">
+                {nField} field · {sel.length - nField} bench · {dep.length} depth{showCover ? ` · ${cover.length} cover` : ''}
+              </div>
+              {sel.map((p) => <Row key={p.id} p={p} />)}
+              <div className="flex items-center gap-1.5 my-1.5 text-[8px] tracking-widest text-atext-mute">
+                <span className="flex-1 h-px bg-aline" />DEPTH<span className="flex-1 h-px bg-aline" />
+              </div>
+              {dep.map((p) => <Row key={p.id} p={p} />)}
+              {primary.length < 2 && <div className="text-[9px] font-bold text-center" style={{ color: 'var(--A-neg)' }}>⚠ thin — recruit</div>}
+              {showCover && cover.length > 0 && (
+                <>
+                  <div className="flex items-center gap-1.5 my-1.5 text-[8px] tracking-widest" style={{ color: 'var(--A-accent-2)' }}>
+                    <span className="flex-1 h-px" style={{ background: 'color-mix(in srgb, var(--A-accent-2) 40%, var(--A-line))' }} />CAN COVER (2°)<span className="flex-1 h-px" style={{ background: 'color-mix(in srgb, var(--A-accent-2) 40%, var(--A-line))' }} />
+                  </div>
+                  {cover.map((p) => <Row key={`cov-${p.id}`} p={p} cover />)}
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function PlayersTab({ onNavigate }) {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
@@ -248,6 +381,7 @@ function PlayersTab({ onNavigate }) {
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selected, setSelected] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
+  const [pitchView, setPitchView] = useState("pitch"); // 'pitch' | 'depth' — two views of the same lineup
   const isLg = useIsLg();
   const rowHoverBg = 'color-mix(in srgb, var(--A-accent) 6%, transparent)';
   const rowSelectBg = 'color-mix(in srgb, var(--A-accent) 10%, transparent)';
@@ -299,18 +433,51 @@ function PlayersTab({ onNavigate }) {
     <div className="flex flex-col gap-10">
       <section className="space-y-4" aria-labelledby="match-day-title">
         <div className="space-y-1">
-          <h3 id="match-day-title" className={`${css.h1} text-xl md:text-2xl tracking-wide`}>
-            Match-day {LINEUP_CAP}
-          </h3>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <h3 id="match-day-title" className={`${css.h1} text-xl md:text-2xl tracking-wide`}>
+              Match-day {LINEUP_CAP}
+            </h3>
+            <div className="inline-flex rounded-xl border border-aline bg-apanel p-1 self-start" role="tablist" aria-label="Match-day view">
+              {[
+                { key: "pitch", label: "Pitch" },
+                { key: "depth", label: "Depth" },
+              ].map(({ key, label }) => {
+                const active = pitchView === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setPitchView(key)}
+                    className="text-xs font-bold uppercase tracking-wider px-4 py-1.5 rounded-lg transition-all"
+                    style={active
+                      ? { background: "var(--A-accent)", color: "var(--fd-on-accent, #0A0D0C)" }
+                      : { color: "var(--A-text-mute)" }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <p className="text-xs text-atext-dim max-w-2xl leading-relaxed">
-            Build the 23 on the map and bench pool. The roster table below is for browsing — it does not hide players from the bench list.
+            {pitchView === "pitch"
+              ? "Build the 23 on the map and bench pool. The roster table below is for browsing — it does not hide players from the bench list."
+              : "Squad by position. Promote from depth, drop, or set the sub — changes show on the Pitch view instantly. Players appear under their secondary position too, so you can see who can cover."}
           </p>
         </div>
-        <SquadLineupBuilder
-          benchPlayerIds={benchPlayerIds}
-          stitch={false}
-          onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
-        />
+        {pitchView === "pitch" ? (
+          <SquadLineupBuilder
+            benchPlayerIds={benchPlayerIds}
+            stitch={false}
+            onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
+          />
+        ) : (
+          <DepthChart
+            onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
+          />
+        )}
       </section>
 
       <section className="space-y-4" aria-labelledby="roster-title">
