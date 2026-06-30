@@ -317,7 +317,7 @@ function DepthChart({ onSelectPlayer }) {
             : cover
               ? null
               : <>
-                  {role !== 'sub' && <button type="button" onClick={() => setSub(p.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }} title="Set as medical sub">sub</button>}
+                  {role === 'bench' && <button type="button" onClick={() => setSub(p.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }} title="Set as medical sub">sub</button>}
                   <button type="button" onClick={() => dropPlayer(p.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: 'var(--A-neg)', border: '1px solid color-mix(in srgb, var(--A-neg) 35%, transparent)' }} title="Drop to depth">✕</button>
                 </>}
         </div>
