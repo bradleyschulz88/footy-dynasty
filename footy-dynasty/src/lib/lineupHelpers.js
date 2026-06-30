@@ -212,6 +212,35 @@ export function moveLineupIndex(lineup, from, to) {
   return L;
 }
 
+/**
+ * Role of a player within the match-day side, from their lineup slot:
+ * 'field' (slots 0–17, on-ground), 'bench' (18–22, interchange),
+ * 'sub' (the designated medical sub), or 'out' (not selected).
+ */
+export function lineupRole(lineup, subId, id, fieldCount = LINEUP_FIELD_COUNT) {
+  const idx = (lineup || []).findIndex((pid) => pid != null && String(pid) === String(id));
+  if (idx < 0) return "out";
+  if (subId != null && String(subId) === String(id)) return "sub";
+  return idx < fieldCount ? "field" : "bench";
+}
+
+/**
+ * Add a player onto the interchange (first free bench slot 18–22), falling back
+ * to any free slot. Returns a new lineup, or the original unchanged when the 23
+ * is already full. Pure — does not mutate the input.
+ */
+export function addToBench(lineup, id, cap = LINEUP_CAP, fieldCount = LINEUP_FIELD_COUNT) {
+  const L = [...(lineup || [])];
+  while (L.length < cap) L.push(null);
+  let slot = L.findIndex((v, i) => i >= fieldCount && (v == null || v === ""));
+  if (slot < 0) slot = L.findIndex((v) => v == null || v === "");
+  if (slot < 0) return lineup || []; // 23 full
+  L[slot] = id;
+  let end = L.length;
+  while (end > 0 && (L[end - 1] == null || L[end - 1] === "")) end--;
+  return L.slice(0, end);
+}
+
 export function dedupeLineup(lineup) {
   const seen = new Set();
   const L = (lineup || []).map((id) => {

@@ -6,7 +6,49 @@ import {
   lineupPlayerSlotIndex,
   isPlayerAvailable,
   sanitizeLineup,
+  lineupRole,
+  addToBench,
+  LINEUP_CAP,
 } from "../lineupHelpers.js";
+
+describe("lineupRole", () => {
+  // slots 0–17 = on-ground (field), 18–22 = interchange (bench)
+  const lineup = Array.from({ length: 23 }, (_, i) => `p${i}`);
+  it("classifies field, bench, sub and out by slot", () => {
+    expect(lineupRole(lineup, null, "p0")).toBe("field");   // first oval slot
+    expect(lineupRole(lineup, null, "p17")).toBe("field");  // last on-ground slot
+    expect(lineupRole(lineup, null, "p18")).toBe("bench");  // first interchange slot
+    expect(lineupRole(lineup, null, "p22")).toBe("bench");  // last interchange slot
+    expect(lineupRole(lineup, null, "ghost")).toBe("out");  // not selected
+  });
+  it("marks the designated sub regardless of slot", () => {
+    expect(lineupRole(lineup, "p20", "p20")).toBe("sub");
+    expect(lineupRole(lineup, "p20", "p19")).toBe("bench");
+  });
+});
+
+describe("addToBench", () => {
+  it("fills the first free interchange slot (18–22) without disturbing others", () => {
+    const lineup = Array.from({ length: 20 }, (_, i) => `p${i}`); // 18 on-ground + 2 bench filled
+    const next = addToBench(lineup, "new");
+    expect(next[20]).toBe("new");               // landed on the next free bench slot
+    expect(next.slice(0, 20)).toEqual(lineup);  // everyone else untouched
+    expect(lineupRole(next, null, "new")).toBe("bench");
+  });
+  it("does not mutate the input and is a no-op when the 23 is full", () => {
+    const full = Array.from({ length: LINEUP_CAP }, (_, i) => `p${i}`);
+    const copy = [...full];
+    const next = addToBench(full, "extra");
+    expect(full).toEqual(copy);             // input unchanged
+    expect(next).toHaveLength(LINEUP_CAP);  // nobody added
+    expect(next).not.toContain("extra");
+  });
+  it("pads a short lineup so the player lands on the bench, not a field slot", () => {
+    const next = addToBench(["a", "b"], "c");
+    expect(next[18]).toBe("c");             // first bench slot, even though field is mostly empty
+    expect(lineupRole(next, null, "c")).toBe("bench");
+  });
+});
 
 describe("isPlayerAvailable", () => {
   it("is true for a fit player and false for injured/suspended/missing", () => {
