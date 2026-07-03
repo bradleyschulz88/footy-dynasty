@@ -17,6 +17,7 @@ import { PYRAMID, findClub } from '../../data/pyramid.js';
 import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash, PLAYER_TRAITS, LINE_FWD, LINE_MID, LINE_BACK, LINE_RUCK } from '../../lib/playerGen.js';
 import { PLAYER_ROLES, roleFit } from '../../lib/playerRoles.js';
 import { fmtK, clamp } from '../../lib/format.js';
+import { footballDeptLevy } from '../../lib/finance/footballDept.js';
 import { TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
 import { css, RatingDot, Pill } from '../../components/primitives.jsx';
 import { SquadLineupBuilder, LineupSortablePanel } from '../../components/SquadLineupDnD.jsx';
@@ -1875,6 +1876,21 @@ function TrainingTab({ onOpenClubStaff }) {
                 <div className="text-[10px] text-atext-dim mt-0.5">
                   ${(candidate.wage / 1000).toFixed(0)}k/yr · Sign-on ${(candidate.signingFee / 1000).toFixed(0)}k
                 </div>
+                {(() => {
+                  // Soft-cap impact of this hire (replaces the current holder) — informational only, never blocks.
+                  const tier = PYRAMID[career.leagueKey]?.tier ?? 2;
+                  const oldWage = (career.staff || []).find(s => s.id === candidate.staffId)?.wage || 0;
+                  const spend = (career.staff || []).reduce((a, s) => a + (s.wage || 0), 0) - oldWage + candidate.wage;
+                  const fd = footballDeptLevy({ tier, staffWages: spend });
+                  if (fd.cap == null) return null;
+                  return (
+                    <div className="text-[10px] mt-0.5" style={{ color: fd.over > 0 ? 'var(--A-neg)' : 'var(--A-pos)' }}>
+                      {fd.over > 0
+                        ? `Takes football dept ${fmtK(fd.over)} over the soft cap → ~${fmtK(fd.levy)} season-end tax`
+                        : 'Within the football-department soft cap'}
+                    </div>
+                  );
+                })()}
               </div>
               <button
                 disabled={(career.finance?.cash ?? 0) < candidate.signingFee}

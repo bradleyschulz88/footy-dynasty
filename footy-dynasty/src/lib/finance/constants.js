@@ -276,3 +276,16 @@ export const MEMBERSHIP_MILESTONES = {
   relegated:        -0.12,
   woodenSpoon:      -0.06,
 };
+
+// ---------------------------------------------------------------------------
+// Football-department soft cap (staff/coaching spend), separate from the
+// player salary cap. Expressed as a share of the tier's player wageBudget so
+// tier rebalances carry through. Clubs may exceed it freely — the AFL-style
+// consequence is a luxury tax on the excess at season end.
+// ponytail: T3/T4 intentionally absent (volunteer/community staff, no cap).
+// ---------------------------------------------------------------------------
+export const FOOTBALL_DEPT_CAP_SHARE = {
+  1: 0.16, // ≈ $2.08M at the current T1 wageBudget — ~130% of a standard panel
+  2: 0.16, // ≈ $224k at T2
+};
+export const FOOTBALL_DEPT_LEVY_RATE = 0.75; // tax on every $ above the cap
