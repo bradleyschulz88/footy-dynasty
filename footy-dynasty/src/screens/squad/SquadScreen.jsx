@@ -29,7 +29,7 @@ import {
   recalcBoardConfidence,
   applyMemberConfidenceDelta,
 } from '../../lib/board.js';
-import { lineupPlayersOrdered, LINEUP_CAP, LINEUP_FIELD_COUNT, lineupPlayerCount, lineupHasPlayer, removeIdFromLineup, lineupRole, addToBench, slotRoleCode, playerFitsSlot, placeOrSwapLineupSlot, lineupToFixedSlots, fixedSlotsToLineup } from '../../lib/lineupHelpers.js';
+import { lineupPlayersOrdered, LINEUP_CAP, LINEUP_FIELD_COUNT, lineupPlayerCount, lineupHasPlayer, removeIdFromLineup, lineupRole, addToBench, hasFreeBenchSlot, slotRoleCode, playerFitsSlot, SLOT_ZONES, positionFitsZone, isPlayerAvailable, placeOrSwapLineupSlot, lineupToFixedSlots, fixedSlotsToLineup } from '../../lib/lineupHelpers.js';
 import { trainingStaffSupportLine } from '../../lib/staffModifiers.js';
 import { philosophyTacticFit } from '../../lib/matchEngine.js';
 import { tutorialHighlightTab } from "../../components/TutorialOverlay.jsx";
@@ -45,6 +45,9 @@ function MoraleBandPill({ morale }) {
   const band = moraleBand(morale);
   return <Pill color={moraleToneColor(band.tone)}>{band.label}</Pill>;
 }
+
+/** Display name for a player row (shared by the squad views). */
+const playerName = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'));
 
 function posBadgeStyle(pos) {
   if (pos === 'KF' || pos === 'HF') return {background:'color-mix(in srgb,#E84A6F 14%,transparent)',color:'#E84A6F',border:'1px solid color-mix(in srgb,#E84A6F 30%,transparent)'};
@@ -176,7 +179,6 @@ function FormSparkline({ history, current }) {
 
 function buildContextActions(player, career, updateCareer, onNavigate) {
   const inLineup = lineupHasPlayer(career.lineup, player.id);
-  const lineupFull = lineupPlayerCount(career.lineup) >= LINEUP_CAP;
   const morale = player.morale ?? 70;
 
   return [
@@ -184,12 +186,13 @@ function buildContextActions(player, career, updateCareer, onNavigate) {
       id: 'lineup_toggle',
       label: inLineup ? 'Remove from lineup' : 'Add to lineup',
       icon: inLineup ? '−' : '+',
-      disabled: !inLineup && lineupFull,
+      // Adds land on the interchange (blind appends can overflow slot 22 on sparse lineups).
+      disabled: !inLineup && !hasFreeBenchSlot(career.lineup),
       onClick: () => {
         if (inLineup) {
           updateCareer({ lineup: removeIdFromLineup(career.lineup, player.id) });
         } else {
-          updateCareer({ lineup: [...(career.lineup || []), player.id] });
+          updateCareer({ lineup: addToBench(career.lineup, player.id) });
         }
       },
     },
@@ -256,6 +259,42 @@ const ROLE_TAG = {
   sub:   { label: 'SUB',   color: 'var(--A-accent)' },
 };
 
+// Hoisted row (module scope so React reconciles instead of remounting per render).
+function DepthRow({ p, cover, role, benchFree, onSelect, onPromote, onDrop, onSetSub }) {
+  const tag = !cover && role !== 'out' ? ROLE_TAG[role] : null;
+  const avail = isPlayerAvailable(p);
+  return (
+    <div
+      className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 mb-1 cursor-pointer ${cover ? 'border border-dashed opacity-70' : 'border'}`}
+      style={{
+        background: cover ? 'transparent' : 'var(--A-panel-2)',
+        borderColor: 'var(--A-line)',
+        borderLeft: `3px solid ${formBorderColor(p.form ?? 60)}`,
+      }}
+      onClick={() => onSelect?.(p)}
+    >
+      <span className="text-[9px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider flex-shrink-0" style={posBadgeStyle(p.position)}>
+        {formatPositionSlash(p)}
+      </span>
+      <span className="text-xs font-semibold text-atext truncate flex-1 min-w-0">{playerName(p)}</span>
+      {cover && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: 'var(--A-accent-2)', border: '1px solid color-mix(in srgb, var(--A-accent-2) 35%, transparent)' }}>2°</span>}
+      {tag && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: tag.color, background: `color-mix(in srgb, ${tag.color} 16%, transparent)` }}>{tag.label}</span>}
+      {!avail && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: 'var(--A-neg)' }}>{(p.suspended ?? 0) > 0 ? 'SUSP' : 'INJ'}</span>}
+      <RatingDot value={p.overall} size="sm" />
+      <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        {role === 'out'
+          ? <button type="button" disabled={!avail || !benchFree} title={!benchFree ? 'Interchange full — free a bench slot first' : 'Add to the interchange'} onClick={() => onPromote(p.id)} className="text-[9px] font-black px-1.5 py-0.5 rounded-md disabled:opacity-30" style={{ color: 'var(--A-pos)', border: '1px solid color-mix(in srgb, var(--A-pos) 35%, transparent)' }}>＋</button>
+          : cover
+            ? null
+            : <>
+                {role === 'bench' && <button type="button" onClick={() => onSetSub(p.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }} title="Set as medical sub">sub</button>}
+                <button type="button" onClick={() => onDrop(p.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: 'var(--A-neg)', border: '1px solid color-mix(in srgb, var(--A-neg) 35%, transparent)' }} title="Drop to depth">✕</button>
+              </>}
+      </div>
+    </div>
+  );
+}
+
 function DepthChart({ onSelectPlayer }) {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
@@ -264,66 +303,35 @@ function DepthChart({ onSelectPlayer }) {
   const lineup = career.lineup || [];
   const squad = career.squad || [];
   const subId = career.subPlayerId;
-  const pName = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'));
-  const isAvailable = (p) => (p.injured ?? 0) === 0 && (p.suspended ?? 0) === 0;
-
-  const roleOf = (id) => lineupRole(lineup, subId, id);
 
   const promoteToBench = (id) => updateCareer({ lineup: addToBench(lineup, id) });
-  const dropPlayer = (id) => {
-    const L = [...lineup];
-    const idx = L.findIndex((pid) => pid != null && String(pid) === String(id));
-    if (idx < 0) return;
-    L[idx] = null;
-    let end = L.length;
-    while (end > 0 && (L[end - 1] == null || L[end - 1] === '')) end--;
-    const next = { lineup: L.slice(0, end) };
-    if (subId != null && String(subId) === String(id)) next.subPlayerId = null;
-    updateCareer(next);
-  };
+  // Stale-sub clearing happens at the careerStore choke point (sanitizeSubPlayerId).
+  const dropPlayer = (id) => updateCareer({ lineup: removeIdFromLineup(lineup, id) });
   const setSub = (id) => updateCareer({ subPlayerId: id });
 
   const nIn = lineupPlayerCount(lineup);
+  const benchFree = hasFreeBenchSlot(lineup);
 
-  const roleRank = { field: 0, bench: 1, sub: 2 };
-  const sortByRoleThenOvr = (a, b) =>
-    (roleRank[roleOf(a.id)] - roleRank[roleOf(b.id)]) || ((b.overall ?? 0) - (a.overall ?? 0));
-
-  const Row = ({ p, cover }) => {
-    const role = roleOf(p.id);
-    const tag = !cover && role !== 'out' ? ROLE_TAG[role] : null;
-    const avail = isAvailable(p);
-    return (
-      <div
-        className={`flex items-center gap-1.5 rounded-lg px-2 py-1.5 mb-1 cursor-pointer ${cover ? 'border border-dashed opacity-70' : 'border'}`}
-        style={{
-          background: cover ? 'transparent' : 'var(--A-panel-2)',
-          borderColor: 'var(--A-line)',
-          borderLeft: `3px solid ${formBorderColor(p.form ?? 60)}`,
-        }}
-        onClick={() => onSelectPlayer?.(p)}
-      >
-        <span className="text-[9px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-wider flex-shrink-0" style={posBadgeStyle(p.position)}>
-          {formatPositionSlash(p)}
-        </span>
-        <span className="text-xs font-semibold text-atext truncate flex-1 min-w-0">{pName(p)}</span>
-        {cover && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: 'var(--A-accent-2)', border: '1px solid color-mix(in srgb, var(--A-accent-2) 35%, transparent)' }}>2°</span>}
-        {tag && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: tag.color, background: `color-mix(in srgb, ${tag.color} 16%, transparent)` }}>{tag.label}</span>}
-        {!avail && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: 'var(--A-neg)' }}>{(p.suspended ?? 0) > 0 ? 'SUSP' : 'INJ'}</span>}
-        <RatingDot value={p.overall} size="sm" />
-        <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-          {role === 'out'
-            ? <button type="button" disabled={!avail} onClick={() => promoteToBench(p.id)} className="text-[9px] font-black px-1.5 py-0.5 rounded-md disabled:opacity-30" style={{ color: 'var(--A-pos)', border: '1px solid color-mix(in srgb, var(--A-pos) 35%, transparent)' }}>＋</button>
-            : cover
-              ? null
-              : <>
-                  {role === 'bench' && <button type="button" onClick={() => setSub(p.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }} title="Set as medical sub">sub</button>}
-                  <button type="button" onClick={() => dropPlayer(p.id)} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ color: 'var(--A-neg)', border: '1px solid color-mix(in srgb, var(--A-neg) 35%, transparent)' }} title="Drop to depth">✕</button>
-                </>}
-        </div>
-      </div>
-    );
-  };
+  // One pass to classify roles, then bucket/sort each column — memoized so
+  // unrelated parent renders don't re-derive everything.
+  const { columns, roleById } = useMemo(() => {
+    const roleById = new Map(squad.map((p) => [p.id, lineupRole(lineup, subId, p.id)]));
+    const roleRank = { field: 0, bench: 1, sub: 2, out: 3 };
+    const byRoleThenOvr = (a, b) =>
+      (roleRank[roleById.get(a.id)] - roleRank[roleById.get(b.id)]) || ((b.overall ?? 0) - (a.overall ?? 0));
+    const byOvr = (a, b) => (b.overall ?? 0) - (a.overall ?? 0);
+    const columns = DEPTH_COLUMNS.map((col) => {
+      const primary = squad.filter((p) => inDepthCol(p.position, col));
+      const sel = primary.filter((p) => roleById.get(p.id) !== 'out').sort(byRoleThenOvr);
+      const dep = primary.filter((p) => roleById.get(p.id) === 'out').sort(byOvr);
+      const cover = squad
+        .filter((p) => !inDepthCol(p.position, col) && inDepthCol(p.secondaryPosition, col))
+        .sort(byOvr);
+      const nField = sel.filter((p) => roleById.get(p.id) === 'field').length;
+      return { col, primary, sel, dep, cover, nField };
+    });
+    return { columns, roleById };
+  }, [squad, lineup, subId]);
 
   return (
     <div className="space-y-3">
@@ -337,32 +345,26 @@ function DepthChart({ onSelectPlayer }) {
         </label>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-        {DEPTH_COLUMNS.map((col) => {
-          const primary = squad.filter((p) => inDepthCol(p.position, col));
-          const sel = primary.filter((p) => lineupHasPlayer(lineup, p.id)).sort(sortByRoleThenOvr);
-          const dep = primary.filter((p) => !lineupHasPlayer(lineup, p.id)).sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
-          const cover = squad
-            .filter((p) => !inDepthCol(p.position, col) && inDepthCol(p.secondaryPosition, col))
-            .sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
-          const nField = sel.filter((p) => roleOf(p.id) === 'field').length;
+        {columns.map(({ col, primary, sel, dep, cover, nField }) => {
+          const rowProps = { benchFree, onSelect: onSelectPlayer, onPromote: promoteToBench, onDrop: dropPlayer, onSetSub: setSub };
           return (
             <div key={col.name} className="rounded-xl border border-aline bg-apanel p-2.5">
               <div className="text-[11px] font-black tracking-widest text-aaccent text-center">{col.name}</div>
               <div className="text-[8.5px] text-atext-mute text-center mb-2">
                 {nField} field · {sel.length - nField} bench · {dep.length} depth{showCover ? ` · ${cover.length} cover` : ''}
               </div>
-              {sel.map((p) => <Row key={p.id} p={p} />)}
+              {sel.map((p) => <DepthRow key={p.id} p={p} role={roleById.get(p.id)} {...rowProps} />)}
               <div className="flex items-center gap-1.5 my-1.5 text-[8px] tracking-widest text-atext-mute">
                 <span className="flex-1 h-px bg-aline" />DEPTH<span className="flex-1 h-px bg-aline" />
               </div>
-              {dep.map((p) => <Row key={p.id} p={p} />)}
+              {dep.map((p) => <DepthRow key={p.id} p={p} role="out" {...rowProps} />)}
               {primary.length < 2 && <div className="text-[9px] font-bold text-center" style={{ color: 'var(--A-neg)' }}>⚠ thin — recruit</div>}
               {showCover && cover.length > 0 && (
                 <>
                   <div className="flex items-center gap-1.5 my-1.5 text-[8px] tracking-widest" style={{ color: 'var(--A-accent-2)' }}>
                     <span className="flex-1 h-px" style={{ background: 'color-mix(in srgb, var(--A-accent-2) 40%, var(--A-line))' }} />CAN COVER (2°)<span className="flex-1 h-px" style={{ background: 'color-mix(in srgb, var(--A-accent-2) 40%, var(--A-line))' }} />
                   </div>
-                  {cover.map((p) => <Row key={`cov-${p.id}`} p={p} cover />)}
+                  {cover.map((p) => <DepthRow key={`cov-${p.id}`} p={p} cover role={roleById.get(p.id)} {...rowProps} />)}
                 </>
               )}
             </div>
@@ -386,60 +388,65 @@ const POSITION_LINES = [
   { title: 'Interchange',   slots: [18, 19, 20, 21, 22] },
 ];
 
+// Hoisted slot row (module scope so selects reconcile — an inline component type
+// would remount per render and drop focus mid-selection).
+function PositionSlotRow({ slotIdx, player, options, onAssign }) {
+  const code = slotRoleCode(slotIdx);
+  const label = slotIdx >= LINEUP_FIELD_COUNT ? `I${slotIdx - LINEUP_FIELD_COUNT + 1}` : code;
+  const fits = player ? playerFitsSlot(player, slotIdx) : true;
+  const avail = player ? isPlayerAvailable(player) : true;
+  return (
+    <div className="flex items-center gap-2 mb-1.5">
+      <span className="text-[9px] font-black w-10 text-center py-1.5 rounded-md flex-shrink-0" style={{ background: 'var(--A-panel-2)', color: 'var(--A-accent-2)' }}>{label}</span>
+      <select
+        value={player?.id ?? ''}
+        onChange={(e) => onAssign(slotIdx, e.target.value ? e.target.value : null)}
+        className="flex-1 min-w-0 text-xs font-medium rounded-lg px-2 py-1.5"
+        style={{ background: 'var(--A-bg)', color: 'var(--A-text)', border: '1px solid var(--A-line)' }}
+      >
+        <option value="">— empty —</option>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {playerName(o)} · {formatPositionSlash(o)} · {o.overall}{(o.injured ?? 0) > 0 ? ' (inj)' : (o.suspended ?? 0) > 0 ? ' (susp)' : ''}
+          </option>
+        ))}
+      </select>
+      {!fits && <span title="Out of position" style={{ color: 'var(--A-accent-2)', fontSize: 12 }}>⚠</span>}
+      {player && !avail && <span title="Injured / suspended" style={{ color: 'var(--A-neg)', fontSize: 10, fontWeight: 800 }}>{(player.suspended ?? 0) > 0 ? 'SUSP' : 'INJ'}</span>}
+      {player ? <RatingDot value={player.overall} size="sm" /> : <span className="w-7 text-center text-[11px]" style={{ color: 'var(--A-text-mute)' }}>–</span>}
+    </div>
+  );
+}
+
 function PositionsTab() {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
   const lineup = career.lineup || [];
   const squad = career.squad || [];
-  const slots = lineupToFixedSlots(lineup);
-  const byId = (id) => squad.find((p) => String(p.id) === String(id));
-  const pName = (p) => (p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'));
-  const isAvailable = (p) => (p.injured ?? 0) === 0 && (p.suspended ?? 0) === 0;
+
+  const slots = useMemo(() => lineupToFixedSlots(lineup), [lineup]);
+  const playerById = useMemo(() => new Map(squad.map((p) => [String(p.id), p])), [squad]);
+
+  // One sorted option list per ground zone (7 sorts) instead of one per slot (23).
+  const optionsByZone = useMemo(() => {
+    const out = {};
+    for (const zone of new Set(SLOT_ZONES)) {
+      const score = (p) =>
+        ((positionFitsZone(p.position, zone) || positionFitsZone(p.secondaryPosition, zone)) ? 2 : 0) +
+        (isPlayerAvailable(p) ? 1 : 0);
+      out[zone] = [...squad].sort((a, b) => (score(b) - score(a)) || ((b.overall ?? 0) - (a.overall ?? 0)));
+    }
+    return out;
+  }, [squad]);
 
   const assign = (slotIdx, playerId) => {
     if (!playerId) {
-      const next = lineupToFixedSlots(lineup);
+      const next = [...slots];
       next[slotIdx] = null;
       updateCareer({ lineup: fixedSlotsToLineup(next) });
       return;
     }
     updateCareer({ lineup: placeOrSwapLineupSlot(lineup, playerId, slotIdx) });
-  };
-
-  // Players orderable for a slot: best fit + available first.
-  const optionsFor = (slotIdx) => {
-    const score = (p) => (playerFitsSlot(p, slotIdx) ? 2 : 0) + (isAvailable(p) ? 1 : 0);
-    return [...squad].sort((a, b) => (score(b) - score(a)) || ((b.overall ?? 0) - (a.overall ?? 0)));
-  };
-
-  const SlotRow = ({ slotIdx }) => {
-    const pid = slots[slotIdx];
-    const p = pid != null ? byId(pid) : null;
-    const code = slotRoleCode(slotIdx);
-    const label = slotIdx >= LINEUP_FIELD_COUNT ? `I${slotIdx - LINEUP_FIELD_COUNT + 1}` : code;
-    const fits = p ? playerFitsSlot(p, slotIdx) : true;
-    const avail = p ? isAvailable(p) : true;
-    return (
-      <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-[9px] font-black w-10 text-center py-1.5 rounded-md flex-shrink-0" style={{ background: 'var(--A-panel-2)', color: 'var(--A-accent-2)' }}>{label}</span>
-        <select
-          value={pid ?? ''}
-          onChange={(e) => assign(slotIdx, e.target.value ? e.target.value : null)}
-          className="flex-1 min-w-0 text-xs font-medium rounded-lg px-2 py-1.5"
-          style={{ background: 'var(--A-bg)', color: 'var(--A-text)', border: '1px solid var(--A-line)' }}
-        >
-          <option value="">— empty —</option>
-          {optionsFor(slotIdx).map((o) => (
-            <option key={o.id} value={o.id}>
-              {pName(o)} · {formatPositionSlash(o)} · {o.overall}{(o.injured ?? 0) > 0 ? ' (inj)' : (o.suspended ?? 0) > 0 ? ' (susp)' : ''}
-            </option>
-          ))}
-        </select>
-        {!fits && <span title="Out of position" style={{ color: 'var(--A-accent-2)', fontSize: 12 }}>⚠</span>}
-        {p && !avail && <span title="Injured / suspended" style={{ color: 'var(--A-neg)', fontSize: 10, fontWeight: 800 }}>{(p.suspended ?? 0) > 0 ? 'SUSP' : 'INJ'}</span>}
-        {p ? <RatingDot value={p.overall} size="sm" /> : <span className="w-7 text-center text-[11px]" style={{ color: 'var(--A-text-mute)' }}>–</span>}
-      </div>
-    );
   };
 
   const nIn = lineupPlayerCount(lineup);
@@ -452,7 +459,15 @@ function PositionsTab() {
         {POSITION_LINES.map((line) => (
           <div key={line.title} className="rounded-xl border border-aline bg-apanel p-3">
             <div className="text-[11px] font-black tracking-widest text-aaccent mb-2">{line.title.toUpperCase()}</div>
-            {line.slots.map((slotIdx) => <SlotRow key={slotIdx} slotIdx={slotIdx} />)}
+            {line.slots.map((slotIdx) => (
+              <PositionSlotRow
+                key={slotIdx}
+                slotIdx={slotIdx}
+                player={slots[slotIdx] != null ? playerById.get(String(slots[slotIdx])) : null}
+                options={optionsByZone[SLOT_ZONES[slotIdx] ?? 'IC']}
+                onAssign={assign}
+              />
+            ))}
           </div>
         ))}
       </div>
@@ -524,7 +539,9 @@ function PlayersTab({ onNavigate }) {
             <h3 id="match-day-title" className={`${css.h1} text-xl md:text-2xl tracking-wide`}>
               Match-day {LINEUP_CAP}
             </h3>
-            <div className="inline-flex rounded-xl border border-aline bg-apanel p-1 self-start" role="tablist" aria-label="Match-day view">
+            {/* Toggle buttons (aria-pressed), not a half-implemented ARIA tabs pattern —
+                full tabs semantics need tabpanel wiring + arrow-key navigation. */}
+            <div className="inline-flex rounded-xl border border-aline bg-apanel p-1 self-start" aria-label="Match-day view">
               {[
                 { key: "pitch", label: "Pitch" },
                 { key: "positions", label: "Positions" },
@@ -535,8 +552,7 @@ function PlayersTab({ onNavigate }) {
                   <button
                     key={key}
                     type="button"
-                    role="tab"
-                    aria-selected={active}
+                    aria-pressed={active}
                     onClick={() => setPitchView(key)}
                     className="text-xs font-bold uppercase tracking-wider px-4 py-1.5 rounded-lg transition-all"
                     style={active
@@ -1021,7 +1037,9 @@ function PlayerDetail({ player, onClose }) {
   );
   const toggleLineup = () => {
     if (inLineup) updateCareer({ lineup: removeIdFromLineup(career.lineup, player.id) });
-    else if (lineupPlayerCount(career.lineup) < LINEUP_CAP) updateCareer({ lineup: [...(career.lineup || []), player.id] });
+    // Adds land on the interchange — addToBench no-ops when it's full, never
+    // appends past slot 22 (sparse lineups can be length-23 with count < 23).
+    else updateCareer({ lineup: addToBench(career.lineup, player.id) });
   };
   const offerNewContract = () => {
     const proposal = proposeRenewal(player, { stableKey: extensionStableKey });

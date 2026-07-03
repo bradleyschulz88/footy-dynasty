@@ -1,5 +1,4 @@
 import { primaryLineBucket } from "./lineupBalance.js";
-import { LINE_FWD, LINE_MID, LINE_BACK, LINE_RUCK } from "./playerGen.js";
 
 /** Match-day squad (18 on field + 5 interchange). */
 export const LINEUP_CAP = 23;
@@ -70,15 +69,11 @@ export function sanitizeLineup(lineup, squad, { dropUnavailable = true } = {}) {
   return L.slice(0, end);
 }
 
-/** Remove one id from lineup (splices that index out so fixed map slots stay contiguous). */
+/** Remove one id from lineup, keeping every other player in their slot (null-in-place, trim trailing). */
 export function removeIdFromLineup(lineup, id) {
   const bid = String(id);
-  const L = [...(lineup || [])];
-  const idx = L.findIndex((pid) => pid != null && String(pid) === bid);
-  if (idx !== -1) L.splice(idx, 1);
-  let end = L.length;
-  while (end > 0 && (L[end - 1] == null || L[end - 1] === "")) end--;
-  return L.slice(0, end);
+  const L = (lineup || []).map((pid) => (pid != null && String(pid) === bid ? null : pid));
+  return fixedSlotsToLineup(L);
 }
 
 /**
@@ -226,15 +221,37 @@ export const LINEUP_SLOT_ROLES = [
   "RU", "RO", "RR",     // 15–17 followers: ruck, rover, ruck-rover
 ];
 
-// Which line each on-ground slot belongs to, for "can this player play here?".
-const SLOT_LINE_SET = [
-  LINE_BACK, LINE_BACK, LINE_BACK,
-  LINE_BACK, LINE_BACK, LINE_BACK,
-  LINE_MID, LINE_MID, LINE_MID,
-  LINE_FWD, LINE_FWD, LINE_FWD,
-  LINE_FWD, LINE_FWD, LINE_FWD,
-  LINE_RUCK, LINE_MID, LINE_MID,
+/** Ground zone of each lineup slot (matches the oval rows; followers = RUCK, interchange = IC). */
+export const SLOT_ZONES = [
+  "B", "B", "B",
+  "HB", "HB", "HB",
+  "C", "C", "C",
+  "HF", "HF", "HF",
+  "F", "F", "F",
+  "RUCK", "RUCK", "RUCK",
+  "IC", "IC", "IC", "IC", "IC",
 ];
+
+/**
+ * Positions considered at home in each ground zone — the single source of truth
+ * for out-of-position checks on the oval AND the Positions/Depth views.
+ */
+export const ZONE_POSITIONS = {
+  B:    new Set(["KB", "UT"]),
+  HB:   new Set(["HB", "KB", "WG", "UT"]),
+  C:    new Set(["C", "R", "WG", "UT"]),
+  HF:   new Set(["HF", "KF", "WG", "UT"]),
+  F:    new Set(["KF", "HF", "UT"]),
+  RUCK: new Set(["RU", "R", "C", "KB", "UT"]), // followers row: ruck (or pinch-hitting KB) plus rover / ruck-rover types
+  IC:   null,
+};
+
+export function positionFitsZone(position, zone) {
+  if (!zone || zone === "IC") return true;
+  const allowed = ZONE_POSITIONS[zone];
+  if (!allowed) return true;
+  return allowed.has(position);
+}
 
 /** AFL role label for a lineup slot index ('INT' for interchange). */
 export function slotRoleCode(i) {
@@ -247,10 +264,9 @@ export function slotRoleCode(i) {
  */
 export function playerFitsSlot(player, i) {
   if (!player) return false;
-  if (i >= LINEUP_FIELD_COUNT) return true;
-  const set = SLOT_LINE_SET[i];
-  if (!set) return true;
-  return set.has(player.position) || set.has(player.secondaryPosition);
+  const zone = SLOT_ZONES[i] ?? "IC";
+  return positionFitsZone(player.position, zone)
+    || (player.secondaryPosition != null && positionFitsZone(player.secondaryPosition, zone));
 }
 
 /**
@@ -261,25 +277,34 @@ export function playerFitsSlot(player, i) {
 export function lineupRole(lineup, subId, id, fieldCount = LINEUP_FIELD_COUNT) {
   const idx = (lineup || []).findIndex((pid) => pid != null && String(pid) === String(id));
   if (idx < 0) return "out";
-  if (subId != null && String(subId) === String(id)) return "sub";
-  return idx < fieldCount ? "field" : "bench";
+  if (idx < fieldCount) return "field"; // a sub designation is only meaningful on the interchange
+  return subId != null && String(subId) === String(id) ? "sub" : "bench";
+}
+
+/** A designated medical sub is only valid while they hold an interchange slot; otherwise null. */
+export function sanitizeSubPlayerId(lineup, subId) {
+  return subId != null && lineupRole(lineup, subId, subId) === "sub" ? subId : null;
 }
 
 /**
- * Add a player onto the interchange (first free bench slot 18–22), falling back
- * to any free slot. Returns a new lineup, or the original unchanged when the 23
- * is already full. Pure — does not mutate the input.
+ * Add a player onto the interchange (first free bench slot 18–22). Returns a new
+ * lineup, or the original unchanged when the interchange is full — field slots
+ * are assigned deliberately (Pitch drag / Positions), never as a silent fallback.
+ * Pure — does not mutate the input.
  */
 export function addToBench(lineup, id, cap = LINEUP_CAP, fieldCount = LINEUP_FIELD_COUNT) {
   const L = [...(lineup || [])];
   while (L.length < cap) L.push(null);
-  let slot = L.findIndex((v, i) => i >= fieldCount && (v == null || v === ""));
-  if (slot < 0) slot = L.findIndex((v) => v == null || v === "");
-  if (slot < 0) return lineup || []; // 23 full
+  const slot = L.findIndex((v, i) => i >= fieldCount && (v == null || v === ""));
+  if (slot < 0) return lineup || []; // interchange full
   L[slot] = id;
-  let end = L.length;
-  while (end > 0 && (L[end - 1] == null || L[end - 1] === "")) end--;
-  return L.slice(0, end);
+  return fixedSlotsToLineup(L);
+}
+
+/** True when the interchange (slots 18–22) has a free spot for addToBench. */
+export function hasFreeBenchSlot(lineup, cap = LINEUP_CAP, fieldCount = LINEUP_FIELD_COUNT) {
+  const slots = lineupToFixedSlots(lineup, cap);
+  return slots.some((v, i) => i >= fieldCount && (v == null || v === ""));
 }
 
 export function dedupeLineup(lineup) {
