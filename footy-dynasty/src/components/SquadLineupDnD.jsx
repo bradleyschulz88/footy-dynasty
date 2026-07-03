@@ -27,7 +27,6 @@ import {
   lineupToFixedSlots,
   lineupPlayerSlotIndex,
   removeIdFromLineup,
-  addIdToLineupAt,
   insertIdAtLineupSlot,
   placeOrSwapLineupSlot,
   swapLineupSlots,
@@ -86,9 +85,6 @@ function SortablePlayerRow({
 
   // Partnership tag: show when this bench player has 20+ shared games with someone in the lineup.
   const career = useCareer();
-  const updateCareer = useUpdateCareer();
-  // AFL sub rule: one bench player can be designated the pre-game medical sub.
-  const isDesignatedSub = variant === 'bench' && player.id === career.subPlayerId;
   const hasPartnership = useMemo(() => {
     if (variant !== 'bench') return false;
     const partnerships = career.partnerships;
@@ -220,29 +216,8 @@ function SortablePlayerRow({
           🤝
         </span>
       )}
-      {variant === 'bench' && (
-        isDesignatedSub ? (
-          <button
-            type="button"
-            className="text-[9px] px-1.5 py-0.5 rounded font-black flex-shrink-0 uppercase tracking-wider"
-            style={{ background: 'var(--A-accent)', color: '#000' }}
-            title="Designated medical sub — click to clear"
-            onClick={(e) => { e.stopPropagation(); updateCareer({ subPlayerId: null }); }}
-          >
-            SUB ✕
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="text-[9px] px-1.5 py-0.5 rounded font-bold flex-shrink-0 uppercase tracking-wider"
-            style={{ color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }}
-            title="Designate as medical sub"
-            onClick={(e) => { e.stopPropagation(); updateCareer({ subPlayerId: player.id }); }}
-          >
-            Set sub
-          </button>
-        )
-      )}
+      {/* Medical-sub designation lives on the Depth view (interchange players only) —
+          this pool lists players OUTSIDE the 23, so a sub set here would be invalid. */}
       {onRemove && (
         <button
           type="button"
@@ -402,18 +377,24 @@ export function SquadLineupBuilder({ benchPlayerIds, stitch, onSelectPlayer }) {
     }
 
     if (iL !== -1 && oL !== -1) {
-      const to = li.findIndex((x) => x != null && String(x) === oid);
-      if (to >= 0) updateCareer({ lineup: dedupeLineup(addIdToLineupAt(li, aid, to)) });
+      // Both in the 23: dropping onto a player's row swaps their slots — never
+      // compacts, so sparse lineups from the Positions/Depth views keep every
+      // player's positional slot.
+      const fromSlot = lineupPlayerSlotIndex(li, aid);
+      const toSlot = lineupPlayerSlotIndex(li, oid);
+      if (fromSlot >= 0 && toSlot >= 0) updateCareer({ lineup: swapLineupSlots(li, fromSlot, toSlot) });
       return;
     }
     if (iB !== -1 && oB !== -1) {
       return;
     }
     if (iB !== -1 && oL !== -1) {
-      const to = li.findIndex((x) => x != null && String(x) === oid);
-      if (to < 0) return;
+      // Pool player dropped onto a selected player's row: take that slot
+      // (previous occupant drops to the pool); other slots stay put.
+      const toSlot = lineupPlayerSlotIndex(li, oid);
+      if (toSlot < 0) return;
       if (lineupPlayerCount(li) >= LINEUP_CAP && !lineupHasPlayer(li, aid)) return;
-      updateCareer({ lineup: dedupeLineup(addIdToLineupAt(li, aid, to)) });
+      updateCareer({ lineup: placeOrSwapLineupSlot(li, aid, toSlot) });
       return;
     }
     if (iL !== -1 && oB !== -1) {

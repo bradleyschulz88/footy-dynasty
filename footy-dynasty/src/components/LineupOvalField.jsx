@@ -6,17 +6,13 @@ import {
   LINEUP_FOLLOWERS_COUNT,
   LINEUP_INTERCHANGE_COUNT,
   LINEUP_OVAL_SLOT_COUNT,
+  LINEUP_SLOT_ROLES,
+  positionFitsZone,
 } from "../lib/lineupHelpers.js";
 import { css } from "./primitives.jsx";
 
-// AFL position labels for each of the 15 field slots (rows B→HB→C→HF→F, cols L/C/R)
-const SLOT_LABELS = [
-  "BP",  "FB",  "BP",   // B  row  slots 0-2
-  "HBF", "CHB", "HBF",  // HB row  slots 3-5
-  "WG",  "C",   "WG",   // C  row  slots 6-8
-  "HFF", "CHF", "HFF",  // HF row  slots 9-11
-  "FP",  "FF",  "FP",   // F  row  slots 12-14
-];
+// AFL position labels per field slot — shared table (rows B→HB→C→HF→F, cols L/C/R).
+const SLOT_LABELS = LINEUP_SLOT_ROLES;
 
 const ROWS_BACK_TO_FWD = [
   { key: "B",  label: "B"  },
@@ -39,22 +35,7 @@ function zoneTintBg(zone) {
   }
 }
 
-const ZONE_POSITIONS = {
-  B:    new Set(["KB", "UT"]),
-  HB:   new Set(["HB", "KB", "WG", "UT"]),
-  C:    new Set(["C", "R", "WG", "UT"]),
-  HF:   new Set(["HF", "KF", "WG", "UT"]),
-  F:    new Set(["KF", "HF", "UT"]),
-  RUCK: new Set(["RU", "KB", "UT"]),
-  IC:   null,
-};
-
-function positionFitsZone(position, zone) {
-  if (!zone || zone === "IC") return true;
-  const allowed = ZONE_POSITIONS[zone];
-  if (!allowed) return true;
-  return allowed.has(position);
-}
+// Zone fit rules live in lineupHelpers (single source shared with the Positions/Depth views).
 
 const FOLLOWER_ROLES = ["Ruck", "Rover", "Ruck-Rover"];
 

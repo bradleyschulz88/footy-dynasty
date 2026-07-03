@@ -8,10 +8,50 @@ import {
   sanitizeLineup,
   lineupRole,
   addToBench,
+  hasFreeBenchSlot,
+  sanitizeSubPlayerId,
+  removeIdFromLineup,
   LINEUP_CAP,
   slotRoleCode,
   playerFitsSlot,
 } from "../lineupHelpers.js";
+
+describe("removeIdFromLineup", () => {
+  it("nulls the slot in place — no player shifts position", () => {
+    const lineup = Array.from({ length: 23 }, (_, i) => `p${i}`);
+    const next = removeIdFromLineup(lineup, "p4"); // remove a half-back
+    expect(next[4]).toBeNull();          // slot vacated
+    expect(next[5]).toBe("p5");          // nobody slides up
+    expect(next[18]).toBe("p18");        // interchange never promoted onto the ground
+    expect(next).toHaveLength(23);       // trailing players keep their slots
+  });
+  it("trims trailing empties after removing the last player", () => {
+    const next = removeIdFromLineup(["a", "b", "c"], "c");
+    expect(next).toEqual(["a", "b"]);
+  });
+});
+
+describe("sanitizeSubPlayerId", () => {
+  const lineup = Array.from({ length: 23 }, (_, i) => `p${i}`);
+  it("keeps a sub who holds an interchange slot", () => {
+    expect(sanitizeSubPlayerId(lineup, "p20")).toBe("p20");
+  });
+  it("clears a sub who is on the ground or out of the 23", () => {
+    expect(sanitizeSubPlayerId(lineup, "p5")).toBeNull();   // on-field
+    expect(sanitizeSubPlayerId(lineup, "ghost")).toBeNull(); // not selected
+    expect(sanitizeSubPlayerId(lineup, null)).toBeNull();
+  });
+});
+
+describe("hasFreeBenchSlot", () => {
+  it("reflects interchange occupancy regardless of field holes", () => {
+    expect(hasFreeBenchSlot(Array.from({ length: 20 }, (_, i) => `p${i}`))).toBe(true);  // 2 bench filled
+    const full = Array.from({ length: 23 }, (_, i) => `p${i}`);
+    expect(hasFreeBenchSlot(full)).toBe(false);
+    const fieldHoleBenchFull = full.map((v, i) => (i === 3 ? null : v)); // hole at half-back only
+    expect(hasFreeBenchSlot(fieldHoleBenchFull)).toBe(false);
+  });
+});
 
 describe("slotRoleCode", () => {
   it("maps on-ground slots to AFL roles (defence-top) and interchange to INT", () => {
@@ -42,6 +82,18 @@ describe("playerFitsSlot", () => {
     expect(playerFitsSlot(fwd, 20)).toBe(true);   // interchange accepts anyone
     expect(playerFitsSlot(null, 1)).toBe(false);
   });
+  it("matches the oval's zone rules: UT fits everywhere, WG covers HB/HF, followers take rover types", () => {
+    const util = { position: "UT", secondaryPosition: null };
+    for (const slot of [1, 4, 7, 10, 13, 16]) expect(playerFitsSlot(util, slot)).toBe(true);
+    const wing = { position: "WG", secondaryPosition: null };
+    expect(playerFitsSlot(wing, 4)).toBe(true);   // WG at half-back — allowed on the oval too
+    expect(playerFitsSlot(wing, 10)).toBe(true);  // WG at half-forward
+    expect(playerFitsSlot(wing, 1)).toBe(false);  // but not in the back pocket / full-back line
+    const rover = { position: "R", secondaryPosition: null };
+    expect(playerFitsSlot(rover, 16)).toBe(true); // rover in the followers row
+    const keyBack = { position: "KB", secondaryPosition: null };
+    expect(playerFitsSlot(keyBack, 15)).toBe(true); // pinch-hitting ruck KB — matches oval rules
+  });
 });
 
 describe("lineupRole", () => {
@@ -54,9 +106,10 @@ describe("lineupRole", () => {
     expect(lineupRole(lineup, null, "p22")).toBe("bench");  // last interchange slot
     expect(lineupRole(lineup, null, "ghost")).toBe("out");  // not selected
   });
-  it("marks the designated sub regardless of slot", () => {
-    expect(lineupRole(lineup, "p20", "p20")).toBe("sub");
-    expect(lineupRole(lineup, "p20", "p19")).toBe("bench");
+  it("marks the designated sub only while they hold an interchange slot", () => {
+    expect(lineupRole(lineup, "p20", "p20")).toBe("sub");   // sub on the interchange
+    expect(lineupRole(lineup, "p20", "p19")).toBe("bench"); // other interchange players unaffected
+    expect(lineupRole(lineup, "p5", "p5")).toBe("field");   // stale sub id on an on-ground player ≠ sub
   });
 });
 
@@ -80,6 +133,13 @@ describe("addToBench", () => {
     const next = addToBench(["a", "b"], "c");
     expect(next[18]).toBe("c");             // first bench slot, even though field is mostly empty
     expect(lineupRole(next, null, "c")).toBe("bench");
+  });
+  it("never falls back to a field hole when the interchange is full", () => {
+    const full = Array.from({ length: 23 }, (_, i) => `p${i}`);
+    const fieldHole = full.map((v, i) => (i === 1 ? null : v)); // full-back empty, bench full
+    const next = addToBench(fieldHole, "new");
+    expect(next).not.toContain("new");      // no silent on-ground placement
+    expect(next[1]).toBeNull();             // the hole stays for a deliberate assignment
   });
 });
 

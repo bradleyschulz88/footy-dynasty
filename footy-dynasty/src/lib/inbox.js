@@ -4,6 +4,7 @@
  */
 
 import { draftPickBlocksAdvance, isPostSeasonTradePeriod } from "./recruitPhase.js";
+import { sanitizeSubPlayerId } from "./lineupHelpers.js";
 
 /** Pending trade-period offers that still need accept / decline / counter. */
 export function hasBlockingTradePeriodOffers(career) {
@@ -214,6 +215,15 @@ export function mergeCareerPatchWithInboxSync(prevCareer, patch) {
     Object.prototype.hasOwnProperty.call(patch, "tradePeriodDay")
   ) {
     syncRecruitPhaseInboxRows(next);
+  }
+  // Medical-sub invariant: the designated sub must hold an interchange slot.
+  // Enforced at this single choke point so every lineup writer (drag, auto-select,
+  // Positions assign, removals) keeps subPlayerId valid without per-view guards.
+  if (
+    Object.prototype.hasOwnProperty.call(patch, "lineup") ||
+    Object.prototype.hasOwnProperty.call(patch, "subPlayerId")
+  ) {
+    next.subPlayerId = sanitizeSubPlayerId(next.lineup, next.subPlayerId);
   }
   return next;
 }

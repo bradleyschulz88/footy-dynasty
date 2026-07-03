@@ -110,7 +110,7 @@ import {
   bumpClubCulture,
 } from './gameDepth.js';
 import { medicalStaffMitigation } from './staffTasks.js';
-import { sanitizeLineup, lineupPlayersOrdered } from './lineupHelpers.js';
+import { sanitizeLineup, lineupPlayersOrdered, lineupRole } from './lineupHelpers.js';
 import { scoutPrepRatingBonus } from './oppositionScout.js';
 import { processReturningDeployments, tickWatchlistStaleness, tickRivalInterest, bumpRelationship } from './scoutingSystem.js';
 import { weeklyClubOperationsPulse } from './weeklyClubPulse.js';
@@ -2305,7 +2305,9 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
     }
     // AFL sub rule: the designated medical sub is held back and activated ~half-time,
     // so they cover fewer minutes and finish far fresher than a full-game player.
-    const fitDrop = p.id === c.subPlayerId ? rand(3, 8) : rand(8, 18);
+    // Slot-aware check: the benefit only applies while the sub actually holds an
+    // interchange slot — a stale subPlayerId (player since moved on-field) gets nothing.
+    const fitDrop = lineupRole(c.lineup, c.subPlayerId, p.id) === 'sub' ? rand(3, 8) : rand(8, 18);
     // Best-on-ground performances carry personal form, even in a loss.
     const votes = votesById[p.id] || 0;
     const formChange = (won ? rand(2, 6) : drew ? rand(-2, 2) : rand(-6, -1)) + votes;
