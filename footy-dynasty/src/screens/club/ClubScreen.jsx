@@ -16,6 +16,7 @@ import { seedRng, rand, pick } from '../../lib/rng.js';
 import { STATES, PYRAMID, findClub, findLeagueOf } from '../../data/pyramid.js';
 import { FIRST_NAMES, LAST_NAMES, formatPositionSlash } from '../../lib/playerGen.js';
 import { fmtK, clamp } from '../../lib/format.js';
+import { careerMemberCount } from '../../lib/finance/membership.js';
 import { defaultKits, STAFF_BLUEPRINT, EXPANDABLE_ROLE_IDS_BY_TIER } from '../../lib/defaults.js';
 import { css, Bar, RatingDot, Pill, Stat, Jersey } from '../../components/primitives.jsx';
 import TabNav from '../../components/TabNav.jsx';
@@ -1242,11 +1243,12 @@ function FinancesTab() {
       {/* ── OVERVIEW ── */}
       {finTab === 'overview' && (
         <div className="space-y-4">
-          <div className="grid md:grid-cols-4 gap-3">
+          <div className="grid md:grid-cols-5 gap-3">
             <Stat label="Cash" value={fmtK(career.finance.cash)} accent={career.finance.cash >= 0 ? "var(--A-pos)" : "var(--A-neg)"} icon={DollarSign} />
             <Stat label="Annual Net (proj)" value={fmtK(net)} accent={net > 0 ? "var(--A-pos)" : "var(--A-neg)"} />
             <Stat label="Wage Bill" value={fmtK(playerWages + exp.staffWages)} sub="players + staff" accent="var(--A-accent)" />
             <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="var(--A-accent)" />
+            <Stat label="Members" value={careerMemberCount(career, tier).toLocaleString()} sub={career.memberRecord ? `record ${career.memberRecord.toLocaleString()}` : 'off-field ladder'} accent="#A78BFA" />
           </div>
 
           {/* Board financial objective */}

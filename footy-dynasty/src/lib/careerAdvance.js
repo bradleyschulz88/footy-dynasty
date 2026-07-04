@@ -84,6 +84,7 @@ import { generateStaffMarket } from './staffHiring.js';
 import {
   INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, T4_COMMUNITY, T3_COMMUNITY,
 } from './finance/constants.js';
+import { careerMemberCount } from './finance/membership.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
 import {
@@ -1382,6 +1383,24 @@ function finishSeason(c, league) {
     c.t4SponsorHuntActive = false;
     c.t4GrantApplicationPending = false;
     c.t4GrantResultWeek = null;
+  }
+
+  // Season-start membership tally — the off-field ladder. YoY delta only when
+  // last season was the same tier (cross-tier counts aren't comparable);
+  // all-time record fires once per new high (first tally seeds it silently).
+  {
+    const members = careerMemberCount(c, league.tier);
+    const prev = c.lastMemberCount;
+    const delta = prev && prev.tier === league.tier ? members - prev.count : null;
+    const deltaTxt = delta == null ? '' : delta >= 0 ? ` — up ${delta.toLocaleString()} on last year` : ` — down ${Math.abs(delta).toLocaleString()} on last year`;
+    c.news = [{ week: 0, type: delta != null && delta < 0 ? 'loss' : 'info', text: `📈 Membership tally: ${members.toLocaleString()}${deltaTxt}` }, ...(c.news || [])].slice(0, 25);
+    if (c.memberRecord == null) {
+      c.memberRecord = members; // seed on first tally, no fanfare
+    } else if (members > c.memberRecord) {
+      c.memberRecord = members;
+      c.news = [{ week: 0, type: 'win', text: `🎉 Club record membership: ${members.toLocaleString()}!` }, ...(c.news || [])].slice(0, 25);
+    }
+    c.lastMemberCount = { count: members, tier: league.tier };
   }
 
   c.lastEosFinance = {
