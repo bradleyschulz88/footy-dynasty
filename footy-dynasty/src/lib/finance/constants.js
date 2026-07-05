@@ -286,3 +286,14 @@ export const MEMBERSHIP_MILESTONES = {
   relegated:        -0.12,
   woodenSpoon:      -0.06,
 };
+
+// Base member count per tier at membership health 1.0 (career.membershipBase).
+// The visible "members" number = MEMBER_BASE[tier] × membershipBase, so the
+// existing milestone system (premierships, finals, relegation) drives it.
+// T1 spans ≈27k–137k across the 0.5–2.5 health range — matching real AFL scale.
+export const MEMBER_BASE = {
+  1: 55_000,
+  2: 4_500,
+  3: 300,
+  4: 60,
+};
