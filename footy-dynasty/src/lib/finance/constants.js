@@ -299,3 +299,13 @@ export const FOOTBALL_DEPT_CAP_SHARE = {
   2: 0.16, // ≈ $224k at T2
 };
 export const FOOTBALL_DEPT_LEVY_RATE = 0.75; // tax on every $ above the cap
+// Base member count per tier at membership health 1.0 (career.membershipBase).
+// The visible "members" number = MEMBER_BASE[tier] × membershipBase, so the
+// existing milestone system (premierships, finals, relegation) drives it.
+// T1 spans ≈27k–137k across the 0.5–2.5 health range — matching real AFL scale.
+export const MEMBER_BASE = {
+  1: 55_000,
+  2: 4_500,
+  3: 300,
+  4: 60,
+};
