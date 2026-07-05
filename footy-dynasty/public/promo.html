@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Footy Dynasty — run the club. Climb the pyramid.</title>
+<meta name="description" content="The AFL club-management sim: 1,537 real-world-inspired clubs across 122 leagues, from suburban ovals to the big league. Squad, trades, finances, board pressure — every decision is yours." />
+<meta property="og:title" content="Footy Dynasty — run the club. Climb the pyramid." />
+<meta property="og:description" content="1,537 clubs. 122 leagues. 4 tiers. One dynasty — yours." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="/og.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#0c1726" />
+<link rel="icon" type="image/svg+xml" href="/icon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0c1726; --bg2:#0a1320; --panel:#13243c; --panel2:#1a2e49; --line:#274064;
+    --text:#e8eef6; --dim:#9fb2cc; --mute:#6f86a6;
+    --gold:#e0a43b; --teal:#46d6c6; --pos:#4AE89A; --neg:#E84A6F;
+    --pitch1:#206d44; --pitch2:#1b5f3c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  }
+  body{background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,sans-serif;
+    font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .display{font-family:'Chakra Petch',Inter,sans-serif}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  a{color:inherit}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:52px;padding:14px 30px;
+    border-radius:14px;font-weight:800;font-size:16px;text-decoration:none;cursor:pointer;border:none;
+    transition:background-color .2s,box-shadow .2s,color .2s}
+  .btn:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+  .btn-gold{background:var(--gold);color:#10202f}
+  .btn-gold:hover{background:#f0b654;box-shadow:0 6px 26px rgba(224,164,59,.35)}
+  .btn-ghost{background:transparent;color:var(--dim);border:1px solid var(--line)}
+  .btn-ghost:hover{color:var(--text);border-color:var(--teal)}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 86%,transparent);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .navrow{display:flex;align-items:center;gap:12px;padding:14px 0}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;text-decoration:none}
+  .logomark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--gold),#b87f24);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .navcta{margin-left:auto}
+
+  /* hero */
+  .hero{position:relative;padding:72px 0 60px;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:-20% -10% auto;height:130%;pointer-events:none;
+    background:radial-gradient(900px 480px at 75% 8%,rgba(70,214,198,.10),transparent 60%),
+               radial-gradient(700px 420px at 15% 30%,rgba(224,164,59,.10),transparent 60%)}
+  .herogrid{position:relative;display:grid;gap:44px;align-items:center}
+  @media(min-width:920px){.herogrid{grid-template-columns:1.1fr .9fr}}
+  .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--teal);margin-bottom:18px}
+  .kicker::before{content:"";width:26px;height:2px;background:var(--teal)}
+  h1{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:clamp(40px,7vw,68px);line-height:1.02;letter-spacing:.01em}
+  h1 .gold{color:var(--gold)}
+  .sub{margin-top:20px;font-size:clamp(16px,2.2vw,19px);color:var(--dim);max-width:34em}
+  .heroctas{display:flex;gap:14px;flex-wrap:wrap;margin-top:32px}
+  .herometa{margin-top:26px;font-size:13px;color:var(--mute)}
+  .herometa strong{color:var(--dim)}
+
+  /* oval visual */
+  .ovalcard{position:relative;background:linear-gradient(180deg,rgba(26,46,73,.5),rgba(19,36,60,.85));
+    border:1px solid var(--line);border-radius:22px;padding:26px;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+  .oval{position:relative;width:100%;max-width:340px;aspect-ratio:64/100;margin:0 auto;border-radius:50%;
+    background:repeating-linear-gradient(90deg,var(--pitch1) 0 24px,var(--pitch2) 24px 48px);
+    border:3px solid rgba(255,255,255,.30);overflow:hidden;box-shadow:inset 0 0 60px rgba(0,0,0,.5)}
+  .oval i{position:absolute;border:1.6px solid rgba(255,255,255,.35);display:block}
+  .oval .b1{inset:5%;border-radius:50%;opacity:.5}
+  .oval .sq{left:50%;top:50%;width:18%;height:10%;transform:translate(-50%,-50%);opacity:.7}
+  .oval .a1{left:50%;top:8.5%;width:56%;height:20%;transform:translateX(-50%);border-radius:0 0 50% 50%;border-top:none;opacity:.4}
+  .oval .a2{left:50%;bottom:8.5%;width:56%;height:20%;transform:translateX(-50%);border-radius:50% 50% 0 0;border-bottom:none;opacity:.4}
+  .chip{position:absolute;transform:translate(-50%,-50%);width:44px;height:38px;border-radius:9px;
+    background:rgba(12,23,38,.9);border:1px solid var(--line);border-left:3px solid var(--pos);
+    display:flex;align-items:center;justify-content:center;font-family:'Chakra Petch',sans-serif;
+    font-weight:700;font-size:15px;color:#fff;box-shadow:0 3px 8px rgba(0,0,0,.5)}
+  .chip.g{border-left-color:var(--gold)}
+  .chip.t{border-left-color:var(--teal)}
+  .ovalcap{display:flex;justify-content:space-between;gap:8px;margin-top:18px;font-size:11px;color:var(--mute)}
+  .ovalcap span b{display:block;font-size:15px;color:var(--text);font-family:'JetBrains Mono',monospace}
+
+  /* stats band */
+  .stats{border-block:1px solid var(--line);background:var(--bg2)}
+  .statrow{display:grid;grid-template-columns:repeat(2,1fr);gap:2px}
+  @media(min-width:760px){.statrow{grid-template-columns:repeat(4,1fr)}}
+  .stat{padding:34px 16px;text-align:center}
+  .stat b{display:block;font-family:'Chakra Petch',sans-serif;font-size:clamp(30px,4.4vw,44px);font-weight:700;color:var(--gold)}
+  .stat.t b{color:var(--teal)} .stat.p b{color:var(--pos)}
+  .stat span{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);font-weight:600}
+
+  /* chapters */
+  section.chapter{padding:84px 0}
+  .chaphead{max-width:640px;margin-bottom:44px}
+  .chapnum{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--teal);letter-spacing:.2em;margin-bottom:10px}
+  h2{font-family:'Chakra Petch',sans-serif;font-size:clamp(28px,4.4vw,40px);line-height:1.12;font-weight:700}
+  .chaphead p{margin-top:14px;color:var(--dim);font-size:17px}
+
+  .cards{display:grid;gap:16px}
+  @media(min-width:700px){.cards{grid-template-columns:repeat(2,1fr)}}
+  @media(min-width:1000px){.cards.four{grid-template-columns:repeat(4,1fr)}.cards.three{grid-template-columns:repeat(3,1fr)}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 22px;
+    transition:border-color .2s,background-color .2s}
+  .card:hover{border-color:color-mix(in srgb,var(--teal) 45%,var(--line));background:var(--panel2)}
+  .card .ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    background:color-mix(in srgb,var(--gold) 14%,transparent);margin-bottom:16px}
+  .card .ic svg{width:22px;height:22px;stroke:var(--gold)}
+  .card.t .ic{background:color-mix(in srgb,var(--teal) 12%,transparent)} .card.t .ic svg{stroke:var(--teal)}
+  .card.p .ic{background:color-mix(in srgb,var(--pos) 12%,transparent)} .card.p .ic svg{stroke:var(--pos)}
+  .card.n .ic{background:color-mix(in srgb,var(--neg) 12%,transparent)} .card.n .ic svg{stroke:var(--neg)}
+  .card h3{font-size:17px;font-weight:800;margin-bottom:8px}
+  .card p{font-size:14.5px;color:var(--dim)}
+
+  /* tier ladder */
+  .tiers{display:grid;gap:12px}
+  .tier{display:flex;align-items:center;gap:18px;background:var(--panel);border:1px solid var(--line);
+    border-radius:16px;padding:18px 22px;transition:border-color .2s,transform .2s}
+  .tier:hover{border-color:color-mix(in srgb,var(--gold) 40%,var(--line))}
+  .tier .rank{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:26px;color:var(--gold);width:52px;flex-shrink:0}
+  .tier div b{display:block;font-size:16px}
+  .tier div span{font-size:13.5px;color:var(--dim)}
+  .tier .tag{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--teal);
+    border:1px solid color-mix(in srgb,var(--teal) 35%,transparent);padding:4px 10px;border-radius:8px;white-space:nowrap}
+
+  /* news ticker mock */
+  .newsmock{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;display:grid;gap:10px}
+  .newsline{display:flex;gap:12px;align-items:flex-start;font-size:14.5px;color:var(--dim);
+    padding:10px 14px;border-radius:11px;background:var(--bg2);border-left:3px solid var(--line)}
+  .newsline.w{border-left-color:var(--pos)} .newsline.l{border-left-color:var(--neg)} .newsline.i{border-left-color:var(--gold)}
+  .newsline b{color:var(--text)}
+
+  /* final CTA */
+  .final{padding:100px 0 110px;text-align:center;position:relative;overflow:hidden}
+  .final::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(640px 340px at 50% 100%,rgba(224,164,59,.13),transparent 65%)}
+  .final h2{font-size:clamp(32px,5.4vw,52px)}
+  .final p{color:var(--dim);margin:16px auto 34px;max-width:30em}
+  footer{border-top:1px solid var(--line);padding:26px 0;font-size:13px;color:var(--mute)}
+  .footrow{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:center}
+  .fade{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+  .fade.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion: reduce){.fade{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<nav aria-label="Main">
+  <div class="wrap navrow">
+    <a class="logo display" href="#top" aria-label="Footy Dynasty home">
+      <span class="logomark" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10202f" stroke-width="2.4" stroke-linecap="round"><ellipse cx="12" cy="12" rx="9" ry="6" transform="rotate(-38 12 12)"/><path d="M9.2 14.8l5.6-5.6M10.7 13.3l1 1M12.3 11.7l1 1"/></svg>
+      </span>
+      FOOTY DYNASTY
+    </a>
+    <a class="btn btn-gold navcta" href="/" style="min-height:44px;padding:10px 20px;font-size:14px">Play free</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap herogrid">
+    <div>
+      <span class="kicker">AFL club management sim</span>
+      <h1>Run the club.<br /><span class="gold">Climb the pyramid.</span></h1>
+      <p class="sub">Start at a suburban oval with a sausage sizzle budget — or take the reins of a big-league giant. Squad, trades, draft, finances, board pressure: every decision is yours, and every season writes your dynasty.</p>
+      <div class="heroctas">
+        <a class="btn btn-gold" href="/">Start your dynasty</a>
+        <a class="btn btn-ghost" href="#how">See how it plays</a>
+      </div>
+      <p class="herometa">Free · in your browser · works offline as a PWA · <strong>no account needed</strong></p>
+    </div>
+    <div class="ovalcard" aria-hidden="true">
+      <div class="oval">
+        <i class="b1"></i><i class="sq"></i><i class="a1"></i><i class="a2"></i>
+        <span class="chip g" style="left:50%;top:12%">23</span>
+        <span class="chip" style="left:26%;top:29%">43</span>
+        <span class="chip t" style="left:74%;top:29%">18</span>
+        <span class="chip" style="left:50%;top:50%">30</span>
+        <span class="chip t" style="left:22%;top:63%">7</span>
+        <span class="chip" style="left:78%;top:63%">36</span>
+        <span class="chip g" style="left:50%;top:86%">20</span>
+      </div>
+      <div class="ovalcap">
+        <span><b>R14</b>match day</span>
+        <span><b>61,420</b>members</span>
+        <span><b>$2.4M</b>cap space</span>
+        <span><b>3rd</b>ladder</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="stats" role="group" aria-label="Game scale">
+  <div class="wrap statrow">
+    <div class="stat"><b data-count="1537">0</b><span>clubs</span></div>
+    <div class="stat t"><b data-count="122">0</b><span>leagues</span></div>
+    <div class="stat p"><b data-count="4">0</b><span>tiers to climb</span></div>
+    <div class="stat"><b data-count="23">0</b><span>on match day</span></div>
+  </div>
+</div>
+
+<section class="chapter" id="how">
+  <div class="wrap">
+    <div class="chaphead fade">
+      <div class="chapnum">01 — THE CLIMB</div>
+      <h2>From the sausage sizzle to the big league</h2>
+      <p>Four tiers, promotion and relegation all the way. Where you start is up to you — where you finish is up to your decisions.</p>
+    </div>
+    <div class="tiers">
+      <div class="tier fade"><span class="rank">T1</span><div><b>The big league</b><span>TV money, 50k crowds, a board that expects flags — and a salary cap that punishes sentiment.</span></div><span class="tag">$90M economy</span></div>
+      <div class="tier fade"><span class="rank">T2</span><div><b>State leagues</b><span>Semi-pro lists, sharp rivalries, one great season from the big time.</span></div><span class="tag">promotion live</span></div>
+      <div class="tier fade"><span class="rank">T3</span><div><b>Local leagues</b><span>Bar takings, umpire fees, volunteers — the club survives on your budgeting.</span></div><span class="tag">community footy</span></div>
+      <div class="tier fade"><span class="rank">T4</span><div><b>Grassroots</b><span>A tin of cash, a canteen, and a committee. Everyone starts somewhere.</span></div><span class="tag">the sausage sizzle</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" style="background:var(--bg2);border-block:1px solid var(--line)">
+  <div class="wrap">
+    <div class="chaphead fade">
+      <div class="chapnum">02 — THE CLUB</div>
+      <h2>Every lever a real club has</h2>
+      <p>This isn't a team picker. It's the whole football department.</p>
+    </div>
+    <div class="cards four">
+      <div class="card fade"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><h3>List management</h3><p>Draft with imperfect scouting, trade with desperate rivals on deadline day, re-sign stars before they walk.</p></div>
+      <div class="card t fade"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><h3>Real finances</h3><p>League distributions, soft-cap tax, gate takings, memberships — or bar profits and council grants at the bottom.</p></div>
+      <div class="card p fade"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><h3>Typed injuries</h3><p>Hamstrings, ACLs, concussion protocols. Your medical staff and training load decide who's standing in September.</p></div>
+      <div class="card n fade"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg></div><h3>Board pressure</h3><p>Confidence, mandates, votes of no confidence. Win, or explain yourself to five people who won't blink.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter">
+  <div class="wrap">
+    <div class="chaphead fade">
+      <div class="chapnum">03 — THE SEASON</div>
+      <h2>Seasons that tell stories</h2>
+      <p>Every week the news feed writes another line of your club's history.</p>
+    </div>
+    <div class="newsmock fade" role="img" aria-label="Example in-game news feed">
+      <div class="newsline i"><span>💰</span><span><b>AFL distribution received:</b> $42.1M (incl. $6.3M equalisation support)</span></div>
+      <div class="newsline w"><span>🎉</span><span><b>Club record membership:</b> 71,120!</span></div>
+      <div class="newsline l"><span>🩹</span><span><b>J. Steele</b> — Hamstring Strain (moderate, est. 3 weeks)</span></div>
+      <div class="newsline i"><span>🔔</span><span><b>Deadline day.</b> Rivals are desperate — offers up 30%, and they'll take 10% less.</span></div>
+      <div class="newsline w"><span>⭐</span><span><b>Father–son bid matched:</b> young Daicos is staying home.</span></div>
+      <div class="newsline l"><span>🧾</span><span><b>Football department tax:</b> $400k over the soft cap → $300k levy</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2 class="fade">Your club is waiting.</h2>
+    <p class="fade">Pick any of 1,537 clubs across Australia and start the climb tonight. Free, in your browser, no download.</p>
+    <a class="btn btn-gold fade" href="/">Start your dynasty →</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footrow">
+    <span>© 2026 Footy Dynasty. A love letter to Australian rules football.</span>
+    <span><a href="/" style="color:var(--teal);text-decoration:none">Play now</a></span>
+  </div>
+</footer>
+
+<script>
+  // Stat count-up + fade-ins (skipped under prefers-reduced-motion).
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.fade').forEach((el) => io.observe(el));
+
+  const counters = document.querySelectorAll('[data-count]');
+  const co = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      co.unobserve(e.target);
+      const end = +e.target.dataset.count;
+      if (reduced) { e.target.textContent = end.toLocaleString(); return; }
+      const t0 = performance.now(), dur = 1100;
+      const tick = (t) => {
+        const p = Math.min(1, (t - t0) / dur);
+        e.target.textContent = Math.round(end * (1 - Math.pow(1 - p, 3))).toLocaleString();
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }, { threshold: 0.4 });
+  counters.forEach((el) => co.observe(el));
+</script>
+</body>
+</html>
