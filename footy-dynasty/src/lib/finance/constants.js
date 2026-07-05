@@ -34,6 +34,16 @@ export const TIER_FINANCE = {
   },
 };
 
+// Annual league distribution (AFL / state-league funding), as shares of the
+// tier's annualIncome: every club gets `base`; the equalisation top-up scales
+// up to `eqMax` with need (prior ladder finish + revenue weakness).
+// ponytail: T3/T4 intentionally absent — community clubs get grants and
+// registration fees, not league distributions; add a tier key here to extend.
+export const DISTRIBUTION_SHARES = {
+  1: { base: 0.40, eqMax: 0.18 }, // premier ≈ 40% of annualIncome, wooden-spooner ≈ 55%+
+  2: { base: 0.25, eqMax: 0.10 },
+};
+
 // Annual facility upkeep per level. Single source of truth — referenced both
 // in the weekly cashflow tick and the FinancesTab annual projection.
 export const FACILITY_UPKEEP_PER_LEVEL_ANNUAL = {

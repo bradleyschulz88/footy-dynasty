@@ -11,6 +11,7 @@ import {
   TICKET_PRICE, BASE_ATTENDANCE,
   T4_COMMUNITY, T3_COMMUNITY, GAMING_VENUE, MEMBERSHIP_MILESTONES, BOARD_FINANCIAL_OBJECTIVES,
 } from './constants.js';
+import { careerSeasonDistribution } from './distribution.js';
 import { getDifficultyConfig } from '../difficulty.js';
 import { findLeagueOf, PYRAMID } from '../../data/pyramid.js';
 import { clamp } from '../format.js';
@@ -187,8 +188,11 @@ export function incomeBreakdown(career) {
   const canteen = tier === 3 ? Math.round(homeGames * ((T3_COMMUNITY.canteenPerHomeGame.min + T3_COMMUNITY.canteenPerHomeGame.max) / 2)) : 0;
   const regFees = tier === 3 ? (career.squad || []).length * T3_COMMUNITY.registrationFeePerPlayer : 0;
 
-  const grandTotal = broadcast + gate + membership + merchandise + sponsors + gaming + bar + canteen + regFees;
-  return { broadcast, gate, membership, merchandise, sponsors, gaming, bar, canteen, regFees, grandTotal };
+  // T1/T2 league central distribution (annual, paid at season start).
+  const distribution = tier <= 2 ? careerSeasonDistribution(career, tier).total : 0;
+
+  const grandTotal = broadcast + gate + membership + merchandise + sponsors + gaming + bar + canteen + regFees + distribution;
+  return { broadcast, gate, membership, merchandise, sponsors, gaming, bar, canteen, regFees, distribution, grandTotal };
 }
 
 export function expenseBreakdown(career) {

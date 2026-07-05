@@ -85,6 +85,7 @@ import {
   INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, T4_COMMUNITY, T3_COMMUNITY,
 } from './finance/constants.js';
 import { careerMemberCount } from './finance/membership.js';
+import { careerSeasonDistribution } from './finance/distribution.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
 import {
@@ -1357,6 +1358,20 @@ function finishSeason(c, league) {
   c.cashCrisisLevel = c.finance.cash < 0 ? 1 : 0;
   c.fundraisersUsed = {};
   c.communityGrantUsed = false;
+
+  // T1/T2 season-start: league central distribution + equalisation support.
+  // Paid for the tier the club is IN this season (promotion/relegation follows the new league).
+  if (league.tier <= 2) {
+    const dist = careerSeasonDistribution(c, league.tier);
+    if (dist.total > 0) {
+      c.finance.cash += dist.total;
+      const label = league.tier === 1 ? 'AFL distribution' : 'League distribution';
+      c.news = [{
+        week: 0, type: 'info',
+        text: `💰 ${label} received: $${(dist.total / 1_000_000).toFixed(1)}M (incl. $${Math.round(dist.equalisation / 1000).toLocaleString()}k equalisation support)`,
+      }, ...(c.news || [])].slice(0, 25);
+    }
+  }
 
   // T4 season-start: collect registration fees + deduct annual fixed costs.
   if (league.tier === 4) {
