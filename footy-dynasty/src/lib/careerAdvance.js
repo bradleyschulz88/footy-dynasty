@@ -84,6 +84,7 @@ import { generateStaffMarket } from './staffHiring.js';
 import {
   INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, T4_COMMUNITY, T3_COMMUNITY,
 } from './finance/constants.js';
+import { careerFootballDept } from './finance/footballDept.js';
 import { careerMemberCount } from './finance/membership.js';
 import { careerSeasonDistribution } from './finance/distribution.js';
 import { getClubGround } from '../data/grounds.js';
@@ -1223,6 +1224,18 @@ function finishSeason(c, league) {
         text: `💰 ${evp.label}: ${evp.amount >= 0 ? '+' : ''}${fmtK(evp.amount)}` },
       ...(c.news || [])].slice(0, 20);
     });
+  }
+
+  // Football-department soft cap: luxury tax on staff spend above the cap,
+  // charged once here with the other end-of-season money movements (T1/T2 only).
+  {
+    const fd = careerFootballDept(c, league.tier);
+    if (fd.levy > 0) {
+      c.finance.cash -= fd.levy;
+      c.news = [{ week: 0, type: 'loss',
+        text: `🧾 Football department tax: ${fmtK(fd.over)} over the soft cap → ${fmtK(fd.levy)} levy` },
+      ...(c.news || [])].slice(0, 20);
+    }
   }
 
   const newTier = PYRAMID[c.leagueKey]?.tier ?? league.tier;
