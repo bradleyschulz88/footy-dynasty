@@ -13,3 +13,4 @@ node_modules/
 .env.local
 mockups/stitch/_*.json
 mockups/stitch/manifest.json
+.specify/feature.json

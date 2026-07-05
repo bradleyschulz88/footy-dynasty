@@ -16,6 +16,8 @@ import { seedRng, rand, pick } from '../../lib/rng.js';
 import { STATES, PYRAMID, findClub, findLeagueOf } from '../../data/pyramid.js';
 import { FIRST_NAMES, LAST_NAMES, formatPositionSlash } from '../../lib/playerGen.js';
 import { fmtK, clamp } from '../../lib/format.js';
+import { careerFootballDept } from '../../lib/finance/footballDept.js';
+import { careerMemberCount } from '../../lib/finance/membership.js';
 import { defaultKits, STAFF_BLUEPRINT, EXPANDABLE_ROLE_IDS_BY_TIER } from '../../lib/defaults.js';
 import { css, Bar, RatingDot, Pill, Stat, Jersey } from '../../components/primitives.jsx';
 import TabNav from '../../components/TabNav.jsx';
@@ -1242,11 +1244,12 @@ function FinancesTab() {
       {/* ── OVERVIEW ── */}
       {finTab === 'overview' && (
         <div className="space-y-4">
-          <div className="grid md:grid-cols-4 gap-3">
+          <div className="grid md:grid-cols-5 gap-3">
             <Stat label="Cash" value={fmtK(career.finance.cash)} accent={career.finance.cash >= 0 ? "var(--A-pos)" : "var(--A-neg)"} icon={DollarSign} />
             <Stat label="Annual Net (proj)" value={fmtK(net)} accent={net > 0 ? "var(--A-pos)" : "var(--A-neg)"} />
             <Stat label="Wage Bill" value={fmtK(playerWages + exp.staffWages)} sub="players + staff" accent="var(--A-accent)" />
             <Stat label="Transfer Budget" value={fmtK(career.finance.transferBudget)} accent="var(--A-accent)" />
+            <Stat label="Members" value={careerMemberCount(career, tier).toLocaleString()} sub={career.memberRecord ? `record ${career.memberRecord.toLocaleString()}` : 'off-field ladder'} accent="#A78BFA" />
           </div>
 
           {/* Board financial objective */}
@@ -1383,6 +1386,7 @@ function FinancesTab() {
           <div className={`${css.panel} p-5`}>
             <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (ANNUAL)</h3>
             {[
+              ...(inc.distribution > 0 ? [{ label: "AFL Distribution", value: inc.distribution, color: "var(--A-pos)" }] : []),
               ...(inc.broadcast > 0 ? [{ label: "Broadcast / TV Rights", value: inc.broadcast, color: "var(--A-accent)" }] : []),
               { label: "Gate Revenue",            value: inc.gate,        color: "var(--A-accent)" },
               ...(inc.bar > 0    ? [{ label: "Bar & Social Club",         value: inc.bar,     color: "#F59E0B" }] : []),
@@ -2366,6 +2370,7 @@ function StaffTab() {
     });
   };
 
+  const fd = careerFootballDept(career, leagueTier);
   return (
     <div className="space-y-4">
       <StaffRenewalsPanel leagueTier={leagueTier} />
@@ -2379,6 +2384,24 @@ function StaffTab() {
           <Stat label="Staff headcount" value={`${roster.length}/${MAX_STAFF_ROWS}`} accent="#A78BFA" />
         </div>
       </div>
+
+      {/* Football-department soft cap — T1/T2 only. Soft: going over is allowed, taxed at season end. */}
+      {fd.cap != null && (
+        <div className={`${css.panel} p-4`} style={fd.over > 0 ? { border: '1px solid color-mix(in srgb, var(--A-neg) 45%, transparent)' } : undefined}>
+          <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-atext-mute">Football department soft cap</div>
+            <div className="text-sm font-mono font-bold" style={{ color: fd.over > 0 ? 'var(--A-neg)' : 'var(--A-pos)' }}>
+              {fmtK(fd.spend)} / {fmtK(fd.cap)} cap
+            </div>
+          </div>
+          <Bar value={Math.min(100, Math.round((fd.spend / fd.cap) * 100))} color={fd.over > 0 ? 'var(--A-neg)' : 'var(--A-pos)'} small />
+          <div className="text-[11px] mt-1.5" style={{ color: fd.over > 0 ? 'var(--A-neg)' : 'var(--A-text-mute)' }}>
+            {fd.over > 0
+              ? `${fmtK(fd.over)} over — season-end levy ≈ ${fmtK(fd.levy)} (75% of the excess). Hiring is never blocked; the tax is the trade-off.`
+              : 'Under the cap. Exceeding it is allowed but taxed at 75% of the excess at season end.'}
+          </div>
+        </div>
+      )}
 
       <div className={`${css.panel} p-5 space-y-4`}>
         {/* Header + Auto-assign */}

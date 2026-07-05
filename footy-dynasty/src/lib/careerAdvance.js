@@ -84,6 +84,9 @@ import { generateStaffMarket } from './staffHiring.js';
 import {
   INSOLVENCY, FUNDRAISERS, COMMUNITY_GRANT, T4_COMMUNITY, T3_COMMUNITY,
 } from './finance/constants.js';
+import { careerFootballDept } from './finance/footballDept.js';
+import { careerMemberCount } from './finance/membership.js';
+import { careerSeasonDistribution } from './finance/distribution.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
 import {
@@ -1223,6 +1226,18 @@ function finishSeason(c, league) {
     });
   }
 
+  // Football-department soft cap: luxury tax on staff spend above the cap,
+  // charged once here with the other end-of-season money movements (T1/T2 only).
+  {
+    const fd = careerFootballDept(c, league.tier);
+    if (fd.levy > 0) {
+      c.finance.cash -= fd.levy;
+      c.news = [{ week: 0, type: 'loss',
+        text: `🧾 Football department tax: ${fmtK(fd.over)} over the soft cap → ${fmtK(fd.levy)} levy` },
+      ...(c.news || [])].slice(0, 20);
+    }
+  }
+
   const newTier = PYRAMID[c.leagueKey]?.tier ?? league.tier;
   let rippleSummary = null;
   if (promoted || relegated) {
@@ -1357,6 +1372,20 @@ function finishSeason(c, league) {
   c.fundraisersUsed = {};
   c.communityGrantUsed = false;
 
+  // T1/T2 season-start: league central distribution + equalisation support.
+  // Paid for the tier the club is IN this season (promotion/relegation follows the new league).
+  if (league.tier <= 2) {
+    const dist = careerSeasonDistribution(c, league.tier);
+    if (dist.total > 0) {
+      c.finance.cash += dist.total;
+      const label = league.tier === 1 ? 'AFL distribution' : 'League distribution';
+      c.news = [{
+        week: 0, type: 'info',
+        text: `💰 ${label} received: $${(dist.total / 1_000_000).toFixed(1)}M (incl. $${Math.round(dist.equalisation / 1000).toLocaleString()}k equalisation support)`,
+      }, ...(c.news || [])].slice(0, 25);
+    }
+  }
+
   // T4 season-start: collect registration fees + deduct annual fixed costs.
   if (league.tier === 4) {
     const regFees = collectRegistrationFees(c);
@@ -1382,6 +1411,24 @@ function finishSeason(c, league) {
     c.t4SponsorHuntActive = false;
     c.t4GrantApplicationPending = false;
     c.t4GrantResultWeek = null;
+  }
+
+  // Season-start membership tally — the off-field ladder. YoY delta only when
+  // last season was the same tier (cross-tier counts aren't comparable);
+  // all-time record fires once per new high (first tally seeds it silently).
+  {
+    const members = careerMemberCount(c, league.tier);
+    const prev = c.lastMemberCount;
+    const delta = prev && prev.tier === league.tier ? members - prev.count : null;
+    const deltaTxt = delta == null ? '' : delta >= 0 ? ` — up ${delta.toLocaleString()} on last year` : ` — down ${Math.abs(delta).toLocaleString()} on last year`;
+    c.news = [{ week: 0, type: delta != null && delta < 0 ? 'loss' : 'info', text: `📈 Membership tally: ${members.toLocaleString()}${deltaTxt}` }, ...(c.news || [])].slice(0, 25);
+    if (c.memberRecord == null) {
+      c.memberRecord = members; // seed on first tally, no fanfare
+    } else if (members > c.memberRecord) {
+      c.memberRecord = members;
+      c.news = [{ week: 0, type: 'win', text: `🎉 Club record membership: ${members.toLocaleString()}!` }, ...(c.news || [])].slice(0, 25);
+    }
+    c.lastMemberCount = { count: members, tier: league.tier };
   }
 
   c.lastEosFinance = {

@@ -34,6 +34,16 @@ export const TIER_FINANCE = {
   },
 };
 
+// Annual league distribution (AFL / state-league funding), as shares of the
+// tier's annualIncome: every club gets `base`; the equalisation top-up scales
+// up to `eqMax` with need (prior ladder finish + revenue weakness).
+// ponytail: T3/T4 intentionally absent — community clubs get grants and
+// registration fees, not league distributions; add a tier key here to extend.
+export const DISTRIBUTION_SHARES = {
+  1: { base: 0.40, eqMax: 0.18 }, // premier ≈ 40% of annualIncome, wooden-spooner ≈ 55%+
+  2: { base: 0.25, eqMax: 0.10 },
+};
+
 // Annual facility upkeep per level. Single source of truth — referenced both
 // in the weekly cashflow tick and the FinancesTab annual projection.
 export const FACILITY_UPKEEP_PER_LEVEL_ANNUAL = {
@@ -275,4 +285,27 @@ export const MEMBERSHIP_MILESTONES = {
   promoted:         +0.08,
   relegated:        -0.12,
   woodenSpoon:      -0.06,
+};
+
+// ---------------------------------------------------------------------------
+// Football-department soft cap (staff/coaching spend), separate from the
+// player salary cap. Expressed as a share of the tier's player wageBudget so
+// tier rebalances carry through. Clubs may exceed it freely — the AFL-style
+// consequence is a luxury tax on the excess at season end.
+// ponytail: T3/T4 intentionally absent (volunteer/community staff, no cap).
+// ---------------------------------------------------------------------------
+export const FOOTBALL_DEPT_CAP_SHARE = {
+  1: 0.16, // ≈ $2.08M at the current T1 wageBudget — ~130% of a standard panel
+  2: 0.16, // ≈ $224k at T2
+};
+export const FOOTBALL_DEPT_LEVY_RATE = 0.75; // tax on every $ above the cap
+// Base member count per tier at membership health 1.0 (career.membershipBase).
+// The visible "members" number = MEMBER_BASE[tier] × membershipBase, so the
+// existing milestone system (premierships, finals, relegation) drives it.
+// T1 spans ≈27k–137k across the 0.5–2.5 health range — matching real AFL scale.
+export const MEMBER_BASE = {
+  1: 55_000,
+  2: 4_500,
+  3: 300,
+  4: 60,
 };
