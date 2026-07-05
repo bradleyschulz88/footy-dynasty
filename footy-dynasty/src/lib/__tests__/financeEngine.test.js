@@ -160,11 +160,12 @@ describe('continuous vs match-day split (no double counting)', () => {
 
   it('income projection sums all lines (T1/T2: bar/canteen/regFees are 0)', () => {
     const inc = incomeBreakdown(baseCareer());
-    // T1/T2 clubs have no bar, canteen, or regFees
+    // T1/T2 clubs have no bar, canteen, or regFees — but do get the league distribution
     expect(inc.bar).toBe(0);
     expect(inc.canteen).toBe(0);
     expect(inc.regFees).toBe(0);
-    expect(inc.grandTotal).toBe(inc.broadcast + inc.gate + inc.membership + inc.merchandise + inc.sponsors + inc.gaming + inc.bar + inc.canteen + inc.regFees);
+    expect(inc.distribution).toBeGreaterThan(0);
+    expect(inc.grandTotal).toBe(inc.broadcast + inc.gate + inc.membership + inc.merchandise + inc.sponsors + inc.gaming + inc.bar + inc.canteen + inc.regFees + inc.distribution);
   });
 
   it('T3 income projection includes bar, canteen, regFees > 0', () => {

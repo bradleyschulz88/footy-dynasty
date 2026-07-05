@@ -1384,6 +1384,7 @@ function FinancesTab() {
           <div className={`${css.panel} p-5`}>
             <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (ANNUAL)</h3>
             {[
+              ...(inc.distribution > 0 ? [{ label: "AFL Distribution", value: inc.distribution, color: "var(--A-pos)" }] : []),
               ...(inc.broadcast > 0 ? [{ label: "Broadcast / TV Rights", value: inc.broadcast, color: "var(--A-accent)" }] : []),
               { label: "Gate Revenue",            value: inc.gate,        color: "var(--A-accent)" },
               ...(inc.bar > 0    ? [{ label: "Bar & Social Club",         value: inc.bar,     color: "#F59E0B" }] : []),
