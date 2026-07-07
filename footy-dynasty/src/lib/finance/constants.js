@@ -309,3 +309,17 @@ export const MEMBER_BASE = {
   3: 300,
   4: 60,
 };
+
+// ---------------------------------------------------------------------------
+// High-performance / sports-science department. A per-season investment level
+// the manager funds (T1/T2 only). Each level maps to three on-field outputs —
+// injury-rate multiplier (lower = fewer), recovery-weeks bonus (shorter
+// layoffs, stacks with medical staff), pre-season fitness bonus — with
+// diminishing returns. Cost is a share of the tier's wageBudget.
+// ponytail: T3/T4 pinned to level 0 (free volunteer baseline) — no big spend.
+// ---------------------------------------------------------------------------
+export const HP_LEVELS = [
+  { key: 'volunteer', label: 'Volunteer',  injuryMult: 1.00, recoveryBonus: 0.0, fitnessBonus: 0, costShare: 0.000 },
+  { key: 'standard',  label: 'Standard',   injuryMult: 0.90, recoveryBonus: 0.8, fitnessBonus: 4, costShare: 0.030 },
+  { key: 'elite',     label: 'Elite',      injuryMult: 0.82, recoveryBonus: 1.5, fitnessBonus: 6, costShare: 0.060 },
+];

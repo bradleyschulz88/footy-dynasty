@@ -87,6 +87,7 @@ import {
 import { careerFootballDept } from './finance/footballDept.js';
 import { careerMemberCount } from './finance/membership.js';
 import { careerSeasonDistribution } from './finance/distribution.js';
+import { careerHpEffects } from './finance/highPerformance.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
 import {
@@ -1384,6 +1385,14 @@ function finishSeason(c, league) {
         text: `💰 ${label} received: $${(dist.total / 1_000_000).toFixed(1)}M (incl. $${Math.round(dist.equalisation / 1000).toLocaleString()}k equalisation support)`,
       }, ...(c.news || [])].slice(0, 25);
     }
+    // High-performance department annual cost (funded, T1/T2).
+    const hpBudget = careerHpEffects(c, league.tier);
+    if (hpBudget.cost > 0) {
+      c.finance.cash -= hpBudget.cost;
+      c.news = [{ week: 0, type: 'info',
+        text: `🔬 Sports science (${hpBudget.label}) funded: −$${(hpBudget.cost / 1_000_000).toFixed(2)}M · injuries ×${hpBudget.injuryRateMult.toFixed(2)}, recovery +${hpBudget.recoveryWeeksBonus}wk` },
+      ...(c.news || [])].slice(0, 25);
+    }
   }
 
   // T4 season-start: collect registration fees + deduct annual fixed costs.
@@ -1814,15 +1823,16 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
     const recoveryFocus = c.training?.focus?.recovery ?? 20;
     const medLevel = c.facilities?.medical?.level ?? 1;
     const mit = medicalStaffMitigation(c.staff);
+    const hpTr = careerHpEffects(c, league.tier);
     const trainingInjuryProb = effectiveInjuryRate(c,
-      Math.max(0, ((intensity - 50) * 0.0014) + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008 - mit.probReduce));
+      Math.max(0, ((intensity - 50) * 0.0014) + 0.012 - medLevel * 0.005 - (recoveryFocus - 20) * 0.0008 - mit.probReduce)) * hpTr.injuryRateMult;
     const trainingInjuryPool = lineupPlayersOrdered(c.squad, c.lineup);
     if (rng() < trainingInjuryProb && trainingInjuryPool.length > 0) {
       const injId = pick(trainingInjuryPool).id;
       const inj = pickInjury();
       const trainingMedRating = (c.staff || []).find((s) => s.id === 's6')?.rating ?? 60;
-      const trainingMedReduction = trainingMedRating >= 85 ? 2 : trainingMedRating >= 70 ? 1 : 0;
-      const trainingWeeks = Math.max(1, Math.min(inj.weeks, 2) - trainingMedReduction); // ponytail: cap training injuries at 2w base; severity still reflected in label
+      const trainingMedReduction = (trainingMedRating >= 85 ? 2 : trainingMedRating >= 70 ? 1 : 0) + hpTr.recoveryWeeksBonus;
+      const trainingWeeks = Math.max(1, Math.round(Math.min(inj.weeks, 2) - trainingMedReduction)); // ponytail: cap training injuries at 2w base; severity still reflected in label
       c.squad = c.squad.map((p) => {
         if (p.id !== injId) return p;
         let concussionsThisSeason = p.concussionsThisSeason || 0;
@@ -2221,7 +2231,7 @@ export function advanceCareerNextEvent({ career, league, club, setCareer, setScr
 
     c.squad = c.squad.map((p) => {
       if (c.lineup.includes(p.id)) return p;
-      return { ...p, fitness: clamp((p.fitness ?? 90) + rand(8, 14), 30, 100), injured: Math.max(0, (p.injured ?? 0) - 1) };
+      return { ...p, fitness: clamp((p.fitness ?? 90) + rand(8, 14) + careerHpEffects(c, league.tier).preseasonFitnessBonus, 30, 100), injured: Math.max(0, (p.injured ?? 0) - 1) };
     });
 
     // Player match in progress — pause at half time for the coach's call.
@@ -2443,15 +2453,18 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   const medLevel = c.facilities?.medical?.level ?? 1;
   const recoveryFocus = c.training?.focus?.recovery ?? 20;
   const mit = medicalStaffMitigation(c.staff);
+  const hp = careerHpEffects(c, league.tier);
   const baseInjuryProb =
     0.12 + (intensity - 50) * 0.002 - medLevel * 0.012 - (recoveryFocus - 20) * 0.001 - mit.probReduce;
-  const injuryProb = effectiveInjuryRate(c, clamp(baseInjuryProb, 0.04, 0.28));
+  // HP department lowers the injury RATE on top of the difficulty multiplier.
+  const injuryProb = effectiveInjuryRate(c, clamp(baseInjuryProb, 0.04, 0.28)) * hp.injuryRateMult;
   const medRating = (c.staff || []).find((s) => s.id === 's6')?.rating ?? 60;
-  const medReduction = medRating >= 85 ? 2 : medRating >= 70 ? 1 : 0;
+  // HP department speeds RECOVERY on top of the medical-staff reduction.
+  const medReduction = (medRating >= 85 ? 2 : medRating >= 70 ? 1 : 0) + hp.recoveryWeeksBonus;
 
   const applyTypedInjury = (pid) => {
     const inj = pickInjury();
-    let finalWeeks = Math.max(1, inj.weeks - medReduction);
+    let finalWeeks = Math.max(1, Math.round(inj.weeks - medReduction));
     c.squad = c.squad.map((p) => {
       if (p.id !== pid) return p;
       let concussionsThisSeason = p.concussionsThisSeason || 0;

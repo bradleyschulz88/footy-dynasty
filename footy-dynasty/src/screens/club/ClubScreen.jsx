@@ -17,6 +17,8 @@ import { STATES, PYRAMID, findClub, findLeagueOf } from '../../data/pyramid.js';
 import { FIRST_NAMES, LAST_NAMES, formatPositionSlash } from '../../lib/playerGen.js';
 import { fmtK, clamp } from '../../lib/format.js';
 import { careerFootballDept } from '../../lib/finance/footballDept.js';
+import { hpEffects, hpLevelFor } from '../../lib/finance/highPerformance.js';
+import { HP_LEVELS } from '../../lib/finance/constants.js';
 import { careerMemberCount } from '../../lib/finance/membership.js';
 import { defaultKits, STAFF_BLUEPRINT, EXPANDABLE_ROLE_IDS_BY_TIER } from '../../lib/defaults.js';
 import { css, Bar, RatingDot, Pill, Stat, Jersey } from '../../components/primitives.jsx';
@@ -2371,9 +2373,49 @@ function StaffTab() {
   };
 
   const fd = careerFootballDept(career, leagueTier);
+  const hpLvl = hpLevelFor(career, leagueTier);
+  const hp = hpEffects(hpLvl, leagueTier);
+  const setHpLevel = (lvl) => updateCareer({ hpLevel: lvl });
   return (
     <div className="space-y-4">
       <StaffRenewalsPanel leagueTier={leagueTier} />
+
+      {/* High-performance / sports-science department. T1/T2 pick a funded level; T3/T4 volunteer baseline. */}
+      <div className={`${css.panel} p-4`}>
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-2.5">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-atext-mute">High performance · sports science</div>
+          {leagueTier <= 2
+            ? <div className="text-sm font-mono font-bold" style={{ color: 'var(--A-teal, #46d6c6)' }}>{hp.label} · {hp.cost > 0 ? `${fmtK(hp.cost)}/yr` : 'free'}</div>
+            : <div className="text-sm font-mono text-atext-mute">Volunteer baseline</div>}
+        </div>
+        {leagueTier <= 2 && (
+          <div className="flex gap-2 mb-3">
+            {HP_LEVELS.map((lv, i) => (
+              <button key={lv.key} type="button" onClick={() => setHpLevel(i)}
+                className="flex-1 text-[11px] font-bold uppercase tracking-wider py-2 rounded-lg transition-colors"
+                style={i === hpLvl
+                  ? { background: 'var(--A-accent)', color: 'var(--fd-on-accent, #0A0D0C)' }
+                  : { background: 'var(--A-panel-2)', color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }}>
+                {lv.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-lg p-2" style={{ background: 'var(--A-panel-2)' }}>
+            <div className="text-sm font-bold" style={{ color: 'var(--A-pos)' }}>−{Math.round((1 - hp.injuryRateMult) * 100)}%</div>
+            <div className="text-[9px] uppercase tracking-wider text-atext-mute mt-0.5">injury risk</div>
+          </div>
+          <div className="rounded-lg p-2" style={{ background: 'var(--A-panel-2)' }}>
+            <div className="text-sm font-bold" style={{ color: 'var(--A-accent-2)' }}>+{hp.recoveryWeeksBonus}wk</div>
+            <div className="text-[9px] uppercase tracking-wider text-atext-mute mt-0.5">recovery</div>
+          </div>
+          <div className="rounded-lg p-2" style={{ background: 'var(--A-panel-2)' }}>
+            <div className="text-sm font-bold" style={{ color: 'var(--A-accent)' }}>+{hp.preseasonFitnessBonus}</div>
+            <div className="text-[9px] uppercase tracking-wider text-atext-mute mt-0.5">pre-season fitness</div>
+          </div>
+        </div>
+      </div>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>STAFF</div>
