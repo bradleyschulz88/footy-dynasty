@@ -88,6 +88,7 @@ import { careerFootballDept } from './finance/footballDept.js';
 import { careerMemberCount } from './finance/membership.js';
 import { careerSeasonDistribution } from './finance/distribution.js';
 import { careerHpEffects } from './finance/highPerformance.js';
+import { playReservesRound } from './reserves.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
 import {
@@ -2347,6 +2348,11 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
   const matchMargin = Math.abs((myResult.myTotal ?? 0) - (myResult.oppTotal ?? 0));
   const heavyDefeat = !won && !drew && matchMargin > 40;
   const matchStats = {};
+  // VFL/reserves affiliate: fringe players get a run in the twos each senior
+  // match week (T1/T2 affiliates only — community clubs field one side).
+  const reservesRound = league.tier <= 2
+    ? playReservesRound(c.squad.filter((p) => !c.lineup.includes(p.id)), meta.round)
+    : { updates: new Map(), standout: null };
   c.squad = c.squad.map((p) => {
     const playedThisWeek = c.lineup.includes(p.id);
     if (!playedThisWeek) {
@@ -2354,7 +2360,17 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
       // weeks out of the side starts to grate (logged below for transparency).
       const weeksOut = (p.weeksWithoutGame ?? 0) + 1;
       let np = { ...p, weeksWithoutGame: weeksOut };
-      if (weeksOut >= 2 && (np.morale ?? 75) > cfg.moraleFloor) {
+      const res = reservesRound.updates.get(p.id);
+      if (res) {
+        // Played reserves: stat line + merit form move (+ youth dev tick);
+        // the benched sting softens to every 3rd week — they're playing footy,
+        // they just want senior footy.
+        np = { ...np, ...res };
+        if (weeksOut >= 2 && weeksOut % 3 === 0 && (np.morale ?? 75) > cfg.moraleFloor) {
+          np = adjustMorale(np, -1, MORALE_REASONS.benched, meta.round);
+          if (np.morale < cfg.moraleFloor) np.morale = cfg.moraleFloor;
+        }
+      } else if (weeksOut >= 2 && (np.morale ?? 75) > cfg.moraleFloor) {
         np = adjustMorale(np, -1, MORALE_REASONS.benched, meta.round);
         if (np.morale < cfg.moraleFloor) np.morale = cfg.moraleFloor;
       }
@@ -2411,6 +2427,12 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
     return np;
   });
   c.lastMatchPlayerStats = matchStats;
+  if (reservesRound.standout) {
+    const s = reservesRound.standout;
+    c.news = [{ week: c.week, type: 'info',
+      text: `🏉 Reserves: ${s.name} ${s.disposals} disposals${s.goals > 0 ? `, ${s.goals} goal${s.goals !== 1 ? 's' : ''}` : ''} — knocking on the door.` },
+    ...(c.news || [])].slice(0, 22);
+  }
   if (milestones.items.length > 0) {
     c.news = [...milestones.items, ...(c.news || [])].slice(0, 22);
     // Season highlights — save milestone news to display in end-of-season recap

@@ -281,6 +281,11 @@ function DepthRow({ p, cover, role, benchFree, onSelect, onPromote, onDrop, onSe
       {cover && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: 'var(--A-accent-2)', border: '1px solid color-mix(in srgb, var(--A-accent-2) 35%, transparent)' }}>2°</span>}
       {tag && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: tag.color, background: `color-mix(in srgb, ${tag.color} 16%, transparent)` }}>{tag.label}</span>}
       {!avail && <span className="text-[8px] font-black px-1 py-0.5 rounded" style={{ color: 'var(--A-neg)' }}>{(p.suspended ?? 0) > 0 ? 'SUSP' : 'INJ'}</span>}
+      {role === 'out' && p.lastReserves && (
+        <span className="text-[9px] font-mono flex-shrink-0" style={{ color: 'var(--A-text-mute)' }} title="Latest reserves outing">
+          {p.lastReserves.disposals}d{p.lastReserves.goals > 0 ? ` ${p.lastReserves.goals}g` : ''}
+        </span>
+      )}
       <RatingDot value={p.overall} size="sm" />
       <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
         {role === 'out'
