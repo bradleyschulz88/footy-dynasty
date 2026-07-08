@@ -18,6 +18,8 @@ import { POSITIONS, POSITION_NAMES, playerHasPosition, formatPositionSlash, PLAY
 import { PLAYER_ROLES, roleFit } from '../../lib/playerRoles.js';
 import { fmtK, clamp } from '../../lib/format.js';
 import { footballDeptLevy } from '../../lib/finance/footballDept.js';
+import { leagueTierOf } from '../../lib/finance/engine.js';
+import { listStatus } from '../../lib/listManagement.js';
 import { TRAINING_INFO, formatDate, intensityScale, trainingAttrFocusBoost } from '../../lib/calendar.js';
 import { css, RatingDot, Pill } from '../../components/primitives.jsx';
 import { SquadLineupBuilder, LineupSortablePanel } from '../../components/SquadLineupDnD.jsx';
@@ -604,6 +606,20 @@ function PlayersTab({ onNavigate }) {
               {players.length} shown · {nLineup}/{LINEUP_CAP} in match-day · {(career.squad || []).length} total listed
             </p>
           </div>
+          {(() => {
+            const st = listStatus((career.squad || []).length, leagueTierOf(career));
+            return (
+              <div className="text-[11px] font-mono font-bold px-2.5 py-1.5 rounded-lg self-start"
+                title={st.over ? 'Over the senior-list cap — the excess is delisted at season end' : `${st.room} spot${st.room === 1 ? '' : 's'} left on the list`}
+                style={{
+                  color: st.over ? 'var(--A-neg)' : 'var(--A-text-mute)',
+                  background: 'var(--A-panel-2)',
+                  border: `1px solid ${st.over ? 'color-mix(in srgb, var(--A-neg) 45%, transparent)' : 'var(--A-line)'}`,
+                }}>
+                List {st.size} / {st.max}
+              </div>
+            );
+          })()}
         </div>
 
         <div className="rounded-xl border border-aline bg-apanel-2/60 p-3 sm:p-4 space-y-3">
