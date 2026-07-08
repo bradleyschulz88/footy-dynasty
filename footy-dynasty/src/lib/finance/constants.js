@@ -323,3 +323,13 @@ export const HP_LEVELS = [
   { key: 'standard',  label: 'Standard',   injuryMult: 0.90, recoveryBonus: 0.8, fitnessBonus: 4, costShare: 0.030 },
   { key: 'elite',     label: 'Elite',      injuryMult: 0.82, recoveryBonus: 1.5, fitnessBonus: 6, costShare: 0.060 },
 ];
+
+// Maximum senior list size per tier — enforced at season-end lodgement.
+// Real AFL is ~44; state/community leagues run looser. ponytail: rookie list
+// and mature-age/pre-season signing windows are a later slice.
+export const LIST_LIMITS = {
+  1: { max: 44 },
+  2: { max: 40 },
+  3: { max: 40 },
+  4: { max: 40 },
+};

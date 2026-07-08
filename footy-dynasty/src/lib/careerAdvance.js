@@ -88,6 +88,7 @@ import { careerFootballDept } from './finance/footballDept.js';
 import { careerMemberCount } from './finance/membership.js';
 import { careerSeasonDistribution } from './finance/distribution.js';
 import { careerHpEffects } from './finance/highPerformance.js';
+import { trimToListMax, listMax } from './listManagement.js';
 import { playReservesRound } from './reserves.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
@@ -1016,7 +1017,24 @@ function finishSeason(c, league) {
       }];
     }
   });
-  c.squad = survivors;
+  // List lodgement: enforce the tier's senior-list cap — the lowest-rated
+  // excess is delisted so the club can't carry an oversized list into the new season.
+  const { kept, delisted } = trimToListMax(survivors, listMax(newLeagueTier));
+  delisted.forEach((p) => {
+    retiredThisYear.push({
+      id: p.id,
+      name: p.firstName ? `${p.firstName} ${p.lastName}` : (p.name || 'Player'),
+      age: p.age,
+      reason: 'delisted',
+      seasonsAtClub: p.seasonsAtClub || 0,
+      peakRating: p.peakRating || p.overall || 0,
+      career: { goals: p.careerGoals || 0, gamesPlayed: p.careerGames || 0, disposals: p.careerDisposals || 0 },
+    });
+  });
+  c.news = [{ week: 0, type: delisted.length > 0 ? 'loss' : 'info',
+    text: `📋 List lodged: ${kept.length}/${listMax(newLeagueTier)}${delisted.length > 0 ? ` — ${delisted.length} delisted to fit the cap` : ''}` },
+  ...(c.news || [])].slice(0, 25);
+  c.squad = kept;
   c.lineup = sanitizeLineup(c.lineup, c.squad);
   c.retiredThisSeason = retiredThisYear;
   // Permanent hall-of-fame archive — never cleared.
