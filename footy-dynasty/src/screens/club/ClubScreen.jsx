@@ -52,6 +52,7 @@ import {
   resolveBoardInboxChoice,
   applyMemberConfidenceDelta,
 } from '../../lib/board.js';
+import { visionSummary } from '../../lib/boardVision.js';
 import { getClubGround } from '../../data/grounds.js';
 import { ensureStaffTasks, autoAssignStaffTasks } from '../../lib/staffTasks.js';
 import {
@@ -486,6 +487,26 @@ function BoardTab({ club }) {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {(() => {
+        const vs = visionSummary(career.board?.vision, career.season);
+        if (!vs) return null;
+        const col = vs.urgent ? 'var(--A-neg)' : 'var(--A-accent-2)';
+        return (
+          <div className={`${css.panel} p-4`} style={{ borderColor: `color-mix(in srgb, ${col} 40%, var(--A-line))` }}>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-atext-mute">Board mandate</div>
+                <div className="text-sm font-semibold text-atext mt-0.5">{vs.text}</div>
+              </div>
+              <span className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-lg shrink-0"
+                style={{ color: col, border: `1px solid ${col}` }}>
+                {vs.seasonsLeft} season{vs.seasonsLeft === 1 ? '' : 's'} left
+              </span>
             </div>
           </div>
         );
