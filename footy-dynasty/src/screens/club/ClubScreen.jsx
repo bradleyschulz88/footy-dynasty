@@ -19,6 +19,7 @@ import { fmtK, clamp } from '../../lib/format.js';
 import { careerFootballDept } from '../../lib/finance/footballDept.js';
 import { hpEffects, hpLevelFor } from '../../lib/finance/highPerformance.js';
 import { HP_LEVELS } from '../../lib/finance/constants.js';
+import { activeNamingRights, namingRightsValue, signNamingRights } from '../../lib/finance/namingRights.js';
 import { careerMemberCount } from '../../lib/finance/membership.js';
 import { defaultKits, STAFF_BLUEPRINT, EXPANDABLE_ROLE_IDS_BY_TIER } from '../../lib/defaults.js';
 import { css, Bar, RatingDot, Pill, Stat, Jersey } from '../../components/primitives.jsx';
@@ -1389,6 +1390,7 @@ function FinancesTab() {
             <h3 className={`${css.h1} text-2xl mb-3`}>INCOME (ANNUAL)</h3>
             {[
               ...(inc.distribution > 0 ? [{ label: "AFL Distribution", value: inc.distribution, color: "var(--A-pos)" }] : []),
+              ...(inc.naming > 0 ? [{ label: "Naming Rights", value: inc.naming, color: "#46d6c6" }] : []),
               ...(inc.broadcast > 0 ? [{ label: "Broadcast / TV Rights", value: inc.broadcast, color: "var(--A-accent)" }] : []),
               { label: "Gate Revenue",            value: inc.gate,        color: "var(--A-accent)" },
               ...(inc.bar > 0    ? [{ label: "Bar & Social Club",         value: inc.bar,     color: "#F59E0B" }] : []),
@@ -2175,6 +2177,14 @@ function FacilitiesTab() {
   };
   const totalLevel = Object.values(career.facilities).reduce((a,b)=>a+b.level,0);
   const maxTotal = Object.values(career.facilities).reduce((a,b)=>a+b.max,0);
+  const facTier = leagueTierOf(career);
+  const nrDeal = activeNamingRights(career);
+  const nrOffer = namingRightsValue(facTier, career.facilities?.stadium?.level ?? 1);
+  const signNaming = () => {
+    const deal = signNamingRights(career, facTier);
+    if (!deal) return;
+    updateCareer({ namingRights: deal, news: [{ week: career.week, type: 'win', text: `🏟️ Naming rights signed with ${deal.name} — $${(deal.annualValue / 1_000_000).toFixed(2)}M/yr for ${deal.yearsLeft} seasons.` }, ...(career.news || [])].slice(0, 20) });
+  };
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -2182,6 +2192,21 @@ function FacilitiesTab() {
           <div className={`${css.h1} text-3xl`}>FACILITIES</div>
           <div className="text-xs text-atext-dim">Long-term investment. Effects compound across the season.</div>
         </div>
+        {nrOffer > 0 && (
+          <div className={`${css.panel} p-3 flex items-center gap-3 flex-wrap`} style={{ borderColor: 'color-mix(in srgb, #46d6c6 40%, var(--A-line))' }}>
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-atext-mute">Stadium naming rights</div>
+              {nrDeal
+                ? <div className="text-sm font-mono font-bold" style={{ color: '#46d6c6' }}>{nrDeal.name} · {fmtK(nrDeal.annualValue)}/yr · {nrDeal.yearsLeft}yr left</div>
+                : <div className="text-sm text-atext-mute">Unsold — offer worth {fmtK(nrOffer)}/yr</div>}
+            </div>
+            <button type="button" onClick={signNaming}
+              className="text-[11px] font-bold uppercase tracking-wider px-3 py-2 rounded-lg"
+              style={{ background: '#46d6c6', color: '#0a1320' }}>
+              {nrDeal ? `Re-sign (${fmtK(nrOffer)}/yr)` : 'Sign deal'}
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <Stat label="Overall Rating" value={`${totalLevel}/${maxTotal}`} accent="var(--A-accent)" />
           <Stat label="Cash" value={fmtK(career.finance.cash)} accent="var(--A-accent)" />

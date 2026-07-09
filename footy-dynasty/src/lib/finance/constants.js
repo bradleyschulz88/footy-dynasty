@@ -333,3 +333,15 @@ export const LIST_LIMITS = {
   3: { max: 40 },
   4: { max: 40 },
 };
+
+// Stadium naming-rights deal. Annual value = share of the tier's annualIncome,
+// lifted by stadium level (a bigger, better ground sells for more). T3/T4
+// community grounds don't command meaningful naming rights.
+// ponytail: fixed term + auto-generated sponsor name; negotiation mini-game later.
+export const NAMING_RIGHTS = {
+  baseShare: 0.05,   // 5% of annualIncome at stadium level 1
+  perLevel:  0.35,   // +35% of base per stadium level above 1
+  termYears: 4,
+  minTier:   2,      // tiers ≤ this get real value; tier 3/4 → 0
+  sponsorNames: ['Telstra', 'Marvel', 'GMHBA', 'Optus', 'Adelaide', 'Mars', 'People First', 'UTAS', 'Blundstone', 'Ikon'],
+};

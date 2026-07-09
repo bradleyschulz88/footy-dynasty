@@ -12,6 +12,7 @@ import {
   T4_COMMUNITY, T3_COMMUNITY, GAMING_VENUE, MEMBERSHIP_MILESTONES, BOARD_FINANCIAL_OBJECTIVES,
 } from './constants.js';
 import { careerSeasonDistribution } from './distribution.js';
+import { activeNamingRights } from './namingRights.js';
 import { getDifficultyConfig } from '../difficulty.js';
 import { findLeagueOf, PYRAMID } from '../../data/pyramid.js';
 import { clamp } from '../format.js';
@@ -190,9 +191,11 @@ export function incomeBreakdown(career) {
 
   // T1/T2 league central distribution (annual, paid at season start).
   const distribution = tier <= 2 ? careerSeasonDistribution(career, tier).total : 0;
+  // Stadium naming-rights deal (annual, while a deal is active).
+  const naming = activeNamingRights(career)?.annualValue ?? 0;
 
-  const grandTotal = broadcast + gate + membership + merchandise + sponsors + gaming + bar + canteen + regFees + distribution;
-  return { broadcast, gate, membership, merchandise, sponsors, gaming, bar, canteen, regFees, distribution, grandTotal };
+  const grandTotal = broadcast + gate + membership + merchandise + sponsors + gaming + bar + canteen + regFees + distribution + naming;
+  return { broadcast, gate, membership, merchandise, sponsors, gaming, bar, canteen, regFees, distribution, naming, grandTotal };
 }
 
 export function expenseBreakdown(career) {

@@ -165,7 +165,7 @@ describe('continuous vs match-day split (no double counting)', () => {
     expect(inc.canteen).toBe(0);
     expect(inc.regFees).toBe(0);
     expect(inc.distribution).toBeGreaterThan(0);
-    expect(inc.grandTotal).toBe(inc.broadcast + inc.gate + inc.membership + inc.merchandise + inc.sponsors + inc.gaming + inc.bar + inc.canteen + inc.regFees + inc.distribution);
+    expect(inc.grandTotal).toBe(inc.broadcast + inc.gate + inc.membership + inc.merchandise + inc.sponsors + inc.gaming + inc.bar + inc.canteen + inc.regFees + inc.distribution + inc.naming);
   });
 
   it('T3 income projection includes bar, canteen, regFees > 0', () => {
