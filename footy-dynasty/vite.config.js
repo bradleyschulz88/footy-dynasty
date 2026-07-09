@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 const testing = process.env.npm_lifecycle_event === 'test'
+// Tauri sets TAURI_ENV_* when it runs beforeBuildCommand. In the desktop shell
+// there is no update server to poll, so ship the SPA without the PWA service
+// worker (the browser/PWA build is unaffected).
+const desktop = !!process.env.TAURI_ENV_PLATFORM
 
 export default defineConfig({
   build: testing
@@ -27,6 +31,9 @@ export default defineConfig({
     : [
         react(),
         VitePWA({
+          // Disabled for the Tauri desktop build (no update server to poll) but
+          // still provides a no-op `virtual:pwa-register`, so main.jsx resolves.
+          disable: desktop,
           registerType: 'autoUpdate',
           devOptions: { enabled: false },
           manifest: {
