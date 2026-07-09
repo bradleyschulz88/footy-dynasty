@@ -90,6 +90,7 @@ import { careerSeasonDistribution } from './finance/distribution.js';
 import { careerHpEffects } from './finance/highPerformance.js';
 import { trimToListMax, listMax } from './listManagement.js';
 import { activeNamingRights } from './finance/namingRights.js';
+import { defaultVision, evaluateBoardVision } from './boardVision.js';
 import { playReservesRound } from './reserves.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
@@ -955,6 +956,23 @@ function finishSeason(c, league) {
   });
   if (objLines.length) {
     c.news = [...objLines.map((text) => ({ week: 0, type: 'info', text })), ...(c.news || [])].slice(0, 25);
+  }
+
+  // Multi-year board mandate — set if absent, judged against this season's outcome.
+  if (!c.board.vision) c.board.vision = defaultVision(c.season, league.tier);
+  {
+    const v = evaluateBoardVision(c.board.vision, {
+      madeFinals: (c.finalsFinalists || []).includes(c.clubId),
+      champion,
+      cash: c.finance.cash,
+      season: c.season,
+      tier: league.tier,
+    });
+    if (v.confidenceDelta) applyBoardConfidenceDelta(c, v.confidenceDelta);
+    if (v.lines.length) {
+      c.news = [...v.lines.map((text) => ({ week: 0, type: v.achieved ? 'win' : 'loss', text })), ...(c.news || [])].slice(0, 25);
+    }
+    c.board.vision = v.nextVision;
   }
 
   c.season += 1;
