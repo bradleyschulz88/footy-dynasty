@@ -1,6 +1,7 @@
 // Overview tiles, Commercial KPI strip, section breadcrumb for Club screen.
 import React from "react";
-import { useCareer } from "../../lib/careerStore.js";
+import { useCareer, useUpdateCareer } from "../../lib/careerStore.js";
+import { aflwActive, establishAflw, aflwProgramCost } from "../../lib/aflw.js";
 import {
   Briefcase, DollarSign, FileText, Handshake, Wrench, Building2, UserCog, Users,
   Shirt, Award, Sprout, ChevronRight, LayoutDashboard,
@@ -11,6 +12,7 @@ import {
   effectiveWageCap,
   currentPlayerWageBill,
   capHeadroom,
+  leagueTierOf,
 } from "../../lib/finance/engine.js";
 
 function overviewTile(title, sublines, Icon, accent, onClick) {
@@ -53,6 +55,7 @@ function sectionLabel(text) {
 /** Hub landing — tiles jump to specific leaf tabs (matches primary nav defaults). */
 export function ClubOverviewTab({ club, setTab, showCommittee }) {
   const career = useCareer();
+  const updateCareer = useUpdateCareer();
   const cash = career.finance?.cash ?? 0;
   const sponsorsN = (career.sponsors || []).length;
   const sponsorsAnnual = (career.sponsors || []).reduce((a, s) => a + (s.annualValue || 0), 0);
@@ -67,6 +70,15 @@ export function ClubOverviewTab({ club, setTab, showCommittee }) {
   const renewHint =
     pendPlayer + pendStaff > 0 ? `${pendPlayer + pendStaff} renewal queue` : "No pending renewals";
 
+  const clubTier = leagueTierOf(career);
+  const aflw = career.aflw;
+  const aflwOn = aflwActive(career);
+  const establishAflwProgram = () => {
+    const state = establishAflw(career, clubTier);
+    if (!state) return;
+    updateCareer({ aflw: state, news: [{ week: career.week, type: 'win', text: '👩 AFLW program established — your women’s side debuts next season.' }, ...(career.news || [])].slice(0, 20) });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -75,6 +87,33 @@ export function ClubOverviewTab({ club, setTab, showCommittee }) {
           {club.name} — jump to any area. <strong className="text-atext">Commercial</strong> defaults to Finances from the top bar.
         </div>
       </div>
+
+      {clubTier === 1 && (
+        <div className={`${css.panel} p-4`} style={{ borderColor: 'color-mix(in srgb, #E85A9B 40%, var(--A-line))' }}>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-atext-mute">AFLW program</div>
+              {aflwOn ? (
+                <div className="text-sm text-atext mt-0.5">
+                  {aflw?.lastResult
+                    ? <>Last season: <strong>{aflw.lastResult.position === 1 ? 'Premiers 🏆' : `${aflw.lastResult.position}${aflw.lastResult.position === 2 ? 'nd' : aflw.lastResult.position === 3 ? 'rd' : 'th'}`}</strong> ({aflw.lastResult.wins}-{aflw.lastResult.losses})</>
+                    : <>Debut season upcoming</>}
+                  {(aflw?.premierships ?? 0) > 0 && <span className="text-atext-dim"> · {aflw.premierships} flag{aflw.premierships === 1 ? '' : 's'}</span>}
+                </div>
+              ) : (
+                <div className="text-sm text-atext-mute mt-0.5">Field a women's side — {fmtK(aflwProgramCost(1))}/yr</div>
+              )}
+            </div>
+            {!aflwOn && (
+              <button type="button" onClick={establishAflwProgram}
+                className="text-[11px] font-bold uppercase tracking-wider px-3 py-2 rounded-lg shrink-0"
+                style={{ background: '#E85A9B', color: '#12040c' }}>
+                Establish
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         {sectionLabel("Commercial")}
