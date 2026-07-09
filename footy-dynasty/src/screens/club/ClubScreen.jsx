@@ -46,6 +46,7 @@ import {
   applyRenewalAcceptance, applyRenewalDecline, applySponsorOfferAcceptance,
   evaluateSponsorCounter, sponsorCounterAcceptChance, sponsorClauseTerms,
 } from '../../lib/finance/sponsors.js';
+import { sponsorTier, negotiateStance, SPONSOR_STANCES } from '../../lib/finance/sponsorTiers.js';
 import {
   boardObjectiveUiStatus,
   resolveBoardInboxChoice,
@@ -1738,37 +1739,59 @@ function BoardConfidenceChart() {
 
 // A single new-offer card with Accept / Counter / Decline + a top-4 clause toggle.
 function SponsorOfferCard({ offer, onAccept, onDecline, onCounter, onSignWithClause }) {
-  const base = offer.annualValue ?? 0;
+  const [stance, setStance] = useState('balanced');
+  // Stance rewrites the headline value + term; everything below negotiates the adjusted deal.
+  const adjOffer = { ...offer, ...negotiateStance(offer, stance) };
+  const tier = sponsorTier(offer);
+  const base = adjOffer.annualValue ?? 0;
   const minV = base;
   const maxV = Math.round(base * 1.5);
   const [mode, setMode] = useState(null); // null | 'counter'
   const [counter, setCounter] = useState(base);
   const [withClause, setWithClause] = useState(false);
+  useEffect(() => { setCounter(base); }, [base]); // keep counter in sync when stance changes
 
-  const clauseTerms = sponsorClauseTerms(offer);
-  const odds = Math.round(sponsorCounterAcceptChance(offer, counter) * 100);
+  const clauseTerms = sponsorClauseTerms(adjOffer);
+  const odds = Math.round(sponsorCounterAcceptChance(adjOffer, counter) * 100);
   const oddsColor = odds >= 66 ? 'var(--A-pos)' : odds >= 33 ? '#FFB347' : 'var(--A-neg)';
 
   const sendCounter = () => {
-    onCounter(offer, counter, withClause ? sponsorClauseTerms(offer) : undefined);
+    onCounter(adjOffer, counter, withClause ? sponsorClauseTerms(adjOffer) : undefined);
     setMode(null);
   };
   const accept = () => {
-    if (withClause) onSignWithClause(offer, clauseTerms);
-    else onAccept(offer);
+    if (withClause) onSignWithClause(adjOffer, clauseTerms);
+    else onAccept(adjOffer);
   };
 
   return (
     <div className={`${css.inset} p-4`}>
       <div className="flex items-start justify-between mb-2">
         <div>
-          <div className="font-display text-xl">{offer.name}</div>
+          <div className="flex items-center gap-2">
+            <div className="font-display text-xl">{offer.name}</div>
+            <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded"
+              style={{ color: tier.color, background: `color-mix(in srgb, ${tier.color} 16%, transparent)` }}>{tier.label}</span>
+          </div>
           <div className="text-[10px] text-atext-dim uppercase tracking-widest">{offer.category} · {offer.type}</div>
         </div>
-        <Pill color="var(--A-accent)">{offer.yearsLeft}y</Pill>
+        <Pill color="var(--A-accent)">{adjOffer.yearsLeft}y</Pill>
       </div>
       <div className="text-[11px] text-atext-dim mb-2">
-        Offer: <span className="font-bold text-apos">{fmtK(base)}/yr</span>
+        Offer: <span className="font-bold text-apos">{fmtK(base)}/yr</span> · {adjOffer.yearsLeft} seasons
+      </div>
+
+      {/* Negotiation stance — value ↔ term trade-off (applies before signing). */}
+      <div className="flex gap-1.5 mb-2">
+        {SPONSOR_STANCES.map((s) => (
+          <button key={s.key} type="button" onClick={() => setStance(s.key)} title={s.desc}
+            className="flex-1 text-[10px] font-bold uppercase tracking-wider py-1.5 rounded-lg transition-colors"
+            style={stance === s.key
+              ? { background: 'var(--A-accent)', color: 'var(--fd-on-accent, #0A0D0C)' }
+              : { background: 'var(--A-panel-2)', color: 'var(--A-text-mute)', border: '1px solid var(--A-line)' }}>
+            {s.label}
+          </button>
+        ))}
       </div>
 
       {/* Top-4 performance clause toggle */}
