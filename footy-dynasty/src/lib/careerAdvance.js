@@ -89,6 +89,7 @@ import { careerMemberCount } from './finance/membership.js';
 import { careerSeasonDistribution } from './finance/distribution.js';
 import { careerHpEffects } from './finance/highPerformance.js';
 import { trimToListMax, listMax } from './listManagement.js';
+import { activeNamingRights } from './finance/namingRights.js';
 import { playReservesRound } from './reserves.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
@@ -1411,6 +1412,21 @@ function finishSeason(c, league) {
       c.news = [{ week: 0, type: 'info',
         text: `🔬 Sports science (${hpBudget.label}) funded: −$${(hpBudget.cost / 1_000_000).toFixed(2)}M · injuries ×${hpBudget.injuryRateMult.toFixed(2)}, recovery +${hpBudget.recoveryWeeksBonus}wk` },
       ...(c.news || [])].slice(0, 25);
+    }
+    // Stadium naming-rights deal — pay this season's value, then age the term.
+    const deal = activeNamingRights(c);
+    if (deal) {
+      c.finance.cash += deal.annualValue;
+      c.news = [{ week: 0, type: 'info',
+        text: `🏟️ Naming rights (${deal.name}): +$${(deal.annualValue / 1_000_000).toFixed(2)}M · ${deal.yearsLeft - 1} yr${deal.yearsLeft - 1 === 1 ? '' : 's'} left` },
+      ...(c.news || [])].slice(0, 25);
+      const yearsLeft = deal.yearsLeft - 1;
+      if (yearsLeft <= 0) {
+        c.namingRights = null;
+        c.news = [{ week: 0, type: 'warning', text: `🏟️ Naming-rights deal with ${deal.name} has expired — re-sign in Facilities.` }, ...(c.news || [])].slice(0, 25);
+      } else {
+        c.namingRights = { ...deal, yearsLeft };
+      }
     }
   }
 
