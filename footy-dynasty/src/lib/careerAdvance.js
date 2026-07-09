@@ -132,6 +132,7 @@ import {
   recordCareerWin,
   checkLegacyMilestonesAfterSeason,
 } from './dynastyQuests.js';
+import { syncAchievements } from './achievements.js';
 
 // Margin-aware match report phrases — indexed by outcome + margin band.
 const WIN_CLOSE = [   // margin 1-12
@@ -970,6 +971,7 @@ function finishSeason(c, league) {
       tier: league.tier,
     });
     if (v.confidenceDelta) applyBoardConfidenceDelta(c, v.confidenceDelta);
+    if (v.achieved) c.board.visionsAchieved = (c.board.visionsAchieved ?? 0) + 1;
     if (v.lines.length) {
       c.news = [...v.lines.map((text) => ({ week: 0, type: v.achieved ? 'win' : 'loss', text })), ...(c.news || [])].slice(0, 25);
     }
@@ -1143,6 +1145,8 @@ function finishSeason(c, league) {
     F: myRow.F || 0,
     A: myRow.A || 0,
     promoted, relegated, champion,
+    woodenSpoon: myPos === sorted.length,
+    debtFree: champion && !c.bankLoan && !(c.facilityLoans && c.facilityLoans.length) && (c.finance?.cash ?? 0) >= 0,
     topScorer: byGoals[0] ? { name: pName(byGoals[0]), goals: byGoals[0].goals || 0 } : null,
     brownlow: brownlowWinner,
     colemanWinner,
@@ -1607,6 +1611,7 @@ function finishSeason(c, league) {
   c.currentMatchResult = null;
   clearPostSeasonTransient(c);
   primeSeasonStoryState(c);
+  syncAchievements(c); // unlock any Steam achievements earned this season
   return c;
 }
 
