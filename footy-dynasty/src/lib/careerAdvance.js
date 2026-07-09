@@ -91,6 +91,7 @@ import { careerHpEffects } from './finance/highPerformance.js';
 import { trimToListMax, listMax } from './listManagement.js';
 import { activeNamingRights } from './finance/namingRights.js';
 import { defaultVision, evaluateBoardVision } from './boardVision.js';
+import { aflwActive, aflwProgramCost, simulateAflwSeason, clubAflwStrength } from './aflw.js';
 import { playReservesRound } from './reserves.js';
 import { getClubGround } from '../data/grounds.js';
 import { resolveHomeAdvantageForFixture, homeAdvantageAiHome } from './homeAdvantage.js';
@@ -973,6 +974,23 @@ function finishSeason(c, league) {
       c.news = [...v.lines.map((text) => ({ week: 0, type: v.achieved ? 'win' : 'loss', text })), ...(c.news || [])].slice(0, 25);
     }
     c.board.vision = v.nextVision;
+  }
+
+  // AFLW program — abstract women's campaign for AFL-tier clubs while active.
+  if (aflwActive(c) && league.tier === 1) {
+    c.finance.cash -= aflwProgramCost(league.tier);
+    const res = simulateAflwSeason(clubAflwStrength(c), c.season);
+    c.aflw = {
+      ...c.aflw,
+      lastResult: { season: c.season, ...res },
+      premierships: (c.aflw?.premierships ?? 0) + (res.premiers ? 1 : 0),
+    };
+    const ord = res.position === 1 ? 'st' : res.position === 2 ? 'nd' : res.position === 3 ? 'rd' : 'th';
+    c.news = [{ week: 0, type: res.premiers ? 'win' : 'info',
+      text: res.premiers
+        ? `🏆 AFLW PREMIERS! Your women's side finished ${res.wins}-${res.losses} and won the flag.`
+        : `👩 AFLW season: finished ${res.position}${ord} (${res.wins}-${res.losses}).` },
+    ...(c.news || [])].slice(0, 25);
   }
 
   c.season += 1;
