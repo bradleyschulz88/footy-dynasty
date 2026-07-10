@@ -6,7 +6,7 @@ import { migrate as migrateSave, SAVE_VERSION, writeSlot, readSlot, deleteSlot, 
 
 // Mock localStorage for testing
 const mockStorage = {};
-Object.defineProperty(global, 'localStorage', {
+Object.defineProperty(globalThis, 'localStorage', {
   value: {
     getItem: (key) => mockStorage[key] || null,
     setItem: (key, value) => { mockStorage[key] = value; },
