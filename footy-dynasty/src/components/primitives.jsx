@@ -205,8 +205,8 @@ export function DataTable({ title, titleAction, columns, rows, rowKey, emptyLabe
         <div className="px-5 py-8 text-sm text-atext-dim text-center">{emptyLabel}</div>
       ) : (
         <>
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="hidden md:block overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+            <table className="w-full text-left border-collapse min-w-max">
               <thead>
                 <tr>{columns.map((col) => <th key={col.key} className={css.tableHead}>{col.header}</th>)}</tr>
               </thead>
@@ -223,9 +223,9 @@ export function DataTable({ title, titleAction, columns, rows, rowKey, emptyLabe
               </tbody>
             </table>
           </div>
-          <div className="md:hidden">
+          <div className="md:hidden overflow-x-auto -mx-4 px-4 pb-4">
             {rows.map((row) => (
-              <div key={rowKey(row)} className="px-4 py-3 border-b border-aline/80 last:border-b-0">
+              <div key={rowKey(row)} className="min-w-[280px] px-4 py-3 border-b border-aline/80 last:border-b-0">
                 {columns.map((col) => (
                   <div key={col.key} className="flex justify-between gap-3 py-1.5 text-sm">
                     <span className="text-atext-mute font-mono uppercase tracking-wider text-[11px] shrink-0">{col.header}</span>
@@ -309,6 +309,11 @@ export const GlobalStyle = () => (
     }
     /* Subtle tactile press feedback for tappable buttons. */
     button:not(:disabled):active { transform: translateY(0.5px); }
+    /* Minimum touch target for mobile accessibility (44x44px) */
+    button, [role="button"], a.btn, .btn {
+      min-height: 44px;
+      min-width: 44px;
+    }
     * { box-sizing:border-box; }
   `}</style>
 );

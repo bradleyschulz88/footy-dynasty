@@ -146,6 +146,7 @@ function FootyTripPromoCard({ setScreen, setTab }) {
           setTab?.('committee');
         }}
         className={`${css.btnPrimary} text-[10px] py-2 px-3`}
+        aria-label="Open Club tab to approve footy trip"
       >
         OPEN CLUB →
       </button>
@@ -172,6 +173,7 @@ function CommitteeMiniSummary({ setScreen, setTab }) {
           setTab?.('committee');
         }}
         className={`${css.btnGhost} text-[10px] py-1.5 px-2.5`}
+        aria-label="View committee details"
       >
         VIEW COMMITTEE →
       </button>

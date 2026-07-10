@@ -4,6 +4,11 @@ import { isForwardPreferred, isMidPreferred, isBackPreferred, playerHasPosition 
 import { lineupStructureModifier } from './lineupBalance.js';
 import { lineupRoleModifier } from './playerRoles.js';
 import { LINEUP_CAP, LINEUP_FIELD_COUNT } from './lineupHelpers.js';
+import { 
+  MATCH, 
+  INJURY, 
+  TIER_SCALE 
+} from './constants.js';
 
 export const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
@@ -25,17 +30,7 @@ export function philosophyTacticFit(philosophy, tactic) {
   return PHILOSOPHY_FIT[philosophy]?.[tactic] ?? 0;
 }
 
-export const INJURY_TABLE = [
-  { type: 'soft_tissue', label: 'Hamstring Strain', minWeeks: 2, maxWeeks: 5,  chance: 0.30 },
-  { type: 'soft_tissue', label: 'Calf Strain',      minWeeks: 2, maxWeeks: 4,  chance: 0.15 },
-  { type: 'shoulder',    label: 'Shoulder (AC)',    minWeeks: 3, maxWeeks: 8,  chance: 0.12 },
-  { type: 'knee_minor',  label: 'Knee (Meniscus)',  minWeeks: 4, maxWeeks: 10, chance: 0.08 },
-  { type: 'ankle',       label: 'Ankle Sprain',     minWeeks: 2, maxWeeks: 6,  chance: 0.12 },
-  { type: 'concussion',  label: 'Concussion',       minWeeks: 1, maxWeeks: 3,  chance: 0.08 },
-  { type: 'fracture',    label: 'Foot Fracture',    minWeeks: 5, maxWeeks: 12, chance: 0.05 },
-  { type: 'knee_acl',   label: 'ACL (Knee)',        minWeeks: 20, maxWeeks: 28, chance: 0.03 },
-  { type: 'soft_tissue', label: 'Quad Strain',      minWeeks: 2, maxWeeks: 4,  chance: 0.07 },
-];
+export const INJURY_TABLE = INJURY.INJURY_TABLE;
 
 /**
  * Pick an injury type by weighted chance and assign severity/weeks.
