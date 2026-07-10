@@ -32,7 +32,7 @@ import {
   swapLineupSlots,
   dedupeLineup,
 } from "../lib/lineupHelpers.js";
-import { RatingDot, css } from "./primitives.jsx";
+import { StarRating, css } from "./primitives.jsx";
 import { LineupOvalField, formBorderColor } from "./LineupOvalField.jsx";
 import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 
@@ -194,7 +194,7 @@ function SortablePlayerRow({
           <span className="text-sm font-semibold text-atext truncate">{pName(player)}</span>
           <span className="w-2 h-2 rounded-full flex-shrink-0 ml-auto" style={{ background: fitColor }} title={`Fitness ${player.fitness ?? '?'}%`} />
           <span className="text-xs text-atext-mute">{player.age}</span>
-          <RatingDot value={player.overall} size="sm" />
+          <StarRating overall={player.overall} size={11} />
         </button>
       ) : (
         <div className="flex-1 flex items-center gap-2 min-w-0">
@@ -204,7 +204,7 @@ function SortablePlayerRow({
           <span className="text-sm font-semibold text-atext truncate">{pName(player)}</span>
           <span className="w-2 h-2 rounded-full flex-shrink-0 ml-auto" style={{ background: fitColor }} title={`Fitness ${player.fitness ?? '?'}%`} />
           <span className="text-xs text-atext-mute">{player.age}</span>
-          <RatingDot value={player.overall} size="sm" />
+          <StarRating overall={player.overall} size={11} />
         </div>
       )}
       {hasPartnership && (
@@ -243,7 +243,7 @@ function dragSummary(activePlayer) {
       style={{ cursor: "grabbing" }}
     >
       <span className="font-bold text-sm text-atext">{pName(activePlayer)}</span>
-      <RatingDot value={activePlayer.overall} size="sm" />
+      <StarRating overall={activePlayer.overall} size={11} />
     </div>
   );
 }
@@ -252,11 +252,6 @@ function dragSummary(activePlayer) {
 /** Compact chip shown in the mobile horizontal bench strip. */
 function MobileBenchChip({ player, stitch, onSelect }) {
   const { attributes, listeners, setNodeRef, isDragging } = useSortable({ id: player.id });
-  const ovrColor = player.overall >= 85 ? "#4AE89A"
-    : player.overall >= 75 ? "#4ADBE8"
-    : player.overall >= 65 ? "var(--A-accent)"
-    : player.overall >= 55 ? "#E8D44A"
-    : "#E84A6F";
 
   return (
     <div
@@ -277,9 +272,8 @@ function MobileBenchChip({ player, stitch, onSelect }) {
       <span className="text-[9px] font-mono uppercase tracking-wider text-atext-mute leading-none">
         {formatPositionSlash(player)}
       </span>
-      <span className="text-sm font-black tabular-nums leading-tight" style={{ color: ovrColor }}>
-        {player.overall}
-      </span>
+      <StarRating overall={player.overall} size={9} />
+      <span className="sr-only">{player.overall}</span>
       <span className="text-[8px] text-atext-dim truncate max-w-[48px]">
         {player.firstName?.[0] ?? ""}{player.firstName ? "." : ""}{player.lastName?.slice(0, 6) ?? player.name ?? ""}
       </span>

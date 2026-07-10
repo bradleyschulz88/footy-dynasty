@@ -217,7 +217,7 @@ export default function SeasonSummaryScreen({
           icon="🥇"
           label="Best & Fairest"
           name={summary.baf?.name}
-          stat={summary.baf ? `${summary.baf.overall} OVR · ${summary.baf.games} games` : "—"}
+          stat={summary.baf ? `${summary.baf.overall} rating · ${summary.baf.games} games` : "—"}
         />
         <AwardCard
           icon="⚽"
@@ -274,7 +274,7 @@ export default function SeasonSummaryScreen({
             icon="🌟"
             label="Rising Star"
             name={summary.risingStar.name}
-            stat={`${summary.risingStar.overall} OVR · age ${summary.risingStar.age}`}
+            stat={`${summary.risingStar.overall} rating · age ${summary.risingStar.age}`}
             sub={`${summary.risingStar.games} games`}
           />
         )}

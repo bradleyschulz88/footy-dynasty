@@ -33,14 +33,38 @@ export const Bar = ({ value, color = "var(--A-accent)", small = false, showVal =
   </div>
 );
 
-// Player rating dot — colour-codes overall ratings into broadcast tiers.
+// Player rating — an AFL star tier (footy-card style), not a FIFA "OVR" chip.
+// Kept as `RatingDot` so the many existing call sites need no changes; it now
+// renders the shared StarRating so every table/list matches the new identity.
 export const RatingDot = ({ value, size = "md" }) => {
-  const c = value >= 85 ? "#4AE89A" : value >= 75 ? "#4ADBE8" : value >= 65 ? "var(--A-accent)" : value >= 55 ? "#E8D44A" : "#E84A6F";
-  const sz = size === "lg" ? "w-12 h-12 text-base" : size === "sm" ? "w-7 h-7 text-xs" : "w-10 h-10 text-sm";
+  const px = size === "lg" ? 15 : size === "sm" ? 10 : 12;
+  return <StarRating overall={value} size={px} />;
+};
+
+// AFL star tier — maps an overall rating (0–100) to a 1–5 star tier, the way
+// footy trading cards grade players. Replaces the FIFA-style "OVR 84" chip.
+export function starCount(overall) {
+  const o = overall ?? 0;
+  if (o >= 88) return 5;
+  if (o >= 78) return 4;
+  if (o >= 66) return 3;
+  if (o >= 54) return 2;
+  return 1;
+}
+
+// Row of five stars, filled to the player's tier. `size` is the font-size in px.
+export const StarRating = ({ overall, size = 11, className = "" }) => {
+  const n = starCount(overall);
   return (
-    <span className={`inline-flex items-center justify-center font-black ${sz} rounded-xl flex-shrink-0`}
-      style={{ background: `linear-gradient(135deg, ${c}22, ${c}0A)`, color: c, border: `1.5px solid ${c}55`, boxShadow: `0 0 8px ${c}22` }}>
-      {value}
+    <span
+      className={`inline-flex items-center gap-[1px] ${className}`}
+      style={{ fontSize: size, lineHeight: 1 }}
+      aria-label={`${n} of 5 stars`}
+      title={`Rating ${n}/5`}
+    >
+      {[1, 2, 3, 4, 5].map((i) => (
+        <span key={i} style={{ color: i <= n ? "var(--A-accent)" : "var(--A-line-2)" }}>★</span>
+      ))}
     </span>
   );
 };

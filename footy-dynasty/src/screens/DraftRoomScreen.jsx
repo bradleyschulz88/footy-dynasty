@@ -497,7 +497,7 @@ export default function DraftRoomScreen({ club, league, onExit }) {
                 : 'Exercise your zone rights to match?'}
             </p>
             <div className="rounded-xl p-3 mb-4" style={{ background: 'var(--A-panel-2)' }}>
-              <div className="text-[12px] text-atext">OVR {pendingMatchBid.prospect.overall} · {pendingMatchBid.prospect.position} · Age {pendingMatchBid.prospect.age}</div>
+              <div className="text-[12px] text-atext">Rating {pendingMatchBid.prospect.overall} · {pendingMatchBid.prospect.position} · Age {pendingMatchBid.prospect.age}</div>
               <div className="text-[11px] text-atext-mute mt-1">Potential: {pendingMatchBid.prospect.potential}</div>
             </div>
             <div className="flex gap-3">

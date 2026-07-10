@@ -143,7 +143,7 @@ export default function ClubScreen({ club, tab, setTab, tutorialActive }) {
     if (showCommittee) subTabs.push({ key: "committee", label: "Committee", icon: Users });
   } else if (activePrimary === "identity") {
     subTabs = [
-      { key: "kits", label: "Kits", icon: Shirt },
+      { key: "kits", label: "Guernseys", icon: Shirt },
       { key: "honours", label: "Honours", icon: Award },
       { key: "rookies", label: "Rookie List", icon: Sprout },
       { key: "analytics", label: "Analytics", icon: BarChart3 },
@@ -1241,7 +1241,7 @@ function FinancesTab() {
             { label: "Ground Hire",        value: exp.groundHire,  color: "var(--A-neg)",     sub: "home games" },
             { label: "Umpire Fees",        value: exp.umpires,     color: "var(--A-accent)",  sub: "all games" },
             { label: "Affiliation / Ins.", value: exp.affiliation + exp.insurance, color: "var(--A-accent)", sub: "annual fixed" },
-            { label: "Equipment / Kit",    value: exp.equipment,   color: "var(--A-accent-2)", sub: "est." },
+            { label: "Equipment",    value: exp.equipment,   color: "var(--A-accent-2)", sub: "est." },
             { label: "Facility Upkeep",    value: exp.facilities,  color: "var(--A-accent)",  sub: "annual" },
           ].map(r => (
             <FinanceRow key={r.label} label={r.label} valueStr={`$${r.value.toLocaleString()}`} color={r.color} sub={r.sub} barPct={exp.grandTotal > 0 ? (r.value / exp.grandTotal) * 100 : 0} />
@@ -2112,8 +2112,8 @@ function KitsTab({ club }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <div className={`${css.h1} text-3xl`}>KIT DESIGNER</div>
-          <div className="text-xs text-atext-dim">Customise your club's three jerseys. Live preview updates as you tweak.</div>
+          <div className={`${css.h1} text-3xl`}>GUERNSEY DESIGNER</div>
+          <div className="text-xs text-atext-dim">Customise your club's three guernseys. Live preview updates as you tweak.</div>
         </div>
         <div className="flex gap-2">
           {["home","away","clash"].map(k => (
@@ -2192,7 +2192,7 @@ function KitsTab({ club }) {
 
       {/* All three kits row */}
       <div className={`${css.panel} p-6`}>
-        <div className={css.label}>Full kit set</div>
+        <div className={css.label}>Full guernsey set</div>
         <div className="grid grid-cols-3 gap-4 mt-3">
           {["home","away","clash"].map(k => (
             <div key={k} className={`${css.inset} p-4 flex flex-col items-center cursor-pointer hover:border-[var(--A-accent)] transition`} onClick={()=>setEditing(k)}>
@@ -2392,7 +2392,7 @@ function StaffTab() {
     };
     updateCareer({
       staff: newStaff,
-      news: [{ week: career.week, type: "info", text: `🤝 Hired new ${old.role}: ${newStaff[idx].name} (${newRating} OVR)` }, ...career.news].slice(0,15),
+      news: [{ week: career.week, type: "info", text: `🤝 Hired new ${old.role}: ${newStaff[idx].name} (${newRating} rating)` }, ...career.news].slice(0,15),
     });
   };
   const avgRating = (career.staff?.length ?? 0)
