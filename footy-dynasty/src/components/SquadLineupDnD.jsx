@@ -437,7 +437,7 @@ export function SquadLineupBuilder({ benchPlayerIds, stitch, onSelectPlayer }) {
           />
         </div>
 
-        <aside className="w-full md:w-[min(100%,19rem)] shrink-0 md:sticky md:top-4 space-y-3">
+        <aside className="w-full md:w-[min(100%,21rem)] shrink-0 md:sticky md:top-4 space-y-3">
           {/* Mobile: horizontal bench strip (hidden on md+) */}
           <div
             className={`md:hidden rounded-2xl overflow-hidden ${stitch ? "stitch-neon-card" : ""}`}
@@ -522,7 +522,7 @@ export function SquadLineupBuilder({ benchPlayerIds, stitch, onSelectPlayer }) {
               </div>
             )}
             <SortableContext items={benchPlayerIds} strategy={verticalListSortingStrategy}>
-              <div className="max-h-[min(52vh,28rem)] overflow-y-auto min-h-[100px] pr-0.5 [scrollbar-width:thin]">
+              <div className="max-h-[min(72vh,44rem)] overflow-y-auto min-h-[100px] pr-0.5 [scrollbar-width:thin]">
                 {benchPlayers.length === 0 ? (
                   <div className="text-[11px] text-atext-mute text-center py-6 px-2 rounded-xl border border-dashed border-aline/80 bg-apanel-2/30">
                     Your full list is already in the match-day {LINEUP_CAP}.

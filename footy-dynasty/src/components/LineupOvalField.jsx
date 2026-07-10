@@ -125,7 +125,7 @@ function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps
         <span
           className="font-black leading-none"
           style={{
-            fontSize: "clamp(20px, 9vw, 36px)",
+            fontSize: "clamp(20px, 5.2vh, 52px)",
             color: "rgba(255,255,255,0.97)",
             textShadow: stitch ? "none" : `0 2px 12px ${lineCol}AA, 0 0 4px rgba(0,0,0,0.6)`,
             letterSpacing: "-0.02em",
@@ -428,11 +428,14 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
         </div>
       </div>
 
-      {/* ── Portrait ground container with oval SVG ── */}
+      {/* ── Portrait ground container with oval SVG ──
+          Width fills the column but is bounded by viewport height (via the 4:5
+          aspect ratio) so the whole oval stays visible without scrolling. */}
       <div
-        className="relative w-full max-w-[min(80vw,19rem)] mx-auto rounded-xl overflow-hidden"
+        className="relative mx-auto rounded-xl overflow-hidden"
         style={{
           aspectRatio: "4 / 5",
+          width: "min(100%, 62vh)",
           background: stitch ? "#040c06" : "#0d2818",
         }}
       >
