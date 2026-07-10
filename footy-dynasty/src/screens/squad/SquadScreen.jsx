@@ -248,7 +248,7 @@ function buildContextActions(player, career, updateCareer, onNavigate) {
 }
 
 // Depth-chart view of the match-day side. Reads the same career.lineup / subPlayerId
-// as the pitch builder, so promoting/dropping here shows on the Pitch tab instantly.
+// as the ground builder, so promoting/dropping here shows on the Ground tab instantly.
 const DEPTH_COLUMNS = [
   { name: 'DEFENCE',  set: LINE_BACK },
   { name: 'MIDFIELD', set: LINE_MID, ut: true },
@@ -384,7 +384,7 @@ function DepthChart({ onSelectPlayer }) {
 }
 
 // Role-by-role line-up editor. Each on-ground slot maps to an AFL role; assigning
-// a player here writes career.lineup (slot index = role), so it shows on the Pitch
+// a player here writes career.lineup (slot index = role), so it shows on the Ground
 // oval instantly. Picking a player auto-removes them from any other slot.
 const POSITION_LINES = [
   { title: 'Back line',     slots: [0, 1, 2] },
@@ -461,7 +461,7 @@ function PositionsTab() {
   return (
     <div className="space-y-3">
       <p className="text-xs text-atext-dim">
-        {nIn}/{LINEUP_CAP} selected · pick a player for each role — they're removed from their old slot automatically and shown on the Pitch oval. <span style={{ color: 'var(--A-accent-2)' }}>⚠</span> = out of position.
+        {nIn}/{LINEUP_CAP} selected · pick a player for each role — they're removed from their old slot automatically and shown on the Ground. <span style={{ color: 'var(--A-accent-2)' }}>⚠</span> = out of position.
       </p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {POSITION_LINES.map((line) => (
@@ -491,7 +491,7 @@ function PlayersTab({ onNavigate }) {
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [selected, setSelected] = useState(null);
   const [contextMenu, setContextMenu] = useState(null);
-  const [pitchView, setPitchView] = useState("pitch"); // 'pitch' | 'positions' | 'depth' — views of the same lineup
+  const [groundView, setGroundView] = useState("ground"); // 'ground' | 'positions' | 'depth' — views of the same lineup
   const isLg = useIsLg();
   const rowHoverBg = 'color-mix(in srgb, var(--A-accent) 6%, transparent)';
   const rowSelectBg = 'color-mix(in srgb, var(--A-accent) 10%, transparent)';
@@ -551,17 +551,17 @@ function PlayersTab({ onNavigate }) {
                 full tabs semantics need tabpanel wiring + arrow-key navigation. */}
             <div className="inline-flex rounded-xl border border-aline bg-apanel p-1 self-start" aria-label="Match-day view">
               {[
-                { key: "pitch", label: "Pitch" },
+                { key: "ground", label: "Ground" },
                 { key: "positions", label: "Positions" },
                 { key: "depth", label: "Depth" },
               ].map(({ key, label }) => {
-                const active = pitchView === key;
+                const active = groundView === key;
                 return (
                   <button
                     key={key}
                     type="button"
                     aria-pressed={active}
-                    onClick={() => setPitchView(key)}
+                    onClick={() => setGroundView(key)}
                     className="text-xs font-bold uppercase tracking-wider px-4 py-1.5 rounded-lg transition-all"
                     style={active
                       ? { background: "var(--A-accent)", color: "var(--fd-on-accent, #0A0D0C)" }
@@ -574,20 +574,20 @@ function PlayersTab({ onNavigate }) {
             </div>
           </div>
           <p className="text-xs text-atext-dim max-w-2xl leading-relaxed">
-            {pitchView === "pitch"
+            {groundView === "ground"
               ? "Build the 23 on the map and bench pool. The roster table below is for browsing — it does not hide players from the bench list."
-              : pitchView === "positions"
-                ? "Pick a player for each role on the ground. Assignments write straight to the line-up, so they show on the Pitch oval — and a player is auto-removed from their old slot."
-                : "Squad by position. Promote from depth, drop, or set the sub — changes show on the Pitch view instantly. Players appear under their secondary position too, so you can see who can cover."}
+              : groundView === "positions"
+                ? "Pick a player for each role on the ground. Assignments write straight to the line-up, so they show on the Ground — and a player is auto-removed from their old slot."
+                : "Squad by position. Promote from depth, drop, or set the sub — changes show on the Ground view instantly. Players appear under their secondary position too, so you can see who can cover."}
           </p>
         </div>
-        {pitchView === "pitch" ? (
+        {groundView === "ground" ? (
           <SquadLineupBuilder
             benchPlayerIds={benchPlayerIds}
             stitch={false}
             onSelectPlayer={(player) => setSelected((prev) => (prev?.id === player.id ? null : player))}
           />
-        ) : pitchView === "positions" ? (
+        ) : groundView === "positions" ? (
           <PositionsTab />
         ) : (
           <DepthChart
@@ -741,7 +741,7 @@ function PlayersTab({ onNavigate }) {
         <div className="hidden md:block rounded-2xl overflow-x-auto border border-aline shadow-sm">
           <div>
           <div className="grid px-4 py-3 min-w-[820px]" style={{gridTemplateColumns:"2rem minmax(140px,1fr) 4rem 3rem 3.5rem 5rem 5rem 4.5rem 3.5rem", gap:"0.5rem", background:"var(--A-panel-2)", borderBottom:"1px solid var(--A-line)"}}>
-            {["#","Player","Pos","Age","OVR","Form","Fitness","Wage","Status"].map((h,i)=>(
+            {["#","Player","Pos","Age","Rating","Form","Fitness","Wage","Status"].map((h,i)=>(
               <div key={h} className={`text-[10px] font-black uppercase tracking-[0.15em] text-atext-mute ${i>1?"text-center":""} ${i===7?"text-right":""}`}>{h}</div>
             ))}
           </div>
@@ -909,7 +909,7 @@ function AllPlayersTab() {
     overview: [
       { head: "Pos", render: posCell },
       { head: "Age", sortKey: "age", render: (p) => p.age, align: "center" },
-      { head: "OVR", sortKey: "overall", tooltip: "Overall rating (1–99). Squad average shown in hub.", render: (p) => <RatingDot value={p.overall} size="sm" />, align: "center" },
+      { head: "Rating", sortKey: "overall", tooltip: "Overall rating (1–99). Squad average shown in hub.", render: (p) => <RatingDot value={p.overall} size="sm" />, align: "center" },
       { head: "Pot", sortKey: "potential", tooltip: "Potential ceiling. Visible after scouting (approx. ±10).", render: (p) => p.potential ?? "—", align: "center" },
       { head: "Wage", sortKey: "wage", tooltip: "Weekly wage in $k.", render: (p) => fmtK(p.wage), align: "right" },
     ],
@@ -1250,19 +1250,19 @@ function PlayerDetail({ player, onClose }) {
         if (age <= 22) {
           stage = "DEVELOPING"; badgeColor = "#60A5FA";
           desc = "Expected to improve each season";
-          delta = "+2 to +6 OVR";
+          delta = "+2 to +6 rating";
         } else if (age <= 26) {
           stage = "PRIME"; badgeColor = "var(--A-accent)";
           desc = "Peak years — compete for selection";
-          delta = "±1 OVR";
+          delta = "±1 rating";
         } else if (age <= 29) {
           stage = "EXPERIENCED"; badgeColor = "#F59E0B";
           desc = "Natural decline starting — plan succession";
-          delta = "−1 to −3 OVR";
+          delta = "−1 to −3 rating";
         } else {
           stage = "VETERAN"; badgeColor = "#E84A6F";
           desc = "Significant decline likely each off-season";
-          delta = "−2 to −6 OVR";
+          delta = "−2 to −6 rating";
         }
         const MIN_AGE = 18, MAX_AGE = 37, SPAN = MAX_AGE - MIN_AGE;
         const zones = [
@@ -1377,7 +1377,7 @@ function ZoneTacticPicker({ label, zoneColor, currentKey, onSelect, players, coa
           <h4 className="font-display text-lg tracking-wide text-atext">{label.toUpperCase()}</h4>
         </div>
         <div className="flex items-center gap-2">
-          {avgOvr && <span className="text-[10px] font-mono text-atext-mute">Avg OVR {avgOvr}</span>}
+          {avgOvr && <span className="text-[10px] font-mono text-atext-mute">Avg Rating {avgOvr}</span>}
           <Pill color={zoneColor}>{TACTIC_CARDS.find(t => t.key === currentKey)?.label || 'Balanced'}</Pill>
         </div>
       </div>

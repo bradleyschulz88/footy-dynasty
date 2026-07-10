@@ -295,7 +295,7 @@ function FreeAgentsTab() {
         <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{ borderColor: 'var(--A-line)', background: 'var(--A-panel-2)' }}>
           <div className="col-span-4">Player</div>
           <div className="col-span-2">Pos</div>
-          <div className="col-span-2">OVR</div>
+          <div className="col-span-2">Rating</div>
           <div className="col-span-2 text-right">Ask</div>
           <div className="col-span-2 text-right"></div>
         </div>
@@ -753,7 +753,7 @@ function OffersTab() {
                     </div>
                     <div className="font-display text-2xl text-atext mt-1">{fmtK(offer.offerCash)}{incomingPreview ? ` + ${incomingPreview.firstName} ${incomingPreview.lastName}` : ''}</div>
                     {incomingPreview && (
-                      <div className="text-xs text-atext-dim mt-1">{incomingPreview.position} · {incomingPreview.overall} OVR · age {incomingPreview.age} · {incomingPreview.gamesPlayed ?? 0} gp</div>
+                      <div className="text-xs text-atext-dim mt-1">{incomingPreview.position} · {incomingPreview.overall} rating · age {incomingPreview.age} · {incomingPreview.gamesPlayed ?? 0} gp</div>
                     )}
                     {offer.offeredPick && (
                       <div className="text-[11px] text-aaccent mt-1">+ {offer.offeredPick.season} Round {offer.offeredPick.round} pick</div>
@@ -763,7 +763,7 @@ function OffersTab() {
                   <div className="text-right">
                     <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-atext-dim">For</div>
                     <div className="font-display text-2xl text-atext mt-1">{player.firstName} {player.lastName}</div>
-                    <div className="text-xs text-atext-dim mt-1">{player.position} · {player.overall} OVR · age {player.age} · {fmtK(player.wage)}/yr · {player.gamesPlayed ?? 0} gp</div>
+                    <div className="text-xs text-atext-dim mt-1">{player.position} · {player.overall} rating · age {player.age} · {fmtK(player.wage)}/yr · {player.gamesPlayed ?? 0} gp</div>
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
@@ -875,10 +875,10 @@ function TradeTab() {
       squad: [...career.squad, signedPlayer],
       tradePool: pool.filter(x => x.id !== p.id),
       finance: { ...career.finance, transferBudget: career.finance.transferBudget - signingFee, cash: career.finance.cash - signingFee },
-      news: [{ week: career.week, type: "win", text: `🤝 Signed ${p.firstName} ${p.lastName} (${p.overall} OVR) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr` }, ...career.news].slice(0,15),
+      news: [{ week: career.week, type: "win", text: `🤝 Signed ${p.firstName} ${p.lastName} (${p.overall} rating) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr` }, ...career.news].slice(0,15),
     });
     setNegotiating(null);
-    gameToast.signing(`Signed ${p.firstName} ${p.lastName} (${p.overall} OVR) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr`);
+    gameToast.signing(`Signed ${p.firstName} ${p.lastName} (${p.overall} rating) — ${negotiating.years}yr @ ${fmtK(negotiating.wage)}/yr`);
   };
 
   const counterOffer = (p) => {
@@ -946,7 +946,7 @@ function TradeTab() {
           <div>Player</div>
           <div>Ps</div>
           <div>Ag</div>
-          <div>OVR</div>
+          <div>Rating</div>
           <div>Pot</div>
           <div>Club</div>
           <div className="text-right">Fee</div>
@@ -1335,7 +1335,7 @@ function DraftTab({ club, league, onOpenDraftRoom }) {
             {clubState && <span className="text-[9px] font-normal normal-case tracking-normal text-atext-dim">🏠 Home state bonus active</span>}
           </div>
           <div className="col-span-1">Pos</div>
-          <div className="col-span-1">OVR</div>
+          <div className="col-span-1">Rating</div>
           <div className="col-span-2">Potential</div>
           <div className="col-span-2 text-right">Rookie Wage</div>
           <div className="col-span-1"></div>
@@ -1877,7 +1877,7 @@ function LocalTab({ club }) {
                 <div key={p.id} className={`${css.panel} p-3 flex items-center gap-3`}>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-bold text-atext truncate">{p.firstName} {p.lastName}</div>
-                    <div className="text-[10px] text-atext-mute">{formatPositionSlash(p)} · Age {p.age} · OVR {p.overall} · {fmtK(wage)}/yr</div>
+                    <div className="text-[10px] text-atext-mute">{formatPositionSlash(p)} · Age {p.age} · Rating {p.overall} · {fmtK(wage)}/yr</div>
                   </div>
                   <button type="button" disabled={!canSign} onClick={() => signEmergency(p)}
                     className={`text-[10px] font-bold px-3 py-1.5 rounded-lg flex-shrink-0 transition ${canSign ? 'bg-aaccent text-[var(--fd-on-accent,#0A0D0C)] hover:opacity-90 cursor-pointer' : 'opacity-40 bg-apanel-2 text-atext-mute cursor-not-allowed'}`}>
@@ -2327,7 +2327,7 @@ function FaMarketTab({ league }) {
           <div className="grid grid-cols-12 gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-atext-mute font-black border-b" style={{ borderColor: 'var(--A-line)', background: 'var(--A-panel-2)' }}>
             <div className="col-span-4">Player</div>
             <div className="col-span-2">Pos</div>
-            <div className="col-span-2">OVR</div>
+            <div className="col-span-2">Rating</div>
             <div className="col-span-2 text-right">Ask / Yrs</div>
             <div className="col-span-2 text-right"></div>
           </div>

@@ -461,7 +461,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
               </div>
               <div className="flex items-baseline gap-1.5">
                 <span className="font-display text-3xl leading-none tabular-nums" style={{ color: 'var(--A-accent)', fontVariantNumeric: 'tabular-nums' }}>{hubTotals.squadAvg || '—'}</span>
-                <span className="text-[10px] text-atext-mute font-semibold">OVR</span>
+                <span className="text-[10px] text-atext-mute font-semibold">RATING</span>
               </div>
               <div className="mt-2 flex items-center gap-1.5 text-[10px] text-atext-mute">
                 <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--A-accent)' }} />
@@ -1322,7 +1322,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
                   return (
                     <div key={p.id || i} className="flex flex-wrap items-center gap-2 text-sm text-atext leading-snug">
                       <span className="font-semibold">{name}</span>
-                      <span className="text-atext-dim">age {p.age} · {pos} · OVR {p.overall}</span>
+                      <span className="text-atext-dim">age {p.age} · {pos} · rated {p.overall}</span>
                       <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: 'color-mix(in srgb, var(--A-accent) 14%, transparent)', color: 'var(--A-accent)' }}>developing</span>
                     </div>
                   );

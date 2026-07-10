@@ -150,7 +150,7 @@ export function ExpiringContractsList() {
               <div key={p.id} className="grid grid-cols-12 gap-2 px-4 py-2.5 items-center border-b border-aline/70 last:border-b-0">
                 <div className="col-span-6 sm:col-span-5 min-w-0">
                   <div className="font-semibold text-sm truncate">{name}</div>
-                  <div className="text-[11px] text-atext-dim">{p.position} · age {p.age} · OVR {p.overall}</div>
+                  <div className="text-[11px] text-atext-dim">{p.position} · age {p.age} · Rating {p.overall}</div>
                 </div>
                 <div className="col-span-3 sm:col-span-3 text-xs font-mono text-atext-dim">{fmtK(p.wage)}/yr</div>
                 <div className="col-span-3 sm:col-span-4 text-right">
@@ -303,7 +303,7 @@ export function RenewalsTab() {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <div className="font-bold text-base">{r.name}</div>
-                      <div className="text-[10px] text-atext-dim uppercase tracking-widest font-mono">{r.position} · age {r.age} · OVR {r.overall}</div>
+                      <div className="text-[10px] text-atext-dim uppercase tracking-widest font-mono">{r.position} · age {r.age} · Rating {r.overall}</div>
                     </div>
                     <RatingDot value={r.overall} size="sm" />
                   </div>

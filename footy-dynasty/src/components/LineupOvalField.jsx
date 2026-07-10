@@ -9,7 +9,7 @@ import {
   LINEUP_SLOT_ROLES,
   positionFitsZone,
 } from "../lib/lineupHelpers.js";
-import { css } from "./primitives.jsx";
+import { css, StarRating } from "./primitives.jsx";
 
 // AFL position labels per field slot — shared table (rows B→HB→C→HF→F, cols L/C/R).
 const SLOT_LABELS = LINEUP_SLOT_ROLES;
@@ -38,14 +38,6 @@ function zoneTintBg(zone) {
 // Zone fit rules live in lineupHelpers (single source shared with the Positions/Depth views).
 
 const FOLLOWER_ROLES = ["Ruck", "Rover", "Ruck-Rover"];
-
-function ratingColor(ovr) {
-  if (ovr >= 85) return "#4AE89A";
-  if (ovr >= 75) return "#4ADBE8";
-  if (ovr >= 65) return "var(--A-accent)";
-  if (ovr >= 55) return "#E8D44A";
-  return "#E84A6F";
-}
 
 export function formBorderColor(form) {
   if (form >= 70) return "rgba(74,232,154,0.80)";
@@ -97,7 +89,6 @@ function mergeRefs(...refs) {
 function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps, zone }) {
   const { listeners, attributes } = dragProps;
   const num = squadNumberDisplay(player);
-  const ovrColor = ratingColor(player.overall);
   const lineCol = zoneLineColor(zone);
   const formPct = Math.max(0, Math.min(100, player.form ?? 60));
   const formCol = formBorderColor(player.form ?? 60);
@@ -119,7 +110,7 @@ function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps
       {...attributes}
       onClick={() => onSelectPlayer?.(player)}
     >
-      {/* Position label + OVR badge */}
+      {/* Position label + star tier (footy-card style, no OVR chip) */}
       <div className="flex items-center justify-between w-full shrink-0">
         <span
           className="text-[6px] font-mono font-bold uppercase leading-none tracking-wide"
@@ -127,16 +118,7 @@ function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps
         >
           {slotLabel}
         </span>
-        <span
-          className="text-[7px] font-black leading-none px-0.5 rounded"
-          style={{
-            background: `${ovrColor}22`,
-            color: ovrColor,
-            border: `1px solid ${ovrColor}44`,
-          }}
-        >
-          {player.overall}
-        </span>
+        <StarRating overall={player.overall} size={6} />
       </div>
       {/* Large jersey number as hero */}
       <div className="flex-1 flex items-center justify-center min-h-0">
@@ -177,46 +159,8 @@ function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps
 function LargePlayerCardBody({ player, stitch, onSelectPlayer, dragProps }) {
   const { listeners, attributes } = dragProps;
   const num = squadNumberDisplay(player);
-  const ovrColor = ratingColor(player.overall);
   const fBorder = formBorderColor(player.form ?? 60);
   const circle = "w-12 h-12 sm:w-14 sm:h-14";
-
-  if (stitch) {
-    return (
-      <button
-        type="button"
-        className="w-full min-w-0 h-full flex flex-col items-center justify-center py-0.5 cursor-grab active:cursor-grabbing text-left"
-        {...listeners}
-        {...attributes}
-        onClick={() => onSelectPlayer?.(player)}
-      >
-        <div className="relative shrink-0">
-          <div
-            className={`relative z-[1] rounded-full border-2 shadow-md flex items-center justify-center bg-gradient-to-b from-[#1a2820] to-[#0d1510] ${circle}`}
-            style={{ borderColor: fBorder }}
-          >
-            <span className="font-black text-[rgba(200,255,61,0.95)] tracking-wide text-xs sm:text-sm">{initials(player)}</span>
-          </div>
-          <span
-            className="absolute -top-1 -right-1 z-[3] text-[7px] font-black leading-none px-0.5 rounded"
-            style={{ background: `${ovrColor}22`, color: ovrColor, border: `1px solid ${ovrColor}55` }}
-          >
-            {player.overall}
-          </span>
-        </div>
-        <div
-          className="relative z-[2] w-full min-w-0 -mt-2 rounded-md border border-[rgba(200,255,61,0.35)] bg-[rgba(10,14,10,0.92)] shadow-md flex overflow-hidden max-w-[6.25rem]"
-        >
-          <span className="shrink-0 flex items-center justify-center self-stretch bg-[rgba(90,60,120,0.98)] font-black text-white w-6 sm:w-7 text-[9px] sm:text-[10px]">
-            {num}
-          </span>
-          <span className="flex-1 min-w-0 px-0.5 py-0.5 font-semibold text-white/95 text-[8px] sm:text-[10px] leading-snug">
-            <span className="line-clamp-2 break-words [overflow-wrap:anywhere]">{shortName(player)}</span>
-          </span>
-        </div>
-      </button>
-    );
-  }
 
   return (
     <button
@@ -233,11 +177,8 @@ function LargePlayerCardBody({ player, stitch, onSelectPlayer, dragProps }) {
         >
           <span className="font-black text-white/95 tracking-wide text-xs sm:text-sm">{initials(player)}</span>
         </div>
-        <span
-          className="absolute -top-1 -right-1 z-[3] text-[7px] font-black leading-none px-0.5 rounded"
-          style={{ background: `${ovrColor}22`, color: ovrColor, border: `1px solid ${ovrColor}55` }}
-        >
-          {player.overall}
+        <span className="absolute -top-1 -right-1 z-[3] px-0.5 rounded" style={{ background: "rgba(0,19,37,0.75)" }}>
+          <StarRating overall={player.overall} size={6} />
         </span>
       </div>
       <div className="relative z-[2] w-full min-w-0 -mt-2 rounded-md border border-white/12 bg-[rgba(10,22,42,0.95)] shadow-md flex overflow-hidden max-w-[6.25rem]">
@@ -478,7 +419,7 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
             <span className="text-atext font-semibold">15</span> on the oval ·{" "}
             <span className="text-atext font-semibold">{LINEUP_FOLLOWERS_COUNT} followers</span> ·{" "}
             <span className="text-atext font-semibold">{LINEUP_INTERCHANGE_COUNT} interchange</span>.{" "}
-            Left border = form · badge = OVR · ⚠ = out of zone.
+            Left border = form · ★ = rating · ⚠ = out of zone.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-[10px] font-mono uppercase text-atext-dim shrink-0">
@@ -671,7 +612,7 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           stitch ? "border-[rgba(200,255,61,0.2)]" : "border-aline/60"
         }`}
       >
-        Left border = form · badge = OVR · ⚠ = out of zone
+        Left border = form · ★ = rating · ⚠ = out of zone
       </div>
     </div>
   );

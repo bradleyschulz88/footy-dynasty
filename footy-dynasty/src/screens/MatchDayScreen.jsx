@@ -508,7 +508,7 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
                 <div>
                   <div className="text-[10px] text-atext-mute mb-1.5">Bring on</div>
                   <div className="space-y-1 max-h-40 overflow-y-auto [scrollbar-width:thin]">
-                    {[{ id: null, label: "No sub" }, ...benchAvail.slice().sort((a,b) => (b.overall ?? 0) - (a.overall ?? 0)).slice(0, 8).map(p => ({ id: p.id, label: `${p.firstName ? p.firstName[0]+". "+p.lastName : p.name}  OVR ${p.overall}` }))].map(opt => (
+                    {[{ id: null, label: "No sub" }, ...benchAvail.slice().sort((a,b) => (b.overall ?? 0) - (a.overall ?? 0)).slice(0, 8).map(p => ({ id: p.id, label: `${p.firstName ? p.firstName[0]+". "+p.lastName : p.name}  rated ${p.overall}` }))].map(opt => (
                       <button key={opt.id ?? "none"} type="button" onClick={() => setQ3SubIn(opt.id)}
                         className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                         style={{

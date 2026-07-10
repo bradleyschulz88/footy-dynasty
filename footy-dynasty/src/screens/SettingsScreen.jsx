@@ -233,15 +233,15 @@ export default function SettingsScreen({
       <div className={`${css.panel} p-5 space-y-4`}>
         <h3 className={`${css.h1} text-2xl`}>DISPLAY</h3>
 
-        {/* Theme — Tactician Dark is the single shipped identity. */}
+        {/* Theme — Official AFL is the single shipped identity. */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="font-bold text-sm">Colour theme</div>
-            <div className="text-[11px] text-atext-dim">Tactician Dark — midnight navy with cyan & amber.</div>
+            <div className="text-[11px] text-atext-dim">Official AFL — deep navy, sky blue &amp; white.</div>
           </div>
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-aline bg-apanel-2">
             <span className="w-3 h-3 rounded-full" style={{ background: 'var(--A-accent)' }} />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-atext">Tactician Dark</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-atext">Official AFL</span>
           </div>
         </div>
 

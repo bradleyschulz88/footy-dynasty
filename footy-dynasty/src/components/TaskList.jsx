@@ -197,7 +197,7 @@ export function buildTasks(career, navigate, myLadderPos, league) {
     tasks.push({
       id: "aging-core", priority: "suggestion", icon: "📅",
       title: `${pName(old)} is ${old.age} — plan for succession`,
-      detail: `${old.position} · OVR ${old.overall}. Find a replacement before decline hits; ratings drop faster after 33.`,
+      detail: `${old.position} · Rating ${old.overall}. Find a replacement before decline hits; ratings drop faster after 33.`,
       action: () => navigate("recruit"),
     });
   }
@@ -211,7 +211,7 @@ export function buildTasks(career, navigate, myLadderPos, league) {
     const gem = hiddenGems[0];
     tasks.push({
       id: "hidden-gem", priority: "suggestion", icon: "💎",
-      title: `${pName(gem)} (OVR ${gem.overall}) is on your bench`,
+      title: `${pName(gem)} (rated ${gem.overall}) is on your bench`,
       detail: `Better than your average starter (avg ${avgOvrOf(starters)}). Consider promoting them to your 23.`,
       action: () => navigate("squad", "players"),
     });
@@ -227,7 +227,7 @@ export function buildTasks(career, navigate, myLadderPos, league) {
     tasks.push({
       id: "form-crisis", priority: "suggestion", icon: "📉",
       title: `${pName(worst)} is badly out of form (${worst.form ?? 0})`,
-      detail: `${worst.position} · OVR ${worst.overall}. Drop them until form recovers, or increase recovery focus.`,
+      detail: `${worst.position} · Rating ${worst.overall}. Drop them until form recovers, or increase recovery focus.`,
       action: () => navigate("squad", "players"),
     });
   }
@@ -254,7 +254,7 @@ export function buildTasks(career, navigate, myLadderPos, league) {
     tasks.push({
       id: "bloated-wage", priority: "suggestion", icon: "💰",
       title: `${pName(bloat)} earns above their rating`,
-      detail: `${Math.round((bloat.wage || 0) / 1000)}k/yr for OVR ${bloat.overall}. Off-load in the next trade window to free cap space.`,
+      detail: `${Math.round((bloat.wage || 0) / 1000)}k/yr for rated ${bloat.overall}. Off-load in the next trade window to free cap space.`,
       action: () => navigate("recruit"),
     });
   }
@@ -306,7 +306,7 @@ export function buildTasks(career, navigate, myLadderPos, league) {
     const LABELS = { press: "Press", balanced: "Balanced", flood: "Flood", defensive: "Defensive" };
     tasks.push({
       id: "tactic-mid", priority: "suggestion", icon: "🧠",
-      title: `Midfield tactic "${LABELS[suggestedMid]}" suits your current lineup OVR (${lineupOvr})`,
+      title: `Midfield tactic "${LABELS[suggestedMid]}" suits your current lineup rating (${lineupOvr})`,
       detail: `You're running "${LABELS[currentMid]}". Use Auto-suggest on the Tactics tab to apply zone recommendations in one tap.`,
       action: () => navigate("squad", "tactics"),
     });

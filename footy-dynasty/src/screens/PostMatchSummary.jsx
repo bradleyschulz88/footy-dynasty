@@ -337,7 +337,7 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
                       {summary.bog.firstName} {summary.bog.lastName}
                     </div>
                     <div className="text-[11px] text-atext-dim mt-0.5">
-                      {summary.bog.position} · OVR {summary.bog.overall}
+                      {summary.bog.position} · Rating {summary.bog.overall}
                     </div>
                   </div>
                   <div

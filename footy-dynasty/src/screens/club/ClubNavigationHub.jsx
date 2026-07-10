@@ -175,7 +175,7 @@ export function ClubOverviewTab({ club, setTab, showCommittee }) {
         {sectionLabel("Club & list")}
         <div className="grid sm:grid-cols-3 gap-2 sm:gap-3">
           {overviewTile(
-            "Kits",
+            "Guernseys",
             ["Home & away design", "Colours"],
             Shirt,
             "#A78BFA",
@@ -217,7 +217,7 @@ const LEAF_LABELS = {
   facilities: "Facilities",
   staff: "Staff",
   committee: "Committee",
-  kits: "Kits",
+  kits: "Guernseys",
   honours: "Honours",
   rookies: "Rookie list",
 };

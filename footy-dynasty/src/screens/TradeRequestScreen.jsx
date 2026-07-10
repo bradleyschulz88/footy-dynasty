@@ -74,7 +74,7 @@ export default function TradeRequestScreen({ onComplete }) {
           {current.playerName}
         </h2>
         <p className="text-sm mb-2" style={{ color: 'var(--A-text-dim)' }}>
-          {current.position} · OVR {current.overall}
+          {current.position} · Rating {current.overall}
         </p>
         <p className="text-sm mb-6" style={{ color: 'var(--A-text-mute)' }}>
           They are {current.reason}.
