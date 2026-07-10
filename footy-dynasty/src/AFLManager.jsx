@@ -1395,11 +1395,11 @@ function AFLManagerInner() {
 
   return (
     <AppMotionConfig reducedMotion={motionReduced}>
-    <div className={`${themeClass} min-h-screen font-sans text-atext flex w-full flex-col md:flex-row`}>
+    <div className={`${themeClass} h-screen overflow-hidden font-sans text-atext flex w-full flex-col md:flex-row min-h-0`}>
       {globalStyle}
       <OvalBackdrop />
       <Sidebar screen={screen} onNavigate={onNavScreen} club={club} league={league} myLadderPos={myLadderPos} />
-      <main className="relative flex-1 overflow-y-auto min-w-0">
+      <main className="relative flex-1 overflow-y-auto min-w-0 min-h-0">
         <TopBar
           club={club}
           league={league}
