@@ -1,0 +1,27 @@
+[package]
+name = "footy-dynasty"
+version = "0.1.0"
+description = "Footy Dynasty — Australian rules football dynasty manager"
+authors = ["Footy Dynasty"]
+edition = "2021"
+rust-version = "1.77"
+
+# The desktop entry point lives in main.rs but delegates to this lib so the same
+# app can later target mobile (tauri v2) without restructuring.
+[lib]
+name = "footy_dynasty_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[profile.release]
+# Smaller, faster-to-download desktop binary — the whole point of choosing Tauri.
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

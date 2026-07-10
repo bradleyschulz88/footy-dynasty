@@ -1,0 +1,64 @@
+# Builds the Tauri desktop bundles (Windows .msi/.exe, macOS .dmg, Linux
+# AppImage/.deb) — the Steam-installable artifacts. Manual-only so it never
+# slows PR CI; run it from the Actions tab or on a version tag.
+name: desktop-release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+          - platform: macos-latest      # Apple silicon
+          - platform: ubuntu-latest
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux webview build deps
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev \
+            libappindicator3-dev patchelf build-essential file
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: footy-dynasty/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: footy-dynasty/src-tauri
+
+      - run: npm ci
+        working-directory: footy-dynasty
+
+      # tauri-action runs beforeBuildCommand (npm run build) then bundles.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: footy-dynasty
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: footy-dynasty-${{ matrix.platform }}
+          path: |
+            footy-dynasty/src-tauri/target/release/bundle/**/*.msi
+            footy-dynasty/src-tauri/target/release/bundle/**/*.exe
+            footy-dynasty/src-tauri/target/release/bundle/**/*.dmg
+            footy-dynasty/src-tauri/target/release/bundle/**/*.AppImage
+            footy-dynasty/src-tauri/target/release/bundle/**/*.deb
+          if-no-files-found: ignore
