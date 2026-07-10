@@ -461,6 +461,12 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-5 max-w-2xl mx-auto w-full space-y-5">
+          {/* Your team on the ground */}
+          <div className="rounded-2xl p-4" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line)" }}>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-3">Your team on the ground</div>
+            <GroundFormation squad={squad} lineupIds={lineup} />
+          </div>
+
           {/* Q4 tactical call */}
           <div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-2">Q4 Tactical Call</div>
@@ -1085,6 +1091,12 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
                 >
                   {htMomentumBlurb(htMargin)}
                 </div>
+              </div>
+
+              {/* Your team on the ground */}
+              <div className="rounded-xl p-3 mb-3" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line)" }}>
+                <div className="text-[10px] font-mono uppercase tracking-widest text-atext-mute mb-2">Your team on the ground</div>
+                <GroundFormation squad={squad} lineupIds={lineup} />
               </div>
 
               <div className="text-xs text-atext-dim mb-3">
