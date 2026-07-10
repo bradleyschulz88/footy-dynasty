@@ -98,7 +98,7 @@ const MOTIFS = [
  */
 const NAMED_MOTIFS = {
   // Eagle / Falcon / Hawk — wings spread with head spike
-  wings: (em, div) => (
+  wings: (em, _div) => (
     <>
       <path d="M2,28 Q10,10 20,18 Q30,10 38,28 L32,26 Q24,14 20,18 Q16,14 8,26 Z" fill={em} opacity="0.9" />
       <polygon points="16,18 20,6 24,18" fill={em} opacity="0.8" />
@@ -147,7 +147,7 @@ const NAMED_MOTIFS = {
     </>
   ),
   // Panther / Wolf / Leopard — four-circle paw print
-  paw: (em, div) => (
+  paw: (em, _div) => (
     <>
       <circle cx="20" cy="25" r="8" fill={em} opacity="0.88" />
       <circle cx="11" cy="16" r="4.5" fill={em} opacity="0.88" />
@@ -165,7 +165,7 @@ const NAMED_MOTIFS = {
     </>
   ),
   // Bull — upward-curving horns with head mound
-  bull: (em, div) => (
+  bull: (em, _div) => (
     <>
       <path d="M4,20 Q4,8 14,8 Q16,12 20,14 Q24,12 26,8 Q36,8 36,20 Q30,16 20,18 Q10,16 4,20 Z" fill={em} opacity="0.9" />
       <ellipse cx="20" cy="24" rx="7" ry="5" fill={em} opacity="0.75" />
@@ -188,7 +188,7 @@ const NAMED_MOTIFS = {
     <path d="M8,36 Q12,16 20,8 Q24,20 38,36 L30,36 Q26,24 20,20 Q16,24 14,36 Z" fill={em} opacity="0.88" />
   ),
   // Dolphin / Coastal — S-curve wave with fill
-  wave: (em, div) => (
+  wave: (em, _div) => (
     <>
       <path d="M2,30 Q8,18 14,22 Q18,26 22,20 Q28,14 34,18 Q38,22 38,30 L38,38 L2,38 Z" fill={em} opacity="0.65" />
       <path d="M2,26 Q8,14 14,18 Q18,22 22,16 Q28,10 34,14 Q38,18 38,26" fill="none" stroke={em} strokeWidth="2.5" strokeLinecap="round" opacity="0.9" />
@@ -431,12 +431,12 @@ const AFL_CLUB_MOTIFS = {
       <ellipse cx="20" cy="26" rx="3.5" ry="2" fill={c3} opacity="0.85" />
     </>
   ),
-  // Carlton Blues — navy/white — bold open-C letterform
-  car: (c1, c2, c3) => (
+// Carlton Blues — navy/white — bold open-C letterform
+  car: (c1, c2, _c3) => (
     <path d="M28,9 Q12,9 11,20 Q12,31 28,31 L28,26 Q16,26 16,20 Q16,14 28,14 Z" fill={c2} />
   ),
   // Collingwood Magpies — black/white — clean vertical half split
-  col: (c1, c2, c3) => (
+  col: (c1, c2, _c3) => (
     <>
       <rect x="0" y="0" width="20" height="40" fill={c1} />
       <rect x="20" y="0" width="20" height="40" fill={c2} />
@@ -444,14 +444,14 @@ const AFL_CLUB_MOTIFS = {
     </>
   ),
   // Essendon Bombers — red/black — black shield with red sash (upper-left to lower-right)
-  ess: (c1, c2, c3) => (
+  ess: (c1, c2, _c3) => (
     <>
       <rect x="0" y="0" width="40" height="40" fill={c2} />
       <polygon points="0,2 14,0 40,26 40,38 26,40 0,14" fill={c1} opacity="0.92" />
     </>
   ),
   // Fremantle Dockers — purple/white — white anchor symbol
-  fre: (c1, c2, c3) => (
+  fre: (c1, c2, _c3) => (
     <>
       <circle cx="20" cy="11" r="5" fill="none" stroke={c2} strokeWidth="2.5" />
       <line x1="20" y1="16" x2="20" y2="36" stroke={c2} strokeWidth="2.5" />
@@ -460,7 +460,39 @@ const AFL_CLUB_MOTIFS = {
     </>
   ),
   // Geelong Cats — navy/white — white cat face (triangular head + eye dots)
-  gee: (c1, c2, c3) => (
+  gee: (c1, c2, _c3) => (
+    <>
+      <polygon points="8,34 14,8 20,20 26,8 32,34" fill={c2} opacity="0.88" />
+      <circle cx="15" cy="26" r="2.5" fill={c1} />
+      <circle cx="25" cy="26" r="2.5" fill={c1} />
+    </>
+  ),
+  // Collingwood Magpies — black/white — clean vertical half split
+  col: (c1, c2, _c3) => (
+    <>
+      <rect x="0" y="0" width="20" height="40" fill={c1} />
+      <rect x="20" y="0" width="20" height="40" fill={c2} />
+      <line x1="20" y1="0" x2="20" y2="40" stroke="rgba(128,128,128,0.3)" strokeWidth="0.75" />
+    </>
+  ),
+  // Essendon Bombers — red/black — black shield with red sash (upper-left to lower-right)
+  ess: (c1, c2, _c3) => (
+    <>
+      <rect x="0" y="0" width="40" height="40" fill={c2} />
+      <polygon points="0,2 14,0 40,26 40,38 26,40 0,14" fill={c1} opacity="0.92" />
+    </>
+  ),
+  // Fremantle Dockers — purple/white — white anchor symbol
+  fre: (_c1, c2, _c3) => (
+    <>
+      <circle cx="20" cy="11" r="5" fill="none" stroke={c2} strokeWidth="2.5" />
+      <line x1="20" y1="16" x2="20" y2="36" stroke={c2} strokeWidth="2.5" />
+      <line x1="11" y1="22" x2="29" y2="22" stroke={c2} strokeWidth="2.5" />
+      <path d="M11,34 Q14,40 20,36 Q26,40 29,34" fill="none" stroke={c2} strokeWidth="2.5" />
+    </>
+  ),
+  // Geelong Cats — navy/white — white cat face (triangular head + eye dots)
+  gee: (c1, c2, _c3) => (
     <>
       <polygon points="8,34 14,8 20,20 26,8 32,34" fill={c2} opacity="0.88" />
       <circle cx="15" cy="26" r="2.5" fill={c1} />
@@ -468,7 +500,7 @@ const AFL_CLUB_MOTIFS = {
     </>
   ),
   // Gold Coast Suns — red/gold — gold sun burst (circle + 8 rays)
-  gcs: (c1, c2, c3) => (
+  gcs: (c1, c2, _c3) => (
     <>
       <circle cx="20" cy="20" r="6" fill={c2} />
       <line x1="29" y1="20" x2="36" y2="20" stroke={c2} strokeWidth="2.5" strokeLinecap="round" />
@@ -482,18 +514,18 @@ const AFL_CLUB_MOTIFS = {
     </>
   ),
   // GWS Giants — orange/charcoal — twin mountain peaks
-  gws: (c1, c2, c3) => (
+  gws: (c1, c2, _c3) => (
     <polygon points="4,38 16,10 23,24 30,6 38,38" fill={c2} opacity="0.88" />
   ),
   // Hawthorn Hawks — dark brown/gold — hawk wings spread + head spike
-  haw: (c1, c2, c3) => (
+  haw: (c1, c2, _c3) => (
     <>
       <path d="M2,28 Q10,10 20,18 Q30,10 38,28 L32,26 Q24,14 20,18 Q16,14 8,26 Z" fill={c2} opacity="0.9" />
       <polygon points="16,18 20,6 24,18" fill={c2} opacity="0.8" />
     </>
   ),
   // Melbourne Demons — navy/red — red trident (three tines + crossbar + handle)
-  mel: (c1, c2, c3) => (
+  mel: (c1, c2, _c3) => (
     <>
       <line x1="20" y1="38" x2="20" y2="6" stroke={c2} strokeWidth="3.5" strokeLinecap="round" />
       <line x1="10" y1="6" x2="10" y2="20" stroke={c2} strokeWidth="3.5" strokeLinecap="round" />
@@ -502,7 +534,7 @@ const AFL_CLUB_MOTIFS = {
     </>
   ),
   // North Melbourne Kangaroos — navy/white — kangaroo silhouette
-  nor: (c1, c2, c3) => (
+  nor: (c1, c2, _c3) => (
     <>
       <ellipse cx="20" cy="22" rx="9" ry="6" fill={c2} opacity="0.88" />
       <ellipse cx="29" cy="14" rx="5" ry="7" fill={c2} opacity="0.88" />
@@ -513,14 +545,14 @@ const AFL_CLUB_MOTIFS = {
     </>
   ),
   // Port Adelaide Power — teal/black — black shield with teal lightning bolt
-  pad: (c1, c2, c3) => (
+  pad: (c1, c2, _c3) => (
     <>
       <rect x="0" y="0" width="40" height="40" fill={c2} />
       <polygon points="24,4 13,22 22,22 16,38 27,20 18,20 24,4" fill={c1} opacity="0.9" />
     </>
   ),
   // Richmond Tigers — gold/black — black shield with three diagonal gold stripes
-  ric: (c1, c2, c3) => (
+  ric: (c1, c2, _c3) => (
     <>
       <rect x="0" y="0" width="40" height="40" fill={c2} />
       <polygon points="2,6 12,0 24,0 14,6" fill={c1} opacity="0.9" />
@@ -537,7 +569,7 @@ const AFL_CLUB_MOTIFS = {
     </>
   ),
   // Sydney Swans — red/white — white swan silhouette
-  syd: (c1, c2, c3) => (
+  syd: (c1, c2, _c3) => (
     <path
       d="M10,34 Q10,22 18,16 Q24,10 32,12 Q30,18 24,20 Q28,24 28,32 L24,34 Q22,28 20,26 Q14,28 10,34 Z"
       fill={c2}
@@ -545,7 +577,7 @@ const AFL_CLUB_MOTIFS = {
     />
   ),
   // Tasmania FC — red/black — thylacine: dark oval body with red stripe markings
-  tas: (c1, c2, c3) => (
+  tas: (c1, c2, _c3) => (
     <>
       <path d="M10,18 Q20,10 30,18 Q32,26 28,34 Q20,38 12,34 Q8,26 10,18 Z" fill={c2} opacity="0.85" />
       <line x1="14" y1="22" x2="26" y2="22" stroke={c1} strokeWidth="2.2" strokeLinecap="round" />
@@ -554,7 +586,7 @@ const AFL_CLUB_MOTIFS = {
     </>
   ),
   // West Coast Eagles — navy/gold — gold eagle wings spread with head spike
-  wce: (c1, c2, c3) => (
+  wce: (c1, c2, _c3) => (
     <>
       <path d="M2,30 Q10,10 20,18 Q30,10 38,30 L32,26 Q24,14 20,18 Q16,14 8,26 Z" fill={c2} opacity="0.9" />
       <line x1="6" y1="28" x2="10" y2="16" stroke={c1} strokeWidth="1.2" opacity="0.5" />

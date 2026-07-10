@@ -240,7 +240,7 @@ function AFLManagerInner() {
   // Persist theme preference to localStorage so it applies before a career loads
   useEffect(() => {
     persistTheme(themeClass);
-  }, [career?.options?.theme]);
+  }, [themeClass]);
 
   // Inject club colour CSS custom properties when the user's team changes
   useEffect(() => {
