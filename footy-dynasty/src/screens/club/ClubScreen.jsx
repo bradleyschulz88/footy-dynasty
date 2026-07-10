@@ -21,6 +21,7 @@ import { hpEffects, hpLevelFor } from '../../lib/finance/highPerformance.js';
 import { HP_LEVELS } from '../../lib/finance/constants.js';
 import { activeNamingRights, namingRightsValue, signNamingRights } from '../../lib/finance/namingRights.js';
 import { careerMemberCount } from '../../lib/finance/membership.js';
+import { ACHIEVEMENTS, evaluateAchievements } from '../../lib/achievements.js';
 import { defaultKits, STAFF_BLUEPRINT, EXPANDABLE_ROLE_IDS_BY_TIER } from '../../lib/defaults.js';
 import { css, Bar, RatingDot, Pill, Stat, Jersey } from '../../components/primitives.jsx';
 import TabNav from '../../components/TabNav.jsx';
@@ -831,6 +832,47 @@ function HonoursTab({ club: _club }) {
             {(career.history || []).length === 0 && (
               <p className="text-[11px] text-atext-dim">No completed seasons yet.</p>
             )}
+          </div>
+        );
+      })()}
+
+      {/* Achievements — the Steam-facing catalog, live-evaluated from career
+          state so it stays accurate mid-season (syncAchievements persists the
+          unlock + fires news at season rollover). */}
+      {(() => {
+        const earned = evaluateAchievements(career);
+        const done = ACHIEVEMENTS.filter((a) => earned.has(a.id)).length;
+        return (
+          <div className={`${css.panel} p-4`}>
+            <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🏅</span>
+                <h3 className="font-display text-base tracking-wider text-aaccent">ACHIEVEMENTS</h3>
+              </div>
+              <span className="text-[11px] font-mono text-atext-mute">{done}/{ACHIEVEMENTS.length} unlocked</span>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {ACHIEVEMENTS.map((a) => {
+                const on = earned.has(a.id);
+                return (
+                  <div
+                    key={a.id}
+                    className="flex items-start gap-2.5 rounded-lg border p-2.5"
+                    style={{
+                      borderColor: on ? 'color-mix(in srgb, #EAB308 45%, var(--A-line))' : 'var(--A-line)',
+                      background: on ? 'rgba(234,179,8,0.08)' : 'transparent',
+                      opacity: on ? 1 : 0.55,
+                    }}
+                  >
+                    <span className="text-lg leading-none mt-0.5">{on ? '🏅' : '🔒'}</span>
+                    <div className="min-w-0">
+                      <div className="text-[12px] font-bold text-atext">{a.name}</div>
+                      <div className="text-[10px] text-atext-dim leading-snug">{a.desc}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         );
       })()}
