@@ -1,11 +1,15 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import './styles/clubTheme.css'
 import './index.css'
 import AFLManager from './AFLManager'
+import { ThemeProvider } from './components/ui/ThemeProvider.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AFLManager />
+    <ThemeProvider>
+      <AFLManager />
+    </ThemeProvider>
   </React.StrictMode>,
 )
 
