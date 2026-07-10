@@ -10,6 +10,7 @@ import {
   positionFitsZone,
 } from "../lib/lineupHelpers.js";
 import { css, StarRating } from "./primitives.jsx";
+import { OvalMarkings } from "./groundMarkings.jsx";
 
 // AFL position labels per field slot — shared table (rows B→HB→C→HF→F, cols L/C/R).
 const SLOT_LABELS = LINEUP_SLOT_ROLES;
@@ -439,58 +440,8 @@ export function LineupOvalField({ squad, lineupIds, stitch, onSelectPlayer }) {
           background: stitch ? "#040c06" : "#0d2818",
         }}
       >
-        {/* SVG field markings — drawn in a 100×100 coordinate space */}
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none z-[1]"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden
-        >
-          {/* Oval fill — lighter green = playable field inside */}
-          <ellipse cx="50" cy="50" rx="40" ry="48"
-            fill={stitch ? "rgba(6,22,10,0.92)" : "rgba(14,58,26,0.88)"} />
-          {/* Oval perimeter line */}
-          <ellipse cx="50" cy="50" rx="40" ry="48"
-            fill="none" stroke="rgba(255,255,255,0.48)" strokeWidth="0.75" />
-          {/* Subtle inner halo (depth) */}
-          <ellipse cx="50" cy="50" rx="40" ry="48"
-            fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
-          {/* Centre line */}
-          <line x1="10" y1="50" x2="90" y2="50"
-            stroke="rgba(255,255,255,0.28)" strokeWidth="0.65" />
-          {/* Centre square (ruck square) */}
-          <rect x="37" y="44.5" width="26" height="11"
-            fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="0.6" rx="0.5" />
-          {/* Centre circle */}
-          <ellipse cx="50" cy="50" rx="10" ry="10"
-            fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="0.65" />
-          {/* Centre spot */}
-          <circle cx="50" cy="50" r="1.4" fill="rgba(255,255,255,0.42)" />
-          {/* 50m arcs */}
-          <path d="M12 30 Q50 39 88 30"
-            fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="0.55" />
-          <path d="M12 70 Q50 61 88 70"
-            fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="0.55" />
-          {/* Goal square — back (top) */}
-          <rect x="39" y="3" width="22" height="6"
-            fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="0.55" />
-          {/* Goal posts — back (4 posts: 2 behind, 2 goal) */}
-          <line x1="33" y1="3.5" x2="33" y2="8"   stroke="rgba(255,255,255,0.30)" strokeWidth="0.55" />
-          <line x1="39" y1="2.5" x2="39" y2="9"   stroke="rgba(255,255,255,0.55)" strokeWidth="0.85" />
-          <line x1="61" y1="2.5" x2="61" y2="9"   stroke="rgba(255,255,255,0.55)" strokeWidth="0.85" />
-          <line x1="67" y1="3.5" x2="67" y2="8"   stroke="rgba(255,255,255,0.30)" strokeWidth="0.55" />
-          {/* Goal square — forward (bottom) */}
-          <rect x="39" y="91" width="22" height="6"
-            fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="0.55" />
-          {/* Goal posts — forward */}
-          <line x1="33" y1="92"  x2="33" y2="96.5" stroke="rgba(255,255,255,0.30)" strokeWidth="0.55" />
-          <line x1="39" y1="91"  x2="39" y2="97.5" stroke="rgba(255,255,255,0.55)" strokeWidth="0.85" />
-          <line x1="61" y1="91"  x2="61" y2="97.5" stroke="rgba(255,255,255,0.55)" strokeWidth="0.85" />
-          <line x1="67" y1="92"  x2="67" y2="96.5" stroke="rgba(255,255,255,0.30)" strokeWidth="0.55" />
-          {/* Zone color tints — back 50 = blue, forward 50 = red */}
-          <ellipse cx="50" cy="24" rx="36" ry="18" fill="rgba(42,101,200,0.10)" />
-          <ellipse cx="50" cy="76" rx="36" ry="18" fill="rgba(200,64,64,0.10)" />
-        </svg>
+        {/* Shared AFL oval markings (oval, centre square, 50m arcs, posts). */}
+        <OvalMarkings />
 
         {/* Zone labels at left edge */}
         <div className="absolute left-0 top-[11%] bottom-[11%] w-[10%] z-[3] flex flex-col pointer-events-none" aria-hidden>

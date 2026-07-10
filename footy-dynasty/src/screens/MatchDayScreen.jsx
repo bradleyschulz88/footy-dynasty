@@ -4,6 +4,7 @@ import { useCareer } from "../lib/careerStore.js";
 import { formatDate } from "../lib/calendar.js";
 import { COACHING_CALLS } from "../lib/coachingCalls.js";
 import { playCrowdCheer, playSiren, playWhistle, soundEnabled } from "../lib/sound.js";
+import { GroundFormation } from "../components/groundMarkings.jsx";
 
 // ── Count-up animated number ────────────────────────────────────────────────
 // Rolls the displayed value up/down to `value` over ~600ms via rAF.
@@ -394,6 +395,12 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
                 ⚠ They've had your measure lately. Your ratings take a small hit going in. Break the streak.
               </div>
             )}
+          </div>
+
+          {/* Your team on the ground */}
+          <div className="rounded-2xl p-4" style={{ background: "var(--A-panel)", border: "1px solid var(--A-line)" }}>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-aaccent mb-3">Your team on the ground</div>
+            <GroundFormation squad={squad} lineupIds={lineup} />
           </div>
 
           {/* Opponent scout if purchased */}
