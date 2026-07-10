@@ -1,8 +1,8 @@
 // Theme provider — wraps app, handles club theme + global theme class
-// src/components/ui/ThemeProvider.jsx
+// src/components/ui/ThemeProvider.tsx
 
 import React, { useEffect, createContext, useContext, useState, useCallback } from 'react';
-import { injectClubTheme, restoreClubTheme, clearClubTheme } from '../../lib/clubColors.js';
+import { injectClubTheme, restoreClubTheme, clearClubTheme } from '../../lib/clubColors.ts';
 
 const THEME_CLASS_KEY = 'fd-theme-class';
 const VALID_THEMES = ['dirA', 'dirB', 'dirV4'] as const;
@@ -71,5 +71,3 @@ export function useTheme() {
   if (!ctx) throw new Error('useTheme must be used within ThemeProvider');
   return ctx;
 }
-
-const VALID_THEMES = ['dirA', 'dirB', 'dirV4'] as const;

@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import './styles/clubTheme.css'
 import './index.css'
 import AFLManager from './AFLManager'
-import { ThemeProvider } from './components/ui/ThemeProvider.jsx'
+import { ThemeProvider } from './components/ui/ThemeProvider.tsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
