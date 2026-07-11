@@ -19,9 +19,6 @@ import {
   CheckCircle2,
   XCircle,
   ArrowLeftRight,
-  TrendingDown,
-  Landmark,
-  Info,
   Sparkles,
   AlertTriangle,
   Activity,
@@ -48,7 +45,7 @@ import {
 import { ladderNeighbourClubs } from "../../lib/hubRivals.js";
 import { boardObjectiveUiStatus, youthSeniorGameCount } from "../../lib/board.js";
 import { themedRoundForNumber } from "../../lib/themedRounds.js";
-import { css, Pill, Stat, AnimatedNumber, CollapsibleSection, ExpandableTile } from "../../components/primitives.jsx";
+import { css, Pill, CollapsibleSection, ExpandableTile } from "../../components/primitives.jsx";
 import { HubFeed } from "../../components/HubFeed.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 import { finalsMagicNumber } from "../../lib/magicNumber.js";
@@ -211,7 +208,6 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
   const sorted = sortedLadderRows;
   const top5 = sorted.slice(0, 5);
   const myRow = sorted.find(r => r.id === career.clubId);
-  const recentNews = (career.news || []).slice(0, 6);
   const hubTotals = React.useMemo(() => {
     const wagesAnnual =
       (career.squad || []).reduce((a, p) => a + (p.wage || 0), 0) +
