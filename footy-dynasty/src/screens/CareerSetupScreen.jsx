@@ -124,7 +124,7 @@ function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
   };
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: '#4BBFBF' }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: '#4BBFBF', touchAction: 'pan-y' }}>
       <svg viewBox="-0.4 -0.4 291 263" className="w-full block"
         aria-label="Map of Australia — select a state to begin">
         <defs>
@@ -704,7 +704,10 @@ export function CareerSetup({ onStart, onQuickStart, existingSlots = {}, onResum
     tier === 3 ? step : step <= 3 ? step : step === 5 ? 4 : Math.min(step, 4);
 
   return (
-    <div className={`${themeClass} min-h-screen font-sans text-atext flex flex-col`}>
+    <div
+      className={`${themeClass} font-sans text-atext`}
+      style={{ height: "100dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain" }}
+    >
       {/* ── Hero ─────────────────────────────────────────────── */}
       <div className="relative overflow-hidden border-b border-aline">
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 15% 60%, color-mix(in srgb, var(--A-accent) 10%, transparent) 0%, transparent 55%)' }} />
