@@ -689,7 +689,9 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   font-size: var(--font-body);
   line-height: 1.4;
   position: relative;
-  overflow: hidden;
+  /* No `overflow: hidden` here — it blocked body-scroll on min-h-screen
+     pre-game screens (career setup, etc.) on iOS Safari. The in-game shell
+     sets its own `overflow-hidden` where clipping is needed. */
 }
 .dirV4::before {
   content: "";
