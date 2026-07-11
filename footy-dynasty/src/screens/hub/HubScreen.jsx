@@ -34,7 +34,7 @@ import { finalsRoundLabel, playerFinalsOpponent, finalsSeedFor } from "../../lib
 import { fmtK } from "../../lib/format.js";
 import { TRAINING_INFO, formatDate } from "../../lib/calendar.js";
 import { getAdvanceContext } from "../../lib/advanceContext.js";
-import { effectiveWageCap, currentPlayerWageBill } from "../../lib/finance/engine.js";
+import { effectiveWageCap, currentPlayerWageBill, capHeadroom } from "../../lib/finance/engine.js";
 import {
   TRADE_PERIOD_DAYS,
   POST_TRADE_DRAFT_COUNTDOWN_DAYS,
@@ -48,7 +48,8 @@ import {
 import { ladderNeighbourClubs } from "../../lib/hubRivals.js";
 import { boardObjectiveUiStatus, youthSeniorGameCount } from "../../lib/board.js";
 import { themedRoundForNumber } from "../../lib/themedRounds.js";
-import { css, Pill, Stat, AnimatedNumber, CollapsibleSection } from "../../components/primitives.jsx";
+import { css, Pill, Stat, AnimatedNumber, CollapsibleSection, ExpandableTile } from "../../components/primitives.jsx";
+import { HubFeed } from "../../components/HubFeed.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
 import { finalsMagicNumber } from "../../lib/magicNumber.js";
 import { seasonNarrative } from "../../lib/seasonNarrative.js";
@@ -232,6 +233,18 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
   const cap = effectiveWageCap(career);
   const playerWagesHub = currentPlayerWageBill(career);
   const capPctHub = cap > 0 ? Math.round((playerWagesHub / cap) * 100) : 0;
+
+  // Outstanding tasks surfaced in the portal feed (all from safe career fields).
+  const hubTasks = React.useMemo(() => {
+    const t = [];
+    const pendR = (career.pendingRenewals || []).filter((r) => !r._handled).length
+                + (career.pendingStaffRenewals || []).filter((r) => !r._handled).length;
+    if (pendR) t.push({ text: `${pendR} contract renewal${pendR > 1 ? "s" : ""} awaiting your call.`, tone: "pos", sub: "Contracts" });
+    if ((career.sponsorOffers || []).length) t.push({ text: `${career.sponsorOffers.length} sponsor offer${career.sponsorOffers.length > 1 ? "s" : ""} on the table.`, tone: "pos", sub: "Sponsors" });
+    if ((career.sponsorRenewalProposals || []).length) t.push({ text: `${career.sponsorRenewalProposals.length} sponsor deal${career.sponsorRenewalProposals.length > 1 ? "s" : ""} up for renewal.`, tone: "pos", sub: "Sponsors" });
+    if (capPctHub >= 90) t.push({ text: `Wage cap at ${capPctHub}% — trim the list before it bites.`, tone: "neg", sub: "Finances" });
+    return t;
+  }, [career.pendingRenewals, career.pendingStaffRenewals, career.sponsorOffers, career.sponsorRenewalProposals, capPctHub]);
 
   const boardObjectiveRows = React.useMemo(() => {
     const objs = career.board?.objectives;
@@ -994,12 +1007,49 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
       )}
       </motion.div>
 
-      {/* Stat Row — premium KPI cards */}
-      <motion.div variants={hubItem} className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users} />
-          <Stat label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="var(--A-pos)" icon={DollarSign} />
-          <Stat label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="var(--A-accent)" icon={Handshake} />
-          <Stat label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.W ?? 0}W / ${myRow?.L ?? 0}L`} accent={posColor} icon={Trophy} />
+      {/* Stat Row — premium KPI tiles that expand into a detail card (tap to open) */}
+      <motion.div variants={hubItem} className="grid grid-cols-2 md:grid-cols-4 gap-3 items-start">
+          <ExpandableTile label="Squad Rating" value={squadAvg} sub={`${career.squad.length} players`} accent="var(--A-accent)" icon={Users}>
+            <div className="space-y-1.5 text-[12px]">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-atext-mute mb-1">Top rated</div>
+              {[...(career.squad || [])].sort((a, b) => b.overall - a.overall).slice(0, 4).map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2">
+                  <span className="truncate text-atext">{p.firstName ? `${p.firstName[0]}. ${p.lastName}` : p.name}</span>
+                  <span className="font-mono tabular-nums text-atext-dim">{p.position} · {p.overall}</span>
+                </div>
+              ))}
+            </div>
+          </ExpandableTile>
+          <ExpandableTile label="Cash" value={fmtK(career.finance.cash)} sub={`Wages ${fmtK(wagesAnnual)}/yr`} accent="var(--A-pos)" icon={DollarSign}>
+            <div className="space-y-1.5 text-[12px]">
+              <div className="flex justify-between"><span className="text-atext-dim">Wages / yr</span><span className="font-mono tabular-nums text-atext">{fmtK(wagesAnnual)}</span></div>
+              <div className="flex justify-between"><span className="text-atext-dim">Sponsors / yr</span><span className="font-mono tabular-nums text-atext">{fmtK(sponsorsAnnual)}</span></div>
+              <div className="flex justify-between"><span className="text-atext-dim">Cap headroom</span><span className="font-mono tabular-nums text-atext">{fmtK(capHeadroom(career))}</span></div>
+              <button type="button" onClick={() => setTab && setTab("finances")} className="text-[11px] font-bold uppercase tracking-wider text-aaccent pt-1">Open finances →</button>
+            </div>
+          </ExpandableTile>
+          <ExpandableTile label="Sponsors" value={fmtK(sponsorsAnnual)} sub={`${(career.sponsors || []).length} active deals`} accent="var(--A-accent)" icon={Handshake}>
+            <div className="space-y-1.5 text-[12px]">
+              {(career.sponsors || []).length === 0 && <div className="text-atext-dim">No active sponsors.</div>}
+              {(career.sponsors || []).slice(0, 5).map((s, i) => (
+                <div key={i} className="flex items-center justify-between gap-2">
+                  <span className="truncate text-atext">{s.name}</span>
+                  <span className="font-mono tabular-nums text-atext-dim">{fmtK(s.annualValue)}/yr</span>
+                </div>
+              ))}
+            </div>
+          </ExpandableTile>
+          <ExpandableTile label="Ladder Pos" value={`#${myLadderPos||"—"}`} sub={`${myRow?.W ?? 0}W / ${myRow?.L ?? 0}L`} accent={posColor} icon={Trophy}>
+            <div className="space-y-1.5 text-[12px]">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-atext-mute mb-1">Around you</div>
+              {ladderNeighbourClubs(sorted, career.clubId).map((r) => (
+                <div key={r.id} className="flex items-center justify-between gap-2" style={{ color: r.id === career.clubId ? "var(--A-accent)" : undefined }}>
+                  <span className="truncate">{sorted.findIndex((x) => x.id === r.id) + 1}. {r.short || r.name}</span>
+                  <span className="font-mono tabular-nums text-atext-dim">{r.pts ?? 0}pt</span>
+                </div>
+              ))}
+            </div>
+          </ExpandableTile>
       </motion.div>
 
       {/* Cash sparkline — shows at-a-glance financial trajectory */}
@@ -1139,29 +1189,9 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
           </div>
         </div>
 
-        {/* News */}
-        <div className={`${css.panel} p-5 md:col-span-2`}>
-          <div className="flex items-center gap-2 mb-4">
-            <Newspaper className="w-4 h-4 text-aaccent" />
-            <h3 className="font-display text-xl tracking-wide text-atext">NEWS</h3>
-          </div>
-          <div ref={newsRef} className="space-y-2.5">
-            {recentNews.length === 0 && <div className="text-sm text-atext-dim py-4 text-center">No news yet.</div>}
-            {recentNews.map((n, i) => {
-              const borderColor = n.type === "win" ? "var(--A-pos)" : n.type === "loss" ? "var(--A-neg)" : n.type === "board" ? "#FFB347" : n.type === "info" ? "var(--A-accent-2)" : "var(--A-text-mute)";
-              const NewsIcon = n.type === "win" ? Trophy : n.type === "loss" ? TrendingDown : n.type === "board" ? Landmark : n.type === "info" ? Info : Newspaper;
-              return (
-                <div key={i} className="flex gap-3 p-3 rounded-xl" style={{background:"var(--A-panel-2)", border:"1px solid var(--A-line)", borderLeft:`3px solid ${borderColor}`}}>
-                  <div className="flex-shrink-0 mt-0.5"><NewsIcon className="w-3.5 h-3.5" style={{color: borderColor}} /></div>
-                  <div className="flex-1 min-w-0">
-                    {/* Headline bold, body dim, source very small */}
-                    <div className="font-bold text-sm text-atext leading-snug">{n.text}</div>
-                    <div className="text-[9px] font-mono text-atext-mute uppercase tracking-widest mt-1">{n.week === 0 ? 'Pre-Season' : `Round ${n.week}`}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+        {/* Portal feed — news + tasks with filter chips (All / New / Tasks) */}
+        <div ref={newsRef} className="md:col-span-2">
+          <HubFeed news={(career.news || []).slice(0, 12)} tasks={hubTasks} week={career.week ?? 0} />
         </div>
       </motion.div>
 
