@@ -58,4 +58,64 @@ export function buildDemoCareer(clubId = "car", season = 2026) {
   };
 }
 
+// Simulate the next match and return an advanced career (playable loop).
+// Deterministic per (season, round) so replays are stable. Lightweight on
+// purpose — a mobile-side sim over squad strength; the full match engine can be
+// wired in later.
+export function advanceMatch(career) {
+  const { season, club, squadRating, ladder, myRow } = career;
+  const opp = career.nextOpponent;
+  const round = (myRow.w ?? 0) + (myRow.l ?? 0) + (myRow.d ?? 0) + 1;
+  seedRng(season * 1000 + round * 17);
+
+  const myStr = squadRating;
+  const oppStr = opp ? Math.max(45, Math.min(95, 62 + (opp.pct - 100) * 0.3 + (opp.pts - 10) * 0.8)) : 62;
+
+  const quarters = [];
+  let myTotal = 0, oppTotal = 0;
+  for (let q = 0; q < 4; q++) {
+    const mg = Math.max(0, Math.round(3 + (myStr - 70) / 7 + (rng() - 0.5) * 4));
+    const mb = Math.max(0, Math.round(2 + (rng() - 0.4) * 3));
+    const og = Math.max(0, Math.round(3 + (oppStr - 70) / 7 + (rng() - 0.5) * 4));
+    const ob = Math.max(0, Math.round(2 + (rng() - 0.4) * 3));
+    myTotal += mg * 6 + mb;
+    oppTotal += og * 6 + ob;
+    quarters.push({ mg, mb, og, ob, myG: quarters.reduce((a, x) => a + x.mg, mg), myTotal, oppTotal });
+  }
+  const won = myTotal > oppTotal;
+  const draw = myTotal === oppTotal;
+
+  // Update my club + the opponent on the ladder, then re-sort.
+  const next = ladder.map((r) => ({ ...r }));
+  const me = next.find((r) => r.id === club.id);
+  const them = opp ? next.find((r) => r.id === opp.id) : null;
+  const bump = (row, isWin, isDraw, gf, ga) => {
+    if (!row) return;
+    if (isDraw) { row.d = (row.d || 0) + 1; row.pts += 2; }
+    else if (isWin) { row.w += 1; row.pts += 4; }
+    else { row.l += 1; }
+    row.gf = (row.gf || row.pts * 25) + gf;
+    row.ga = (row.ga || row.pts * 24) + ga;
+    row.pct = Math.round((row.gf / Math.max(1, row.ga)) * 100);
+  };
+  bump(me, won, draw, myTotal, oppTotal);
+  bump(them, !won && !draw, draw, oppTotal, myTotal);
+  next.sort((a, b) => b.pts - a.pts || b.pct - a.pct);
+  next.forEach((r, i) => (r.pos = i + 1));
+
+  const newMyRow = next.find((r) => r.id === club.id) || myRow;
+  const myIdx = next.findIndex((r) => r.id === club.id);
+  const nextOpponent = next[myIdx >= 0 ? (myIdx + 1) % next.length : 0] || opp;
+  const cash = career.cash + (won ? 95000 : draw ? 70000 : 55000) - Math.round(career.wages / 22);
+
+  return {
+    ...career,
+    ladder: next,
+    myRow: newMyRow,
+    nextOpponent,
+    cash,
+    lastResult: { opp, myTotal, oppTotal, won, draw, quarters, round },
+  };
+}
+
 export { rand };
