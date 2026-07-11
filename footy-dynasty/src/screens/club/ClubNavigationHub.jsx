@@ -129,14 +129,14 @@ export function ClubOverviewTab({ club, setTab, showCommittee }) {
             "Contracts",
             [renewHint, capPct != null ? `Headroom ${fmtK(capHeadroom(career))}` : "List & renewals"],
             FileText,
-            "#22C55E",
+            "var(--A-accent-2)",
             () => setTab("contracts"),
           )}
           {overviewTile(
             "Sponsors",
             [`${sponsorsN} deals`, sponsorsAnnual > 0 ? `${fmtK(sponsorsAnnual)}/yr` : "No sponsor income"],
             Handshake,
-            "#F59E0B",
+            "#5B7A9E",
             () => setTab("sponsors"),
           )}
         </div>
@@ -149,14 +149,14 @@ export function ClubOverviewTab({ club, setTab, showCommittee }) {
             "Facilities",
             [`Avg ${facAvg.toFixed(1)}`, "Venue, medical, training"],
             Building2,
-            "#4AE89A",
+            "var(--A-accent)",
             () => setTab("facilities"),
           )}
           {overviewTile(
             "Staff",
             [`Avg rating ${Math.round(staffAvg)}`, "Coaches & football dept"],
             UserCog,
-            "#60A5FA",
+            "var(--A-accent-2)",
             () => setTab("staff"),
           )}
           {showCommittee
@@ -164,7 +164,7 @@ export function ClubOverviewTab({ club, setTab, showCommittee }) {
                 "Committee",
                 ["Volunteer board", "Mood & community"],
                 Users,
-                "#C084FC",
+                "#5B7A9E",
                 () => setTab("committee"),
               )
             : null}
@@ -178,21 +178,21 @@ export function ClubOverviewTab({ club, setTab, showCommittee }) {
             "Guernseys",
             ["Home & away design", "Colours"],
             Shirt,
-            "#A78BFA",
+            "var(--A-accent)",
             () => setTab("kits"),
           )}
           {overviewTile(
             "Honours",
             ["Season history", "Flags & Brownlow"],
             Award,
-            "#FBBF24",
+            "#E0A43B",
             () => setTab("honours"),
           )}
           {overviewTile(
             "Rookie list",
             [`${rookies} on list`, "Elevation & wages"],
             Sprout,
-            "#34D399",
+            "var(--A-accent-2)",
             () => setTab("rookies"),
           )}
         </div>
@@ -268,13 +268,13 @@ export function CommercialKpiStrip() {
     >
       <Pill color="#64748B">Cash {fmtK(cash)}</Pill>
       {capPct != null ? (
-        <Pill color={capPct >= 100 ? "#E84A6F" : capPct >= 90 ? "#FFB347" : "#64748B"}>
+        <Pill color={capPct >= 100 ? "var(--A-neg)" : capPct >= 90 ? "#E0A43B" : "#64748B"}>
           Cap {capPct}% · room {fmtK(headroom)}
         </Pill>
       ) : (
         <Pill color="#64748B">No cap</Pill>
       )}
-      <Pill color={board >= 50 ? "#4AE89A" : "#E84A6F"}>Board {board}%</Pill>
+      <Pill color={board >= 50 ? "var(--A-pos)" : "var(--A-neg)"}>Board {board}%</Pill>
       <Pill color="var(--A-accent-2)">{sponsorsN} sponsors</Pill>
     </div>
   );

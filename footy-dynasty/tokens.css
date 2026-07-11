@@ -681,7 +681,7 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   --A-club-2:    var(--V4-club-2);
 }
 .dirV4 {
-  --fd-oval-opacity: 0.10;
+  --fd-oval-opacity: 0.13;
   --fd-on-accent: #ffffff;
   background: var(--V4-bg);
   color: var(--V4-text);
@@ -708,16 +708,37 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   letter-spacing: -0.01em !important;
 }
 .dirV4 .panel {
-  background: var(--V4-panel);
+  /* Subtle gradient + brighter hairline top-sheen for a premium dark-mode lift. */
+  background: linear-gradient(180deg, color-mix(in srgb, #ffffff 3%, var(--V4-panel)), var(--V4-panel));
   border: 1px solid var(--V4-line);
   border-radius: var(--radius-b-panel);
-  box-shadow: 0 1px 2px rgba(5, 15, 40, 0.25), 0 6px 22px rgba(5, 15, 40, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  box-shadow: 0 1px 2px rgba(2, 10, 28, 0.30), 0 8px 26px rgba(2, 10, 28, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 .dirV4 .panel-flat {
   background: var(--V4-panel);
   border: 1px solid var(--V4-line);
   border-radius: var(--radius-b-flat);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 2px 8px rgba(2, 10, 28, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+/* Interactive lift — tiles/cards rise with a sky-blue edge on hover (was missing in V4). */
+.dirV4 .panel, .dirV4 .panel-flat {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.dirV4 .card-hover { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; cursor: pointer; }
+.dirV4 .card-hover:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--V4-accent) 55%, var(--V4-line-2));
+  box-shadow: 0 14px 32px rgba(2, 10, 28, 0.40), 0 0 0 1px color-mix(in srgb, var(--V4-accent) 22%, transparent), 0 8px 24px color-mix(in srgb, var(--V4-accent) 16%, transparent);
+}
+.dirV4 .row-hover { transition: background 0.12s ease; }
+.dirV4 .row-hover:hover { background: color-mix(in srgb, var(--V4-accent) 6%, transparent); }
+.dirV4 .player-row { transition: background 0.12s ease, padding 0.18s ease; }
+.dirV4 .player-row:hover { background: color-mix(in srgb, var(--V4-accent) 7%, transparent); }
+.dirV4 .glow-text {
+  background: linear-gradient(90deg, var(--V4-accent) 0%, var(--V4-text) 40%, var(--V4-text) 60%, var(--V4-accent) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shine 4s linear infinite;
 }
 .dirV4 .label {
   font-family: "JetBrains Mono", ui-monospace, monospace;

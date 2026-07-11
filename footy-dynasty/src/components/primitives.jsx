@@ -147,7 +147,7 @@ export const Stat = ({ label, value, sub, accent = "var(--A-accent)", icon: Icon
       <div className={`absolute top-0 left-0 ${v.strip} h-full rounded-l-2xl`} style={{ background: accent }} />
       {Icon && <Icon className={`w-5 h-5 mb-2 ${variant === "secondary" ? "opacity-45" : "opacity-60"}`} style={{ color: accent }} />}
       <div className={css.label} style={variant === "secondary" ? { color: "var(--A-text-mute)" } : undefined}>{label}</div>
-      <div className={`${css.num} ${v.numClass} tabular-nums`} style={{ color: accent, fontVariantNumeric: "tabular-nums" }}>
+      <div className={`${css.num} ${v.numClass} tabular-nums`} style={{ color: accent, fontVariantNumeric: "tabular-nums", ...(v.glow ? { textShadow: `0 0 22px color-mix(in srgb, ${accent} 28%, transparent)` } : {}) }}>
         {isNumeric ? <AnimatedNumber value={value} format={format} /> : value}
       </div>
       {sub && <div className="text-xs text-atext-dim mt-1.5 font-medium">{sub}</div>}
