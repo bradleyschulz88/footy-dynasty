@@ -155,6 +155,43 @@ export const Stat = ({ label, value, sub, accent = "var(--A-accent)", icon: Icon
   );
 };
 
+// Tile → Card (FM26-style progressive disclosure): a KPI tile that expands
+// in place into a detail card when clicked. `children` is the detail content;
+// without children it renders as a plain (non-expanding) stat tile.
+export const ExpandableTile = ({ label, value, sub, accent = "var(--A-accent)", icon: Icon, children, format }) => {
+  const [open, setOpen] = React.useState(false);
+  const isNumeric = typeof value === "number" && Number.isFinite(value);
+  const canExpand = React.Children.count(children) > 0;
+  return (
+    <div className={`${css.panel} relative overflow-hidden`}>
+      <button
+        type="button"
+        onClick={() => canExpand && setOpen((o) => !o)}
+        aria-expanded={canExpand ? open : undefined}
+        className={`w-full text-left p-5 relative ${canExpand ? "card-hover cursor-pointer" : "cursor-default"}`}
+      >
+        <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{ background: accent }} />
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            {Icon && <Icon className="w-5 h-5 mb-2 opacity-60" style={{ color: accent }} />}
+            <div className={css.label}>{label}</div>
+            <div className={`${css.num} text-3xl mt-1 leading-none tabular-nums`} style={{ color: accent, fontVariantNumeric: "tabular-nums" }}>
+              {isNumeric ? <AnimatedNumber value={value} format={format} /> : value}
+            </div>
+            {sub && <div className="text-xs text-atext-dim mt-1.5 font-medium">{sub}</div>}
+          </div>
+          {canExpand && (
+            <ChevronDown className={`w-4 h-4 text-atext-mute shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+          )}
+        </div>
+      </button>
+      {canExpand && open && (
+        <div className="px-5 pb-5 pt-3 mt-0 border-t border-aline/60 anim-in">{children}</div>
+      )}
+    </div>
+  );
+};
+
 // Inline SVG kit preview used by the Kits tab and squad selectors.
 export const Jersey = ({ kit, size = 64 }) => {
   const k = kit || { primary: "var(--A-accent)", secondary: "#FFFFFF", accent: "var(--A-accent)", pattern: "solid", numberColor: "#FFFFFF" };
