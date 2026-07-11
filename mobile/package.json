@@ -1,0 +1,29 @@
+{
+  "name": "mobile",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "@expo/metro-runtime": "~57.0.3",
+    "expo": "~57.0.4",
+    "expo-asset": "~57.0.3",
+    "expo-status-bar": "~57.0.0",
+    "react": "19.2.3",
+    "react-dom": "^19.2.3",
+    "react-native": "0.86.0",
+    "react-native-web": "^0.21.2"
+  },
+  "scripts": {
+    "sync-engine": "node scripts/sync-engine.mjs",
+    "prestart": "npm run sync-engine",
+    "start": "expo start",
+    "preandroid": "npm run sync-engine",
+    "android": "expo start --android",
+    "preios": "npm run sync-engine",
+    "ios": "expo start --ios",
+    "preweb": "npm run sync-engine",
+    "web": "expo start --web",
+    "preexport": "npm run sync-engine",
+    "export": "expo export"
+  },
+  "private": true
+}
