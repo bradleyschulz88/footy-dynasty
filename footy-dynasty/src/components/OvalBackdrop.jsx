@@ -25,8 +25,8 @@ export default function OvalBackdrop() {
         }}
       >
         <svg viewBox="0 0 560 360" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%" }}>
-          {/* Field fill */}
-          <ellipse cx="280" cy="180" rx="276" ry="172" fill="color-mix(in srgb, var(--A-accent) 16%, transparent)" />
+          {/* Field fill — turf green so it reads as a grass oval (very subtle at backdrop opacity) */}
+          <ellipse cx="280" cy="180" rx="276" ry="172" fill="color-mix(in srgb, #1F7A46 34%, transparent)" />
           {/* Mown stripe bands */}
           <ellipse cx="280" cy="180" rx="248" ry="153" stroke="color-mix(in srgb, var(--A-text) 7%, transparent)" strokeWidth="10" fill="none" />
           <ellipse cx="280" cy="180" rx="208" ry="128" stroke="color-mix(in srgb, var(--A-text) 7%, transparent)" strokeWidth="10" fill="none" />

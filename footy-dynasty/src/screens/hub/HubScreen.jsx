@@ -415,7 +415,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
                     <span className="font-display tabular-nums" style={{ color: capPctHub >= 85 ? 'var(--A-neg)' : 'var(--A-accent-2)' }}>{capPctHub}%</span>
                   </div>
                   <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--A-panel)' }}>
-                    <div className="h-full rounded-full" style={{ width: `${Math.min(100, capPctHub)}%`, background: capPctHub >= 85 ? 'linear-gradient(90deg, #FF6B35, var(--A-neg))' : 'linear-gradient(90deg, var(--A-accent-2), #FF8A3D)' }} />
+                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, capPctHub)}%`, background: capPctHub >= 90 ? 'linear-gradient(90deg, #FF7A85, var(--A-neg))' : 'linear-gradient(90deg, var(--A-accent-2), var(--A-accent))' }} />
                   </div>
                   <div className="text-[8px] text-atext-mute mt-1 font-mono tabular-nums">{fmtK(playerWagesHub)} / {fmtK(cap)}</div>
                 </div>
