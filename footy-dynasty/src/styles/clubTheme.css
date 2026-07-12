@@ -53,12 +53,15 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body, #root {
-  height: 100%;
+  /* No fixed `height: 100%` — it pinned the document to the viewport and
+     disabled page scrolling app-wide (all body-scroll screens couldn't scroll
+     on iOS). min-height keeps the background covering the viewport while still
+     letting the page grow and scroll. The in-game shell manages its own height. */
+  min-height: 100dvh;
   margin: 0;
   background: var(--fd-bg);
   color: var(--fd-text);
   font-family: var(--fd-font-ui);
-  font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
