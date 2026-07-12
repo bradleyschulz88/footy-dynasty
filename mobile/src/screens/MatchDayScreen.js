@@ -58,7 +58,7 @@ export default function MatchDayScreen({ career, onAdvance }) {
       {/* Last result */}
       {lastResult && (
         <SectionCard title="Last Result" style={{ marginHorizontal: 14, marginTop: 12 }}>
-          <View style={[styles.resultBanner, { backgroundColor: lastResult.won ? "rgba(47,181,107,0.14)" : lastResult.draw ? "rgba(143,166,188,0.14)" : "rgba(228,0,43,0.14)" }]}>
+          <View style={[styles.resultBanner, { backgroundColor: lastResult.won ? "rgba(52,209,126,0.14)" : lastResult.draw ? "rgba(150,172,205,0.14)" : "rgba(255,59,78,0.14)" }]}>
             <Text style={[styles.resultTag, { color: lastResult.won ? C.pos : lastResult.draw ? C.mute : C.red }]}>
               {lastResult.won ? "WIN" : lastResult.draw ? "DRAW" : "LOSS"}
             </Text>

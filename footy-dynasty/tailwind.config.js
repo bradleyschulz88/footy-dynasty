@@ -48,7 +48,7 @@ export default {
         aneg: 'var(--A-neg)',
       },
       fontFamily: {
-        display: ['Sora', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['"Barlow Condensed"', 'Oswald', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
