@@ -2390,7 +2390,7 @@ function collectMatchMilestones(c, attribution, round) {
       }
     }
     if ((p.goals || 0) === 0 && (p.careerGoals || 0) === 0 && (att.goals || 0) > 0) {
-      items.push({ week: round, type: 'win', text: `⚽ First career goal for ${name}! The bench loved that one.` });
+      items.push({ week: round, type: 'win', text: `🏉 First career goal for ${name}! The bench loved that one.` });
       boostIds.add(p.id);
     }
     if ((att.goals || 0) >= 5) {

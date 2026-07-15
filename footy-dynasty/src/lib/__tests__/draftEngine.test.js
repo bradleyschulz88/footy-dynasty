@@ -5,7 +5,7 @@ import {
   resolveNextPick,
   draftProspectOnClock,
 } from '../draftEngine.js';
-import { seedNationalDraft, DRAFT_ROUNDS, buildSnakeDraftOrder } from '../draftSeed.js';
+import { seedNationalDraft, DRAFT_ROUNDS, buildDraftOrder } from '../draftSeed.js';
 import { PYRAMID } from '../../data/pyramid.js';
 import { isPlayerDraftTurn } from '../recruitPhase.js';
 
@@ -20,13 +20,14 @@ describe('draftEngine', () => {
     expect(needsDraftSeed({ draftPhase: 'complete', draftPool: [], draftOrder: [] })).toBe(true);
   });
 
-  it('buildSnakeDraftOrder alternates rounds', () => {
+  it('buildDraftOrder repeats the same reverse-ladder order each round (AFL, not snake)', () => {
     const ids = ['a', 'b', 'c'];
-    const order = buildSnakeDraftOrder(ids, 2);
+    const order = buildDraftOrder(ids, 2);
     expect(order).toHaveLength(6);
     expect(order[0]).toMatchObject({ pick: 1, clubId: 'a', round: 1 });
-    expect(order[3].clubId).toBe('c');
-    expect(order[3].round).toBe(2);
+    // Round 2 starts with the same club as round 1 — no even-round reversal.
+    expect(order[3]).toMatchObject({ pick: 4, clubId: 'a', round: 2 });
+    expect(order[5].clubId).toBe('c');
   });
 
   it('skipCurrentPick marks pass when draft is live', () => {
@@ -120,7 +121,7 @@ describe('draftSeed multi-round', () => {
   const league = PYRAMID[leagueKey];
   const clubIds = league.clubs.map((c) => c.id);
 
-  it('seedNationalDraft creates snake order in scouting phase', () => {
+  it('seedNationalDraft creates straight reverse-ladder order in scouting phase', () => {
     const career = { clubId: clubIds[0], leagueKey, season: 2029, draftPool: [], draftOrder: [] };
     seedNationalDraft(career, league, { inaugural: true, force: true });
     expect(career.draftPool.length).toBeGreaterThan(0);

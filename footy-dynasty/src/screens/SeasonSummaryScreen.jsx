@@ -220,7 +220,7 @@ export default function SeasonSummaryScreen({
           stat={summary.baf ? `${summary.baf.overall} rating · ${summary.baf.games} games` : "—"}
         />
         <AwardCard
-          icon="⚽"
+          icon="🏉"
           label="Top Goal Kicker"
           name={summary.topScorer?.name}
           stat={summary.topScorer ? `${summary.topScorer.goals} goals` : "—"}

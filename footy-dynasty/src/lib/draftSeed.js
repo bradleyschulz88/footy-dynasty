@@ -55,8 +55,12 @@ function shapeDraftProspect(p, i) {
 }
 
 
-/** Snake draft: round 1 order, even rounds reversed. Optional bonusPicks are inserted before the snake. */
-export function buildSnakeDraftOrder(round1ClubIds, rounds = DRAFT_ROUNDS, bonusPicks = []) {
+/**
+ * AFL national draft order: worst-to-best (reverse ladder) in the SAME order
+ * every round — unlike an NBA-style snake, the AFL does not reverse even rounds.
+ * Optional bonusPicks are inserted at the top.
+ */
+export function buildDraftOrder(round1ClubIds, rounds = DRAFT_ROUNDS, bonusPicks = []) {
   if (!round1ClubIds?.length) return [];
   const order = [];
   let pickNum = 1;
@@ -65,8 +69,7 @@ export function buildSnakeDraftOrder(round1ClubIds, rounds = DRAFT_ROUNDS, bonus
     pickNum += 1;
   }
   for (let r = 1; r <= rounds; r++) {
-    const ids = r % 2 === 0 ? [...round1ClubIds].reverse() : [...round1ClubIds];
-    for (const clubId of ids) {
+    for (const clubId of round1ClubIds) {
       order.push({ pick: pickNum, clubId, round: r, used: false });
       pickNum += 1;
     }
@@ -160,7 +163,7 @@ export function seedNationalDraft(c, league, options = {}) {
       .forEach(cl => bonusPicks.push(cl.id, cl.id));
   }
 
-  c.draftOrder = buildSnakeDraftOrder(round1Ids, rounds, bonusPicks);
+  c.draftOrder = buildDraftOrder(round1Ids, rounds, bonusPicks);
   c.lastDraftOrderSnapshot = round1Ids;
   c.draftOrderInaugural = useInaugural;
   c.draftStartDate = `${season - 1}-11-20`;

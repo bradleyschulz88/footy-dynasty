@@ -846,7 +846,7 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
                           ? "#A78BFA"
                           : "var(--A-text-mute)";
                   const icon =
-                    isGoal ? "⚽" : ev.kind === "behind" ? "○" : ev.kind === "miss" ? "·" : "✦";
+                    isGoal ? "🏉" : ev.kind === "behind" ? "○" : ev.kind === "miss" ? "·" : "✦";
                   const playerLabel = player
                     ? `${player.firstName ? player.firstName + " " : ""}${player.lastName || player.name || ""}`
                     : null;
