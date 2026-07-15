@@ -2472,7 +2472,7 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
     const isMid = isMidPreferred(p);
     const isFwd = p.position === "KF" || p.position === "HF";
     const hitoutAdd = p.position === "RU"
-      ? Math.round(rand(14, 38) * attrStatMult(p.attrs?.strength))
+      ? Math.round(rand(14, 38) * attrStatMult(p.ruckwork ?? p.attrs?.strength))
       : 0;
     const clearAdd = isMid
       ? Math.round(rand(2, 8) * attrStatMult(p.attrs?.strength))

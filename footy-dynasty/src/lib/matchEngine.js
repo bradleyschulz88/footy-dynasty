@@ -193,7 +193,7 @@ function stoppageStrength(lineup) {
   const rucks = lineup.filter((p) => playerHasPosition(p, 'RU') || playerHasPosition(p, 'R'));
   const mids = lineup.filter((p) => isMidPreferred(p));
   const ruckAvg = rucks.length
-    ? rucks.reduce((a, p) => a + (p.attrs?.strength ?? 60) + (p.attrs?.marking ?? 60), 0) / rucks.length
+    ? rucks.reduce((a, p) => a + (p.ruckwork ?? p.attrs?.strength ?? 60) + (p.attrs?.marking ?? 60), 0) / rucks.length
     : 50;
   const midAvg = mids.length
     ? mids.reduce((a, p) => a + (p.attrs?.decision ?? 60) + (p.attrs?.endurance ?? 60), 0) / mids.length

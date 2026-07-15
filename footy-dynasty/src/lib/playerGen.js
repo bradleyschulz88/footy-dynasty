@@ -139,7 +139,8 @@ export function generatePlayer(clubTier, idx, nameContext) {
   // balance is unchanged).
   const baseSkill = Math.max(40, Math.min(99, Math.round(randNorm(68, 13))));
   const positions = ["KF","HF","C","HB","KB","R","RU","WG","UT"];
-  const weights = [2, 3, 4, 3, 2, 3, 1, 2, 2];
+  // RU weighted up so lists carry a realistic 2–3 dedicated rucks.
+  const weights = [2, 3, 4, 3, 2, 3, 2, 2, 2];
   const total = weights.reduce((a, b) => a + b, 0);
   let r = rng() * total, position = "C";
   for (let i = 0; i < positions.length; i++) {
@@ -161,6 +162,11 @@ export function generatePlayer(clubTier, idx, nameContext) {
   if (position === "WG" || position === "R") { attrs.speed += 6; attrs.endurance += 5; }
   if (position === "KF" || position === "KB") { attrs.marking += 6; attrs.strength += 4; }
   Object.keys(attrs).forEach(k => { attrs[k] = Math.max(30, Math.min(99, attrs[k])); });
+  // Ruckwork is a specialist skill (hitouts, tap-work) kept OUT of the 8-attr
+  // overall: genuine rucks rate highly, everyone else can only pinch-hit.
+  const ruckwork = Math.max(20, Math.min(99, Math.round(
+    randNorm(position === "RU" ? baseSkill + 6 : baseSkill - 16, 8),
+  )));
   const overall = Math.round(Object.values(attrs).reduce((a, b) => a + b, 0) / 8);
   const trueRating = Math.round(overall * (TIER_SCALE[tier] || 1.0));
   const potential = Math.min(99, overall + (age <= 21 ? rand(5, 18) : age <= 25 ? rand(0, 8) : Math.max(0, rand(-2, 3))));
@@ -173,7 +179,7 @@ export function generatePlayer(clubTier, idx, nameContext) {
     id: `p_${tier}_${idx}_${SEED}`,
     name: `${fname} ${lname}`,
     firstName: fname, lastName: lname,
-    age, position, secondaryPosition, attrs, overall, trueRating, potential, potentialTrue, tier,
+    age, position, secondaryPosition, attrs, ruckwork, overall, trueRating, potential, potentialTrue, tier,
     fitness: rand(85, 100),
     morale: rand(60, 90),
     moraleLog: [],
