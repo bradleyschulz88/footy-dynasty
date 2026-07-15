@@ -100,5 +100,52 @@ export function computeLeagueAwards(c, _league, aiSquads) {
     ? { name: nameOf(rs.p), club: clubShort(rs.clubId), age: rs.p.age, overall: rs.p.overall, isMine: mine(rs.clubId) }
     : null;
 
-  return { brownlow, coleman, risingStar };
+  const allAustralian = selectAllAustralian(entries, clubShort, mine);
+
+  return { brownlow, coleman, risingStar, allAustralian };
+}
+
+// A season "All-Australian score": on-field rating plus the year's impact
+// (Brownlow votes weigh for everyone; goals reward forwards).
+const aaScore = (e) => (e.p.overall ?? 0) + e.votes * 1.1 + e.goals * 0.28;
+
+const LINE_OF = (pos) =>
+  pos === "KB" || pos === "HB" ? "DEF"
+    : pos === "C" || pos === "R" || pos === "WG" ? "MID"
+      : pos === "KF" || pos === "HF" ? "FWD"
+        : pos === "RU" ? "RUCK" : "UTIL";
+
+/**
+ * Pick a 22-player All-Australian team from the competition: 6 defenders,
+ * 6 midfielders, 6 forwards, a ruck, plus the 3 best remaining as the bench.
+ * Returns an array of { name, club, position, line, overall, bench, isMine }.
+ */
+function selectAllAustralian(entries, clubShort, mine) {
+  if (!entries.length) return [];
+  const ranked = [...entries].sort((a, b) => aaScore(b) - aaScore(a));
+  const need = { DEF: 6, MID: 6, FWD: 6, RUCK: 1 };
+  const picked = [];
+  const usedIds = new Set();
+  const take = (e, bench) => {
+    usedIds.add(e.p.id);
+    picked.push({
+      name: nameOf(e.p),
+      club: clubShort(e.clubId),
+      position: e.p.position,
+      line: LINE_OF(e.p.position),
+      overall: e.p.overall ?? 0,
+      bench: !!bench,
+      isMine: mine(e.clubId),
+    });
+  };
+  for (const e of ranked) {
+    const line = LINE_OF(e.p.position);
+    if (need[line] > 0) { take(e, false); need[line] -= 1; }
+  }
+  // Bench: 3 best players not already selected, any position.
+  for (const e of ranked) {
+    if (picked.length >= 22) break;
+    if (!usedIds.has(e.p.id)) take(e, true);
+  }
+  return picked;
 }

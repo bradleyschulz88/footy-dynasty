@@ -284,6 +284,62 @@ export default function SeasonSummaryScreen({
           />
         )}
 
+        {summary.allAustralian && summary.allAustralian.length > 0 && (
+          <div
+            className="rounded-2xl p-4 mt-2"
+            style={{ background: "rgba(245,178,58,0.07)", border: "1px solid rgba(245,178,58,0.3)" }}
+          >
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#F5B23A] mb-3">
+              ⭐ All-Australian Team
+            </div>
+            {["DEF", "MID", "RUCK", "FWD", "UTIL"].map((line) => {
+              const lineLabel = { DEF: "Backs", MID: "Midfield", RUCK: "Ruck", FWD: "Forwards", UTIL: "Utility" }[line];
+              const players = summary.allAustralian.filter((p) => !p.bench && p.line === line);
+              if (!players.length) return null;
+              return (
+                <div key={line} className="mb-2 last:mb-0">
+                  <div className="text-[9px] font-mono uppercase tracking-widest text-atext-mute mb-1">{lineLabel}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {players.map((p) => (
+                      <span
+                        key={`${p.name}-${p.club}`}
+                        className="text-[11px] px-2 py-0.5 rounded-md"
+                        style={{
+                          background: p.isMine ? "rgba(44,168,240,0.16)" : "var(--A-panel-2)",
+                          color: p.isMine ? "var(--A-accent)" : "var(--A-text)",
+                          border: "1px solid var(--A-line)",
+                        }}
+                      >
+                        {p.name} <span className="text-atext-mute">· {p.club}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            {summary.allAustralian.some((p) => p.bench) && (
+              <div className="mt-2">
+                <div className="text-[9px] font-mono uppercase tracking-widest text-atext-mute mb-1">Interchange</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {summary.allAustralian.filter((p) => p.bench).map((p) => (
+                    <span
+                      key={`${p.name}-${p.club}`}
+                      className="text-[11px] px-2 py-0.5 rounded-md"
+                      style={{
+                        background: p.isMine ? "rgba(44,168,240,0.16)" : "var(--A-panel-2)",
+                        color: p.isMine ? "var(--A-accent)" : "var(--A-text)",
+                        border: "1px solid var(--A-line)",
+                      }}
+                    >
+                      {p.name} <span className="text-atext-mute">· {p.club}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {retiredThisSeason && retiredThisSeason.length > 0 && (
           <div
             className="rounded-2xl p-4 mt-2"

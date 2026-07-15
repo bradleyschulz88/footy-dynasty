@@ -936,6 +936,7 @@ function finishSeason(c, league) {
     brownlow: brownlowWinner,
     coleman: colemanWinner,
     risingStar: leagueAwards.risingStar ?? c.seasonSummary.risingStar,
+    allAustralian: leagueAwards.allAustralian ?? [],
     clubChampion,
     normSmith,
     highlights: (c.seasonHighlights || []).slice(0, 8),

@@ -49,6 +49,30 @@ describe("computeLeagueAwards", () => {
     expect(["C", "R", "WG"]).toContain(brownlow.position);
   });
 
+  it("selects an All-Australian team spanning multiple clubs and lines", () => {
+    const c = makeCareer();
+    const ai = {};
+    // build a deep pool so all lines can fill
+    const lines = { KB: "def", HB: "def", C: "mid", R: "mid", WG: "mid", KF: "fwd", HF: "fwd", RU: "ruck" };
+    ["gee", "syd", "bri", "col", "haw", "ess"].forEach((club, ci) => {
+      ai[club] = Object.keys(lines).map((pos, pi) => ({
+        id: `${club}_${pos}_${pi}`, firstName: club.toUpperCase(), lastName: pos,
+        position: pos, overall: 70 + ((ci + pi) % 20), age: 25, goals: pos === "KF" ? 30 : 2,
+      }));
+    });
+    const { allAustralian } = computeLeagueAwards(c, { tier: 1 }, ai);
+    expect(allAustralian.length).toBeGreaterThanOrEqual(19);
+    // has each line represented
+    expect(allAustralian.some((p) => p.line === "DEF")).toBe(true);
+    expect(allAustralian.some((p) => p.line === "MID")).toBe(true);
+    expect(allAustralian.some((p) => p.line === "FWD")).toBe(true);
+    expect(allAustralian.some((p) => p.line === "RUCK")).toBe(true);
+    // drawn from more than one club
+    expect(new Set(allAustralian.map((p) => p.club)).size).toBeGreaterThan(1);
+    // no duplicate players
+    expect(new Set(allAustralian.map((p) => p.name + p.club)).size).toBe(allAustralian.length);
+  });
+
   it("respects the user's real accrued goals for their own players", () => {
     const c = makeCareer();
     // No AI forwards with goals → user's 55-goal forward leads the Coleman.
