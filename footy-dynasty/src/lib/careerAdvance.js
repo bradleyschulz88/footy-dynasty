@@ -1544,10 +1544,18 @@ function finishSeason(c, league) {
     ...c.news,
   ].slice(0, 20);
   if (brownlowWinner) {
-    c.news = [{ week: 0, type: 'info', text: `🥇 Brownlow Medal: ${brownlowWinner.name} (${brownlowWinner.votes} votes)` }, ...c.news].slice(0, 25);
+    const bClub = brownlowWinner.club ? ` (${brownlowWinner.club})` : '';
+    c.news = [{ week: 0, type: 'info', text: `🥇 Brownlow Medal: ${brownlowWinner.name}${bClub} — ${brownlowWinner.votes} votes.` }, ...c.news].slice(0, 25);
   }
   if (colemanWinner) {
-    c.news = [{ week: 0, type: 'win', text: `🥇 ${colemanWinner.name} wins the Coleman Medal with ${colemanWinner.goals} goals this season!` }, ...c.news].slice(0, 25);
+    const cClub = colemanWinner.club ? ` (${colemanWinner.club})` : '';
+    c.news = [{ week: 0, type: 'win', text: `🥇 Coleman Medal: ${colemanWinner.name}${cClub} — ${colemanWinner.goals} goals.` }, ...c.news].slice(0, 25);
+  }
+  // Celebrate any of the club's own players named in the All-Australian team.
+  const myAllAustralians = (c.seasonSummary?.allAustralian || []).filter((p) => p.isMine);
+  if (myAllAustralians.length) {
+    const names = myAllAustralians.map((p) => p.name).join(', ');
+    c.news = [{ week: 0, type: 'win', text: `⭐ All-Australian honours: ${names} named in the Team of the Year.` }, ...c.news].slice(0, 25);
   }
   if (clubChampion) {
     c.news = [{ week: 0, type: 'info', text: `🏅 Club Champion: ${clubChampion.name} — ${clubChampion.votes} Brownlow votes this season.` }, ...c.news].slice(0, 25);
