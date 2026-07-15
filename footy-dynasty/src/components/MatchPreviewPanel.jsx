@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 import { findClub } from "../data/pyramid.js";
 import { getClubGround } from "../data/grounds.js";
+import { calculateExpectedCrowd } from "../lib/homeAdvantage.js";
 import { teamRating, aiClubRating } from "../lib/matchEngine.js";
 import { selectAiLineup, ensureSquadsForLeague } from "../lib/aiSquads.js";
 import { resolveAiOppTactic } from "../lib/aiPersonality.js";
@@ -74,8 +75,15 @@ export default function MatchPreviewPanel({ league }) {
     const homeClub = isHome ? findClub(career.clubId) : opp;
     const homeStadiumLevel = isHome ? (career.facilities?.stadium?.level ?? 1) : 3;
     const ground = getClubGround(homeClub, homeStadiumLevel, league.tier);
+    // Expected crowd is only meaningful when the player hosts (the heuristic is
+    // career-mood based); away games show capacity only.
     const venue = ground
-      ? { name: ground.name, city: ground.city, capacity: ground.capacity }
+      ? {
+          name: ground.name,
+          city: ground.city,
+          capacity: ground.capacity,
+          expected: isHome ? calculateExpectedCrowd(career, league, ground) : null,
+        }
       : null;
 
     const rivalryLine = finalsRivalryPreviewLine(career, opp.id);
@@ -165,8 +173,16 @@ export default function MatchPreviewPanel({ league }) {
         <div className="text-right">
           <div className="text-sm font-bold text-atext">{preview.label}</div>
           {preview.venue && (
-            <div className="text-[11px] text-atext-mute font-mono mt-0.5">
-              📍 {preview.venue.name}{preview.venue.city ? ` · ${preview.venue.city}` : ""}
+            <div className="text-[11px] text-atext-mute font-mono mt-0.5 leading-snug">
+              <div>📍 {preview.venue.name}{preview.venue.city ? ` · ${preview.venue.city}` : ""}</div>
+              {preview.venue.capacity != null && (
+                <div>
+                  🎟️ {preview.venue.capacity.toLocaleString()} cap
+                  {preview.venue.expected != null
+                    ? ` · ~${preview.venue.expected.toLocaleString()} expected`
+                    : ""}
+                </div>
+              )}
             </div>
           )}
         </div>
