@@ -12,7 +12,10 @@ export const TIER_FINANCE = {
     cash:           12_000_000,
     annualIncome:   90_000_000,
     transferBudget: 2_200_000,
-    wageBudget:     13_000_000,
+    // Real AFL Total Player Payments cap (~$16.9M, 2025) for a 2026 setting.
+    // scaledSquadToFitCap targets 80% of this, so the wage/cap ratio — and the
+    // financial difficulty — is unchanged; only the headline figure is real.
+    wageBudget:     16_900_000,
   },
   2: {
     cash:           1_200_000,
