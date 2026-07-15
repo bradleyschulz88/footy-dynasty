@@ -2460,6 +2460,21 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
     const dispAdd = Math.round((isMidPreferred(p) ? rand(15, 32) : rand(8, 22)) * attrStatMult(ballSkill));
     const markAdd = Math.round(rand(2, 7) * attrStatMult(p.attrs?.marking));
     const tackleAdd = Math.round(rand(1, 5) * attrStatMult(p.attrs?.tackling));
+    // Signature AFL stats, derived from on-field role + attributes.
+    const isMid = isMidPreferred(p);
+    const isFwd = p.position === "KF" || p.position === "HF";
+    const hitoutAdd = p.position === "RU"
+      ? Math.round(rand(14, 38) * attrStatMult(p.attrs?.strength))
+      : 0;
+    const clearAdd = isMid
+      ? Math.round(rand(2, 8) * attrStatMult(p.attrs?.strength))
+      : Math.round(rand(0, 2) * attrStatMult(p.attrs?.strength));
+    const inside50Add = (isFwd || isMid)
+      ? Math.round(rand(2, 7) * attrStatMult(p.attrs?.kicking))
+      : Math.round(rand(0, 3) * attrStatMult(p.attrs?.kicking));
+    const contestedAdd = (isMid || p.position === "KF" || p.position === "KB")
+      ? Math.round(rand(4, 12) * attrStatMult(p.attrs?.strength))
+      : Math.round(rand(2, 7) * attrStatMult(p.attrs?.strength));
     const newForm = clamp(p.form + formChange, 30, 100);
     const formHistory = [...(p.formHistory || []), p.form].slice(-5);
     // Logged, cause-driven morale for players who took the field. Magnitude is
@@ -2483,6 +2498,10 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
       disposals: dispAdd,
       marks: markAdd,
       tackles: tackleAdd,
+      hitouts: hitoutAdd,
+      clearances: clearAdd,
+      inside50s: inside50Add,
+      contested: contestedAdd,
       votes,
     };
     let np = { ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,
