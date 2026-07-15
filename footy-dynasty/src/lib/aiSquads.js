@@ -8,7 +8,7 @@ import { competitionClubsForCareer } from './leagueEngine.js';
 import { LINEUP_CAP } from './lineupHelpers.js';
 import { classifySquadMode } from './draftEngine.js';
 
-const SQUAD_SIZE = 32;
+const SQUAD_SIZE = 38; // real AFL senior list (fits under MAX_SQUAD_SIZE 40)
 
 // Build initial squads for every club in a league
 export function ensureSquadsForLeague(career, league) {

@@ -83,25 +83,26 @@
   --S-club: #1B3B7A;
   --S-club-2: #FFD200;
 
-  /* Official AFL (Direction V4) — the shipped identity. Deep AFL navy base,
-     AFL sky-blue primary, white ink, footy-red for urgent/live. Clean, flat,
-     spacious — modeled on the official AFL app / AFL.com.au. Display uses Sora
-     (bold geometric); body uses Inter. */
-  --V4-bg: #001325;
-  --V4-bg-2: #001E3C;
-  --V4-panel: #0A2742;
-  --V4-panel-2: #0F3358;
-  --V4-line: rgba(143, 166, 188, 0.16);
-  --V4-line-2: rgba(143, 166, 188, 0.30);
-  --V4-text: #F4F8FD;
-  --V4-text-dim: #B7C9DD;
-  --V4-text-mute: #8FA6BC;
-  --V4-accent: #0091DA;    /* AFL sky blue — primary */
-  --V4-accent-2: #4FB6E8;  /* lighter azure — secondary highlight */
-  --V4-pos: #2FB56B;
-  --V4-neg: #E4002B;       /* AFL/footy red — urgent, live, negative */
+  /* Official AFL — "Broadcast Deck" (Direction V4) — the shipped identity.
+     OLED-dark broadcast base (near-black ground, lifted surfaces), AFL sky-blue
+     primary, bright ink, footy-red for urgent/live. Modeled on a live AFL
+     broadcast graphics package. Display uses Barlow Condensed (broadcast
+     condensed); body uses Inter. */
+  --V4-bg: #05070C;        /* ground — OLED near-black */
+  --V4-bg-2: #0A0F17;      /* lifted ground */
+  --V4-panel: #0B111B;     /* surface */
+  --V4-panel-2: #121C2A;   /* surface 2 (raised) */
+  --V4-line: rgba(150, 172, 205, 0.14);
+  --V4-line-2: rgba(150, 172, 205, 0.28);
+  --V4-text: #EAF1FB;      /* ink */
+  --V4-text-dim: #8FA3BE;  /* dim */
+  --V4-text-mute: #5C6E88; /* mute */
+  --V4-accent: #2CA8F0;    /* broadcast sky blue — primary */
+  --V4-accent-2: #5FC0F7;  /* lighter azure — secondary highlight */
+  --V4-pos: #34D17E;
+  --V4-neg: #FF3B4E;       /* footy red — urgent, live, negative */
   --V4-club: #001E3C;
-  --V4-club-2: #0091DA;
+  --V4-club-2: #2CA8F0;
 }
 
 /* shared */
@@ -697,17 +698,17 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   content: "";
   position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse 65% 45% at 22% 8%, rgba(0, 145, 218, 0.10), transparent 62%),
-    radial-gradient(ellipse 55% 45% at 85% 92%, rgba(0, 145, 218, 0.06), transparent 64%);
+    radial-gradient(ellipse 65% 45% at 22% 8%, rgba(44, 168, 240, 0.09), transparent 62%),
+    radial-gradient(ellipse 55% 45% at 85% 92%, rgba(44, 168, 240, 0.05), transparent 64%);
   pointer-events: none;
 }
-/* Sora — bold geometric sans, the official-AFL display face. */
+/* Barlow Condensed — broadcast condensed display face (score-bugs, headers). */
 .dirV4 .font-display,
 .dirV4 .display,
 .dirV4 [class*="font-display"] {
-  font-family: "Sora", "Inter", system-ui, sans-serif !important;
-  font-weight: 800 !important;
-  letter-spacing: -0.01em !important;
+  font-family: "Barlow Condensed", "Oswald", "Inter", system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
 }
 .dirV4 .panel {
   /* Subtle gradient + brighter hairline top-sheen for a premium dark-mode lift. */
@@ -763,9 +764,9 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   padding: 3px 8px; border-radius: var(--radius-pill);
   font-family: "JetBrains Mono", monospace;
   font-size: var(--font-caption); letter-spacing: 0.12em; text-transform: uppercase;
-  background: rgba(0, 145, 218, 0.15);
+  background: rgba(44, 168, 240, 0.15);
   color: var(--V4-accent);
-  border: 1px solid rgba(0, 145, 218, 0.35);
+  border: 1px solid rgba(44, 168, 240, 0.35);
 }
 .dirV4 .pill-ghost {
   display: inline-flex; align-items: center; gap: 6px;
@@ -801,11 +802,11 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   text-transform: uppercase;
   border: 0;
   cursor: pointer;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.28) inset, 0 4px 20px rgba(0, 145, 218, 0.38);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.28) inset, 0 4px 20px rgba(44, 168, 240, 0.38);
 }
 .dirV4 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.28) inset, 0 6px 28px rgba(0, 145, 218, 0.52);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.28) inset, 0 6px 28px rgba(44, 168, 240, 0.52);
 }
 .dirV4 .grid-bg {
   background-image:

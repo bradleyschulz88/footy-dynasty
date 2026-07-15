@@ -1,6 +1,42 @@
 {
   "version": 1,
   "skills": {
+    "agent-browser": {
+      "source": "nexu-io/open-design",
+      "sourceType": "github",
+      "skillPath": "skills/agent-browser/SKILL.md",
+      "computedHash": "09ef2d39e3905cee2f1a40f6e6223da42c2b77efe7df45cf15f6c093f7fa36b5"
+    },
+    "algorithmic-art": {
+      "source": "nexu-io/open-design",
+      "sourceType": "github",
+      "skillPath": "skills/algorithmic-art/SKILL.md",
+      "computedHash": "bd8d3ee280a9be1cac71e56e23fd87ef5f0b81aac112fea5af84dca866e13039"
+    },
+    "apple-hig": {
+      "source": "nexu-io/open-design",
+      "sourceType": "github",
+      "skillPath": "skills/apple-hig/SKILL.md",
+      "computedHash": "810dd0ff8da113fceee96b5d4228b0d298d29d14ee90b9977fae1bc76d1358e8"
+    },
+    "artifacts-builder": {
+      "source": "nexu-io/open-design",
+      "sourceType": "github",
+      "skillPath": "skills/artifacts-builder/SKILL.md",
+      "computedHash": "9b59e116000cc4e7cadf28d1697262b6a905aa85ac97880d8cb5cb616bd9a4ac"
+    },
+    "brand-guidelines": {
+      "source": "nexu-io/open-design",
+      "sourceType": "github",
+      "skillPath": "skills/brand-guidelines/SKILL.md",
+      "computedHash": "8af0e4d2097017080331ec7b123accdfce234e4dbbc5f41666dd682ce4a50257"
+    },
+    "brandkit": {
+      "source": "nexu-io/open-design",
+      "sourceType": "github",
+      "skillPath": "skills/brandkit/SKILL.md",
+      "computedHash": "181bc174e9c6ade767a4071e8f1a4b158e11d1a68bd83802f4cb314938963263"
+    },
     "higgsfield-generate": {
       "source": "higgsfield-ai/skills",
       "sourceType": "github",

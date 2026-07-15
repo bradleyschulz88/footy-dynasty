@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { useCareer } from "../lib/careerStore.js";
 import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { findClub } from "../data/pyramid.js";
+import { getClubGround } from "../data/grounds.js";
 import {
   TRAINING_INFO,
   formatDate,
@@ -148,6 +149,14 @@ export default function ScheduleScreen({ club: _club, league: _league, onOpenCom
   const nextRoundOppPos = nextRoundInfo?.oppId ? ladderPos[nextRoundInfo.oppId] : null;
   const nextRoundDiff = difficultyPill(nextRoundOppPos);
   const nextRoundDays = nextRound ? daysUntil(nextRound.date, today) : null;
+  // Real venue = home club's ground (fixed for AFL, synthesised lower down).
+  const nextRoundVenue = nextRoundInfo
+    ? getClubGround(
+        nextRoundInfo.isHome ? findClub(career.clubId) : nextRoundInfo.opp,
+        nextRoundInfo.isHome ? (career.facilities?.stadium?.level ?? 1) : 3,
+        _league?.tier,
+      )
+    : null;
 
   return (
     <div className="anim-in space-y-5 touch-manipulation">
@@ -206,6 +215,7 @@ export default function ScheduleScreen({ club: _club, league: _league, onOpenCom
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                   <span className="text-[11px] font-semibold text-atext-dim">
                     {nextRoundInfo.isHome ? "Home" : "Away"} · {formatDate(nextRound.date)}
+                    {nextRoundVenue ? ` · 📍 ${nextRoundVenue.shortName || nextRoundVenue.name}` : ""}
                   </span>
                   {nextRoundDiff && (
                     <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: `${nextRoundDiff.color}22`, color: nextRoundDiff.color, border: `1px solid ${nextRoundDiff.color}40` }}>

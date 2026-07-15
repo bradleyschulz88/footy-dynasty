@@ -27,6 +27,7 @@ import {
 import { TaskList } from "../../components/TaskList.jsx";
 import { ClubBadge } from "../../components/ClubBadge.jsx";
 import { findClub } from "../../data/pyramid.js";
+import { clubNickname } from "../../data/nicknames.js";
 import { finalsRoundLabel, playerFinalsOpponent, finalsSeedFor } from "../../lib/finalsBracket.js";
 import { fmtK } from "../../lib/format.js";
 import { TRAINING_INFO, formatDate } from "../../lib/calendar.js";
@@ -322,6 +323,7 @@ export function HubScreen({ club, league, myLadderPos, sortedLadderRows, setScre
             <div className="min-w-0 flex-1">
               <h1 className="display text-xl tracking-wide text-atext leading-none truncate">{club?.name?.toUpperCase()}</h1>
               <div className="text-[10px] text-atext-dim mt-1 truncate font-mono tracking-wide">
+                {clubNickname(club) && <span className="text-atext-mute">The {clubNickname(club)} · </span>}
                 {league?.name} · Tier {league.tier} · Season {career.season}
                 {hubRoundTheme?.short && <> · <span style={{color:'var(--A-accent-2)'}}>{hubRoundTheme.short}</span></>}
               </div>

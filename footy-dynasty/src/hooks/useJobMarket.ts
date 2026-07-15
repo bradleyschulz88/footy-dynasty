@@ -46,7 +46,7 @@ export function useJobMarket({ setScreen, setTab, setCareer }: UseJobMarketOptio
     if (!newClub) return;
     
     const SEASON = startMode === 'nextSeason' ? c.season + 1 : c.season;
-    const newSquad = generateSquad(newClub.id, newLeague.tier, 32, SEASON).map((p: any) => ({
+    const newSquad = generateSquad(newClub.id, newLeague.tier, 38, SEASON).map((p: any) => ({
       ...p,
       morale: clamp((p.morale ?? 70)
         + ((c.coachStats?.premierships || 0) > 0 ? 5 : 0)

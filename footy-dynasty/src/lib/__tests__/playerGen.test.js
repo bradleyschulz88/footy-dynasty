@@ -115,11 +115,11 @@ describe('generatePlayer', () => {
     }
   });
 
-  it('contract is between 1 and 4 years', () => {
+  it('contract is between 1 and 5 years', () => {
     for (let i = 0; i < 30; i++) {
       const p = generatePlayer(1, i);
       expect(p.contract).toBeGreaterThanOrEqual(1);
-      expect(p.contract).toBeLessThanOrEqual(4);
+      expect(p.contract).toBeLessThanOrEqual(5);
     }
   });
 
@@ -163,8 +163,8 @@ describe('generateSquad', () => {
     expect(generateSquad('ade', 1, 22)).toHaveLength(22);
   });
 
-  it('defaults to 32 players', () => {
-    expect(generateSquad('ade', 1)).toHaveLength(32);
+  it('defaults to 38 players (AFL senior list)', () => {
+    expect(generateSquad('ade', 1)).toHaveLength(38);
   });
 
   it('is fully deterministic — same clubId always produces the same squad', () => {

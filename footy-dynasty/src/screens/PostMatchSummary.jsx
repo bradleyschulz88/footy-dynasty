@@ -282,6 +282,9 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
                 <span className="w-7 text-center">D</span>
                 <span className="w-7 text-center">M</span>
                 <span className="w-7 text-center">T</span>
+                <span className="w-7 text-center">CL</span>
+                <span className="w-7 text-center">I50</span>
+                <span className="w-7 text-center">HO</span>
                 <span className="w-7 text-center">G</span>
               </div>
               <div className="space-y-0.5 max-h-52 overflow-y-auto">
@@ -292,13 +295,16 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
                     <span className="w-7 text-center font-mono tabular-nums text-atext">{p.disposals}</span>
                     <span className="w-7 text-center font-mono tabular-nums text-atext-dim">{p.marks}</span>
                     <span className="w-7 text-center font-mono tabular-nums text-atext-dim">{p.tackles}</span>
+                    <span className="w-7 text-center font-mono tabular-nums text-atext-dim">{p.clearances ?? 0}</span>
+                    <span className="w-7 text-center font-mono tabular-nums text-atext-dim">{p.inside50s ?? 0}</span>
+                    <span className="w-7 text-center font-mono tabular-nums text-atext-dim">{p.hitouts ? p.hitouts : '·'}</span>
                     <span className="w-7 text-center font-mono tabular-nums font-bold" style={{ color: p.goals > 0 ? 'var(--A-accent-2)' : 'var(--A-text-mute)' }}>
                       {p.goals > 0 ? p.goals : '·'}
                     </span>
                   </div>
                 ))}
               </div>
-              <div className="text-[9px] text-atext-mute font-mono pt-2 pb-1 text-center">D = disposals · M = marks · T = tackles · G = goals</div>
+              <div className="text-[9px] text-atext-mute font-mono pt-2 pb-1 text-center">D disposals · M marks · T tackles · CL clearances · I50 inside-50s · HO hitouts · G goals</div>
             </div>
           </div>
         )}

@@ -187,16 +187,31 @@ export function benchStrengthBonus(squad, lineupIds, quarterNum) {
   return diff * 0.11 * qScale;
 }
 
+/**
+ * Set-shot accuracy modifier from a lineup's forwards' goalkicking. Balance-
+ * neutral at an average of 65 (mod 1.0); an elite forward line lifts conversion
+ * a little, a poor one drops it. Clamped so it never dominates the outcome.
+ */
+function forwardGoalkickingMod(lineup) {
+  if (!lineup?.length) return 1;
+  const fwds = lineup.filter((p) => p.position === 'KF' || p.position === 'HF');
+  const pool = fwds.length ? fwds : lineup;
+  const avg = pool.reduce((a, p) => a + (p.goalkicking ?? 60), 0) / pool.length;
+  // Pivot on the typical forward-line average so conversion is unchanged for an
+  // average side; only above/below-average goalkicking shifts it.
+  return clamp(1 + (avg - 71) / 300, 0.9, 1.1);
+}
+
 /** Ruck + midfield contested strength for stoppage chains. */
 function stoppageStrength(lineup) {
   if (!lineup?.length) return 50;
   const rucks = lineup.filter((p) => playerHasPosition(p, 'RU') || playerHasPosition(p, 'R'));
   const mids = lineup.filter((p) => isMidPreferred(p));
   const ruckAvg = rucks.length
-    ? rucks.reduce((a, p) => a + (p.attrs?.strength ?? 60) + (p.attrs?.marking ?? 60), 0) / rucks.length
+    ? rucks.reduce((a, p) => a + (p.ruckwork ?? p.attrs?.strength ?? 60) + (p.attrs?.marking ?? 60), 0) / rucks.length
     : 50;
   const midAvg = mids.length
-    ? mids.reduce((a, p) => a + (p.attrs?.decision ?? 60) + (p.attrs?.endurance ?? 60), 0) / mids.length
+    ? mids.reduce((a, p) => a + (p.contestedBall ?? p.attrs?.decision ?? 60) + (p.attrs?.endurance ?? 60), 0) / mids.length
     : 50;
   return ruckAvg * 0.45 + midAvg * 0.55;
 }
@@ -400,11 +415,13 @@ export function initMatchSim(home, away, isPlayerHome, playerStrength, opts = {}
   const playerSideAccMod =
     defensivePressureMod(oppLineup, playerLineup, oppTactic)
     * weatherAccuracyMod(weather, tactic)
-    * (1 - (profile.riskMod - 1) * 0.15);
+    * (1 - (profile.riskMod - 1) * 0.15)
+    * forwardGoalkickingMod(playerLineup);
   const oppSideAccMod =
     defensivePressureMod(playerLineup, oppLineup, tactic)
     * weatherAccuracyMod(weather, oppTactic)
-    * (1 - (oppProfile.riskMod - 1) * 0.15);
+    * (1 - (oppProfile.riskMod - 1) * 0.15)
+    * forwardGoalkickingMod(oppLineup);
 
   const strengthArray = (fn, fallbackArr) => {
     if (Array.isArray(fallbackArr) && fallbackArr.length === 4) return fallbackArr;

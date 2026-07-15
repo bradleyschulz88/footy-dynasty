@@ -12,7 +12,10 @@ export const TIER_FINANCE = {
     cash:           12_000_000,
     annualIncome:   90_000_000,
     transferBudget: 2_200_000,
-    wageBudget:     13_000_000,
+    // Real AFL Total Player Payments cap (~$16.9M, 2025) for a 2026 setting.
+    // scaledSquadToFitCap targets 80% of this, so the wage/cap ratio — and the
+    // financial difficulty — is unchanged; only the headline figure is real.
+    wageBudget:     16_900_000,
   },
   2: {
     cash:           1_200_000,
@@ -101,10 +104,10 @@ export const PRIZE_MONEY = {
 // wage based on age + form. Younger players accept smaller bumps; veterans
 // demand more for one last season.
 export const RENEWAL_AGE_CURVE = {
-  // age <= 22 — youth
-  young:  { wageMult: [1.05, 1.15], yearsRange: [2, 4] },
-  // 23–28 — prime
-  prime:  { wageMult: [1.10, 1.25], yearsRange: [2, 4] },
+  // age <= 22 — youth (long "tie-down" deals for young guns)
+  young:  { wageMult: [1.05, 1.15], yearsRange: [2, 5] },
+  // 23–28 — prime (stars can sign 5–6 year deals)
+  prime:  { wageMult: [1.10, 1.25], yearsRange: [2, 6] },
   // 29–32 — veteran
   vet:    { wageMult: [1.05, 1.18], yearsRange: [1, 3] },
   // 33+ — twilight

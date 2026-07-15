@@ -93,7 +93,7 @@ export function TopBar({
       nextIcon = "📅";
     } else if (nextEv.type === "preseason_match") {
       nextLabel = nextEv.label;
-      nextIcon = "⚽";
+      nextIcon = "🏉";
     } else if (nextEv.type === "round") {
       const myMatch = (nextEv.matches || []).find(m => m.home === career.clubId || m.away === career.clubId);
       if (myMatch) {

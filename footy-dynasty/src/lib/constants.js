@@ -129,7 +129,7 @@ export const CAREER = {
 // Finance Constants
 export const FINANCE = {
   // Tier-based salary caps
-  SALARY_CAP_TIER1: 13_000_000,
+  SALARY_CAP_TIER1: 16_900_000,
   SALARY_CAP_TIER2: 2_500_000,
   SALARY_CAP_TIER3: 400_000,
   // Wage multipliers by tier

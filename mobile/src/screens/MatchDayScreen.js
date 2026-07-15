@@ -6,7 +6,7 @@ import { SectionCard } from "../components.js";
 const TACTICS = ["Balanced", "Attacking", "Defensive", "Contested"];
 
 export default function MatchDayScreen({ career, onAdvance }) {
-  const { club, nextOpponent, lastResult } = career;
+  const { club, nextOpponent, lastResult, nextVenue } = career;
   const [tactic, setTactic] = useState("Balanced");
   const [c1] = club.colors || [C.sky];
   const oc1 = (nextOpponent?.colors || [C.mute])[0];
@@ -33,6 +33,12 @@ export default function MatchDayScreen({ career, onAdvance }) {
               <Text style={styles.teamName}>{nextOpponent.name}</Text>
             </View>
           </View>
+          {nextVenue && (
+            <Text style={styles.venue}>
+              📍 {nextVenue.name}{nextVenue.city ? ` · ${nextVenue.city}` : ""}
+              {nextVenue.capacity ? `  🎟️ ${nextVenue.capacity.toLocaleString()}` : ""}
+            </Text>
+          )}
         </SectionCard>
       )}
 
@@ -58,7 +64,7 @@ export default function MatchDayScreen({ career, onAdvance }) {
       {/* Last result */}
       {lastResult && (
         <SectionCard title="Last Result" style={{ marginHorizontal: 14, marginTop: 12 }}>
-          <View style={[styles.resultBanner, { backgroundColor: lastResult.won ? "rgba(47,181,107,0.14)" : lastResult.draw ? "rgba(143,166,188,0.14)" : "rgba(228,0,43,0.14)" }]}>
+          <View style={[styles.resultBanner, { backgroundColor: lastResult.won ? "rgba(52,209,126,0.14)" : lastResult.draw ? "rgba(150,172,205,0.14)" : "rgba(255,59,78,0.14)" }]}>
             <Text style={[styles.resultTag, { color: lastResult.won ? C.pos : lastResult.draw ? C.mute : C.red }]}>
               {lastResult.won ? "WIN" : lastResult.draw ? "DRAW" : "LOSS"}
             </Text>
@@ -94,6 +100,7 @@ const styles = StyleSheet.create({
   badgeText: { color: "#fff", fontWeight: "900", fontSize: 16 },
   teamName: { color: C.dim, fontSize: 12, fontWeight: "700", textAlign: "center" },
   vs: { color: C.mute, fontSize: 18, fontWeight: "900", marginHorizontal: 6 },
+  venue: { color: C.mute, fontSize: 11, fontWeight: "600", textAlign: "center", marginTop: 10 },
   tacticRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tacticChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: C.line, backgroundColor: C.panel2 },
   tacticActive: { backgroundColor: C.sky, borderColor: C.sky },

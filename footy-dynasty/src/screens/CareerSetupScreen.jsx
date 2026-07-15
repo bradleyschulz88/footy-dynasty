@@ -116,105 +116,77 @@ function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
   const anySelected = !!selectedState;
   const mainStates = ['WA', 'NT', 'QLD', 'SA', 'NSW', 'VIC', 'TAS'];
 
-  const getStateFill = (key) => {
+  // Broadcast Deck map: guernsey-coloured fills on an OLED ground. Idle states
+  // sit at low opacity; hover lifts them; the selected state burns full-colour
+  // with a sky glow and a bright outline.
+  const stateStyle = (key) => {
     const meta = STATE_META[key];
-    if (selectedState === key) return `${meta.color}BF`;
-    if (hoveredState === key) return `${meta.color}88`;
-    return '#EDE8DC';
+    const isHov = hoveredState === key;
+    const isSel = selectedState === key;
+    const active = isHov || isSel;
+    const isDimmed = anySelected && !active;
+    return {
+      fill: meta.color,
+      fillOpacity: isSel ? 1 : isHov ? 0.62 : 0.32,
+      stroke: isSel ? '#EAF1FB' : active ? meta.color : 'rgba(150,172,205,0.32)',
+      strokeWidth: isSel ? 1.4 : active ? 1 : 0.5,
+      strokeLinejoin: 'round',
+      opacity: isDimmed ? 0.5 : 1,
+      cursor: 'pointer',
+      transition: 'fill-opacity 0.2s ease, opacity 0.2s ease, stroke 0.2s ease',
+      filter: isSel ? 'url(#aus-state-glow)' : undefined,
+    };
   };
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: '#4BBFBF', touchAction: 'pan-y' }}>
+    <div className="rounded-xl overflow-hidden" style={{ background: 'radial-gradient(80% 55% at 50% 12%, rgba(44,168,240,0.10), transparent 62%), var(--A-bg)', touchAction: 'pan-y' }}>
       <svg viewBox="-0.4 -0.4 291 263" className="w-full block"
         aria-label="Map of Australia — select a state to begin">
         <defs>
-          <filter id="aus-veg-blur" x="-8%" y="-8%" width="116%" height="116%">
-            <feGaussianBlur stdDeviation="2.8" />
-          </filter>
           <filter id="aus-state-glow" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="3" result="b" />
-            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            <feDropShadow dx="0" dy="0" stdDeviation="3.4" floodColor="#2CA8F0" floodOpacity="0.9" />
           </filter>
         </defs>
 
-        {/* Teal ocean */}
-        <rect x="-1" y="-1" width="292" height="264" fill="#4BBFBF" />
-
-        {/* Coastal vegetation halo — WA outline blurred green behind all fills */}
-        <path d={STATE_PATHS.WA} fill="#9ECFBA" filter="url(#aus-veg-blur)" opacity="0.9"
-          style={{ pointerEvents: 'none' }} />
-
         {/* State fills — each real geographic path, individually interactive */}
-        {mainStates.map(key => {
-          const meta = STATE_META[key];
-          const isHov = hoveredState === key;
-          const isSel = selectedState === key;
-          const active = isHov || isSel;
-          const isDimmed = anySelected && !active;
-          return (
-            <path key={key}
-              d={STATE_PATHS[key]}
-              style={{
-                fill: getStateFill(key),
-                stroke: active ? meta.color : '#8B8070',
-                strokeWidth: active ? 1 : 0.4,
-                opacity: isDimmed ? 0.45 : 1,
-                cursor: 'pointer',
-                transition: 'fill 0.2s ease, opacity 0.2s ease',
-                filter: isSel ? 'url(#aus-state-glow)' : undefined,
-              }}
-              onClick={() => onSelect(key)}
-              onMouseEnter={() => onHover(key)}
-              onMouseLeave={() => onHover(null)}
-            />
-          );
-        })}
+        {mainStates.map(key => (
+          <path key={key}
+            d={STATE_PATHS[key]}
+            style={stateStyle(key)}
+            onClick={() => onSelect(key)}
+            onMouseEnter={() => onHover(key)}
+            onMouseLeave={() => onHover(null)}
+          />
+        ))}
 
         {/* NT Melville Island — same click target as NT */}
-        {(() => {
-          const key = 'NT';
-          const meta = STATE_META[key];
-          const isHov = hoveredState === key;
-          const isSel = selectedState === key;
-          const active = isHov || isSel;
-          const isDimmed = anySelected && !active;
-          return (
-            <path d={NT_MELVILLE_ISLAND}
-              style={{
-                fill: getStateFill(key),
-                stroke: active ? meta.color : '#8B8070',
-                strokeWidth: active ? 1 : 0.4,
-                opacity: isDimmed ? 0.45 : 1,
-                cursor: 'pointer',
-                transition: 'fill 0.2s ease, opacity 0.2s ease',
-              }}
-              onClick={() => onSelect(key)}
-              onMouseEnter={() => onHover(key)}
-              onMouseLeave={() => onHover(null)}
-            />
-          );
-        })()}
+        <path d={NT_MELVILLE_ISLAND}
+          style={stateStyle('NT')}
+          onClick={() => onSelect('NT')}
+          onMouseEnter={() => onHover('NT')}
+          onMouseLeave={() => onHover(null)}
+        />
 
-        {/* Dashed internal state border lines */}
+        {/* Internal state border lines — dark hairlines over the ground */}
         {STATE_BORDERS.map(([x1, y1, x2, y2], i) => (
           <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-            style={{ stroke: '#8B8070', strokeWidth: 0.7, strokeDasharray: '3,2.5', pointerEvents: 'none' }} />
+            style={{ stroke: 'rgba(5,7,12,0.55)', strokeWidth: 0.8, pointerEvents: 'none' }} />
         ))}
 
         {/* State abbreviation labels */}
         {mainStates.map(key => {
           const lbl = STATE_LABELS[key];
-          const meta = STATE_META[key];
           const active = hoveredState === key || selectedState === key;
           const isDimmed = anySelected && !active;
           return (
             <text key={key} x={lbl.x} y={lbl.y} textAnchor="middle"
               style={{
                 fontSize: lbl.fs,
-                fontFamily: 'system-ui, sans-serif',
-                fontWeight: active ? 900 : 700,
-                fill: active ? '#ffffff' : '#3D3830',
-                opacity: isDimmed ? 0.3 : 1,
+                fontFamily: '"Barlow Condensed", system-ui, sans-serif',
+                fontWeight: active ? 700 : 600,
+                letterSpacing: '0.5px',
+                fill: active ? '#EAF1FB' : 'rgba(234,241,251,0.62)',
+                opacity: isDimmed ? 0.4 : 1,
                 pointerEvents: 'none',
                 userSelect: 'none',
                 transition: 'fill 0.2s ease, opacity 0.2s ease',
@@ -239,19 +211,21 @@ function AustraliaMap({ hoveredState, selectedState, onHover, onSelect }) {
               onMouseLeave={() => onHover(null)}>
               <circle cx={245.9} cy={188} r={5}
                 style={{
-                  fill: isSel ? `${meta.color}BF` : isHov ? `${meta.color}88` : '#EDE8DC',
-                  stroke: active ? meta.color : '#8B8070',
+                  fill: meta.color,
+                  fillOpacity: isSel ? 1 : isHov ? 0.62 : 0.32,
+                  stroke: isSel ? '#EAF1FB' : active ? meta.color : 'rgba(150,172,205,0.32)',
                   strokeWidth: active ? 1 : 0.6,
-                  opacity: isDimmed ? 0.45 : 1,
-                  transition: 'fill 0.2s ease, stroke 0.2s ease, opacity 0.2s ease',
+                  opacity: isDimmed ? 0.5 : 1,
+                  filter: isSel ? 'url(#aus-state-glow)' : undefined,
+                  transition: 'fill-opacity 0.2s ease, stroke 0.2s ease, opacity 0.2s ease',
                 }} />
               <text x={252} y={191} textAnchor="start"
                 style={{
                   fontSize: 5,
-                  fontFamily: 'system-ui, sans-serif',
-                  fontWeight: 700,
-                  fill: active ? '#ffffff' : '#3D3830',
-                  opacity: isDimmed ? 0.3 : 1,
+                  fontFamily: '"Barlow Condensed", system-ui, sans-serif',
+                  fontWeight: active ? 700 : 600,
+                  fill: active ? '#EAF1FB' : 'rgba(234,241,251,0.62)',
+                  opacity: isDimmed ? 0.4 : 1,
                   pointerEvents: 'none',
                   userSelect: 'none',
                 }}>
@@ -439,7 +413,7 @@ export function buildNewCareer({
   const compClubs = getCompetitionClubs(leagueKey, state, startDiv);
   if (!compClubs.some((row) => row.id === clubId)) throw new Error('Selected club is not in this competition pool.');
   const ladder0 = blankLadder(compClubs);
-  const squadRaw = generateSquad(clubId, league.tier, 32, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
+  const squadRaw = generateSquad(clubId, league.tier, 38, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
   const squad = scaledSquadToFitCap({ clubId, leagueKey, difficulty, finance: tunedFinance, squad: squadRaw });
   const lineup = squad.slice().sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map(p => p.id);
   const fixtures = generateFixtures(compClubs);

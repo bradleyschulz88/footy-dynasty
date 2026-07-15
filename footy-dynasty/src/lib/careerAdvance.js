@@ -39,6 +39,7 @@ import { adjustMorale, MORALE_REASONS, squadTraitMoraleDelta } from './morale.js
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
 import { ensureSquadsForLeague, tickAiSquads, ageAiSquads, selectAiLineup } from './aiSquads.js';
+import { computeLeagueAwards } from './awards.js';
 import {
   beginPostSeasonTradePeriod,
   advanceTradePeriodDay,
@@ -469,6 +470,8 @@ function simFinalsPair(c, league, m, _roundLabel) {
     + philosophyTacticFit(_headCoach?.philosophy, c.tacticChoice || 'balanced');
   const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
   const isHome = m.home === c.clubId;
+  // The Grand Final is played on neutral turf at the MCG — no home-ground edge.
+  const isGrandFinal = m.label === 'Grand Final' || _roundLabel === 'Grand Final';
   if (isPlayerMatch) {
     const finalsOppId = isHome ? m.away : m.home;
     const h2hFinals = c.headToHead?.[finalsOppId];
@@ -531,12 +534,12 @@ function simFinalsPair(c, league, m, _roundLabel) {
         weather: matchWeather,
         getPlayerStrengthForQuarter,
         ...(getOppStrengthForQuarter ? { getOppStrengthForQuarter } : {}),
-        homeFixtureAdvantage: resolveHomeAdvantageForFixture(c, league, isHome, findClub(c.clubId), oppClub),
+        homeFixtureAdvantage: isGrandFinal ? 0 : resolveHomeAdvantageForFixture(c, league, isHome, findClub(c.clubId), oppClub),
       },
     );
   } else {
     const weatherTag = typeof c.weeklyWeather?.[c.week] === 'string' ? c.weeklyWeather[c.week] : 'fine';
-    const homeAdvAi = homeAdvantageAiHome(
+    const homeAdvAi = isGrandFinal ? 0 : homeAdvantageAiHome(
       league,
       getClubGround(findClub(m.home), 3, league.tier),
       true,
@@ -905,20 +908,11 @@ function finishSeason(c, league) {
   };
   c.showSeasonSummary = true;
 
-  const brownlowEntries = Object.entries(c.brownlow || {}).sort((a, b) => b[1] - a[1]);
-  let brownlowWinner = null;
-  if (brownlowEntries.length > 0) {
-    const [winnerId, votes] = brownlowEntries[0];
-    const player = c.squad.find((p) => p.id === winnerId);
-    if (player) {
-      brownlowWinner = { name: pName(player), votes, position: player.position };
-    }
-  }
-  // Coleman Medal — leading goalkicker at our club this season
-  const colemanPlayer = [...(c.squad || [])].sort((a, b) => (b.goals || 0) - (a.goals || 0))[0];
-  const colemanWinner = colemanPlayer && (colemanPlayer.goals || 0) > 0
-    ? { name: pName(colemanPlayer), goals: colemanPlayer.goals, season: c.season }
-    : null;
+  // League-wide honours: Brownlow, Coleman and Rising Star are competition
+  // awards, not club prizes — model every club's players and pick the best.
+  const leagueAwards = computeLeagueAwards(c, league, ensureSquadsForLeague(c, league));
+  const brownlowWinner = leagueAwards.brownlow;
+  const colemanWinner = leagueAwards.coleman;
 
   // Club Champion — our player with the most Brownlow votes
   const clubChampionEntry = Object.entries(c.brownlow || {})
@@ -943,6 +937,8 @@ function finishSeason(c, league) {
     ...c.seasonSummary,
     brownlow: brownlowWinner,
     coleman: colemanWinner,
+    risingStar: leagueAwards.risingStar ?? c.seasonSummary.risingStar,
+    allAustralian: leagueAwards.allAustralian ?? [],
     clubChampion,
     normSmith,
     highlights: (c.seasonHighlights || []).slice(0, 8),
@@ -1548,10 +1544,18 @@ function finishSeason(c, league) {
     ...c.news,
   ].slice(0, 20);
   if (brownlowWinner) {
-    c.news = [{ week: 0, type: 'info', text: `🥇 Brownlow Medal: ${brownlowWinner.name} (${brownlowWinner.votes} votes)` }, ...c.news].slice(0, 25);
+    const bClub = brownlowWinner.club ? ` (${brownlowWinner.club})` : '';
+    c.news = [{ week: 0, type: 'info', text: `🥇 Brownlow Medal: ${brownlowWinner.name}${bClub} — ${brownlowWinner.votes} votes.` }, ...c.news].slice(0, 25);
   }
   if (colemanWinner) {
-    c.news = [{ week: 0, type: 'win', text: `🥇 ${colemanWinner.name} wins the Coleman Medal with ${colemanWinner.goals} goals this season!` }, ...c.news].slice(0, 25);
+    const cClub = colemanWinner.club ? ` (${colemanWinner.club})` : '';
+    c.news = [{ week: 0, type: 'win', text: `🥇 Coleman Medal: ${colemanWinner.name}${cClub} — ${colemanWinner.goals} goals.` }, ...c.news].slice(0, 25);
+  }
+  // Celebrate any of the club's own players named in the All-Australian team.
+  const myAllAustralians = (c.seasonSummary?.allAustralian || []).filter((p) => p.isMine);
+  if (myAllAustralians.length) {
+    const names = myAllAustralians.map((p) => p.name).join(', ');
+    c.news = [{ week: 0, type: 'win', text: `⭐ All-Australian honours: ${names} named in the Team of the Year.` }, ...c.news].slice(0, 25);
   }
   if (clubChampion) {
     c.news = [{ week: 0, type: 'info', text: `🏅 Club Champion: ${clubChampion.name} — ${clubChampion.votes} Brownlow votes this season.` }, ...c.news].slice(0, 25);
@@ -2390,7 +2394,7 @@ function collectMatchMilestones(c, attribution, round) {
       }
     }
     if ((p.goals || 0) === 0 && (p.careerGoals || 0) === 0 && (att.goals || 0) > 0) {
-      items.push({ week: round, type: 'win', text: `⚽ First career goal for ${name}! The bench loved that one.` });
+      items.push({ week: round, type: 'win', text: `🏉 First career goal for ${name}! The bench loved that one.` });
       boostIds.add(p.id);
     }
     if ((att.goals || 0) >= 5) {
@@ -2464,6 +2468,21 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
     const dispAdd = Math.round((isMidPreferred(p) ? rand(15, 32) : rand(8, 22)) * attrStatMult(ballSkill));
     const markAdd = Math.round(rand(2, 7) * attrStatMult(p.attrs?.marking));
     const tackleAdd = Math.round(rand(1, 5) * attrStatMult(p.attrs?.tackling));
+    // Signature AFL stats, derived from on-field role + attributes.
+    const isMid = isMidPreferred(p);
+    const isFwd = p.position === "KF" || p.position === "HF";
+    const hitoutAdd = p.position === "RU"
+      ? Math.round(rand(14, 38) * attrStatMult(p.ruckwork ?? p.attrs?.strength))
+      : 0;
+    const clearAdd = isMid
+      ? Math.round(rand(2, 8) * attrStatMult(p.contestedBall ?? p.attrs?.strength))
+      : Math.round(rand(0, 2) * attrStatMult(p.contestedBall ?? p.attrs?.strength));
+    const inside50Add = (isFwd || isMid)
+      ? Math.round(rand(2, 7) * attrStatMult(p.attrs?.kicking))
+      : Math.round(rand(0, 3) * attrStatMult(p.attrs?.kicking));
+    const contestedAdd = (isMid || p.position === "KF" || p.position === "KB")
+      ? Math.round(rand(4, 12) * attrStatMult(p.attrs?.strength))
+      : Math.round(rand(2, 7) * attrStatMult(p.attrs?.strength));
     const newForm = clamp(p.form + formChange, 30, 100);
     const formHistory = [...(p.formHistory || []), p.form].slice(-5);
     // Logged, cause-driven morale for players who took the field. Magnitude is
@@ -2487,6 +2506,10 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
       disposals: dispAdd,
       marks: markAdd,
       tackles: tackleAdd,
+      hitouts: hitoutAdd,
+      clearances: clearAdd,
+      inside50s: inside50Add,
+      contested: contestedAdd,
       votes,
     };
     let np = { ...p, fitness: clamp(p.fitness - fitDrop, 30, 100), form: newForm, formHistory,

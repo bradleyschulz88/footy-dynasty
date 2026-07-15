@@ -163,8 +163,20 @@ export default function PlayerCard3D({ player, club }) {
               <div className="text-[8px] font-mono uppercase tracking-widest text-atext-mute shrink-0">Attributes</div>
             </div>
             <div className="flex-1 flex flex-col justify-between gap-[3px]">
-              {ATTRS.map(([key, label]) => {
-                const v = attrs[key] ?? 0;
+              {[
+                ...ATTRS,
+                // Specialist stats — only shown for the relevant position.
+                ...(player.position === "RU" || player.secondaryPosition === "RU"
+                  ? [["ruckwork", "Ruckwork"]]
+                  : []),
+                ...(["KF", "HF"].includes(player.position) || ["KF", "HF"].includes(player.secondaryPosition)
+                  ? [["goalkicking", "Goalkicking"]]
+                  : []),
+                ...(["C", "R", "WG", "KF", "KB"].includes(player.position)
+                  ? [["contestedBall", "Contested"]]
+                  : []),
+              ].map(([key, label]) => {
+                const v = (key === "ruckwork" ? player.ruckwork : key === "goalkicking" ? player.goalkicking : key === "contestedBall" ? player.contestedBall : attrs[key]) ?? 0;
                 return (
                   <div key={key} className="flex items-center gap-2">
                     <div className="text-[8px] font-mono font-bold uppercase tracking-wider text-atext-dim w-14 shrink-0">{label}</div>

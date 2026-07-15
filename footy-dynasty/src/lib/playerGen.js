@@ -68,8 +68,8 @@ export function pickPlayerNames(clubKey, season, playerIdx) {
 
 export const POSITIONS = ["KF","HF","C","HB","KB","R","RU","WG","UT"];
 export const POSITION_NAMES = {
-  KF: "Key Forward", HF: "Half Forward", C: "Centre Mid",
-  HB: "Half Back", KB: "Key Back", R: "Rover/Mid",
+  KF: "Key Forward", HF: "Half Forward", C: "Midfielder",
+  HB: "Half Back", KB: "Key Defender", R: "Inside Mid",
   RU: "Ruck", WG: "Wing", UT: "Utility",
 };
 
@@ -134,9 +134,13 @@ function rollSecondaryPosition(primary) {
  */
 export function generatePlayer(clubTier, idx, nameContext) {
   const tier = Math.max(1, Math.min(3, clubTier));
-  const baseSkill = Math.max(42, Math.min(99, Math.round(randNorm(68, 11))));
+  // Wider spread (SD 13) so genuine 90+ superstars and sub-50 fringe show up at
+  // AFL-like rates without moving the mean (team-average ratings hold, so match
+  // balance is unchanged).
+  const baseSkill = Math.max(40, Math.min(99, Math.round(randNorm(68, 13))));
   const positions = ["KF","HF","C","HB","KB","R","RU","WG","UT"];
-  const weights = [2, 3, 4, 3, 2, 3, 1, 2, 2];
+  // RU weighted up so lists carry a realistic 2–3 dedicated rucks.
+  const weights = [2, 3, 4, 3, 2, 3, 2, 2, 2];
   const total = weights.reduce((a, b) => a + b, 0);
   let r = rng() * total, position = "C";
   for (let i = 0; i < positions.length; i++) {
@@ -158,6 +162,21 @@ export function generatePlayer(clubTier, idx, nameContext) {
   if (position === "WG" || position === "R") { attrs.speed += 6; attrs.endurance += 5; }
   if (position === "KF" || position === "KB") { attrs.marking += 6; attrs.strength += 4; }
   Object.keys(attrs).forEach(k => { attrs[k] = Math.max(30, Math.min(99, attrs[k])); });
+  // Ruckwork is a specialist skill (hitouts, tap-work) kept OUT of the 8-attr
+  // overall: genuine rucks rate highly, everyone else can only pinch-hit.
+  const ruckwork = Math.max(20, Math.min(99, Math.round(
+    randNorm(position === "RU" ? baseSkill + 6 : baseSkill - 16, 8),
+  )));
+  // Goalkicking (set-shot accuracy) — a forward specialty, also kept out of the
+  // 8-attr overall. Forwards convert best; defenders/rucks are less reliable.
+  const goalkicking = Math.max(20, Math.min(99, Math.round(
+    randNorm((position === "KF" || position === "HF") ? baseSkill + 5 : baseSkill - 8, 8),
+  )));
+  // Contested ball — winning the hard ball at stoppages. Midfielders and key
+  // position players rate highest. Kept out of the 8-attr overall.
+  const contestedBall = Math.max(20, Math.min(99, Math.round(
+    randNorm(LINE_MID.has(position) || position === "KF" || position === "KB" ? baseSkill + 4 : baseSkill - 6, 8),
+  )));
   const overall = Math.round(Object.values(attrs).reduce((a, b) => a + b, 0) / 8);
   const trueRating = Math.round(overall * (TIER_SCALE[tier] || 1.0));
   const potential = Math.min(99, overall + (age <= 21 ? rand(5, 18) : age <= 25 ? rand(0, 8) : Math.max(0, rand(-2, 3))));
@@ -170,14 +189,14 @@ export function generatePlayer(clubTier, idx, nameContext) {
     id: `p_${tier}_${idx}_${SEED}`,
     name: `${fname} ${lname}`,
     firstName: fname, lastName: lname,
-    age, position, secondaryPosition, attrs, overall, trueRating, potential, potentialTrue, tier,
+    age, position, secondaryPosition, attrs, ruckwork, goalkicking, contestedBall, overall, trueRating, potential, potentialTrue, tier,
     fitness: rand(85, 100),
     morale: rand(60, 90),
     moraleLog: [],
     unhappySince: null,
     transferRequested: false,
     form: rand(50, 85),
-    contract: rand(1, 4),
+    contract: rand(1, 5),
     wage: Math.round(overall * (tier === 1 ? 5800 : tier === 2 ? 1200 : 250) * (0.9 + rng() * 0.4)),
     value: Math.round(overall * overall * (tier === 1 ? 280 : tier === 2 ? 70 : 12) * (0.7 + rng() * 0.7)),
     goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0,
@@ -193,7 +212,7 @@ export function generatePlayer(clubTier, idx, nameContext) {
  * @param {number} [season]  When provided, mixes into RNG seed and name hashing so a new year
  *   refreshes AI/user lists without colliding with the previous season’s generator state.
  */
-export function generateSquad(clubId, tier, size = 32, season) {
+export function generateSquad(clubId, tier, size = 38, season) {
   const base = clubId.split("").reduce((a, c) => a + c.charCodeAt(0), 7);
   if (season == null) seedRng(base);
   else seedRng(base + Number(season) * 1000003);
