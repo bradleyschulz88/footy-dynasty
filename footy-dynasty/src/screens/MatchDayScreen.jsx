@@ -6,6 +6,7 @@ import { COACHING_CALLS } from "../lib/coachingCalls.js";
 import { playCrowdCheer, playSiren, playWhistle, soundEnabled } from "../lib/sound.js";
 import { GroundFormation } from "../components/groundMarkings.jsx";
 import { getClubGround } from "../data/grounds.js";
+import { calculateExpectedCrowd } from "../lib/homeAdvantage.js";
 
 // ── Count-up animated number ────────────────────────────────────────────────
 // Rolls the displayed value up/down to `value` over ~600ms via rAF.
@@ -149,6 +150,13 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
     result.isHome ? (career.facilities?.stadium?.level ?? 1) : 3,
     league?.tier,
   );
+  // Crowd: expected turnout when the player hosts (the estimate is valid at
+  // home); away games show the venue capacity instead.
+  const venueCrowd = venueGround
+    ? result.isHome
+      ? calculateExpectedCrowd(career, league, venueGround)
+      : null
+    : null;
   const myColor = club?.colors?.[0] || "var(--A-accent)";
   const oppColor = result.opp?.colors?.[0] || "#64748B";
 
@@ -609,6 +617,12 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
                 <span className="text-[10px] text-atext-mute">·</span>
                 <span className="text-[10px] text-atext-mute font-mono">
                   📍 {venueGround.shortName || venueGround.name}
+                </span>
+                <span className="text-[10px] text-atext-mute">·</span>
+                <span className="text-[10px] text-atext-mute font-mono">
+                  🎟️ {venueCrowd != null
+                    ? venueCrowd.toLocaleString()
+                    : `${(venueGround.capacity ?? 0).toLocaleString()} cap`}
                 </span>
               </>
             )}
