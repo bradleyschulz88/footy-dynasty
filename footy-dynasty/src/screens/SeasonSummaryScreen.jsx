@@ -238,8 +238,10 @@ export default function SeasonSummaryScreen({
           icon="🥇"
           label="Brownlow Medal"
           name={summary.brownlow?.name || "—"}
-          stat={summary.brownlow ? `${summary.brownlow.votes} votes` : "Outside our club this year"}
-          sub={summary.brownlow?.position}
+          stat={summary.brownlow ? `${summary.brownlow.votes} votes` : "Not awarded"}
+          sub={summary.brownlow
+            ? `${summary.brownlow.club}${summary.brownlow.isMine ? " · your club" : ""}`
+            : undefined}
         />
 
         {summary.coleman && (
@@ -248,6 +250,7 @@ export default function SeasonSummaryScreen({
             label="Coleman Medal"
             name={summary.coleman.name}
             stat={`${summary.coleman.goals} goals`}
+            sub={`${summary.coleman.club}${summary.coleman.isMine ? " · your club" : ""}`}
           />
         )}
 
@@ -275,7 +278,9 @@ export default function SeasonSummaryScreen({
             label="Rising Star"
             name={summary.risingStar.name}
             stat={`${summary.risingStar.overall} rating · age ${summary.risingStar.age}`}
-            sub={`${summary.risingStar.games} games`}
+            sub={summary.risingStar.club
+              ? `${summary.risingStar.club}${summary.risingStar.isMine ? " · your club" : ""}`
+              : summary.risingStar.games != null ? `${summary.risingStar.games} games` : undefined}
           />
         )}
 

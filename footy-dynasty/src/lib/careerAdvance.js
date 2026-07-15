@@ -39,6 +39,7 @@ import { adjustMorale, MORALE_REASONS, squadTraitMoraleDelta } from './morale.js
 import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
 import { ensureSquadsForLeague, tickAiSquads, ageAiSquads, selectAiLineup } from './aiSquads.js';
+import { computeLeagueAwards } from './awards.js';
 import {
   beginPostSeasonTradePeriod,
   advanceTradePeriodDay,
@@ -905,20 +906,11 @@ function finishSeason(c, league) {
   };
   c.showSeasonSummary = true;
 
-  const brownlowEntries = Object.entries(c.brownlow || {}).sort((a, b) => b[1] - a[1]);
-  let brownlowWinner = null;
-  if (brownlowEntries.length > 0) {
-    const [winnerId, votes] = brownlowEntries[0];
-    const player = c.squad.find((p) => p.id === winnerId);
-    if (player) {
-      brownlowWinner = { name: pName(player), votes, position: player.position };
-    }
-  }
-  // Coleman Medal — leading goalkicker at our club this season
-  const colemanPlayer = [...(c.squad || [])].sort((a, b) => (b.goals || 0) - (a.goals || 0))[0];
-  const colemanWinner = colemanPlayer && (colemanPlayer.goals || 0) > 0
-    ? { name: pName(colemanPlayer), goals: colemanPlayer.goals, season: c.season }
-    : null;
+  // League-wide honours: Brownlow, Coleman and Rising Star are competition
+  // awards, not club prizes — model every club's players and pick the best.
+  const leagueAwards = computeLeagueAwards(c, league, ensureSquadsForLeague(c, league));
+  const brownlowWinner = leagueAwards.brownlow;
+  const colemanWinner = leagueAwards.coleman;
 
   // Club Champion — our player with the most Brownlow votes
   const clubChampionEntry = Object.entries(c.brownlow || {})
@@ -943,6 +935,7 @@ function finishSeason(c, league) {
     ...c.seasonSummary,
     brownlow: brownlowWinner,
     coleman: colemanWinner,
+    risingStar: leagueAwards.risingStar ?? c.seasonSummary.risingStar,
     clubChampion,
     normSmith,
     highlights: (c.seasonHighlights || []).slice(0, 8),
