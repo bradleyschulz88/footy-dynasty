@@ -413,7 +413,7 @@ export function buildNewCareer({
   const compClubs = getCompetitionClubs(leagueKey, state, startDiv);
   if (!compClubs.some((row) => row.id === clubId)) throw new Error('Selected club is not in this competition pool.');
   const ladder0 = blankLadder(compClubs);
-  const squadRaw = generateSquad(clubId, league.tier, 32, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
+  const squadRaw = generateSquad(clubId, league.tier, 38, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
   const squad = scaledSquadToFitCap({ clubId, leagueKey, difficulty, finance: tunedFinance, squad: squadRaw });
   const lineup = squad.slice().sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map(p => p.id);
   const fixtures = generateFixtures(compClubs);

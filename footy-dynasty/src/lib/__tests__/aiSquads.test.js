@@ -8,13 +8,13 @@ const fakeLeague = (tier, ids) => ({ tier, clubs: ids.map(id => ({ id })) });
 beforeEach(() => seedRng(123));
 
 describe('ensureSquadsForLeague', () => {
-  it('creates a 32-man squad for every AI club but skips the player club', () => {
+  it('creates a 38-man squad for every AI club but skips the player club', () => {
     const career = { clubId: 'col', aiSquads: {}, season: 2026 };
     const league = fakeLeague(1, ['col', 'gee', 'ess']);
     const out = ensureSquadsForLeague(career, league);
     expect(out.col).toBeUndefined();
-    expect(out.gee.length).toBe(32);
-    expect(out.ess.length).toBe(32);
+    expect(out.gee.length).toBe(38);
+    expect(out.ess.length).toBe(38);
   });
 
   it('returns the same reference when nothing changed', () => {
@@ -31,7 +31,7 @@ describe('ensureSquadsForLeague', () => {
     const league = fakeLeague(1, ['col', 'gee', 'haw']);
     const out = ensureSquadsForLeague(career, league);
     expect(out.gee).toBe(cust);
-    expect(out.haw.length).toBe(32);
+    expect(out.haw.length).toBe(38);
   });
 });
 

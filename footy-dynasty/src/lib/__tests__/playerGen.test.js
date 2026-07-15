@@ -163,8 +163,8 @@ describe('generateSquad', () => {
     expect(generateSquad('ade', 1, 22)).toHaveLength(22);
   });
 
-  it('defaults to 32 players', () => {
-    expect(generateSquad('ade', 1)).toHaveLength(32);
+  it('defaults to 38 players (AFL senior list)', () => {
+    expect(generateSquad('ade', 1)).toHaveLength(38);
   });
 
   it('is fully deterministic — same clubId always produces the same squad', () => {

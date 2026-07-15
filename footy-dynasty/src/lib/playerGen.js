@@ -193,7 +193,7 @@ export function generatePlayer(clubTier, idx, nameContext) {
  * @param {number} [season]  When provided, mixes into RNG seed and name hashing so a new year
  *   refreshes AI/user lists without colliding with the previous season’s generator state.
  */
-export function generateSquad(clubId, tier, size = 32, season) {
+export function generateSquad(clubId, tier, size = 38, season) {
   const base = clubId.split("").reduce((a, c) => a + c.charCodeAt(0), 7);
   if (season == null) seedRng(base);
   else seedRng(base + Number(season) * 1000003);
