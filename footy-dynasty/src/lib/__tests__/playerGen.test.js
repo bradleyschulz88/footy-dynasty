@@ -115,11 +115,11 @@ describe('generatePlayer', () => {
     }
   });
 
-  it('contract is between 1 and 4 years', () => {
+  it('contract is between 1 and 5 years', () => {
     for (let i = 0; i < 30; i++) {
       const p = generatePlayer(1, i);
       expect(p.contract).toBeGreaterThanOrEqual(1);
-      expect(p.contract).toBeLessThanOrEqual(4);
+      expect(p.contract).toBeLessThanOrEqual(5);
     }
   });
 

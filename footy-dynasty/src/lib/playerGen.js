@@ -177,7 +177,7 @@ export function generatePlayer(clubTier, idx, nameContext) {
     unhappySince: null,
     transferRequested: false,
     form: rand(50, 85),
-    contract: rand(1, 4),
+    contract: rand(1, 5),
     wage: Math.round(overall * (tier === 1 ? 5800 : tier === 2 ? 1200 : 250) * (0.9 + rng() * 0.4)),
     value: Math.round(overall * overall * (tier === 1 ? 280 : tier === 2 ? 70 : 12) * (0.7 + rng() * 0.7)),
     goals: 0, behinds: 0, disposals: 0, marks: 0, tackles: 0, gamesPlayed: 0,
