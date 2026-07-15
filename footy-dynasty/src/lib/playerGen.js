@@ -134,7 +134,10 @@ function rollSecondaryPosition(primary) {
  */
 export function generatePlayer(clubTier, idx, nameContext) {
   const tier = Math.max(1, Math.min(3, clubTier));
-  const baseSkill = Math.max(42, Math.min(99, Math.round(randNorm(68, 11))));
+  // Wider spread (SD 13) so genuine 90+ superstars and sub-50 fringe show up at
+  // AFL-like rates without moving the mean (team-average ratings hold, so match
+  // balance is unchanged).
+  const baseSkill = Math.max(40, Math.min(99, Math.round(randNorm(68, 13))));
   const positions = ["KF","HF","C","HB","KB","R","RU","WG","UT"];
   const weights = [2, 3, 4, 3, 2, 3, 1, 2, 2];
   const total = weights.reduce((a, b) => a + b, 0);
