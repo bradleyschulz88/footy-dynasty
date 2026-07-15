@@ -165,12 +165,15 @@ export default function PlayerCard3D({ player, club }) {
             <div className="flex-1 flex flex-col justify-between gap-[3px]">
               {[
                 ...ATTRS,
-                // Ruckwork is a specialist stat — only shown for rucks.
+                // Specialist stats — only shown for the relevant position.
                 ...(player.position === "RU" || player.secondaryPosition === "RU"
                   ? [["ruckwork", "Ruckwork"]]
                   : []),
+                ...(["KF", "HF"].includes(player.position) || ["KF", "HF"].includes(player.secondaryPosition)
+                  ? [["goalkicking", "Goalkicking"]]
+                  : []),
               ].map(([key, label]) => {
-                const v = (key === "ruckwork" ? player.ruckwork : attrs[key]) ?? 0;
+                const v = (key === "ruckwork" ? player.ruckwork : key === "goalkicking" ? player.goalkicking : attrs[key]) ?? 0;
                 return (
                   <div key={key} className="flex items-center gap-2">
                     <div className="text-[8px] font-mono font-bold uppercase tracking-wider text-atext-dim w-14 shrink-0">{label}</div>
