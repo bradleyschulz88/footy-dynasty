@@ -145,17 +145,22 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
   const homeClub = result.isHome ? club : result.opp;
   const awayClub = result.isHome ? result.opp : club;
   // Real venue = the home club's ground (MCG, Gabba… for AFL; synthesised lower down).
-  const venueGround = getClubGround(
-    homeClub,
-    result.isHome ? (career.facilities?.stadium?.level ?? 1) : 3,
-    league?.tier,
-  );
+  // The Grand Final is always at the neutral MCG, regardless of the finalists.
+  const venueGround = result.isGrandFinal
+    ? getClubGround({ id: "mel" }, 3, 1)
+    : getClubGround(
+        homeClub,
+        result.isHome ? (career.facilities?.stadium?.level ?? 1) : 3,
+        league?.tier,
+      );
   // Crowd: expected turnout when the player hosts (the estimate is valid at
   // home); away games show the venue capacity instead.
   const venueCrowd = venueGround
-    ? result.isHome
-      ? calculateExpectedCrowd(career, league, venueGround)
-      : null
+    ? result.isGrandFinal
+      ? venueGround.capacity // Grand Final sellout
+      : result.isHome
+        ? calculateExpectedCrowd(career, league, venueGround)
+        : null
     : null;
   const myColor = club?.colors?.[0] || "var(--A-accent)";
   const oppColor = result.opp?.colors?.[0] || "#64748B";

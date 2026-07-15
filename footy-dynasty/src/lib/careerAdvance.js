@@ -470,6 +470,8 @@ function simFinalsPair(c, league, m, _roundLabel) {
     + philosophyTacticFit(_headCoach?.philosophy, c.tacticChoice || 'balanced');
   const isPlayerMatch = m.home === c.clubId || m.away === c.clubId;
   const isHome = m.home === c.clubId;
+  // The Grand Final is played on neutral turf at the MCG — no home-ground edge.
+  const isGrandFinal = m.label === 'Grand Final' || _roundLabel === 'Grand Final';
   if (isPlayerMatch) {
     const finalsOppId = isHome ? m.away : m.home;
     const h2hFinals = c.headToHead?.[finalsOppId];
@@ -532,12 +534,12 @@ function simFinalsPair(c, league, m, _roundLabel) {
         weather: matchWeather,
         getPlayerStrengthForQuarter,
         ...(getOppStrengthForQuarter ? { getOppStrengthForQuarter } : {}),
-        homeFixtureAdvantage: resolveHomeAdvantageForFixture(c, league, isHome, findClub(c.clubId), oppClub),
+        homeFixtureAdvantage: isGrandFinal ? 0 : resolveHomeAdvantageForFixture(c, league, isHome, findClub(c.clubId), oppClub),
       },
     );
   } else {
     const weatherTag = typeof c.weeklyWeather?.[c.week] === 'string' ? c.weeklyWeather[c.week] : 'fine';
-    const homeAdvAi = homeAdvantageAiHome(
+    const homeAdvAi = isGrandFinal ? 0 : homeAdvantageAiHome(
       league,
       getClubGround(findClub(m.home), 3, league.tier),
       true,
