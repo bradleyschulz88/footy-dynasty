@@ -211,7 +211,7 @@ function stoppageStrength(lineup) {
     ? rucks.reduce((a, p) => a + (p.ruckwork ?? p.attrs?.strength ?? 60) + (p.attrs?.marking ?? 60), 0) / rucks.length
     : 50;
   const midAvg = mids.length
-    ? mids.reduce((a, p) => a + (p.attrs?.decision ?? 60) + (p.attrs?.endurance ?? 60), 0) / mids.length
+    ? mids.reduce((a, p) => a + (p.contestedBall ?? p.attrs?.decision ?? 60) + (p.attrs?.endurance ?? 60), 0) / mids.length
     : 50;
   return ruckAvg * 0.45 + midAvg * 0.55;
 }

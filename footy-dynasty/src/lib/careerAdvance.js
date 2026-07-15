@@ -2475,8 +2475,8 @@ function applyPlayerMatchEffects(c, league, meta, myResult) {
       ? Math.round(rand(14, 38) * attrStatMult(p.ruckwork ?? p.attrs?.strength))
       : 0;
     const clearAdd = isMid
-      ? Math.round(rand(2, 8) * attrStatMult(p.attrs?.strength))
-      : Math.round(rand(0, 2) * attrStatMult(p.attrs?.strength));
+      ? Math.round(rand(2, 8) * attrStatMult(p.contestedBall ?? p.attrs?.strength))
+      : Math.round(rand(0, 2) * attrStatMult(p.contestedBall ?? p.attrs?.strength));
     const inside50Add = (isFwd || isMid)
       ? Math.round(rand(2, 7) * attrStatMult(p.attrs?.kicking))
       : Math.round(rand(0, 3) * attrStatMult(p.attrs?.kicking));

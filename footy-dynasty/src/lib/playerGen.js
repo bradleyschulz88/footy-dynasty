@@ -172,6 +172,11 @@ export function generatePlayer(clubTier, idx, nameContext) {
   const goalkicking = Math.max(20, Math.min(99, Math.round(
     randNorm((position === "KF" || position === "HF") ? baseSkill + 5 : baseSkill - 8, 8),
   )));
+  // Contested ball — winning the hard ball at stoppages. Midfielders and key
+  // position players rate highest. Kept out of the 8-attr overall.
+  const contestedBall = Math.max(20, Math.min(99, Math.round(
+    randNorm(LINE_MID.has(position) || position === "KF" || position === "KB" ? baseSkill + 4 : baseSkill - 6, 8),
+  )));
   const overall = Math.round(Object.values(attrs).reduce((a, b) => a + b, 0) / 8);
   const trueRating = Math.round(overall * (TIER_SCALE[tier] || 1.0));
   const potential = Math.min(99, overall + (age <= 21 ? rand(5, 18) : age <= 25 ? rand(0, 8) : Math.max(0, rand(-2, 3))));
@@ -184,7 +189,7 @@ export function generatePlayer(clubTier, idx, nameContext) {
     id: `p_${tier}_${idx}_${SEED}`,
     name: `${fname} ${lname}`,
     firstName: fname, lastName: lname,
-    age, position, secondaryPosition, attrs, ruckwork, goalkicking, overall, trueRating, potential, potentialTrue, tier,
+    age, position, secondaryPosition, attrs, ruckwork, goalkicking, contestedBall, overall, trueRating, potential, potentialTrue, tier,
     fitness: rand(85, 100),
     morale: rand(60, 90),
     moraleLog: [],

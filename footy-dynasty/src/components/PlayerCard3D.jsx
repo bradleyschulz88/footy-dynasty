@@ -172,8 +172,11 @@ export default function PlayerCard3D({ player, club }) {
                 ...(["KF", "HF"].includes(player.position) || ["KF", "HF"].includes(player.secondaryPosition)
                   ? [["goalkicking", "Goalkicking"]]
                   : []),
+                ...(["C", "R", "WG", "KF", "KB"].includes(player.position)
+                  ? [["contestedBall", "Contested"]]
+                  : []),
               ].map(([key, label]) => {
-                const v = (key === "ruckwork" ? player.ruckwork : key === "goalkicking" ? player.goalkicking : attrs[key]) ?? 0;
+                const v = (key === "ruckwork" ? player.ruckwork : key === "goalkicking" ? player.goalkicking : key === "contestedBall" ? player.contestedBall : attrs[key]) ?? 0;
                 return (
                   <div key={key} className="flex items-center gap-2">
                     <div className="text-[8px] font-mono font-bold uppercase tracking-wider text-atext-dim w-14 shrink-0">{label}</div>
