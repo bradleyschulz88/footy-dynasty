@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useCareer, useUpdateCareer } from "../lib/careerStore.js";
 import { findClub } from "../data/pyramid.js";
+import { getClubGround } from "../data/grounds.js";
 import { teamRating, aiClubRating } from "../lib/matchEngine.js";
 import { selectAiLineup, ensureSquadsForLeague } from "../lib/aiSquads.js";
 import { resolveAiOppTactic } from "../lib/aiPersonality.js";
@@ -68,6 +69,15 @@ export default function MatchPreviewPanel({ league }) {
     }
     if (!opp) return null;
 
+    // Real venue = the home club's ground. AFL grounds are fixed (MCG, Gabba…);
+    // lower tiers synthesise from the host's stadium level.
+    const homeClub = isHome ? findClub(career.clubId) : opp;
+    const homeStadiumLevel = isHome ? (career.facilities?.stadium?.level ?? 1) : 3;
+    const ground = getClubGround(homeClub, homeStadiumLevel, league.tier);
+    const venue = ground
+      ? { name: ground.name, city: ground.city, capacity: ground.capacity }
+      : null;
+
     const rivalryLine = finalsRivalryPreviewLine(career, opp.id);
     if (rivalryLine) extraTags = [...extraTags, rivalryLine];
 
@@ -128,6 +138,7 @@ export default function MatchPreviewPanel({ league }) {
 
     return {
       label,
+      venue,
       factorRows,
       barYou: pct(myRating),
       barOpp: pct(oppRating),
@@ -151,7 +162,14 @@ export default function MatchPreviewPanel({ league }) {
     <div className={`${css.panel} p-4 md:p-5 space-y-4`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-display text-lg text-atext tracking-wide">MATCH PREVIEW</h3>
-        <div className="text-sm font-bold text-atext text-right">{preview.label}</div>
+        <div className="text-right">
+          <div className="text-sm font-bold text-atext">{preview.label}</div>
+          {preview.venue && (
+            <div className="text-[11px] text-atext-mute font-mono mt-0.5">
+              📍 {preview.venue.name}{preview.venue.city ? ` · ${preview.venue.city}` : ""}
+            </div>
+          )}
+        </div>
       </div>
       {preview.extraTags?.length > 0 && (
         <div className="flex flex-wrap gap-2 justify-end">

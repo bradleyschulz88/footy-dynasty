@@ -5,6 +5,7 @@ import { formatDate } from "../lib/calendar.js";
 import { COACHING_CALLS } from "../lib/coachingCalls.js";
 import { playCrowdCheer, playSiren, playWhistle, soundEnabled } from "../lib/sound.js";
 import { GroundFormation } from "../components/groundMarkings.jsx";
+import { getClubGround } from "../data/grounds.js";
 
 // ── Count-up animated number ────────────────────────────────────────────────
 // Rolls the displayed value up/down to `value` over ~600ms via rAF.
@@ -142,6 +143,12 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
 
   const homeClub = result.isHome ? club : result.opp;
   const awayClub = result.isHome ? result.opp : club;
+  // Real venue = the home club's ground (MCG, Gabba… for AFL; synthesised lower down).
+  const venueGround = getClubGround(
+    homeClub,
+    result.isHome ? (career.facilities?.stadium?.level ?? 1) : 3,
+    league?.tier,
+  );
   const myColor = club?.colors?.[0] || "var(--A-accent)";
   const oppColor = result.opp?.colors?.[0] || "#64748B";
 
@@ -595,6 +602,14 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
               <>
                 <span className="text-[10px] text-atext-mute">·</span>
                 <span className="text-[10px] text-atext-mute font-mono">Pre-Season</span>
+              </>
+            )}
+            {venueGround && (
+              <>
+                <span className="text-[10px] text-atext-mute">·</span>
+                <span className="text-[10px] text-atext-mute font-mono">
+                  📍 {venueGround.shortName || venueGround.name}
+                </span>
               </>
             )}
           </div>
