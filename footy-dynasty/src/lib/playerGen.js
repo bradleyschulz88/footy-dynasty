@@ -68,8 +68,8 @@ export function pickPlayerNames(clubKey, season, playerIdx) {
 
 export const POSITIONS = ["KF","HF","C","HB","KB","R","RU","WG","UT"];
 export const POSITION_NAMES = {
-  KF: "Key Forward", HF: "Half Forward", C: "Centre Mid",
-  HB: "Half Back", KB: "Key Back", R: "Rover/Mid",
+  KF: "Key Forward", HF: "Half Forward", C: "Midfielder",
+  HB: "Half Back", KB: "Key Defender", R: "Inside Mid",
   RU: "Ruck", WG: "Wing", UT: "Utility",
 };
 
