@@ -4,8 +4,20 @@ import { generateSquad, POSITION_NAMES } from "../engine/lib/playerGen.js";
 import { PYRAMID } from "../engine/data/pyramid.js";
 import { fmtK } from "../engine/lib/format.js";
 import { seedRng, rng, rand } from "../engine/lib/rng.js";
+import { getClubGround } from "../engine/data/grounds.js";
 
 export { generateSquad, POSITION_NAMES, PYRAMID, fmtK };
+
+// Real venue for the next fixture. Home/away alternates by games played (the
+// demo doesn't fixture home/away); the home club's ground (MCG, Gabba… for AFL)
+// is resolved from the shared grounds data.
+function nextVenueFor(career) {
+  const played = (career.myRow?.w ?? 0) + (career.myRow?.l ?? 0) + (career.myRow?.d ?? 0);
+  const isHome = played % 2 === 0;
+  const homeClub = isHome ? career.club : career.nextOpponent;
+  const g = homeClub ? getClubGround(homeClub, 3, career.tier) : null;
+  return g ? { name: g.name, short: g.shortName, city: g.city, capacity: g.capacity, isHome } : null;
+}
 
 function findClubAndLeague(clubId) {
   for (const key of Object.keys(PYRAMID)) {
@@ -51,11 +63,13 @@ export function buildDemoCareer(clubId = "car", season = 2026) {
   // Next opponent = a nearby club on the ladder.
   const opp = ladder[myIdx >= 0 ? (myIdx + 1) % ladder.length : 0] || ladder[0] || null;
 
-  return {
+  const career = {
     season, club, tier, squad, squadRating, wages, cash, ladder, myRow,
     nextOpponent: opp,
     board: { confidence: 55, objective: tier === 1 ? "Play finals." : "Finish top 4." },
   };
+  career.nextVenue = nextVenueFor(career);
+  return career;
 }
 
 // Simulate the next match and return an advanced career (playable loop).
@@ -106,6 +120,7 @@ export function advanceMatch(career) {
   const newMyRow = next.find((r) => r.id === club.id) || myRow;
   const myIdx = next.findIndex((r) => r.id === club.id);
   const nextOpponent = next[myIdx >= 0 ? (myIdx + 1) % next.length : 0] || opp;
+  const nextVenue = nextVenueFor({ ...career, myRow: newMyRow, nextOpponent });
   const cash = career.cash + (won ? 95000 : draw ? 70000 : 55000) - Math.round(career.wages / 22);
 
   return {
@@ -113,6 +128,7 @@ export function advanceMatch(career) {
     ladder: next,
     myRow: newMyRow,
     nextOpponent,
+    nextVenue,
     cash,
     lastResult: { opp, myTotal, oppTotal, won, draw, quarters, round },
   };
