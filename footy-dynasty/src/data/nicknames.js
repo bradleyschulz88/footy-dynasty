@@ -27,6 +27,33 @@ export const NICKNAME_BY_CLUB_ID = /** @type {Record<string,string>} */ ({
   wafl_swan_districts: "Swans",
   wafl_west_coast_eagles: "Eagles",
   wafl_west_perth: "Falcons",
+  // ── VFL (bare sides; clubs already carrying a nickname in their name,
+  //    e.g. "Box Hill Hawks", are intentionally omitted) ──
+  vfl_carlton: "Blues",
+  vfl_collingwood: "Magpies",
+  vfl_essendon: "Bombers",
+  vfl_frankston: "Dolphins",
+  vfl_geelong: "Cats",
+  vfl_north_melbourne: "Kangaroos",
+  vfl_port_melbourne: "Borough",
+  vfl_richmond: "Tigers",
+  vfl_sandringham: "Zebras",
+  vfl_st_kilda: "Saints",
+  vfl_williamstown: "Seagulls",
+  // ── TSL ────────────────────────────────────────────────
+  tsl_clarence: "Roos",
+  tsl_glenorchy: "Magpies",
+  tsl_launceston: "Blues",
+  tsl_north_hobart: "Demons",
+  // ── QAFL ───────────────────────────────────────────────
+  qafl_aspley: "Hornets",
+  qafl_broadbeach: "Cats",
+  qafl_labrador: "Tigers",
+  qafl_morningside: "Panthers",
+  qafl_mt_gravatt: "Vultures",
+  qafl_palm_beach_currumbin: "Lions",
+  qafl_surfers_paradise: "Demons",
+  qafl_wilston_grange: "Gorillas",
 });
 
 /**
