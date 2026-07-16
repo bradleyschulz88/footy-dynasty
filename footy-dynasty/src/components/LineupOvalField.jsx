@@ -157,7 +157,7 @@ function GroundPlayerChip({ player, stitch, slotLabel, onSelectPlayer, dragProps
 
 // ── Large card body for followers / interchange ────────────────────────────────
 
-function LargePlayerCardBody({ player, stitch, onSelectPlayer, dragProps }) {
+function LargePlayerCardBody({ player, _stitch, onSelectPlayer, dragProps }) {
   const { listeners, attributes } = dragProps;
   const num = squadNumberDisplay(player);
   const fBorder = formBorderColor(player.form ?? 60);

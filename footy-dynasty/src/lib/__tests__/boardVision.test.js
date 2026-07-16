@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { defaultVision, evaluateBoardVision, visionSummary, VISION_TYPES } from "../boardVision.js";
+import { defaultVision, evaluateBoardVision, visionSummary } from "../boardVision.js";
 
 describe("defaultVision", () => {
   it("gives T1/T2 a finals mandate and T3/T4 a solvency mandate, 3-season horizon", () => {

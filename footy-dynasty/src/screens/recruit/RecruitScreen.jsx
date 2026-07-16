@@ -3,7 +3,7 @@ import {
   Repeat, Target, ArrowRight,
   Sprout, Newspaper, GraduationCap,
   Map, Plane, Award, FileText, UserPlus, Send,
-  Bookmark, Clock, Eye, X, Star,
+  Bookmark, Eye,
 } from "lucide-react";
 import { seedRng, rand, rng } from '../../lib/rng.js';
 import { STATES, PYRAMID, LEAGUES_BY_STATE, findClub, findLeagueOf } from '../../data/pyramid.js';
@@ -61,8 +61,8 @@ import {
 import { useCareer, useUpdateCareer } from '../../lib/careerStore.js';
 import {
   getRelationshipScore, getRelationshipTier, localLoyaltyModifier,
-  bumpRelationship, createDeployment, generateWatchlistEntries,
-  DEPLOYMENT_DURATION_WEEKS, tickWatchlistStaleness,
+  bumpRelationship, createDeployment,
+  DEPLOYMENT_DURATION_WEEKS,
 } from '../../lib/scoutingSystem.js';
 import { resolveScoutLeadMember } from '../../lib/staffTasks.js';
 import { gameToast } from '../../lib/toast.js';
@@ -2093,7 +2093,7 @@ function LocalTab({ club }) {
 const INTEREST_LABELS = { 3: 'Priority', 2: 'Watching', 1: 'Casual' };
 const INTEREST_COLORS = { 3: 'var(--A-neg)', 2: 'var(--A-accent)', 1: 'var(--A-text-mute)' };
 
-function WatchlistTab({ club }) {
+function WatchlistTab({ _club }) {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
   const watchlist = career.scoutWatchlist || [];
@@ -2110,8 +2110,8 @@ function WatchlistTab({ club }) {
     const fee = Math.round(baseFee * loyaltyMod);
     if ((career.finance?.cash ?? 0) < fee) return;
     // Strip watchlist metadata before adding to squad
-    const { fromLeagueKey, fromLeagueShort, fromClubName, fromClubShort, localLoyalty,
-      interestLevel, flaggedWeek, lastRefreshedWeek, rivalInterest, isStale,
+    const { fromLeagueKey: _flk, fromLeagueShort: _fls, fromClubName: _fcn, fromClubShort: _fcs, localLoyalty: _ll,
+      interestLevel: _il, flaggedWeek: _fw, lastRefreshedWeek: _lrw, rivalInterest: _ri, isStale: _is,
       scoutedOverall: _so, ...playerBase } = w;
     const newPlayer = { ...playerBase, id: `wl_signed_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage: baseWage, contract: 2 };
     updateCareer({
@@ -2124,8 +2124,8 @@ function WatchlistTab({ club }) {
 
   const walkOnFromWatchlist = (w) => {
     if ((career.squad || []).length >= 40 || !canAffordSigning(career, baseWage)) return;
-    const { fromLeagueKey, fromLeagueShort, fromClubName, fromClubShort, localLoyalty,
-      interestLevel, flaggedWeek, lastRefreshedWeek, rivalInterest, isStale,
+    const { fromLeagueKey: _flk, fromLeagueShort: _fls, fromClubName: _fcn, fromClubShort: _fcs, localLoyalty: _ll,
+      interestLevel: _il, flaggedWeek: _fw, lastRefreshedWeek: _lrw, rivalInterest: _ri, isStale: _is,
       scoutedOverall: _so, ...playerBase } = w;
     const newPlayer = { ...playerBase, id: `wl_walkon_${Date.now()}_${rand(1e9, 2e9 - 1)}`, wage: baseWage, contract: 2 };
     updateCareer({

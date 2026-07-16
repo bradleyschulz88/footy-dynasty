@@ -49,7 +49,6 @@ import { themedRoundForNumber } from "../../lib/themedRounds.js";
 import { css, Pill, CollapsibleSection, ExpandableTile } from "../../components/primitives.jsx";
 import { HubFeed } from "../../components/HubFeed.jsx";
 import MatchPreviewPanel from "../../components/MatchPreviewPanel.jsx";
-import { finalsMagicNumber } from "../../lib/magicNumber.js";
 import { seasonNarrative } from "../../lib/seasonNarrative.js";
 import { useCareer } from "../../lib/careerStore.js";
 import { moraleBand, moraleToneColor } from "../../lib/morale.js";

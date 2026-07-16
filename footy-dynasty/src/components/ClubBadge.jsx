@@ -467,38 +467,6 @@ const AFL_CLUB_MOTIFS = {
       <circle cx="25" cy="26" r="2.5" fill={c1} />
     </>
   ),
-  // Collingwood Magpies — black/white — clean vertical half split
-  col: (c1, c2, _c3) => (
-    <>
-      <rect x="0" y="0" width="20" height="40" fill={c1} />
-      <rect x="20" y="0" width="20" height="40" fill={c2} />
-      <line x1="20" y1="0" x2="20" y2="40" stroke="rgba(128,128,128,0.3)" strokeWidth="0.75" />
-    </>
-  ),
-  // Essendon Bombers — red/black — black shield with red sash (upper-left to lower-right)
-  ess: (c1, c2, _c3) => (
-    <>
-      <rect x="0" y="0" width="40" height="40" fill={c2} />
-      <polygon points="0,2 14,0 40,26 40,38 26,40 0,14" fill={c1} opacity="0.92" />
-    </>
-  ),
-  // Fremantle Dockers — purple/white — white anchor symbol
-  fre: (_c1, c2, _c3) => (
-    <>
-      <circle cx="20" cy="11" r="5" fill="none" stroke={c2} strokeWidth="2.5" />
-      <line x1="20" y1="16" x2="20" y2="36" stroke={c2} strokeWidth="2.5" />
-      <line x1="11" y1="22" x2="29" y2="22" stroke={c2} strokeWidth="2.5" />
-      <path d="M11,34 Q14,40 20,36 Q26,40 29,34" fill="none" stroke={c2} strokeWidth="2.5" />
-    </>
-  ),
-  // Geelong Cats — navy/white — white cat face (triangular head + eye dots)
-  gee: (c1, c2, _c3) => (
-    <>
-      <polygon points="8,34 14,8 20,20 26,8 32,34" fill={c2} opacity="0.88" />
-      <circle cx="15" cy="26" r="2.5" fill={c1} />
-      <circle cx="25" cy="26" r="2.5" fill={c1} />
-    </>
-  ),
   // Gold Coast Suns — red/gold — gold sun burst (circle + 8 rays)
   gcs: (c1, c2, _c3) => (
     <>

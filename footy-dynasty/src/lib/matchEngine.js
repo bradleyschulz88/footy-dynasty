@@ -5,9 +5,7 @@ import { lineupStructureModifier } from './lineupBalance.js';
 import { lineupRoleModifier } from './playerRoles.js';
 import { LINEUP_CAP, LINEUP_FIELD_COUNT } from './lineupHelpers.js';
 import { 
-  MATCH, 
-  INJURY, 
-  TIER_SCALE 
+  INJURY 
 } from './constants.js';
 
 export const clamp = (n, a, b) => Math.max(a, Math.min(b, n));

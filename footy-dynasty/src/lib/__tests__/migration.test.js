@@ -2,7 +2,7 @@
 // Tests that save files from previous versions can be loaded correctly
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { migrate as migrateSave, SAVE_VERSION, writeSlot, readSlot, deleteSlot, SLOT_IDS } from '../save.js';
+import { migrate as _migrateSave, SAVE_VERSION, readSlot, deleteSlot, SLOT_IDS } from '../save.js';
 
 // Mock localStorage for testing
 const mockStorage = {};

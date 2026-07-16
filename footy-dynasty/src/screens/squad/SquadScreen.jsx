@@ -308,8 +308,9 @@ function DepthChart({ onSelectPlayer }) {
   const updateCareer = useUpdateCareer();
   const [showCover, setShowCover] = useState(true);
 
-  const lineup = career.lineup || [];
-  const squad = career.squad || [];
+  // Memoize lineup and squad to prevent dependency array issues in nested useMemos
+  const lineup = useMemo(() => career.lineup || [], [career.lineup]);
+  const squad = useMemo(() => career.squad || [], [career.squad]);
   const subId = career.subPlayerId;
 
   const promoteToBench = (id) => updateCareer({ lineup: addToBench(lineup, id) });
@@ -429,8 +430,10 @@ function PositionSlotRow({ slotIdx, player, options, onAssign }) {
 function PositionsTab() {
   const career = useCareer();
   const updateCareer = useUpdateCareer();
-  const lineup = career.lineup || [];
-  const squad = career.squad || [];
+  
+  // Memoize lineup and squad to prevent dependency array issues in nested useMemos
+  const lineup = useMemo(() => career.lineup || [], [career.lineup]);
+  const squad = useMemo(() => career.squad || [], [career.squad]);
 
   const slots = useMemo(() => lineupToFixedSlots(lineup), [lineup]);
   const playerById = useMemo(() => new Map(squad.map((p) => [String(p.id), p])), [squad]);
