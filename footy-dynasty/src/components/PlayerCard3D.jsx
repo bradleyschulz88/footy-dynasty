@@ -176,7 +176,14 @@ export default function PlayerCard3D({ player, club }) {
                   ? [["contestedBall", "Contested"]]
                   : []),
               ].map(([key, label]) => {
-                const v = (key === "ruckwork" ? player.ruckwork : key === "goalkicking" ? player.goalkicking : key === "contestedBall" ? player.contestedBall : attrs[key]) ?? 0;
+                // Specialist ratings fall back to the nearest core attribute so
+                // players from saves made before these fields existed don't read 0.
+                const v = (
+                  key === "ruckwork" ? (player.ruckwork ?? attrs.strength)
+                    : key === "goalkicking" ? (player.goalkicking ?? attrs.kicking)
+                      : key === "contestedBall" ? (player.contestedBall ?? attrs.decision)
+                        : attrs[key]
+                ) ?? 0;
                 return (
                   <div key={key} className="flex items-center gap-2">
                     <div className="text-[8px] font-mono font-bold uppercase tracking-wider text-atext-dim w-14 shrink-0">{label}</div>

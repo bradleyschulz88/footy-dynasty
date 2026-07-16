@@ -1,38 +1,32 @@
-// Derby detection — same-city / rivalry flavour for fixtures.
+// Derby / rivalry detection for fixtures. Real AFL rivalries keyed by pyramid
+// club id (the short-id + missing-city club data made the old city matcher
+// return false for every AFL pair). Named marquee clashes get their real name.
 
-import { findClub } from '../data/pyramid.js';
-
-/** City keys shared by multiple clubs (manual map for pyramid data). */
-const CITY_GROUPS = [
-  ['melbourne', 'carlton', 'collingwood', 'essendon', 'hawthorn', 'melbourne', 'north', 'richmond', 'st-kilda', 'western-bulldogs'],
-  ['adelaide', 'port-adelaide'],
-  ['brisbane', 'gold-coast'],
-  ['sydney', 'gws'],
-  ['perth', 'west-coast', 'fremantle'],
-  ['geelong'],
+/** [idA, idB, label] — the established AFL derbies and traditional rivalries. */
+export const RIVALRIES = [
+  ['ade', 'pad', '🔥 Showdown'],
+  ['fre', 'wce', '🔥 Western Derby'],
+  ['bri', 'gcs', '🔥 QClash'],
+  ['gws', 'syd', '🔥 Sydney Derby'],
+  ['car', 'col', '🔥 Carlton v Collingwood'],
+  ['col', 'ess', '🔥 Anzac Day'],
+  ['car', 'ric', '🔥 Carlton v Richmond'],
+  ['col', 'mel', "🔥 King's Birthday"],
+  ['gee', 'haw', '🔥 Geelong v Hawthorn'],
+  ['ess', 'haw', '🔥 Essendon v Hawthorn'],
+  ['col', 'ric', '🔥 Collingwood v Richmond'],
 ];
 
-function clubCityKey(club) {
-  if (!club) return null;
-  const id = String(club.id || '').toLowerCase();
-  const city = String(club.city || club.region || '').toLowerCase();
-  for (const group of CITY_GROUPS) {
-    if (group.some((g) => id.includes(g) || city.includes(g))) return group[0];
-  }
-  return city || id.split('-')[0] || null;
-}
+const RIVAL_KEY = (a, b) => [a, b].sort().join('|');
+const RIVAL_MAP = new Map(RIVALRIES.map(([a, b, label]) => [RIVAL_KEY(a, b), label]));
 
-/** True when two clubs share a derby city bucket. */
+/** True when two clubs are established rivals (order-independent). */
 export function isDerbyMatch(homeId, awayId) {
-  const h = findClub(homeId);
-  const a = findClub(awayId);
-  const hk = clubCityKey(h);
-  const ak = clubCityKey(a);
-  return hk && ak && hk === ak && homeId !== awayId;
+  if (!homeId || !awayId || homeId === awayId) return false;
+  return RIVAL_MAP.has(RIVAL_KEY(homeId, awayId));
 }
 
-/** Short label for UI ribbons. */
+/** Short label for UI ribbons — the named clash where there is one. */
 export function derbyLabel(homeId, awayId) {
-  if (!isDerbyMatch(homeId, awayId)) return null;
-  return '🔥 Derby';
+  return RIVAL_MAP.get(RIVAL_KEY(homeId, awayId)) || null;
 }
