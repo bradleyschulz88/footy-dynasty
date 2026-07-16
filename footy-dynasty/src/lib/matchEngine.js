@@ -202,6 +202,26 @@ function forwardGoalkickingMod(lineup) {
   return clamp(1 + (avg - 71) / 300, 0.9, 1.1);
 }
 
+// Man-on-the-mark / "stand" rule (2021) — the mark can't move laterally, so
+// skilled kicks exploit the extra time and space to move the ball into attack.
+// Rewards a lineup's ball use (kicking + decision); balance-neutral at ~68.
+function ballMovementMod(lineup) {
+  if (!lineup?.length) return 1;
+  const avg = lineup.reduce((a, p) => a + ((p.attrs?.kicking ?? 60) + (p.attrs?.decision ?? 60)) / 2, 0) / lineup.length;
+  return clamp(1 + (avg - 68) / 280, 0.94, 1.08);
+}
+
+// 6-6-6 starting positions (2019) opened the game up by banning the flood at
+// centre bounces, so a strong, deep forward line converts centre clearances
+// into scores. Rewards multiple quality forwards; neutral for a thin one.
+function forwardStructureMod(lineup) {
+  if (!lineup?.length) return 1;
+  const fwds = lineup.filter((p) => p.position === 'KF' || p.position === 'HF');
+  if (fwds.length < 2) return 0.97;
+  const avg = fwds.reduce((a, p) => a + ((p.overall ?? 60) + (p.goalkicking ?? 60)) / 2, 0) / fwds.length;
+  return clamp(1 + (avg - 70) / 300, 0.95, 1.08);
+}
+
 /** Ruck + midfield contested strength for stoppage chains. */
 function stoppageStrength(lineup) {
   if (!lineup?.length) return 50;
@@ -527,10 +547,16 @@ export function simMatchQuarter(state, mods = {}) {
   const awaySideMod = isPlayerHome ? oppSideMod : playerSideMod;
   const homeOppPressure = isPlayerHome ? oppOppMod : playerOppMod;
   const awayOppPressure = isPlayerHome ? playerOppMod : oppOppMod;
+  // Modern-rules layer (man-on-the-mark ball movement + 6-6-6 forward
+  // structure) scales each side's forward-50 entries by its own personnel.
+  const homeLineup = isPlayerHome ? playerLineup : oppLineup;
+  const awayLineup = isPlayerHome ? oppLineup : playerLineup;
+  const homeModernMod = ballMovementMod(homeLineup) * forwardStructureMod(homeLineup);
+  const awayModernMod = ballMovementMod(awayLineup) * forwardStructureMod(awayLineup);
   const homeShotMean =
-    rates.home * (1 + homeSideMod) * (1 + homeOppPressure * suppressScale(homeOppPressure, homeSideMod));
+    rates.home * (1 + homeSideMod) * (1 + homeOppPressure * suppressScale(homeOppPressure, homeSideMod)) * homeModernMod;
   const awayShotMean =
-    rates.away * (1 + awaySideMod) * (1 + awayOppPressure * suppressScale(awayOppPressure, awaySideMod));
+    rates.away * (1 + awaySideMod) * (1 + awayOppPressure * suppressScale(awayOppPressure, awaySideMod)) * awayModernMod;
 
   const plQ = TACTIC_QUARTER_MULT[tactic]?.[q] ?? 1;
   const opQ = TACTIC_QUARTER_MULT[effectiveOppTactic]?.[q] ?? 1;
