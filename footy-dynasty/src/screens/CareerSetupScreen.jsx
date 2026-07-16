@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Trophy, ChevronRight, ChevronLeft, Check, Zap, MapPin } from "lucide-react";
-import { STATES, PYRAMID, LEAGUES_BY_STATE, findClub } from "../data/pyramid.js";
+import { PYRAMID, LEAGUES_BY_STATE, findClub } from "../data/pyramid.js";
 import { generateSquad } from "../lib/playerGen.js";
 import {
   generateFixtures,
-  generateByeRounds,
+  applyByesToFixtures,
   blankLadder,
   getCompetitionClubs,
   tier3DivisionCount,
@@ -416,8 +416,7 @@ export function buildNewCareer({
   const squadRaw = generateSquad(clubId, league.tier, 38, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
   const squad = scaledSquadToFitCap({ clubId, leagueKey, difficulty, finance: tunedFinance, squad: squadRaw });
   const lineup = squad.slice().sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map(p => p.id);
-  const fixtures = generateFixtures(compClubs);
-  const byeMap = generateByeRounds(compClubs.map(cl => cl.id), fixtures.length);
+  const { fixtures, byeMap } = applyByesToFixtures(generateFixtures(compClubs), compClubs.map(cl => cl.id));
   const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId, {
     nationalDraft: league.tier === 1,
   });

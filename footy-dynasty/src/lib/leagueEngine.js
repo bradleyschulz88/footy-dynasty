@@ -176,6 +176,58 @@ export function generateByeRounds(teamIds, totalRounds) {
   return byeMap;
 }
 
+/**
+ * Turn overlay byes into REAL fixture byes: remove one game per team (in the
+ * rounds 12–19 window, ≤3 games / 6 teams resting per round, like the AFL) so
+ * bye rounds actually have fewer games and each team plays 22, not 23. The two
+ * teams in each removed game share that bye round.
+ *
+ * Returns `{ fixtures, byeMap }`. Byes only apply for even, ≥14-team, ≥22-round
+ * competitions (real AFL/state-league seasons); otherwise the fixtures pass
+ * through untouched with an empty byeMap.
+ * ponytail: greedy matching over the bye window — picks the first game whose
+ * both teams are still un-byed. For 14–20 even teams this always covers every
+ * team; any team it can't place (shouldn't happen) simply keeps its 23rd game.
+ */
+export function applyByesToFixtures(fixtures, teamIds) {
+  const n = teamIds.length;
+  if (n < 14 || n % 2 !== 0 || (fixtures?.length ?? 0) < 22) {
+    return { fixtures, byeMap: {} };
+  }
+  const BYE_START = 12; // 1-based round numbers
+  const BYE_END = 19;
+  const MAX_BYE_GAMES_PER_ROUND = 3; // 6 teams rest — the AFL bye-round shape
+  const byed = new Set();
+  const byeMap = {};
+  // Work on a shallow copy so callers' arrays aren't mutated.
+  const out = fixtures.map((round) => round.slice());
+  for (let r = BYE_START - 1; r <= BYE_END - 1 && byed.size < n; r++) {
+    const round = out[r];
+    if (!round) continue;
+    let removedThisRound = 0;
+    const keep = [];
+    for (const game of round) {
+      if (
+        removedThisRound < MAX_BYE_GAMES_PER_ROUND &&
+        byed.size < n &&
+        !byed.has(game.home) &&
+        !byed.has(game.away)
+      ) {
+        byeMap[game.home] = r + 1;
+        byeMap[game.away] = r + 1;
+        byed.add(game.home);
+        byed.add(game.away);
+        removedThisRound += 1;
+        // game dropped (bye) — not pushed to keep
+      } else {
+        keep.push(game);
+      }
+    }
+    out[r] = keep;
+  }
+  return { fixtures: out, byeMap };
+}
+
 export function blankLadder(leagueClubs) {
   return leagueClubs.map(c => ({
     id: c.id, name: c.name, short: c.short,

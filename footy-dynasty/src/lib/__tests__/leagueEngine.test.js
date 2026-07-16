@@ -4,6 +4,7 @@ import {
   applyResultToLadder,
   sortedLadder,
   generateFixtures,
+  applyByesToFixtures,
   getFinalsTeams,
   generateFinalsFixtures,
   finalsLabel,
@@ -154,6 +155,35 @@ describe('generateFixtures', () => {
     afl.forEach(c => expect(games[c.id]).toBe(23));
     // maxRounds is overridable.
     expect(generateFixtures(afl, { maxRounds: 18 })).toHaveLength(18);
+  });
+
+  it('applyByesToFixtures gives every team a real bye (22 games each)', () => {
+    const afl = Array.from({ length: 18 }, (_, i) => ({ id: `c${i}` }));
+    const ids = afl.map(c => c.id);
+    const { fixtures, byeMap } = applyByesToFixtures(generateFixtures(afl), ids);
+    // Every team byes exactly once, all in the rounds 12–19 window.
+    ids.forEach(id => {
+      expect(byeMap[id]).toBeGreaterThanOrEqual(12);
+      expect(byeMap[id]).toBeLessThanOrEqual(19);
+    });
+    // Each team now plays 22 games, not 23.
+    const games = {};
+    fixtures.forEach(round => round.forEach(m => {
+      games[m.home] = (games[m.home] || 0) + 1;
+      games[m.away] = (games[m.away] || 0) + 1;
+    }));
+    ids.forEach(id => expect(games[id]).toBe(22));
+    // Bye rounds have fewer than the full 9 games.
+    const total = fixtures.reduce((a, r) => a + r.length, 0);
+    expect(total).toBe(18 * 22 / 2); // 198 games
+  });
+
+  it('applyByesToFixtures leaves small/odd comps untouched', () => {
+    const small = Array.from({ length: 8 }, (_, i) => ({ id: `c${i}` }));
+    const fx = generateFixtures(small);
+    const { fixtures, byeMap } = applyByesToFixtures(fx, small.map(c => c.id));
+    expect(byeMap).toEqual({});
+    expect(fixtures).toEqual(fx);
   });
 
   it('every pair meets exactly twice — once at each venue', () => {
