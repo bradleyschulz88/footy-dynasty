@@ -4,6 +4,7 @@ import {
   applyResultToLadder,
   sortedLadder,
   generateFixtures,
+  generateWeightedFixtures,
   applyByesToFixtures,
   getFinalsTeams,
   generateFinalsFixtures,
@@ -12,6 +13,7 @@ import {
   pickRelegationLeague,
 } from '../leagueEngine.js';
 import { pairFinalsRound } from '../finalsBracket.js';
+import { PYRAMID } from '../../data/pyramid.js';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -176,6 +178,42 @@ describe('generateFixtures', () => {
     // Bye rounds have fewer than the full 9 games.
     const total = fixtures.reduce((a, r) => a + r.length, 0);
     expect(total).toBe(18 * 22 / 2); // 198 games
+  });
+
+  it('generateWeightedFixtures skews double-ups to real rivalries and stays valid', () => {
+    const afl = PYRAMID.AFL.clubs.filter((c) => !c.joinsYear || c.joinsYear <= 2026);
+    const fixtures = generateWeightedFixtures(afl);
+    expect(fixtures).toHaveLength(23);
+    // Valid: no club plays twice in a round; each plays 23 (pre-byes).
+    const games = {};
+    fixtures.forEach((round) => {
+      const seen = new Set();
+      round.forEach((m) => {
+        expect(seen.has(m.home)).toBe(false);
+        expect(seen.has(m.away)).toBe(false);
+        seen.add(m.home); seen.add(m.away);
+        games[m.home] = (games[m.home] || 0) + 1;
+        games[m.away] = (games[m.away] || 0) + 1;
+      });
+    });
+    afl.forEach((c) => expect(games[c.id]).toBe(23));
+    // The Showdown (ade v pad) should be a double-up under rivalry weighting.
+    const showdowns = fixtures.reduce((a, r) => a + r.filter((m) =>
+      (m.home === 'ade' && m.away === 'pad') || (m.home === 'pad' && m.away === 'ade')).length, 0);
+    expect(showdowns).toBe(2);
+  });
+
+  it('applyByesToFixtures covers every club on the weighted fixture (18/18, 22 games)', () => {
+    const afl = PYRAMID.AFL.clubs.filter((c) => !c.joinsYear || c.joinsYear <= 2026);
+    const ids = afl.map((c) => c.id);
+    const { fixtures, byeMap } = applyByesToFixtures(generateWeightedFixtures(afl), ids);
+    ids.forEach((id) => expect(byeMap[id]).toBeGreaterThanOrEqual(12));
+    const games = {};
+    fixtures.forEach((r) => r.forEach((m) => {
+      games[m.home] = (games[m.home] || 0) + 1;
+      games[m.away] = (games[m.away] || 0) + 1;
+    }));
+    ids.forEach((id) => expect(games[id]).toBe(22));
   });
 
   it('applyByesToFixtures leaves small/odd comps untouched', () => {
