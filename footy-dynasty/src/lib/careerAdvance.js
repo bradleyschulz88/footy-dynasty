@@ -8,12 +8,13 @@ import { isForwardPreferred, isMidPreferred } from './playerGen.js';
 import { teamRating, simMatch, simMatchWithQuarters, aiClubRating, benchStrengthBonus, interchangeRotationBonus, initMatchSim, simMatchQuarter, finishMatchSim, competitiveOppRating, calcSynergyBonus, philosophyTacticFit, pickInjury } from './matchEngine.js';
 import { getCoachingCall, resolveCoachingCall } from './coachingCalls.js';
 import { resolveAiOppTactic } from './aiPersonality.js';
-import { generateFixtures, generateByeRounds, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
+import { generateFixtures, applyByesToFixtures, blankLadder, applyResultToLadder, sortedLadder, getFinalsTeams, pickPromotionLeague, pickRelegationLeague, competitionClubsForCareer, getCompetitionClubs, localDivisionForClub, tier3DivisionCount } from './leagueEngine.js';
 
-/** Set c.fixtures + c.byeMap from a club list in one shot. */
+/** Set c.fixtures + c.byeMap from a club list in one shot (real byes baked in). */
 function setFixtures(c, clubs) {
-  c.fixtures = generateFixtures(clubs);
-  c.byeMap = generateByeRounds(clubs.map(cl => cl.id), c.fixtures.length);
+  const { fixtures, byeMap } = applyByesToFixtures(generateFixtures(clubs), clubs.map(cl => cl.id));
+  c.fixtures = fixtures;
+  c.byeMap = byeMap;
 }
 import {
   buildFinalsBracket,
@@ -40,6 +41,7 @@ import { fmtK, clamp, avgFacilities, avgStaff } from './format.js';
 import { generateSeasonCalendar, applyTraining, TRAINING_INFO } from './calendar.js';
 import { ensureSquadsForLeague, tickAiSquads, ageAiSquads, selectAiLineup } from './aiSquads.js';
 import { computeLeagueAwards } from './awards.js';
+import { maybeOpenMidSeasonDraft, MID_SEASON_DRAFT_ROUND } from './midSeasonDraft.js';
 import {
   beginPostSeasonTradePeriod,
   advanceTradePeriodDay,
@@ -2909,6 +2911,12 @@ function applyPostRoundBoardAndCalendar(c, league, club, meta, myResult) {
     if (due) {
       c.boardMeetingBlocking = openBoardMeetingBlockingFromSlot(due, league?.tier ?? 2);
     }
+  }
+
+  // Mid-season draft window (tier-1, once per season, around the byes).
+  if (meta.phase === 'season' && meta.round === MID_SEASON_DRAFT_ROUND && !c.isSacked && !c.midSeasonDraftDone) {
+    const msd = maybeOpenMidSeasonDraft(c, league);
+    if (msd) c.midSeasonDraftBlocking = msd;
   }
 
   if (meta.phase === 'season' && myResult && !c.isSacked) {

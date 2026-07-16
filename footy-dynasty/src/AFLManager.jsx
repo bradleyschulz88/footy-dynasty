@@ -43,6 +43,8 @@ import MatchDayScreen from "./screens/MatchDayScreen.jsx";
 import SackingSequence from './screens/SackingSequence.jsx';
 import VoteOfConfidenceFlow from './screens/VoteOfConfidenceFlow.jsx';
 import BoardMeetingScreen from './screens/BoardMeetingScreen.jsx';
+import MidSeasonDraftScreen from './screens/MidSeasonDraftScreen.jsx';
+import { resolveMidSeasonDraft } from './lib/midSeasonDraft.js';
 import ArrivalBriefingFlow from './screens/ArrivalBriefingFlow.jsx';
 import PressConferenceScreen from './screens/PressConferenceScreen.jsx';
 import LegendFarewellScreen from './screens/LegendFarewellScreen.jsx';
@@ -341,7 +343,7 @@ function AFLManagerInner() {
         navScreen ||
         cur.inMatchDay || cur.liveMatch || cur.isSacked || cur.gameOver ||
         cur.showSeasonSummary || cur.boardCrisis?.phase === 'active' ||
-        cur.boardMeetingBlocking || cur.inFinals ||
+        cur.boardMeetingBlocking || cur.midSeasonDraftBlocking || cur.inFinals ||
         (cur.postSeasonPhase === 'trade_period' && cur.inTradePeriod) ||
         advanceBlockedByCareerNeeds(cur) ||
         nextEv.type !== 'training';
@@ -465,6 +467,7 @@ function AFLManagerInner() {
     !career.inMatchDay &&
     career.boardCrisis?.phase !== 'active' &&
     !career.boardMeetingBlocking &&
+    !career.midSeasonDraftBlocking &&
     !career.arrivalBriefing?.pending
   );
 
@@ -1367,6 +1370,23 @@ function AFLManagerInner() {
             }
           }}
         />
+        </div>
+      </AppMotionConfig>
+    );
+  }
+
+  if (career.midSeasonDraftBlocking) {
+    return (
+      <AppMotionConfig reducedMotion={motionReduced}>
+        <div className={`${themeClass} font-sans min-h-screen`}>
+          {globalStyle}
+          <MidSeasonDraftScreen
+            blocking={career.midSeasonDraftBlocking}
+            onChoose={(prospectId) => {
+              const patch = resolveMidSeasonDraft(career, prospectId);
+              updateCareer(patch);
+            }}
+          />
         </div>
       </AppMotionConfig>
     );

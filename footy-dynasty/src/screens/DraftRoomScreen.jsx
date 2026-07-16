@@ -193,12 +193,27 @@ export default function DraftRoomScreen({ club, league, onExit }) {
     const pipelinePatch = isFatherSon
       ? { fatherSonPipeline: (career.fatherSonPipeline || []).filter((p) => p.id !== prospect.id) }
       : {};
+    // Draft Value Index cost: matching a bid isn't free — the club forfeits its
+    // next remaining selection (a simplified DVI points payment).
+    const draftOrder = aiPatch.draftOrder ? aiPatch.draftOrder.map((d) => ({ ...d })) : (career.draftOrder || []).map((d) => ({ ...d }));
+    const forfeitIdx = draftOrder.findIndex((d) => d.clubId === career.clubId && !d.used);
+    let costNews = null;
+    if (forfeitIdx >= 0) {
+      draftOrder[forfeitIdx].used = true;
+      draftOrder[forfeitIdx].forfeited = true;
+      costNews = {
+        week: career.week,
+        type: "info",
+        text: `📋 Bid matched — pick ${draftOrder[forfeitIdx].pick} forfeited to cover the Draft Value Index cost.`,
+      };
+    }
     updateCareer({
       ...aiPatch,
       ...pipelinePatch,
+      draftOrder,
       aiSquads: correctedAiSquads,
       squad: [...(career.squad || []), newSquadPlayer],
-      news: [matchNews, ...(aiPatch.news ? aiPatch.news : career.news || [])].slice(0, 20),
+      news: [matchNews, ...(costNews ? [costNews] : []), ...(aiPatch.news ? aiPatch.news : career.news || [])].slice(0, 20),
     });
   };
 

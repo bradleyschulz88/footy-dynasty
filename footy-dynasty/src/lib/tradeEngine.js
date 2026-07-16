@@ -58,17 +58,19 @@ export function generateAiTradeOffers(c, league) {
       .slice(0, 8);
     const swapPlayer = swapCandidates.length ? pick(swapCandidates) : null;
 
-    let cashOffer = Math.round(targetPlayer.value * (0.25 + rng() * 0.55) * aggMult);
+    // AFL trades are players + picks — cash can't be the consideration. Keep a
+    // small cash "top-up" only to smooth value gaps, and guarantee real draft
+    // capital: any offer without a player swap must include a pick.
+    let cashOffer = Math.round(targetPlayer.value * (0.05 + rng() * 0.10) * aggMult);
     if (grudge > 0) cashOffer = Math.round(cashOffer * (1 - 0.09 * Math.min(grudge, 2)));
-    if (swapPlayer && rng() < 0.4) {
-      cashOffer = rng() < 0.4 ? 0 : Math.round(targetPlayer.value * (0.05 + rng() * 0.12));
-    }
-    if (rebuilding && targetPlayer.age >= 30) cashOffer = Math.round(cashOffer * 1.15);
+    if (rebuilding && targetPlayer.age >= 30) cashOffer = Math.round(cashOffer * 1.10);
 
-    // If the target is a high-value player, AI may sweeten with a future pick
+    // Draft-pick component: better pick for pricier targets; always present when
+    // no player is offered in return, so it's never cash-for-nothing.
     const targetVal = targetPlayer.value ?? Math.round(targetPlayer.overall * 1500);
-    const offeredPick = targetVal > 400000 && rng() < 0.30
-      ? { season: (c.season ?? 2026) + 1, round: rand(1, 3) }
+    const wantsPick = !swapPlayer || targetVal > 400000 || rng() < 0.4;
+    const offeredPick = wantsPick
+      ? { season: (c.season ?? 2026) + 1, round: targetVal > 700000 ? 1 : targetVal > 400000 ? rand(1, 2) : rand(2, 4) }
       : null;
 
     offers.push({

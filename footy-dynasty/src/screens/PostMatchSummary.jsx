@@ -22,6 +22,20 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
   const playerStatRows = Object.values(summary?.playerStats || {})
     .sort((a, b) => b.disposals - a.disposals);
 
+  // Team totals for the broadcast-style stat panel.
+  const teamTotals = playerStatRows.reduce(
+    (t, p) => ({
+      disposals: t.disposals + (p.disposals || 0),
+      marks: t.marks + (p.marks || 0),
+      tackles: t.tackles + (p.tackles || 0),
+      clearances: t.clearances + (p.clearances || 0),
+      inside50s: t.inside50s + (p.inside50s || 0),
+      hitouts: t.hitouts + (p.hitouts || 0),
+      contested: t.contested + (p.contested || 0),
+    }),
+    { disposals: 0, marks: 0, tackles: 0, clearances: 0, inside50s: 0, hitouts: 0, contested: 0 },
+  );
+
   const handleContinue = useCallback(() => {
     onContinue?.();
   }, [onContinue]);
@@ -275,7 +289,23 @@ export default function PostMatchSummary({ summary, onContinue, leagueTier }) {
         {/* Player Stats tab */}
         {activeTab === 'stats' && playerStatRows.length > 0 && (
           <div style={{ borderBottom: "1px solid var(--A-line)" }}>
-            <div className="px-4 pt-3 pb-1">
+            <div className="px-4 pt-3 pb-0">
+              <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-atext-mute mb-1.5">Team totals</div>
+              <div className="grid grid-cols-4 gap-1.5 mb-3">
+                {[
+                  ["Disp", teamTotals.disposals], ["Marks", teamTotals.marks],
+                  ["Tackл", teamTotals.tackles], ["Clear", teamTotals.clearances],
+                  ["I-50", teamTotals.inside50s], ["Cont", teamTotals.contested],
+                  ["Hitout", teamTotals.hitouts], ["Goals", playerStatRows.reduce((a, p) => a + (p.goals || 0), 0)],
+                ].map(([label, val]) => (
+                  <div key={label} className="rounded-lg px-1 py-1.5 text-center" style={{ background: "var(--A-panel-2)", border: "1px solid var(--A-line)" }}>
+                    <div className="font-display text-base text-atext leading-none">{val}</div>
+                    <div className="text-[8px] font-mono uppercase tracking-wide text-atext-mute mt-0.5">{label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="px-4 pt-0 pb-1">
               <div className="flex items-center gap-2 text-[9px] font-mono font-bold uppercase tracking-widest text-atext-mute pb-1 mb-1" style={{ borderBottom: "1px solid var(--A-line)" }}>
                 <span className="w-7 text-center">POS</span>
                 <span className="flex-1">Player</span>
