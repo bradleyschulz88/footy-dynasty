@@ -132,14 +132,16 @@ function seedAiTradeOffers(c, league) {
     // any player within an overall range.
     const swapCandidates = aiSq.filter((ap) => Math.abs(ap.overall - targetPlayer.overall) <= 12).slice(0, 8);
     const swapPlayer = swapCandidates.length ? pick(swapCandidates) : null;
-    let cashOffer = Math.round(targetPlayer.value * (0.35 + rng() * 0.65));
+    // AFL trades are players + picks; cash is only a small value-smoothing
+    // top-up, never the consideration.
+    let cashOffer = Math.round(targetPlayer.value * (0.05 + rng() * 0.12));
     if (grudge > 0) cashOffer = Math.round(cashOffer * (1 - 0.09 * Math.min(grudge, 2)));
-    if (swapPlayer && rng() < 0.38) cashOffer = rng() < 0.45 ? 0 : Math.round(targetPlayer.value * (0.08 + rng() * 0.15));
     cashOffer = Math.max(0, cashOffer);
-    // High-value targets: 30% chance AI sweetens the deal with a future pick
+    // Draft-pick component — always present when no player is offered back, so
+    // the deal is real draft capital rather than cash-for-nothing.
     const targetVal = targetPlayer.value ?? Math.round(targetPlayer.overall * 1500);
-    const offeredPick = targetVal > 400000 && rng() < 0.30
-      ? { season: (c.season ?? 2026) + 1, round: rand(1, 3) }
+    const offeredPick = (!swapPlayer || targetVal > 400000 || rng() < 0.4)
+      ? { season: (c.season ?? 2026) + 1, round: targetVal > 700000 ? 1 : targetVal > 400000 ? rand(1, 2) : rand(2, 4) }
       : null;
     // Bidding war: 35% chance a second club is also circling this player.
     // Stored as metadata on the offer — escalates on reject.
