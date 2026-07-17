@@ -730,6 +730,12 @@ function advanceFinalsWeek(c, league) {
   }
 
   if (c.finalsAlive.length <= 1) {
+    if (c.finalsAlive.length === 0) {
+      c.news = [{ week: c.week, type: 'info', text: 'Finals bracket error — no teams remaining.' }, ...(c.news || [])].slice(0, 25);
+      c.inFinals = false;
+      c.phase = 'offseason';
+      return c;
+    }
     return crownPremier(c, league, c.finalsAlive[0]);
   }
   return c;
@@ -743,7 +749,13 @@ export function fastForwardFinals(career, league) {
     guard += 1;
     const alive = c.finalsAlive || [];
     if (alive.length <= 1) {
-      crownPremier(c, league, alive[0]);
+      if (alive.length === 0) {
+        c.news = [{ week: c.week, type: 'info', text: 'Finals bracket error — no teams remaining.' }, ...(c.news || [])].slice(0, 25);
+        c.inFinals = false;
+        c.phase = 'offseason';
+      } else {
+        crownPremier(c, league, alive[0]);
+      }
       break;
     }
     if (alive.includes(c.clubId)) break;
