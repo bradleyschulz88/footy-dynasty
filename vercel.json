@@ -1,4 +1,0 @@
-{
-  "buildCommand": "cd footy-dynasty && npm run build",
-  "outputDirectory": "footy-dynasty/dist"
-}
