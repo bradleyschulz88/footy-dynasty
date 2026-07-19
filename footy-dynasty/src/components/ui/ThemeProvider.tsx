@@ -43,11 +43,13 @@ export function ThemeProvider({ children, career }: { children: React.ReactNode;
     localStorage.setItem('fd-reduce-motion', String(reduceMotion));
   }, [reduceMotion]);
 
-  // Club theme injection
+  // Club theme injection.
+  // injectClubTheme takes a clubId STRING (it looks the club up via findClub /
+  // CLUB_COLOR_MAP). Passing the career object here silently failed findClub, so
+  // every club fell back to the gold default — hand it the id string instead.
   useEffect(() => {
     if (career?.clubId) {
-      const club = { colors: career.clubColors, id: career.clubId };
-      injectClubTheme(club);
+      injectClubTheme(career.clubId);
     } else {
       clearClubTheme();
     }
