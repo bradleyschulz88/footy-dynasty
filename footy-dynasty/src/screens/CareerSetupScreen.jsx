@@ -4,7 +4,7 @@ import { Trophy, ChevronRight, ChevronLeft, Check, Zap, MapPin } from "lucide-re
 import { PYRAMID, LEAGUES_BY_STATE, findClub } from "../data/pyramid.js";
 import { generateSquad } from "../lib/playerGen.js";
 import {
-  generateFixtures,
+  generateWeightedFixtures,
   applyByesToFixtures,
   blankLadder,
   getCompetitionClubs,
@@ -416,7 +416,7 @@ export function buildNewCareer({
   const squadRaw = generateSquad(clubId, league.tier, 38, SEASON).map(p => ({ ...p, traits: rollPlayerTrait() ? [rollPlayerTrait()] : [] }));
   const squad = scaledSquadToFitCap({ clubId, leagueKey, difficulty, finance: tunedFinance, squad: squadRaw });
   const lineup = squad.slice().sort((a, b) => b.overall - a.overall).slice(0, LINEUP_CAP).map(p => p.id);
-  const { fixtures, byeMap } = applyByesToFixtures(generateFixtures(compClubs), compClubs.map(cl => cl.id));
+  const { fixtures, byeMap } = applyByesToFixtures(generateWeightedFixtures(compClubs), compClubs.map(cl => cl.id));
   const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId, {
     nationalDraft: league.tier === 1,
   });

@@ -23,8 +23,8 @@ function newsMeta(type) {
 export function HubFeed({ news = [], tasks = [], week = 0 }) {
   const [filter, setFilter] = useState("all");
 
-  const newsItems = news.map((n, i) => ({ kind: "news", id: `n${i}`, ...n }));
-  const taskItems = tasks.map((t, i) => ({ kind: "task", id: `t${i}`, ...t }));
+  const newsItems = news.map((n, i) => ({ kind: "news", id: `news_${i}`, ...n }));
+  const taskItems = tasks.map((t, i) => ({ kind: "task", id: `task_${i}`, ...t }));
   const newThisRound = newsItems.filter((n) => n.week === week);
   const all = [...taskItems, ...newsItems]; // tasks surface first
 

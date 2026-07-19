@@ -1,4 +1,5 @@
 import { PYRAMID, findClub } from '../data/pyramid.js';
+import { isDerbyMatch } from './derbies.js';
 
 /** Cap on parallel local ladders in one tier-3 competition pool. */
 export const LOCAL_DIVISION_COUNT = 5;
@@ -177,6 +178,35 @@ export function generateByeRounds(teamIds, totalRounds) {
 }
 
 /**
+ * Weighted double-ups: in a capped season some opponents are played twice and
+ * some once. A full double round-robin is the single round-robin (first n-1
+ * rounds) followed by its mirror; keeping the single RR plus the mirror rounds
+ * with the MOST established rivalries means the "play twice" games skew to real
+ * derbies (Showdown, Western Derby, Anzac Day…) instead of being an arbitrary
+ * artefact of circle-method ordering. Falls back to the plain fixture when the
+ * comp is small enough to play a full home-and-away.
+ */
+export function generateWeightedFixtures(leagueClubs, targetRounds = MAX_SEASON_ROUNDS) {
+  const n = leagueClubs.length;
+  const full = generateFixtures(leagueClubs, { maxRounds: 2 * Math.max(1, n - 1) });
+  if (full.length <= targetRounds) return full;
+  const singleCount = n - 1; // first leg = a complete single round-robin
+  const single = full.slice(0, singleCount);
+  const reverse = full.slice(singleCount);
+  const keepReverse = targetRounds - single.length;
+  if (keepReverse <= 0) return full.slice(0, targetRounds);
+  const scored = reverse.map((r, i) => ({
+    r,
+    i,
+    score: r.reduce((a, m) => a + (isDerbyMatch(m.home, m.away) ? 1 : 0), 0),
+  }));
+  // Most-rivalry rounds first; stable on original order for ties.
+  scored.sort((a, b) => b.score - a.score || a.i - b.i);
+  const kept = scored.slice(0, keepReverse).sort((a, b) => a.i - b.i).map((s) => s.r);
+  return [...single, ...kept];
+}
+
+/**
  * Turn overlay byes into REAL fixture byes: remove one game per team (in the
  * rounds 12–19 window, ≤3 games / 6 teams resting per round, like the AFL) so
  * bye rounds actually have fewer games and each team plays 22, not 23. The two
@@ -199,32 +229,67 @@ export function applyByesToFixtures(fixtures, teamIds) {
   const MAX_BYE_GAMES_PER_ROUND = 3; // 6 teams rest — the AFL bye-round shape
   const byed = new Set();
   const byeMap = {};
+  const byeGames = []; // {r, game} to drop after selection
   // Work on a shallow copy so callers' arrays aren't mutated.
   const out = fixtures.map((round) => round.slice());
-  for (let r = BYE_START - 1; r <= BYE_END - 1 && byed.size < n; r++) {
-    const round = out[r];
-    if (!round) continue;
-    let removedThisRound = 0;
-    const keep = [];
-    for (const game of round) {
-      if (
-        removedThisRound < MAX_BYE_GAMES_PER_ROUND &&
-        byed.size < n &&
-        !byed.has(game.home) &&
-        !byed.has(game.away)
-      ) {
-        byeMap[game.home] = r + 1;
-        byeMap[game.away] = r + 1;
-        byed.add(game.home);
-        byed.add(game.away);
-        removedThisRound += 1;
-        // game dropped (bye) — not pushed to keep
-      } else {
-        keep.push(game);
-      }
-    }
-    out[r] = keep;
+
+  // Candidate bye games = every game in the bye window. A game byes both teams.
+  const candidates = [];
+  for (let r = BYE_START - 1; r <= BYE_END - 1 && r < out.length; r++) {
+    for (const game of out[r]) candidates.push({ r, home: game.home, away: game.away, game });
   }
+  // Round-usage cap for a natural AFL spread (≤3 byes / 6 teams per round).
+  const roundUse = {};
+  const assign = (cand) => {
+    byeMap[cand.home] = cand.r + 1;
+    byeMap[cand.away] = cand.r + 1;
+    byed.add(cand.home);
+    byed.add(cand.away);
+    roundUse[cand.r] = (roundUse[cand.r] ?? 0) + 1;
+    byeGames.push({ r: cand.r, game: cand.game });
+  };
+
+  // Minimum-degree-first matching: repeatedly bye the un-byed team with the
+  // FEWEST remaining partners (most constrained), pairing it with its partner
+  // that is itself most constrained. This finds a perfect matching where a
+  // naive left-to-right sweep strands the last couple of teams.
+  const partnersOf = (team, capped) => candidates.filter(
+    (c) => (c.home === team || c.away === team) &&
+      !byed.has(c.home) && !byed.has(c.away) &&
+      (!capped || (roundUse[c.r] ?? 0) < MAX_BYE_GAMES_PER_ROUND),
+  );
+  const step = (capped) => {
+    const unbyed = teamIds.filter((t) => !byed.has(t));
+    let best = null;
+    for (const t of unbyed) {
+      const opts = partnersOf(t, capped);
+      if (opts.length === 0) continue;
+      if (best === null || opts.length < best.count) best = { team: t, opts, count: opts.length };
+    }
+    if (!best) return false;
+    // Pair with the partner that itself has the fewest options (tightest).
+    let chosen = best.opts[0];
+    let chosenDeg = Infinity;
+    for (const c of best.opts) {
+      const other = c.home === best.team ? c.away : c.home;
+      const deg = partnersOf(other, capped).length;
+      if (deg < chosenDeg) { chosenDeg = deg; chosen = c; }
+    }
+    assign(chosen);
+    return true;
+  };
+  // Prefer the spread (capped) while it works; drop the cap only to finish
+  // covering any stragglers.
+  while (byed.size < n && step(true)) { /* spread pass */ }
+  while (byed.size < n && step(false)) { /* coverage pass */ }
+
+  // Drop the selected bye games from their rounds.
+  const dropByRound = new Map();
+  for (const { r, game } of byeGames) {
+    if (!dropByRound.has(r)) dropByRound.set(r, new Set());
+    dropByRound.get(r).add(game);
+  }
+  for (const [r, drop] of dropByRound) out[r] = out[r].filter((g) => !drop.has(g));
   return { fixtures: out, byeMap };
 }
 
