@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Trophy, FolderOpen, Zap, SlidersHorizontal } from "lucide-react";
+import { Trophy, FolderOpen, Zap, SlidersHorizontal, Sun, Moon } from "lucide-react";
 import PrivacyScreen from "./PrivacyScreen.jsx";
 
 const TAGLINES = [
@@ -10,7 +10,8 @@ const TAGLINES = [
   "Every great dynasty started somewhere.",
 ];
 
-export default function LandingScreen({ hasSaves, themeClass = 'dirV4', onQuickStart, onNewCareer, onLoadGame }) {
+export default function LandingScreen({ hasSaves, themeClass = 'dirV4', onToggleTheme, onQuickStart, onNewCareer, onLoadGame }) {
+  const isLight = themeClass === 'dirV5';
   const [tagline] = useState(() => TAGLINES[Math.floor(Math.random() * TAGLINES.length)]);
   const [ready, setReady] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -33,6 +34,28 @@ export default function LandingScreen({ hasSaves, themeClass = 'dirV4', onQuickS
       className={`${themeClass} min-h-screen font-sans text-atext flex flex-col items-center justify-center relative overflow-hidden select-none`}
       style={{ background: 'var(--A-bg, #080c10)' }}
     >
+      {/* Theme picker — switch between the Broadcast Deck (dark) and Day Match
+          (light) kits before starting. */}
+      {onToggleTheme && (
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          className="absolute top-4 right-4 z-20 flex items-center gap-1.5 px-3 py-2 rounded-lg text-[10px] font-mono font-bold uppercase tracking-widest transition-colors"
+          style={{
+            background: 'color-mix(in srgb, var(--A-panel) 80%, transparent)',
+            border: '1px solid var(--A-line)',
+            color: 'var(--A-text-dim)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}
+          aria-label={isLight ? 'Switch to Broadcast Deck (dark theme)' : 'Switch to Day Match (light theme)'}
+          title={isLight ? 'Switch to Broadcast Deck (dark)' : 'Switch to Day Match (light)'}
+        >
+          {isLight ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+          {isLight ? 'Night' : 'Day'}
+        </button>
+      )}
+
       {/* Radial glows */}
       <div
         className="absolute inset-0 pointer-events-none"
