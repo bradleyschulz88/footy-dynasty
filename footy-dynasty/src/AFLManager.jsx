@@ -254,7 +254,7 @@ function AFLManagerInner() {
   // shell / on overscroll) matches the chosen kit, not just the wrappers.
   useEffect(() => {
     const el = document.documentElement;
-    el.classList.remove('dirA', 'dirB', 'dirV4', 'dirV5');
+    el.classList.remove('dirA', 'dirB', 'dirV4', 'dirV5', 'dirV6', 'dirV7');
     el.classList.add(themeClass);
   }, [themeClass]);
 

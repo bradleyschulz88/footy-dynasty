@@ -5,10 +5,11 @@ const SIZES = {
   sm: "w-9 h-9 min-w-[2.25rem] text-[9px] rounded-lg",
   md: "w-10 h-10 min-w-[2.5rem] text-[10px] rounded-lg",
   lg: "w-12 h-12 min-w-[3rem] text-xs rounded-xl",
+  xl: "w-16 h-16 min-w-[4rem] text-sm rounded-2xl",
 };
 
 // Show the short code only at sm and above; xs shows emblem only (stays legible).
-const SHOW_SHORT = { xs: false, sm: true, md: true, lg: true };
+const SHOW_SHORT = { xs: false, sm: true, md: true, lg: true, xl: true };
 
 /** Tiny deterministic string hash (FNV-1a style, 32-bit). */
 function hashStr(str) {

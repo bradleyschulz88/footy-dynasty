@@ -7,7 +7,7 @@ import { injectClubTheme, restoreClubTheme, clearClubTheme } from '../../lib/clu
 // Shares the persistence key with AFLManager (its resolveThemeClass reads the
 // same value) so <html> and the app shell agree on the kit on load.
 const THEME_CLASS_KEY = 'fd-theme';
-const VALID_THEMES = ['dirA', 'dirB', 'dirV4', 'dirV5'] as const;
+const VALID_THEMES = ['dirA', 'dirB', 'dirV4', 'dirV5', 'dirV6', 'dirV7'] as const;
 type ThemeClass = typeof VALID_THEMES[number];
 
 interface ThemeContextType {
