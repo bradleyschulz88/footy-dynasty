@@ -420,7 +420,7 @@ export function buildNewCareer({
   const eventQueue = generateSeasonCalendar(SEASON, compClubs, fixtures, clubId, {
     nationalDraft: league.tier === 1,
   });
-  const facilities = DEFAULT_FACILITIES();
+  const facilities = DEFAULT_FACILITIES(league.tier);
   const clubGround = getClubGround(club, facilities.stadium.level, league.tier);
   const isFirstCareer = !existingSlots || Object.keys(existingSlots).length === 0;
   const startingSponsors = buildStartingSponsors(league.tier);

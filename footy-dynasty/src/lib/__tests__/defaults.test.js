@@ -73,9 +73,24 @@ describe('DEFAULT_FACILITIES', () => {
     }
   });
 
-  it('every facility starts at level 1', () => {
+  it('every facility starts at level 1 with no tier (community default)', () => {
     const f = DEFAULT_FACILITIES();
     for (const v of Object.values(f)) expect(v.level).toBe(1);
+  });
+
+  it('starting levels scale with league tier (AFL > state league > community)', () => {
+    const afl = DEFAULT_FACILITIES(1);
+    const state = DEFAULT_FACILITIES(2);
+    const community = DEFAULT_FACILITIES(3);
+    for (const key of Object.keys(afl)) {
+      expect(afl[key].level).toBeGreaterThan(state[key].level >= 2 ? 1 : 0);
+      expect(afl[key].level).toBeGreaterThanOrEqual(state[key].level);
+      expect(state[key].level).toBeGreaterThanOrEqual(community[key].level);
+      expect(afl[key].level).toBeLessThanOrEqual(afl[key].max);
+    }
+    // An AFL club must not start from the council oval.
+    expect(afl.trainingGround.level).toBeGreaterThanOrEqual(3);
+    expect(community.trainingGround.level).toBe(1);
   });
 
   it('every facility has a positive cost and max of 5', () => {
