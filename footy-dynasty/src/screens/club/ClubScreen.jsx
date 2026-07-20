@@ -23,6 +23,7 @@ import { activeNamingRights, namingRightsValue, signNamingRights } from '../../l
 import { careerMemberCount } from '../../lib/finance/membership.js';
 import { ACHIEVEMENTS, evaluateAchievements } from '../../lib/achievements.js';
 import { defaultKits, STAFF_BLUEPRINT, EXPANDABLE_ROLE_IDS_BY_TIER } from '../../lib/defaults.js';
+import { facilityBaseFor, facilityLevelLabel } from '../../data/clubFacilities.js';
 import { css, Bar, RatingDot, Pill, Stat, Jersey } from '../../components/primitives.jsx';
 import TabNav from '../../components/TabNav.jsx';
 import { ContractsTab, StaffRenewalsPanel } from '../contracts/ContractRenewals.jsx';
@@ -2276,7 +2277,16 @@ function FacilitiesTab() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className={`${css.h1} text-3xl`}>FACILITIES</div>
-          <div className="text-xs text-atext-dim">Long-term investment. Effects compound across the season.</div>
+          {(() => {
+            const homeBase = facilityBaseFor(career.clubId, facTier);
+            return (
+              <div className="text-xs text-atext-dim">
+                <span className="font-bold text-atext">🏟 {homeBase.base}</span>
+                {homeBase.suburb ? <span className="text-atext-mute"> · {homeBase.suburb}</span> : null}
+                <span className="block mt-0.5">Long-term investment. Effects compound across the season.</span>
+              </div>
+            );
+          })()}
         </div>
         {nrOffer > 0 && (
           <div className={`${css.panel} p-3 flex items-center gap-3 flex-wrap`} style={{ borderColor: 'color-mix(in srgb, #46d6c6 40%, var(--A-line))' }}>
@@ -2325,6 +2335,10 @@ function FacilitiesTab() {
                     {Array.from({length: f.max}).map((_,i) => (
                       <div key={i} className="flex-1 h-2 rounded-full" style={{ background: i < f.level ? info.color : "var(--A-line)" }} />
                     ))}
+                  </div>
+                  {/* What this level looks like in the real world */}
+                  <div className="text-[10px] font-mono uppercase tracking-wider mt-2" style={{ color: info.color }}>
+                    {facilityLevelLabel(key, f.level)}
                   </div>
                   <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
                     <div className="text-xs text-atext-dim">

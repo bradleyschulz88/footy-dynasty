@@ -2,6 +2,7 @@ import { SEED, rand, pick, rng, seedRng } from './rng.js';
 import { FIRST_NAMES, LAST_NAMES, generatePlayer } from './playerGen.js';
 import { ALL_CLUBS, PYRAMID } from '../data/pyramid.js';
 import { TIER_FINANCE } from './finance/constants.js';
+import { startLevelsForTier } from '../data/clubFacilities.js';
 
 // `defaultFinance` now reads tier baselines from finance/constants.js.
 // All numerical balance lives in one file. See finance/constants.js.
@@ -17,14 +18,20 @@ export function defaultFinance(tier) {
   };
 }
 
-export const DEFAULT_FACILITIES = () => ({
-  trainingGround: { level: 1, cost: 80000,  max: 5 },
-  gym:            { level: 1, cost: 60000,  max: 5 },
-  medical:        { level: 1, cost: 50000,  max: 5 },
-  academy:        { level: 1, cost: 120000, max: 5 },
-  stadium:        { level: 1, cost: 350000, max: 5 },
-  recovery:       { level: 1, cost: 40000,  max: 5 },
-});
+// Starting levels scale with league tier: an AFL club begins with near-elite
+// infrastructure, a state-league club with a solid base, a community club with
+// the council oval. No tier argument = tier 3 basics (backwards compatible).
+export const DEFAULT_FACILITIES = (tier) => {
+  const start = startLevelsForTier(tier ?? 3);
+  return {
+    trainingGround: { level: start.trainingGround, cost: 80000,  max: 5 },
+    gym:            { level: start.gym,            cost: 60000,  max: 5 },
+    medical:        { level: start.medical,        cost: 50000,  max: 5 },
+    academy:        { level: start.academy,        cost: 120000, max: 5 },
+    stadium:        { level: start.stadium,        cost: 350000, max: 5 },
+    recovery:       { level: start.recovery,       cost: 40000,  max: 5 },
+  };
+};
 
 export const DEFAULT_TRAINING = () => ({
   intensity: 60,

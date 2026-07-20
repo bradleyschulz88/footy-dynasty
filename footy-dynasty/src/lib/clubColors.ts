@@ -19,13 +19,13 @@ export interface ClubTheme {
 const CLUB_COLOR_MAP: Record<string, Partial<ClubTheme>> = {
   // AFL clubs with verified colors
   ade: { primary: '#002B5C', secondary: '#E21937', tertiary: '#FFD200' },
-  bri: { primary: '#7A0019', secondary: '#003E80', tertiary: '#FDB930' },
+  bri: { primary: '#7C0040', secondary: '#003E80', tertiary: '#FDB930' },
   car: { primary: '#0E1A40', secondary: '#FFFFFF', tertiary: '#0E1A40' },
   col: { primary: '#000000', secondary: '#FFFFFF', tertiary: '#000000' },
   ess: { primary: '#CC2031', secondary: '#000000', tertiary: '#CC2031' },
-  fre: { primary: '#2A0D54', secondary: '#FFFFFF', tertiary: '#2A0D54' },
+  fre: { primary: '#250553', secondary: '#FFFFFF', tertiary: '#250553' },
   gws: { primary: '#F47920', secondary: '#231F20', tertiary: '#FFFFFF' },
-  gee: { primary: '#002F6C', secondary: '#FFFFFF', tertiary: '#002F6C' },
+  gee: { primary: '#002B5C', secondary: '#FFFFFF', tertiary: '#002B5C' },
   gcs: { primary: '#D71920', secondary: '#FDB813', tertiary: '#231F20' },
   haw: { primary: '#4D2004', secondary: '#FBBF15', tertiary: '#4D2004' },
   mel: { primary: '#0F1131', secondary: '#CC2031', tertiary: '#0F1131' },
@@ -41,7 +41,7 @@ const CLUB_COLOR_MAP: Record<string, Partial<ClubTheme>> = {
   // State leagues - use AFL club colors as base, muted
   // VFL
   vfl_box_hill_hawks: { primary: '#4D2004', secondary: '#FBBF15', tertiary: '#4D2004' },
-  vfl_brisbane_lions: { primary: '#7A0019', secondary: '#003E80', tertiary: '#FDB930' },
+  vfl_brisbane_lions: { primary: '#7C0040', secondary: '#003E80', tertiary: '#FDB930' },
   vfl_carlton: { primary: '#002B5C', secondary: '#FFFFFF', tertiary: '#002B5C' },
   vfl_casey_demons: { primary: '#0F1131', secondary: '#CC2031', tertiary: '#0F1131' },
   vfl_coburg_lions: { primary: '#003087', secondary: '#FFD200', tertiary: '#000000' },
@@ -49,7 +49,7 @@ const CLUB_COLOR_MAP: Record<string, Partial<ClubTheme>> = {
   vfl_essendon: { primary: '#CC2031', secondary: '#000000', tertiary: '#CC2031' },
   vfl_footscray_western_bu: { primary: '#0039A6', secondary: '#E21937', tertiary: '#FFFFFF' },
   vfl_frankston: { primary: '#000000', secondary: '#CC2031', tertiary: '#FFFFFF' },
-  vfl_geelong: { primary: '#002F6C', secondary: '#FFFFFF', tertiary: '#002F6C' },
+  vfl_geelong: { primary: '#002B5C', secondary: '#FFFFFF', tertiary: '#002B5C' },
   vfl_gold_coast_suns: { primary: '#D71920', secondary: '#FDB813', tertiary: '#231F20' },
   vfl_gws_giants: { primary: '#F47920', secondary: '#231F20', tertiary: '#FFFFFF' },
   vfl_north_melbourne: { primary: '#003F87', secondary: '#FFFFFF', tertiary: '#003F87' },

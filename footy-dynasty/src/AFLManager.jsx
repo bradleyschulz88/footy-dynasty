@@ -679,7 +679,7 @@ function AFLManagerInner() {
     });
     const newLineup = squadForCap.slice().sort((a,b)=>b.overall-a.overall).slice(0, LINEUP_CAP).map(p => p.id);
     const initialSponsors = buildStartingSponsors(newLeague.tier);
-    const newFacilities = DEFAULT_FACILITIES();
+    const newFacilities = DEFAULT_FACILITIES(newLeague.tier);
     const newClubGround = getClubGround(newClub, newFacilities.stadium.level, newLeague.tier);
 
     const nextCareer = {
