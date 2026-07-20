@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Trophy, FolderOpen, Zap, SlidersHorizontal, Sun, Moon } from "lucide-react";
 import PrivacyScreen from "./PrivacyScreen.jsx";
+import { THEME_META } from "../lib/themes.js";
 
 const TAGLINES = [
   "Build a dynasty. Leave a legacy.",
@@ -11,7 +12,8 @@ const TAGLINES = [
 ];
 
 export default function LandingScreen({ hasSaves, themeClass = 'dirV4', onToggleTheme, onQuickStart, onNewCareer, onLoadGame }) {
-  const isLight = themeClass === 'dirV5';
+  const themeInfo = THEME_META[themeClass] || { label: 'Theme', mode: 'dark' };
+  const isLight = themeInfo.mode === 'light';
   const [tagline] = useState(() => TAGLINES[Math.floor(Math.random() * TAGLINES.length)]);
   const [ready, setReady] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
@@ -34,8 +36,8 @@ export default function LandingScreen({ hasSaves, themeClass = 'dirV4', onToggle
       className={`${themeClass} min-h-screen font-sans text-atext flex flex-col items-center justify-center relative overflow-hidden select-none`}
       style={{ background: 'var(--A-bg, #080c10)' }}
     >
-      {/* Theme picker — switch between the Broadcast Deck (dark) and Day Match
-          (light) kits before starting. */}
+      {/* Theme picker — cycle through the kits (Broadcast Deck, Day Match,
+          Night Finals, Ember) before starting. Shows the active kit's name. */}
       {onToggleTheme && (
         <button
           type="button"
@@ -48,11 +50,11 @@ export default function LandingScreen({ hasSaves, themeClass = 'dirV4', onToggle
             backdropFilter: 'blur(8px)',
             WebkitBackdropFilter: 'blur(8px)',
           }}
-          aria-label={isLight ? 'Switch to Broadcast Deck (dark theme)' : 'Switch to Day Match (light theme)'}
-          title={isLight ? 'Switch to Broadcast Deck (dark)' : 'Switch to Day Match (light)'}
+          aria-label={`Theme: ${themeInfo.label}. Tap to try the next kit.`}
+          title={`Theme: ${themeInfo.label} — tap to cycle kits`}
         >
-          {isLight ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
-          {isLight ? 'Night' : 'Day'}
+          {isLight ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+          {themeInfo.label}
         </button>
       )}
 

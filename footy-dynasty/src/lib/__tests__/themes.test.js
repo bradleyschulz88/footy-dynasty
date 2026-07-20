@@ -12,6 +12,8 @@ describe("theme registry", () => {
   it("recognises every shipped theme and rejects junk", () => {
     expect(isValidTheme("dirV4")).toBe(true);
     expect(isValidTheme("dirV5")).toBe(true);
+    expect(isValidTheme("dirV6")).toBe(true);
+    expect(isValidTheme("dirV7")).toBe(true);
     expect(isValidTheme("nope")).toBe(false);
     expect(isValidTheme(undefined)).toBe(false);
     expect(isValidTheme({ id: "dirV4" })).toBe(false);
@@ -27,10 +29,18 @@ describe("theme registry", () => {
     expect(themeMode("dirV5")).toBe("light");
   });
 
-  it("toggles between the two kits and recovers from an unknown current", () => {
+  it("cycles through every kit and wraps back to the start", () => {
+    // Walk the full ring and confirm it returns to where it began, visiting
+    // each switchable kit exactly once.
+    const seen = [];
+    let cur = SWITCHABLE_THEMES[0];
+    for (let i = 0; i < SWITCHABLE_THEMES.length; i++) { seen.push(cur); cur = nextTheme(cur); }
+    expect(seen.sort()).toEqual([...SWITCHABLE_THEMES].sort());
+    expect(cur).toBe(SWITCHABLE_THEMES[0]); // wrapped
     expect(nextTheme("dirV4")).toBe("dirV5");
-    expect(nextTheme("dirV5")).toBe("dirV4");
-    // Legacy/unknown current still makes visible progress off the default.
+  });
+
+  it("recovers from an unknown/legacy current", () => {
     expect(SWITCHABLE_THEMES).toContain(nextTheme("dirB"));
     expect(nextTheme(DEFAULT_THEME)).not.toBe(DEFAULT_THEME);
   });

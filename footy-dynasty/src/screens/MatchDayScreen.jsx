@@ -5,6 +5,7 @@ import { formatDate } from "../lib/calendar.js";
 import { COACHING_CALLS } from "../lib/coachingCalls.js";
 import { playCrowdCheer, playSiren, playWhistle, soundEnabled } from "../lib/sound.js";
 import { GroundFormation } from "../components/groundMarkings.jsx";
+import { ClubBadge } from "../components/ClubBadge.jsx";
 import { getClubGround } from "../data/grounds.js";
 import { calculateExpectedCrowd } from "../lib/homeAdvantage.js";
 
@@ -336,15 +337,11 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
   if (showPreBrief) {
     const opp = result.opp;
     const oppName = opp?.name ?? "Opponent";
-    const oppShort = opp?.short ?? "OPP";
-    const oppColors = opp?.colors ?? ["#334155", "#0f172a"];
     const h2h = career.headToHead?.[opp?.id];
     const h2hGames = h2h ? (h2h.wins + h2h.losses + h2h.draws) : 0;
     const streak = h2h?.streak ?? 0;
     const isBogey = h2hGames >= 3 && streak <= -3;
     const isDominated = h2hGames >= 3 && streak >= 3;
-    const clubColors = club?.colors ?? ["var(--A-accent)", "var(--A-accent-2)"];
-    const clubShort = club?.short ?? "US";
     const tacticLabels = { balanced: "Balanced", attacking: "Attacking", defensive: "Defensive", contested: "Contested" };
     const currentTactic = career.tacticChoice || "balanced";
 
@@ -354,17 +351,11 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
         <div className="px-4 pt-6 pb-5 text-center" style={{ borderBottom: "1px solid var(--A-line)" }}>
           <div className="text-[10px] font-mono uppercase tracking-widest text-atext-mute mb-3">{result.label ?? "Match Day"}</div>
           <div className="flex items-center justify-center gap-5 mb-3">
-            {/* Us */}
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-display text-xl font-black flex-shrink-0"
-              style={{ background: `linear-gradient(135deg, ${clubColors[0]}, ${clubColors[1] ?? clubColors[0]})`, color: clubColors[2] ?? "#fff" }}>
-              {clubShort}
-            </div>
+            {/* Us — real club crest */}
+            <ClubBadge club={club} size="xl" />
             <div className="font-display text-3xl text-atext-mute">vs</div>
-            {/* Them */}
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-display text-xl font-black flex-shrink-0"
-              style={{ background: `linear-gradient(135deg, ${oppColors[0]}, ${oppColors[1] ?? oppColors[0]})`, color: oppColors[2] ?? "#fff" }}>
-              {oppShort}
-            </div>
+            {/* Them — real club crest */}
+            <ClubBadge club={opp} size="xl" />
           </div>
           <div className="text-sm font-semibold text-atext">{oppName}</div>
           {result.isHome !== undefined && (
