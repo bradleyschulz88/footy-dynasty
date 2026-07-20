@@ -8,16 +8,18 @@
 
 export const DEFAULT_THEME = 'dirV4';
 
-export const THEME_CLASSES = ['dirA', 'dirB', 'dirV4', 'dirV5'];
+export const THEME_CLASSES = ['dirA', 'dirB', 'dirV4', 'dirV5', 'dirV6', 'dirV7'];
 
 // The kits offered in the pre-game theme picker, and their human labels.
 export const THEME_META = {
   dirV4: { label: 'Broadcast Deck', mode: 'dark' },
   dirV5: { label: 'Day Match', mode: 'light' },
+  dirV6: { label: 'Night Finals', mode: 'dark' },
+  dirV7: { label: 'Ember', mode: 'dark' },
 };
 
-// Order the picker toggles through.
-export const SWITCHABLE_THEMES = ['dirV4', 'dirV5'];
+// Order the picker cycles through.
+export const SWITCHABLE_THEMES = ['dirV4', 'dirV5', 'dirV6', 'dirV7'];
 
 export function isValidTheme(t) {
   return typeof t === 'string' && THEME_CLASSES.includes(t);
