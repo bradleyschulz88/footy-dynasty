@@ -4,8 +4,10 @@
 import React, { useEffect, createContext, useContext, useState, useCallback } from 'react';
 import { injectClubTheme, restoreClubTheme, clearClubTheme } from '../../lib/clubColors.ts';
 
-const THEME_CLASS_KEY = 'fd-theme-class';
-const VALID_THEMES = ['dirA', 'dirB', 'dirV4'] as const;
+// Shares the persistence key with AFLManager (its resolveThemeClass reads the
+// same value) so <html> and the app shell agree on the kit on load.
+const THEME_CLASS_KEY = 'fd-theme';
+const VALID_THEMES = ['dirA', 'dirB', 'dirV4', 'dirV5'] as const;
 type ThemeClass = typeof VALID_THEMES[number];
 
 interface ThemeContextType {
@@ -43,11 +45,13 @@ export function ThemeProvider({ children, career }: { children: React.ReactNode;
     localStorage.setItem('fd-reduce-motion', String(reduceMotion));
   }, [reduceMotion]);
 
-  // Club theme injection
+  // Club theme injection.
+  // injectClubTheme takes a clubId STRING (it looks the club up via findClub /
+  // CLUB_COLOR_MAP). Passing the career object here silently failed findClub, so
+  // every club fell back to the gold default — hand it the id string instead.
   useEffect(() => {
     if (career?.clubId) {
-      const club = { colors: career.clubColors, id: career.clubId };
-      injectClubTheme(club);
+      injectClubTheme(career.clubId);
     } else {
       clearClubTheme();
     }

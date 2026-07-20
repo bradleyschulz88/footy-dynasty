@@ -128,6 +128,10 @@ export function TopBar({
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
+      {/* Club-coloured identity strip — brands the whole in-game shell with the
+          player's club (driven by runtime-injected --fd-club-* tokens). */}
+      <div className="fd-club-strip" aria-hidden="true" />
+
       {/* Accent progress flash on advance */}
       <motion.div
         key={timeTick}

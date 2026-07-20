@@ -152,9 +152,11 @@ function getContrastColor(hex: string): string {
 }
 
 export function generateClubTheme(clubId: string): ClubTheme {
-  const club = findClub(clubId);
+  const club = typeof clubId === 'string' ? findClub(clubId) : undefined;
   if (!club) {
-    // Fallback for unknown clubs
+    // Fallback for unknown clubs. String() guards against a non-string being
+    // handed in (e.g. a career object) — that must degrade to the gold default,
+    // not throw inside the theme effect.
     return {
       primary: '#e8b43f',
       secondary: '#e8e8e8',
@@ -162,7 +164,7 @@ export function generateClubTheme(clubId: string): ClubTheme {
       gradient: 'linear-gradient(135deg, #e8b43f, #e8e8e8)',
       gradientRadial: 'radial-gradient(circle at 30% 30%, #e8b43f, #e8e8e8)',
       textOnPrimary: '#0b0f0e',
-      shortName: clubId.toUpperCase(),
+      shortName: String(clubId ?? '').toUpperCase(),
     };
   }
 

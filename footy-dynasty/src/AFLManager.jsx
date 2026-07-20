@@ -119,7 +119,10 @@ import { buildMatchDayExitPatch } from './lib/matchDayFinalize.js';
 import { advanceCareerNextEvent, resolveLiveMatchHalfTime, resolveQ3Decision, triggerSackState, fastForwardFinals } from './lib/careerAdvance.js';
 import { assignDynastyQuestsForSeason } from './lib/dynastyQuests.js';
 import { LINEUP_CAP } from './lib/lineupHelpers.js';
-import { injectClubTheme, clearClubTheme } from './lib/clubColors.js';
+// Use the id-keyed club theme (sets the consumed --fd-club-* vars for every
+// league). The old clubColors.js set a different, unused --club-* namespace.
+import { injectClubTheme, clearClubTheme } from './lib/clubColors.ts';
+import { isValidTheme, DEFAULT_THEME, nextTheme } from './lib/themes.js';
 
 const THEME_STORAGE_KEY = 'fd-theme';
 
@@ -131,13 +134,13 @@ function resolveLeague(leagueKey) {
 function resolveThemeClass() {
   try {
     const saved = localStorage.getItem(THEME_STORAGE_KEY);
-    if (saved && ['dirA', 'dirB', 'dirV4'].includes(saved)) return saved;
+    if (isValidTheme(saved)) return saved;
   } catch { /* private/SSR */ }
-  return 'dirV4';
+  return DEFAULT_THEME;
 }
 
 function persistTheme(themeClass) {
-  try { localStorage.setItem(THEME_STORAGE_KEY, themeClass ?? 'dirV4'); } catch { /* ignore */ }
+  try { localStorage.setItem(THEME_STORAGE_KEY, themeClass ?? DEFAULT_THEME); } catch { /* ignore */ }
 }
 
 function AppMotionConfig({ reducedMotion, children }) {
@@ -237,18 +240,31 @@ function AFLManagerInner() {
   const [notifOpen, setNotifOpen] = useState(false);
   const installPromptRef = useRef(null);
 
-  const themeClass = resolveThemeClass(career);
+  // Reactive theme so the pre-game picker can switch kits live (was derived,
+  // which never re-rendered on change).
+  const [themeClass, setThemeClass] = useState(resolveThemeClass);
+  const toggleTheme = useCallback(() => setThemeClass((t) => nextTheme(t)), []);
 
   // Persist theme preference to localStorage so it applies before a career loads
   useEffect(() => {
     persistTheme(themeClass);
   }, [themeClass]);
 
-  // Inject club colour CSS custom properties when the user's team changes
+  // Mirror the theme class onto <html> so the page ground (behind the app
+  // shell / on overscroll) matches the chosen kit, not just the wrappers.
   useEffect(() => {
-    if (career?.team) injectClubTheme(career.team);
+    const el = document.documentElement;
+    el.classList.remove('dirA', 'dirB', 'dirV4', 'dirV5');
+    el.classList.add(themeClass);
+  }, [themeClass]);
+
+  // Inject club colour CSS custom properties when the user's club changes.
+  // Keyed on career.clubId (the real field) — career.team never existed, so
+  // club colours were never actually applied before.
+  useEffect(() => {
+    if (career?.clubId) injectClubTheme(career.clubId);
     return () => clearClubTheme();
-  }, [career?.team]);
+  }, [career?.clubId]);
 
   useEffect(() => {
     const handler = () => setPwaNeedsUpdate(true);
@@ -910,6 +926,7 @@ function AFLManagerInner() {
         <LandingScreen
           hasSaves={hasSaves}
           themeClass={themeClass}
+          onToggleTheme={toggleTheme}
           onQuickStart={handleQuickStart}
           onNewCareer={() => setShowLanding(false)}
           onLoadGame={() => setShowLanding(false)}

@@ -87,7 +87,7 @@ html, body, #root {
 /* ============================================================================
    TYPOGRAPHY UTILITIES
    ============================================================================ */
-.display, .font-display { font-family: var(--fd-font-display); letter-spacing: 0.02em; text-transform: uppercase; }
+.display, .font-display { font-family: var(--fd-font-display); letter-spacing: 0.02em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
 .font-mono { font-family: var(--fd-font-mono); font-variant-numeric: tabular-nums; }
 .font-ui { font-family: var(--fd-font-ui); }
 
@@ -401,3 +401,49 @@ html, body, #root {
 /* Safe area insets */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0); }
 .pt-safe { padding-top: env(safe-area-inset-top, 0); }
+
+/* ============================================================================
+   CLUB-BRANDED CHROME  (uses runtime-injected --fd-club-* — see clubColors.ts)
+   ----------------------------------------------------------------------------
+   A thin club-coloured strip. Uses primary→secondary→primary so it stays
+   visible even for single-dark-colour clubs (e.g. Collingwood black→white).
+   ============================================================================ */
+.fd-club-strip {
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg,
+    var(--fd-club-primary),
+    var(--fd-club-secondary),
+    var(--fd-club-primary));
+  opacity: 0.9;
+}
+
+/* ============================================================================
+   BROADCAST DEPTH  —  turf gradient + fine film grain for match-day surfaces.
+   `.fd-turf` paints the oval-green vignette; `.fd-grain` overlays a cheap
+   procedural noise so flat dark panels read as broadcast graphics, not CSS.
+   Both are decorative (pointer-events:none) and honour reduced-motion.
+   ============================================================================ */
+.fd-turf {
+  position: relative;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 0%,
+      color-mix(in srgb, #1f7a3d 22%, transparent), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 110%,
+      color-mix(in srgb, #0d5227 26%, transparent), transparent 62%);
+}
+.fd-grain { position: relative; }
+.fd-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  /* Inline SVG fractal-noise — no network, no asset. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+@media (prefers-reduced-motion: reduce) {
+  .fd-grain::after { opacity: 0.03; }
+}

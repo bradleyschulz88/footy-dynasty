@@ -103,6 +103,24 @@
   --V4-neg: #FF3B4E;       /* footy red — urgent, live, negative */
   --V4-club: #001E3C;
   --V4-club-2: #2CA8F0;
+
+  /* Day Match — light broadcast kit (dirV5). Daytime graphics: white
+     surfaces, deepened sky accent for contrast on light grounds. */
+  --V5-bg: #EEF2F7;        /* cool light ground */
+  --V5-bg-2: #E4EAF2;      /* recessed ground */
+  --V5-panel: #FFFFFF;     /* surface */
+  --V5-panel-2: #F5F8FC;   /* surface 2 */
+  --V5-line: rgba(12, 32, 60, 0.12);
+  --V5-line-2: rgba(12, 32, 60, 0.22);
+  --V5-text: #0B1B2E;      /* ink */
+  --V5-text-dim: #46586E;  /* dim */
+  --V5-text-mute: #7488A0; /* mute */
+  --V5-accent: #0A72C4;    /* deepened broadcast sky — readable on white */
+  --V5-accent-2: #0A88E0;  /* brighter azure */
+  --V5-pos: #17915A;
+  --V5-neg: #E0243A;
+  --V5-club: #0A72C4;
+  --V5-club-2: #001E3C;
 }
 
 /* shared */
@@ -812,6 +830,172 @@ body { margin: 0; -webkit-font-smoothing: antialiased; font-feature-settings: "s
   background-image:
     linear-gradient(var(--V4-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--V4-line) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* ── Direction V5 scope — Day Match (light broadcast) ──────────
+   The daytime counterpart to Broadcast Deck: white surfaces, deepened sky
+   accent, same condensed display face. Remaps BOTH token layers (--A-* and
+   the clubTheme.css --fd-* base) so every utility goes light. Defined AFTER
+   dirV4 so `.dirV5 .panel` wins the specificity tie when <html> still carries
+   dirV4 (ThemeProvider) while the app shell carries dirV5. */
+.dirV5 {
+  --A-bg:        var(--V5-bg);
+  --A-bg-2:      var(--V5-bg-2);
+  --A-panel:     var(--V5-panel);
+  --A-panel-2:   var(--V5-panel-2);
+  --A-line:      var(--V5-line);
+  --A-line-2:    var(--V5-line-2);
+  --A-text:      var(--V5-text);
+  --A-text-dim:  var(--V5-text-dim);
+  --A-text-mute: var(--V5-text-mute);
+  --A-accent:    var(--V5-accent);
+  --A-accent-2:  var(--V5-accent-2);
+  --A-pos:       var(--V5-pos);
+  --A-neg:       var(--V5-neg);
+  --A-club:      var(--V5-club);
+  --A-club-2:    var(--V5-club-2);
+  /* clubTheme.css base layer → light */
+  --fd-bg:        var(--V5-bg);
+  --fd-bg-elev:   #FFFFFF;
+  --fd-bg-panel:  var(--V5-panel);
+  --fd-bg-panel-2:var(--V5-panel-2);
+  --fd-line:      var(--V5-line);
+  --fd-line-2:    var(--V5-line-2);
+  --fd-text:      var(--V5-text);
+  --fd-text-dim:  var(--V5-text-dim);
+  --fd-text-mute: var(--V5-text-mute);
+  --fd-accent:    var(--V5-accent);
+  --fd-accent-2:  var(--V5-accent-2);
+  --fd-on-accent: #FFFFFF;
+  --fd-pos:       var(--V5-pos);
+  --fd-neg:       var(--V5-neg);
+}
+.dirV5 {
+  --fd-oval-opacity: 0.06;
+  --fd-on-accent: #ffffff;
+  background: var(--V5-bg);
+  color: var(--V5-text);
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: var(--font-body);
+  line-height: 1.4;
+  position: relative;
+}
+.dirV5::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 65% 45% at 22% 8%, rgba(10, 114, 196, 0.06), transparent 62%),
+    radial-gradient(ellipse 55% 45% at 85% 92%, rgba(10, 114, 196, 0.04), transparent 64%);
+  pointer-events: none;
+}
+.dirV5 .font-display,
+.dirV5 .display,
+.dirV5 [class*="font-display"] {
+  font-family: "Barlow Condensed", "Oswald", "Inter", system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+}
+.dirV5 .panel {
+  background: linear-gradient(180deg, #ffffff, var(--V5-panel));
+  border: 1px solid var(--V5-line);
+  border-radius: var(--radius-b-panel);
+  box-shadow: 0 1px 2px rgba(12, 28, 52, 0.06), 0 10px 26px rgba(12, 28, 52, 0.08);
+}
+.dirV5 .panel-flat {
+  background: var(--V5-panel);
+  border: 1px solid var(--V5-line);
+  border-radius: var(--radius-b-flat);
+  box-shadow: 0 1px 3px rgba(12, 28, 52, 0.05);
+}
+.dirV5 .panel, .dirV5 .panel-flat {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.dirV5 .card-hover { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; cursor: pointer; }
+.dirV5 .card-hover:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--V5-accent) 45%, var(--V5-line-2));
+  box-shadow: 0 14px 30px rgba(12, 28, 52, 0.12), 0 0 0 1px color-mix(in srgb, var(--V5-accent) 18%, transparent);
+}
+.dirV5 .row-hover { transition: background 0.12s ease; }
+.dirV5 .row-hover:hover { background: color-mix(in srgb, var(--V5-accent) 6%, transparent); }
+.dirV5 .player-row { transition: background 0.12s ease, padding 0.18s ease; }
+.dirV5 .player-row:hover { background: color-mix(in srgb, var(--V5-accent) 7%, transparent); }
+.dirV5 .glow-text {
+  background: linear-gradient(90deg, var(--V5-accent) 0%, var(--V5-text) 40%, var(--V5-text) 60%, var(--V5-accent) 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shine 4s linear infinite;
+}
+.dirV5 .label {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: var(--font-micro);
+  letter-spacing: 0.2em;
+  color: var(--V5-text-mute);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.dirV5 .display { color: var(--V5-text); }
+.dirV5 hr { border: 0; border-top: 1px solid var(--V5-line); margin: 0; }
+.dirV5 .accent { color: var(--V5-accent); }
+.dirV5 .accent-2 { color: var(--V5-accent-2); }
+.dirV5 .pos { color: var(--V5-pos); }
+.dirV5 .neg { color: var(--V5-neg); }
+.dirV5 .dim { color: var(--V5-text-dim); }
+.dirV5 .mute { color: var(--V5-text-mute); }
+.dirV5 .pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border-radius: var(--radius-pill);
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--font-caption); letter-spacing: 0.12em; text-transform: uppercase;
+  background: rgba(10, 114, 196, 0.10);
+  color: var(--V5-accent);
+  border: 1px solid rgba(10, 114, 196, 0.28);
+}
+.dirV5 .pill-ghost {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: var(--radius-pill);
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--font-caption); letter-spacing: 0.12em; text-transform: uppercase;
+  background: transparent;
+  color: var(--V5-text);
+  border: 1px solid var(--V5-line-2);
+}
+.dirV5 .btn-ghost {
+  background: rgba(12, 32, 60, 0.03);
+  border: 1px solid var(--V5-line-2);
+  color: var(--V5-text);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--font-caption);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.dirV5 .btn-ghost:hover { border-color: var(--V5-accent); color: var(--V5-accent); background: color-mix(in srgb, var(--V5-accent) 8%, transparent); }
+.dirV5 .btn-primary {
+  background: linear-gradient(120deg, var(--V5-accent), #0A88E0);
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: var(--radius-xl);
+  font-family: "JetBrains Mono", monospace;
+  font-size: var(--font-ui);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border: 0;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.28) inset, 0 4px 18px rgba(10, 114, 196, 0.30);
+}
+.dirV5 .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.28) inset, 0 6px 24px rgba(10, 114, 196, 0.42);
+}
+.dirV5 .grid-bg {
+  background-image:
+    linear-gradient(var(--V5-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--V5-line) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 

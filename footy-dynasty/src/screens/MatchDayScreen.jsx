@@ -349,7 +349,7 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
     const currentTactic = career.tacticChoice || "balanced";
 
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
+      <div className="min-h-screen flex flex-col fd-grain" style={{ background: "radial-gradient(ellipse 120% 70% at 50% 0%, color-mix(in srgb, #1f7a3d 18%, transparent), transparent 58%), radial-gradient(ellipse 90% 55% at 50% 108%, color-mix(in srgb, #0d5227 22%, transparent), transparent 60%), linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
         {/* Header */}
         <div className="px-4 pt-6 pb-5 text-center" style={{ borderBottom: "1px solid var(--A-line)" }}>
           <div className="text-[10px] font-mono uppercase tracking-widest text-atext-mute mb-3">{result.label ?? "Match Day"}</div>
@@ -468,7 +468,7 @@ export default function MatchDayScreen({ result, liveMatch, squad, lineup, leagu
     const lineupPlayers = (squad || []).filter(p => lineupSet.has(p.id) && !p.substituted);
 
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: "linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
+      <div className="min-h-screen flex flex-col fd-grain" style={{ background: "radial-gradient(ellipse 120% 70% at 50% 0%, color-mix(in srgb, #1f7a3d 18%, transparent), transparent 58%), radial-gradient(ellipse 90% 55% at 50% 108%, color-mix(in srgb, #0d5227 22%, transparent), transparent 60%), linear-gradient(160deg, var(--A-bg) 0%, var(--A-bg-2) 100%)" }}>
         {/* Header */}
         <div className="px-4 pt-5 pb-4 text-center" style={{ borderBottom: "1px solid var(--A-line)", background: `linear-gradient(180deg, color-mix(in srgb, ${urgencyColor} 6%, var(--A-panel)) 0%, transparent 100%)` }}>
           <div className="text-[10px] font-mono uppercase tracking-widest text-atext-mute mb-1">3 Quarter Time</div>
