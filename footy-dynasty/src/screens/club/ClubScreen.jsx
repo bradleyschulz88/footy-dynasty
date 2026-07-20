@@ -23,7 +23,8 @@ import { activeNamingRights, namingRightsValue, signNamingRights } from '../../l
 import { careerMemberCount } from '../../lib/finance/membership.js';
 import { ACHIEVEMENTS, evaluateAchievements } from '../../lib/achievements.js';
 import { defaultKits, STAFF_BLUEPRINT, EXPANDABLE_ROLE_IDS_BY_TIER } from '../../lib/defaults.js';
-import { facilityBaseFor, facilityLevelLabel } from '../../data/clubFacilities.js';
+import { facilityBaseFor, facilityLevelLabel, AFL_CLUB_FACILITIES } from '../../data/clubFacilities.js';
+import FacilityPrecinct from '../../components/FacilityPrecinct.jsx';
 import { css, Bar, RatingDot, Pill, Stat, Jersey } from '../../components/primitives.jsx';
 import TabNav from '../../components/TabNav.jsx';
 import { ContractsTab, StaffRenewalsPanel } from '../contracts/ContractRenewals.jsx';
@@ -2308,6 +2309,14 @@ function FacilitiesTab() {
           <Stat label="Cash" value={fmtK(career.finance.cash)} accent="var(--A-accent)" />
         </div>
       </div>
+
+      {/* Ground-style precinct view — the base drawn from your facility levels */}
+      <FacilityPrecinct
+        facilities={career.facilities}
+        clubColor="var(--fd-club-primary, var(--A-accent))"
+        baseName={facilityBaseFor(career.clubId, facTier).base}
+        groundName={AFL_CLUB_FACILITIES[career.clubId]?.ground}
+      />
 
       <div className="grid md:grid-cols-2 gap-3">
         {Object.entries(career.facilities).map(([key, f]) => {

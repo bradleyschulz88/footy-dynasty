@@ -1,4 +1,5 @@
 import React from "react";
+import { clubLogoUrl } from "../lib/clubLogos.js";
 
 const SIZES = {
   xs: "w-7 h-7 min-w-[1.75rem] text-[8px] rounded-md",
@@ -591,6 +592,22 @@ export function ClubBadge({ club, size = "md", className = "" }) {
         aria-hidden
       >
         —
+      </div>
+    );
+  }
+
+  // A real logo file in src/assets/logos/<clubId>.* takes precedence over the
+  // procedural crest (bring-your-own artwork — see that folder's README).
+  const realLogo = clubLogoUrl(club.id);
+  if (realLogo) {
+    return (
+      <div className={cls} title={club.name || club.short} style={{ background: "transparent", border: "none", boxShadow: "none" }}>
+        <img
+          src={realLogo}
+          alt={`${club.name || club.short} logo`}
+          className="w-full h-full object-contain"
+          draggable={false}
+        />
       </div>
     );
   }
